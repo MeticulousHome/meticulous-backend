@@ -1,4 +1,5 @@
 import serial
+
 # import numpy as np
 
 with serial.Serial('COM3', 9600) as ser:

@@ -5,6 +5,7 @@ import tornado.ioloop
 import traceback
 import serial
 import threading
+import time
 
 
 define("port", default=8080, help="run on the given port", type=int)
@@ -27,30 +28,24 @@ def connect(sid, environ):
 def disconnect(sid):
     print('disconnect ', sid)
 
+arduino = serial.Serial("COM3",115200)
+
 def read_arduino():
-    arduino = serial.Serial("COM3",115200)
     while True:
-        
         data =arduino.readline().decode('utf-8')
         sensors_str = data.split(',')
-        arduino.write(b'32\n')
-        # if sensors_str[0] == 'Data':
-            # print("Hahaha") <-- flag
-
-            # print(pressure,flow,weight,temperature,status)
-        return sensors_str
+        if sensors_str[0] == 'Data':
+            data_sensors["pressure"] = sensors_str[1]
+            data_sensors["flow"]= sensors_str[2]
+            data_sensors["weight"] = sensors_str[3]
+            data_sensors["temperature"] = sensors_str[4]
+            status_bad = sensors_str[5]
+            data_sensors["status"] = status_bad.strip("\n")
     
 def data_treatment():
-    while True:
-        data =read_arduino()
-        if data[0] == 'Data':
-            data_sensors["pressure"] = data[1]
-            data_sensors["flow"]= data[2]
-            data_sensors["weight"] = data[3]
-            data_sensors["temperature"] = data[4]
-            status_bad = data[5]
-            data_sensors["status"] = status_bad.strip("\n")
-            return data_sensors
+    time.sleep(0.1)
+    arduino.write(b'32\n')
+    read_arduino()
 
 async def live():
 
@@ -63,17 +58,17 @@ async def live():
 #         json_file.close()
 
     process_started = False
-    SAMPLE_TIME = 1
+    SAMPLE_TIME = 0.1
     elapsed_time = 0
     i = 0
     while True:
         await sio.emit("status", {
-            "name": "idle",
+            "name": data_sensors["status"],
             "sensors": {
                 "p": data_sensors["pressure"],
                 "f": data_sensors["flow"],
                 "w": data_sensors["weight"],
-                "t": ["temperature"],
+                "t": data_sensors["temperature"],
             },
             "time": 0
         })
@@ -83,7 +78,9 @@ async def live():
     
 def main():
     parse_command_line()
-
+    data_thread = threading.Thread(target=data_treatment)
+    data_thread.daemon = True
+    data_thread.start()
     app = tornado.web.Application(
         [
             (r"/socket.io/", socketio.get_tornado_handler(sio)),
@@ -99,5 +96,6 @@ def main():
 if __name__ == "__main__":
     try:
         main()
+        
     except:
         traceback.print_exc()
