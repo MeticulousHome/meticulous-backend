@@ -7,11 +7,33 @@ import serial
 import threading
 import time
 
+class ReadLine:
+    def __init__(self, s):
+        self.buf = bytearray()
+        self.s = s
+    
+    def readline(self):
+        i = self.buf.find(b"\n")
+        if i >= 0:
+            r = self.buf[:i+1]
+            self.buf = self.buf[i+1:]
+            return r
+        while True:
+            i = max(1, min(2048, self.s.in_waiting))
+            data = self.s.read(i)
+            i = data.find(b"\n")
+            if i >= 0:
+                r = self.buf + data[:i+1]
+                self.buf[0:] = data[i+1:]
+                return r
+            else:
+                self.buf.extend(data)
 
 define("port", default=8080, help="run on the given port", type=int)
 define("debug", default=False, help="run in debug mode")
 
 sio = socketio.AsyncServer(cors_allowed_origins='*', async_mode='tornado')
+
 data_sensors = {
     "pressure":1,
     "flow":2,
@@ -31,20 +53,25 @@ def disconnect(sid):
 arduino = serial.Serial("COM3",115200)
 
 def read_arduino():
+    arduino = serial.Serial("COM3",115200)
+    arduino.reset_input_buffer()
+    arduino.write(b'32\n')
+    uart = ReadLine(arduino)
     while True:
-        data =arduino.readline().decode('utf-8')
-        sensors_str = data.split(',')
-        if sensors_str[0] == 'Data':
-            data_sensors["pressure"] = sensors_str[1]
-            data_sensors["flow"]= sensors_str[2]
-            data_sensors["weight"] = sensors_str[3]
-            data_sensors["temperature"] = sensors_str[4]
-            status_bad = sensors_str[5]
-            data_sensors["status"] = status_bad.strip("\n")
+        data = uart.readline()
+        if len(data) > 0:
+            data_bit = bytes(data)
+            data_str = data_bit.decode('utf-8')
+            data_str_sensors = data_str.split(',')
+            if data_str_sensors[0] == 'Data':
+                data_sensors["pressure"] = data_str_sensors[1]
+                data_sensors["flow"]= data_str_sensors[2]
+                data_sensors["weight"] = data_str_sensors[3]
+                data_sensors["temperature"] = data_str_sensors[4]
+                status_bad = data_str_sensors[5]
+                data_sensors["status"] = status_bad.strip("\n")
     
 def data_treatment():
-    time.sleep(0.1)
-    arduino.write(b'32\n')
     read_arduino()
 
 async def live():
