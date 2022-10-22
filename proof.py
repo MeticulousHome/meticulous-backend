@@ -71,7 +71,7 @@ def data_treatment():
             
             
 if __name__ == "__main__":
-    # data_thread = threading.Thread(target=data_treatment)
+    # data_thread = threading.Thread(target=read_arduino)
     # data_thread.daemon = True
     # data_thread.start()
     # # print(data_sensors)
