@@ -1,6 +1,9 @@
 import serial
 import threading
 import sys
+
+#verificar este enlace : 
+#https://github.com/pyserial/pyserial/blob/master/serial/threaded/__init__.py#L140
 # sensores_str = 0
 
 class ReadLine:
@@ -39,7 +42,7 @@ uart = ReadLine(arduino)
 def read_arduino():
     print("Entre al hilo")
     
-    print("Serial chose") #<- No entra a esta flag
+    print("Serial chose") #<- No entra a esta flag pot thread.daemon
     
    
     
@@ -82,8 +85,8 @@ def data_treatment():
 if __name__ == "__main__":
     try:
         data_thread = threading.Thread(target=read_arduino)
-        data_thread.daemon = True
         arduino.flushInput() # Para limpiar el buffer de entrada de la compu.
+        data_thread.daemon = True
         data_thread.start()
     except KeyboardInterrupt:
         sys.exit()
