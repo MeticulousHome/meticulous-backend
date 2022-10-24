@@ -132,7 +132,7 @@ async def live():
 def main():
     parse_command_line()
     data_thread = threading.Thread(target=data_treatment)
-    data_thread.daemon = True
+    # data_thread.daemon = True
     data_thread.start()
     app = tornado.web.Application(
         [
