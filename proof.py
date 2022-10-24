@@ -82,7 +82,8 @@ def data_treatment():
 if __name__ == "__main__":
     try:
         data_thread = threading.Thread(target=read_arduino)
-        # data_thread.daemon = True
+        data_thread.daemon = True
+        arduino.flushInput() # Para limpiar el buffer de entrada de la compu.
         data_thread.start()
     except KeyboardInterrupt:
         sys.exit()
