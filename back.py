@@ -50,10 +50,10 @@ def connect(sid, environ):
 def disconnect(sid):
     print('disconnect ', sid)
 
-arduino = serial.Serial("COM3",115200)
+arduino = serial.Serial("COM5",115200)
 
 def read_arduino():
-    arduino = serial.Serial("COM3",115200)
+    arduino = serial.Serial("COM5",115200)
     arduino.reset_input_buffer()
     arduino.write(b'32\n')
     uart = ReadLine(arduino)
@@ -106,7 +106,7 @@ async def live():
 def main():
     parse_command_line()
     data_thread = threading.Thread(target=data_treatment)
-    data_thread.daemon = True
+    # data_thread.daemon = True
     data_thread.start()
     app = tornado.web.Application(
         [

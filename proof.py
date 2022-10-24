@@ -1,5 +1,6 @@
 import serial
 import threading
+import sys
 # sensores_str = 0
 
 class ReadLine:
@@ -31,33 +32,41 @@ data_sensors = {
     "temperature":4,
     "status":5
 }
-
+arduino = serial.Serial("COM5",115200)
+arduino.reset_input_buffer()
+arduino.write(b'32\n')
+uart = ReadLine(arduino)
 def read_arduino():
-    arduino = serial.Serial("COM3",115200)
-    arduino.reset_input_buffer()
-    arduino.write(b'32\n')
+    print("Entre al hilo")
     
-    uart = ReadLine(arduino)
+    print("Serial chose") #<- No entra a esta flag
     
-    while True:
-        data = uart.readline()
-        if len(data) > 0:
-            data_bit = bytes(data)
-            data_str = data_bit.decode('utf-8')
-            # print(data_str)
-            # sensors_str =data.readline().decode('ascii')
-            # # sensors_str =data.readline().decode('utf-8')
-            # print(sensors_str)
-            data_str_sensors = data_str.split(',')
-            # print(data_str_sensors)
-            if data_str_sensors[0] == 'Data':
-                data_sensors["pressure"] = data_str_sensors[1]
-                data_sensors["flow"]= data_str_sensors[2]
-                data_sensors["weight"] = data_str_sensors[3]
-                data_sensors["temperature"] = data_str_sensors[4]
-                status_bad = data_str_sensors[5]
-                data_sensors["status"] = status_bad.strip("\n")
-                print(data_sensors)
+   
+    
+    
+    print("Justo antes del while")
+    try:
+        while True:
+            data = uart.readline()
+            if len(data) > 0:
+                data_bit = bytes(data)
+                data_str = data_bit.decode('utf-8')
+                # print(data_str)
+                # sensors_str =data.readline().decode('ascii')
+                # # sensors_str =data.readline().decode('utf-8')
+                # print(sensors_str)
+                data_str_sensors = data_str.split(',')
+                # print(data_str_sensors)
+                if data_str_sensors[0] == 'Data':
+                    data_sensors["pressure"] = data_str_sensors[1]
+                    data_sensors["flow"]= data_str_sensors[2]
+                    data_sensors["weight"] = data_str_sensors[3]
+                    data_sensors["temperature"] = data_str_sensors[4]
+                    status_bad = data_str_sensors[5]
+                    data_sensors["status"] = status_bad.strip("\n")
+                    print(data_sensors)
+    except KeyboardInterrupt:
+        sys.exit()
         # if sensors_str[0] == 'Data':
             # print("Hahaha") <-- flag
 
@@ -71,8 +80,11 @@ def data_treatment():
             
             
 if __name__ == "__main__":
-    # data_thread = threading.Thread(target=read_arduino)
-    # data_thread.daemon = True
-    # data_thread.start()
-    # # print(data_sensors)
-    read_arduino()
+    try:
+        data_thread = threading.Thread(target=read_arduino)
+        # data_thread.daemon = True
+        data_thread.start()
+    except KeyboardInterrupt:
+        sys.exit()
+        # # print(data_sensors)
+        # read_arduino()
