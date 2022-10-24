@@ -50,18 +50,28 @@ def connect(sid, environ):
 def disconnect(sid):
     print('disconnect ', sid)
 
-arduino = serial.Serial("COM3",115200)
+arduino = serial.Serial("COM4",115200)
+start_time = time.time()
 
 def read_arduino():
-    arduino = serial.Serial("COM3",115200)
+    global start_time
+
+    # arduino = serial.Serial("COM3",115200)
     arduino.reset_input_buffer()
     arduino.write(b'32\n')
     uart = ReadLine(arduino)
+
+    old_status = ""
     while True:
         data = uart.readline()
         if len(data) > 0:
-            data_bit = bytes(data)
-            data_str = data_bit.decode('utf-8')
+            # data_bit = bytes(data)
+            try:
+                data_str = data.decode('utf-8')
+            except:
+                print("decoding fails")
+                continue
+
             data_str_sensors = data_str.split(',')
             if data_str_sensors[0] == 'Data':
                 data_sensors["pressure"] = data_str_sensors[1]
@@ -70,6 +80,22 @@ def read_arduino():
                 data_sensors["temperature"] = data_str_sensors[4]
                 status_bad = data_str_sensors[5]
                 data_sensors["status"] = status_bad.strip("\n")
+                data_sensors["status"] = data_sensors["status"].strip("\r")
+
+                c1 = old_status == "heating"
+                c2 = data_sensors["status"] == "preinfusion"
+                # print(c1, end = "")
+                # print(c2, end = "")
+                # print(len(data_sensors["status"]), end = "")
+
+                if (c1 and c2):
+                    start_time = time.time()
+                    print("start_time: {:.1f}".format(start_time))
+
+                old_status = data_sensors["status"]
+                # print(data_sensors["status"])
+            else:
+                print(data_str)
     
 def data_treatment():
     read_arduino()
@@ -97,7 +123,7 @@ async def live():
                 "w": data_sensors["weight"],
                 "t": data_sensors["temperature"],
             },
-            "time": 0
+            "time": str(time.time() - start_time)
         })
         await sio.sleep(SAMPLE_TIME)
         i = i + 1
