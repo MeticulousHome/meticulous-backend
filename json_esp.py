@@ -11,6 +11,7 @@ if __name__ == "__main__":
 
     data = json.dumps(data,indent = 1)
     data = "json\n"+data+"\x03"
+    #data = "action,tare\x03"
     ser.write(data.encode("utf-8"))
     init_while1 = True
     while (init_while1):
