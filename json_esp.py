@@ -10,17 +10,12 @@ if __name__ == "__main__":
     data = json.load(f)
 
     data = json.dumps(data,indent = 1)
-    data = "*"+data+"#"
+    data = "json\n"+data+"\x03"
     ser.write(data.encode("utf-8"))
     init_while1 = True
     while (init_while1):
         if ser.inWaiting() > 0:
             data_from_esp32 = ser.read().decode('utf-8')
             print(data_from_esp32, end="")
-            if  data_from_esp32 == "#":
+            if  data_from_esp32 == "\x03":
                 init_while1 = False
-
-    # while (True):
-    #     if ser.inWaiting() > 0:
-    #         data_from_esp32 = ser.read().decode('utf-8')
-    #         print(data_from_esp32, end="")
