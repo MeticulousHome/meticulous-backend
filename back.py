@@ -55,6 +55,11 @@ def ccw_function():
     keyboard.release(Key.left)
     print("LEFT!")
 
+def single_push():
+    keyboard.press(Key.space)
+    keyboard.release(Key.space)
+    print("CLICK!")
+
 @sio.event
 def connect(sid, environ):
     print('connect ', sid)
@@ -63,7 +68,8 @@ def connect(sid, environ):
 def disconnect(sid):
     print('disconnect ', sid)
 
-arduino = serial.Serial("COM3",115200)
+# arduino = serial.Serial("COM3",115200)
+arduino = serial.Serial('/dev/ttyS0',115200)
 start_time = time.time()
 
 def read_arduino():
@@ -111,6 +117,8 @@ def read_arduino():
                 ccw_function()
             elif data_str.find("CW") > -1:
                 cw_function()
+            elif data_str.find("push") > -1:
+                single_push()
             else:
                 # print(data_str_sensors[0])
                 print(data_str)
@@ -135,6 +143,7 @@ async def live():
     while True:
         await sio.emit("status", {
             "name": data_sensors["status"],
+            # "name" : "idle",
             "sensors": {
                 "p": data_sensors["pressure"],
                 "f": data_sensors["flow"],
