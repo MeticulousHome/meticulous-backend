@@ -6,6 +6,9 @@ import traceback
 import serial
 import threading
 import time
+from pynput.keyboard import Key, Controller
+
+keyboard = Controller()
 
 class ReadLine:
     def __init__(self, s):
@@ -42,6 +45,21 @@ data_sensors = {
     "status":5
 }
 
+def cw_function():
+    keyboard.press(Key.right)
+    keyboard.release(Key.right)
+    print("RIGHT!")
+
+def ccw_function():
+    keyboard.press(Key.left)
+    keyboard.release(Key.left)
+    print("LEFT!")
+
+def single_push():
+    keyboard.press(Key.space)
+    keyboard.release(Key.space)
+    print("CLICK!")
+
 @sio.event
 def connect(sid, environ):
     print('connect ', sid)
@@ -50,7 +68,8 @@ def connect(sid, environ):
 def disconnect(sid):
     print('disconnect ', sid)
 
-arduino = serial.Serial("COM4",115200)
+# arduino = serial.Serial("COM3",115200)
+arduino = serial.Serial('/dev/ttyS0',115200)
 start_time = time.time()
 
 def read_arduino():
@@ -94,7 +113,14 @@ def read_arduino():
 
                 old_status = data_sensors["status"]
                 # print(data_sensors["status"])
+            elif data_str.find("CCW") > -1:
+                ccw_function()
+            elif data_str.find("CW") > -1:
+                cw_function()
+            elif data_str.find("push") > -1:
+                single_push()
             else:
+                # print(data_str_sensors[0])
                 print(data_str)
     
 def data_treatment():
@@ -117,6 +143,7 @@ async def live():
     while True:
         await sio.emit("status", {
             "name": data_sensors["status"],
+            # "name" : "idle",
             "sensors": {
                 "p": data_sensors["pressure"],
                 "f": data_sensors["flow"],
