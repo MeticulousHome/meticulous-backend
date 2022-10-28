@@ -6,7 +6,7 @@ import traceback
 import serial
 import threading
 import time
-
+import json
 class ReadLine:
     def __init__(self, s):
         self.buf = bytearray()
@@ -42,6 +42,9 @@ data_sensors = {
     "status":5
 }
 
+arduino = serial.Serial("COM3",115200)
+
+
 @sio.event
 def connect(sid, environ):
     print('connect ', sid)
@@ -50,7 +53,29 @@ def connect(sid, environ):
 def disconnect(sid):
     print('disconnect ', sid)
 
-arduino = serial.Serial("COM4",115200)
+@sio.on('action')
+def msg(sid, data):
+    data = "action,"+data+"\x03"
+    arduino.write(data.encode("utf-8"))
+
+
+
+@sio.on('parameters')
+def msg(sid, data):
+    json_data = json.dumps(data, indent=1, sort_keys=False)
+    json_data = "json\n"+json_data+"\x03"
+    arduino.write(json_data.encode("utf-8"))
+
+
+
+
+@sio.on('preset')
+def msg(sid, data):
+    json_data = json.dumps(data, indent=1, sort_keys=False)
+    json_data = "json\n"+json_data+"\x03"
+    arduino.write(json_data.encode("utf-8"))
+
+
 start_time = time.time()
 
 def read_arduino():
@@ -134,6 +159,7 @@ def main():
     data_thread = threading.Thread(target=data_treatment)
     # data_thread.daemon = True
     data_thread.start()
+
     app = tornado.web.Application(
         [
             (r"/socket.io/", socketio.get_tornado_handler(sio)),
