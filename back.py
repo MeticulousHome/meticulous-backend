@@ -44,6 +44,7 @@ data_sensors = {
 
 arduino = serial.Serial("COM3",115200)
 
+
 @sio.event
 def connect(sid, environ):
     print('connect ', sid)
@@ -158,6 +159,7 @@ def main():
     data_thread = threading.Thread(target=data_treatment)
     # data_thread.daemon = True
     data_thread.start()
+
     app = tornado.web.Application(
         [
             (r"/socket.io/", socketio.get_tornado_handler(sio)),
