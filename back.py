@@ -55,6 +55,7 @@ def disconnect(sid):
 
 @sio.on('action')
 def msg(sid, data):
+    time.sleep(0.05)
     data = "action,"+data+"\x03"
     arduino.write(data.encode("utf-8"))
 
