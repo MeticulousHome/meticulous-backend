@@ -6,6 +6,7 @@ import traceback
 import serial
 import threading
 import time
+import json
 from pynput.keyboard import Key, Controller
 
 keyboard = Controller()
@@ -67,6 +68,25 @@ def connect(sid, environ):
 @sio.event
 def disconnect(sid):
     print('disconnect ', sid)
+
+@sio.on('action')
+def msg(sid, data):
+    time.sleep(0.05)
+    data = "action,"+data+"\x03"
+    arduino.write(data.encode("utf-8"))
+
+@sio.on('parameters')
+def msg(sid, data):
+    json_data = json.dumps(data, indent=1, sort_keys=False)
+    json_data = "json\n"+json_data+"\x03"
+    arduino.write(json_data.encode("utf-8"))
+
+@sio.on('preset')
+def msg(sid, data):
+    json_data = json.dumps(data, indent=1, sort_keys=False)
+    json_data = "json\n"+json_data+"\x03"
+    arduino.write(json_data.encode("utf-8"))
+
 
 # arduino = serial.Serial("COM3",115200)
 arduino = serial.Serial('/dev/ttyS0',115200)
@@ -161,6 +181,7 @@ def main():
     data_thread = threading.Thread(target=data_treatment)
     # data_thread.daemon = True
     data_thread.start()
+
     app = tornado.web.Application(
         [
             (r"/socket.io/", socketio.get_tornado_handler(sio)),
