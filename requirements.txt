@@ -3,7 +3,5 @@ pynput==1.7.6
 pyserial==3.5
 python-engineio==4.3.4
 python-socketio==5.7.2
-pywin32==304
-six==1.16.0
 threaded==4.1.0
 tornado==6.2
