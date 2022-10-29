@@ -43,7 +43,8 @@ data_sensors = {
     "flow":2,
     "weight":3,
     "temperature":4,
-    "status": "idle"
+    "status": "idle",
+    "time": 0
 }
 
 def cw_function():
@@ -88,12 +89,12 @@ def msg(sid, data):
     arduino.write(json_data.encode("utf-8"))
 
 
-# arduino = serial.Serial("COM3",115200)
+# arduino = serial.Serial("COM4",115200)
 arduino = serial.Serial('/dev/ttyS0',115200)
-start_time = time.time()
 
 def read_arduino():
-    global start_time
+    start_time = time.time()
+    # global start_time
 
     # arduino = serial.Serial("COM3",115200)
     arduino.reset_input_buffer()
@@ -101,6 +102,7 @@ def read_arduino():
     uart = ReadLine(arduino)
 
     old_status = ""
+    time_flag = False
     while True:
         data = uart.readline()
         if len(data) > 0:
@@ -127,9 +129,18 @@ def read_arduino():
                 # print(c2, end = "")
                 # print(len(data_sensors["status"]), end = "")
 
+                # time = time.time() - start_time
                 if (c1 and c2):
+                    time_flag = True
                     start_time = time.time()
                     print("start_time: {:.1f}".format(start_time))
+                if (data_sensors["status"] == "idle"):
+                    time_flag = False
+
+                if (time_flag):
+                    data_sensors["time"] = time.time() - start_time
+                else:
+                    data_sensors["time"] = 0
 
                 old_status = data_sensors["status"]
                 # print(data_sensors["status"])
@@ -160,6 +171,7 @@ async def live():
     SAMPLE_TIME = 0.1
     elapsed_time = 0
     i = 0
+    time = 0
     while True:
         await sio.emit("status", {
             "name": data_sensors["status"],
@@ -170,7 +182,7 @@ async def live():
                 "w": data_sensors["weight"],
                 "t": data_sensors["temperature"],
             },
-            "time": str(time.time() - start_time)
+            "time": str(data_sensors["time"])
         })
         await sio.sleep(SAMPLE_TIME)
         i = i + 1
