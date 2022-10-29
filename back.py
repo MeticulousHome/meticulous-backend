@@ -7,6 +7,10 @@ import serial
 import threading
 import time
 import json
+from pynput.keyboard import Key, Controller
+
+keyboard = Controller()
+
 class ReadLine:
     def __init__(self, s):
         self.buf = bytearray()
@@ -42,8 +46,20 @@ data_sensors = {
     "status":5
 }
 
-arduino = serial.Serial("COM3",115200)
+def cw_function():
+    keyboard.press(Key.right)
+    keyboard.release(Key.right)
+    print("RIGHT!")
 
+def ccw_function():
+    keyboard.press(Key.left)
+    keyboard.release(Key.left)
+    print("LEFT!")
+
+def single_push():
+    keyboard.press(Key.space)
+    keyboard.release(Key.space)
+    print("CLICK!")
 
 @sio.event
 def connect(sid, environ):
@@ -59,16 +75,11 @@ def msg(sid, data):
     data = "action,"+data+"\x03"
     arduino.write(data.encode("utf-8"))
 
-
-
 @sio.on('parameters')
 def msg(sid, data):
     json_data = json.dumps(data, indent=1, sort_keys=False)
     json_data = "json\n"+json_data+"\x03"
     arduino.write(json_data.encode("utf-8"))
-
-
-
 
 @sio.on('preset')
 def msg(sid, data):
@@ -77,6 +88,8 @@ def msg(sid, data):
     arduino.write(json_data.encode("utf-8"))
 
 
+# arduino = serial.Serial("COM3",115200)
+arduino = serial.Serial('/dev/ttyS0',115200)
 start_time = time.time()
 
 def read_arduino():
@@ -120,7 +133,14 @@ def read_arduino():
 
                 old_status = data_sensors["status"]
                 # print(data_sensors["status"])
+            elif data_str.find("CCW") > -1:
+                ccw_function()
+            elif data_str.find("CW") > -1:
+                cw_function()
+            elif data_str.find("push") > -1:
+                single_push()
             else:
+                # print(data_str_sensors[0])
                 print(data_str)
     
 def data_treatment():
@@ -143,6 +163,7 @@ async def live():
     while True:
         await sio.emit("status", {
             "name": data_sensors["status"],
+            # "name" : "idle",
             "sensors": {
                 "p": data_sensors["pressure"],
                 "f": data_sensors["flow"],
