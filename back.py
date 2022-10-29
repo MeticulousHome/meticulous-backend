@@ -43,7 +43,7 @@ data_sensors = {
     "flow":2,
     "weight":3,
     "temperature":4,
-    "status":5
+    "status": "idle"
 }
 
 def cw_function():
