@@ -8,6 +8,13 @@ import threading
 import time
 import json
 from pynput.keyboard import Key, Controller
+import RPi.GPIO as GPIO
+
+en=27
+io0=17
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(en, GPIO.OUT)
+GPIO.setup(io0, GPIO.OUT)
 
 keyboard = Controller()
 
@@ -61,6 +68,17 @@ def single_push():
     keyboard.press(Key.space)
     keyboard.release(Key.space)
     print("CLICK!")
+
+def reboot_esp():
+    GPIO.output(en, 0)
+    GPIO.output(io0, 0) 
+    time.sleep(.1)
+    GPIO.output(en, 1)
+    GPIO.output(io0, 1)
+    time.sleep(.1)
+    GPIO.output(en, 0)
+    time.sleep(.1)
+    GPIO.output(en, 1)
 
 @sio.event
 def connect(sid, environ):
@@ -207,6 +225,7 @@ def main():
     tornado.ioloop.IOLoop.current().start()
 
 if __name__ == "__main__":
+    reboot_esp()
     try:
         main()
         
