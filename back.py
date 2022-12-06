@@ -238,10 +238,10 @@ def send_data():
             sensor_status=False
 
         elif _input== "JSON":
-            print("Ingresa el Json a enviar: ")
-            _in_json = input()
-            _in_json = "json\n"+ _in_json +"\x03"
-            arduino.write(str.encode(_in_json))
+            print("Se enviara el JSON: ")
+            
+            _out_json = "json\n"+ _out_json +"\x03"
+            arduino.write(str.encode(_out_json))
 
         elif _input=="tare" or _input=="stop" or _input=="purge" or _input=="home" or _input=="start" :
             _input = "action,"+_input+"\x03"
@@ -280,10 +280,12 @@ def main():
 
 def menu():    
     print("Saludos, selecciona la opcion que deseas: ")
-    print("JSON --> Al introducir esta opcion te permitira ingresar un json para enviar ")
-    print("SHOW --> Muestra datos recibidos de la esp32")
-    print("HIDE --> Deja de mostrar datos recibidos de la esp32")
+    print("reset --> Al introducir esta opcion se reiniciara la esp32")
     print("Acciones: tare, stop, start, purge, home   -----------> Haran las acciones correspondientes en la esp32")
+    print("JSON --> Al introducir esta opcion enviara el Json de nombre XXXXXX.XXXX contenido en la carpeta que contenga en codigo ")
+    print("SHOW --> Muestra datos recibidos de la esp32")
+    print("HIDE --> Deja de mostrar datos recibidos de la esp32 exceptuando los mensajes del estado")
+    
 
 if __name__ == "__main__":
     menu()
