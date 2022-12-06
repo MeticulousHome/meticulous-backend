@@ -238,10 +238,12 @@ def send_data():
             sensor_status=False
 
         elif _input== "JSON":
-            print("Se enviara el JSON: ")
+            with open('fika.json','r') as openfile:
+                json_file = json.load(openfile)
+            json_data = json.dumps(json_file, indent=1, sort_keys=False)
+            json_data = "json\n"+json_data+"\x03"
+            arduino.write(json_data.encode("utf-8"))
             
-            _out_json = "json\n"+ _out_json +"\x03"
-            arduino.write(str.encode(_out_json))
 
         elif _input=="tare" or _input=="stop" or _input=="purge" or _input=="home" or _input=="start" :
             _input = "action,"+_input+"\x03"
