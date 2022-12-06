@@ -169,8 +169,20 @@ def read_arduino():
             elif data_str.find("push") > -1:
                 single_push()
             else:
-                # print(data_str_sensors[0])
-                print(data_str)
+                if print_status==True:
+                    if sensor_status==True:
+                        print(data_str)
+                    
+                    else:
+                        if data_str[0]=="E":
+                            print(data_str)
+                        else:
+                            pass
+                else:
+                    pass
+
+# print(data_str_sensors[0])
+# print(data_str)
     
 def data_treatment():
     read_arduino()
@@ -205,12 +217,54 @@ async def live():
         await sio.sleep(SAMPLE_TIME)
         i = i + 1
 
+def send_data():
+    global print_status
+    print_status=True
+    global sensor_status
+    sensor_status=False
+
+    while (True):
+        _input = input()
+        if _input == "reset":
+            tr = threading.Thread(target=reboot_esp)
+            tr.deamon = True
+            tr.start()
+        elif _input == "SHOW":
+            print_status=True
+            sensor_status=True
+        
+        elif _input == "HIDE":
+            print_status=True
+            sensor_status=False
+
+        elif _input== "JSON":
+            print("Ingresa el Json a enviar: ")
+            _in_json = input()
+            _in_json = "json\n"+ _in_json +"\x03"
+            arduino.write(str.encode(_in_json))
+
+        elif _input=="tare" or _input=="stop" or _input=="purge" or _input=="home" or _input=="start" :
+            _input = "action,"+_input+"\x03"
+            arduino.write(str.encode(_input))
+
+        else:
+            pass
+            # if _input[0] == "j" :
+            #     _input = "json\n"+ _input +"\x03"s
+            #     arduino.write(str.encode(_input))
+            # else:
+            #     _input = "action,"+_input+"\x03"
+            #     arduino.write(str.encode(_input))
     
 def main():
     parse_command_line()
     data_thread = threading.Thread(target=data_treatment)
     # data_thread.daemon = True
     data_thread.start()
+
+    send_data_thread = threading.Thread(target=send_data) 
+    # send_data_thread.daemon = True
+    send_data_thread.start()
 
     app = tornado.web.Application(
         [
@@ -224,7 +278,15 @@ def main():
     sio.start_background_task(live)
     tornado.ioloop.IOLoop.current().start()
 
+def menu():    
+    print("Saludos, selecciona la opcion que deseas: ")
+    print("JSON --> Al introducir esta opcion te permitira ingresar un json para enviar ")
+    print("SHOW --> Muestra datos recibidos de la esp32")
+    print("HIDE --> Deja de mostrar datos recibidos de la esp32")
+    print("Acciones: tare, stop, start, purge, home   -----------> Haran las acciones correspondientes en la esp32")
+
 if __name__ == "__main__":
+    menu()
     reboot_esp()
     try:
         main()
