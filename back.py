@@ -242,7 +242,10 @@ def send_data():
                 json_file = json.load(openfile)
             json_data = json.dumps(json_file, indent=1, sort_keys=False)
             json_data = "json\n"+json_data+"\x03"
-            arduino.write(json_data.encode("utf-8"))
+            # arduino.write(json_data.encode("utf-8"))
+            arduino.write(str.encode(json_data))
+            json_data=""
+            json_file=""
             
 
         elif _input=="tare" or _input=="stop" or _input=="purge" or _input=="home" or _input=="start" :
