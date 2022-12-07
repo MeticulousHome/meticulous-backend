@@ -287,9 +287,9 @@ def menu():
     print("Saludos, selecciona la opcion que deseas: ")
     print("reset --> Al introducir esta opcion se reiniciara la esp32")
     print("Acciones: tare, stop, start, purge, home   -----------> Haran las acciones correspondientes en la esp32")
-    print("JSON --> Al introducir esta opcion enviara el Json de nombre XXXXXX.XXXX contenido en la carpeta que contenga en codigo ")
-    print("SHOW --> Muestra datos recibidos de la esp32")
-    print("HIDE --> Deja de mostrar datos recibidos de la esp32 exceptuando los mensajes del estado")
+    print("json --> Al introducir esta opcion enviara el Json de nombre XXXXXX.XXXX contenido en la carpeta que contenga en codigo ")
+    print("show --> Muestra datos recibidos de la esp32")
+    print("hide --> Deja de mostrar datos recibidos de la esp32 exceptuando los mensajes del estado")
     
 
 if __name__ == "__main__":
