@@ -385,7 +385,7 @@
        "kind": "timer_trigger",
        "timer_reference_id": 4,
        "operator": ">=",
-       "value": 40,
+       "value": 600,
        "next_node_id": 14
       },
       {
@@ -433,7 +433,7 @@
        "kind": "timer_trigger",
        "timer_reference_id": 4,
        "operator": ">=",
-       "value": 40,
+       "value": 600,
        "next_node_id": 14
       },
       {
