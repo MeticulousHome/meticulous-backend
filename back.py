@@ -229,15 +229,15 @@ def send_data():
             tr = threading.Thread(target=reboot_esp)
             tr.deamon = True
             tr.start()
-        elif _input == "SHOW":
+        elif _input == "show":
             print_status=True
             sensor_status=True
         
-        elif _input == "HIDE":
+        elif _input == "hide":
             print_status=True
             sensor_status=False
 
-        elif _input== "JSON":
+        elif _input== "json":
             with open('fika.json','r') as openfile:
                 json_file = json.load(openfile)
             json_data = json.dumps(json_file, indent=1, sort_keys=False)
