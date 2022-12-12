@@ -15,13 +15,15 @@ import os
 load_dotenv()
 
 if os.environ.get("PCB_VERSION") == "V3":
-    en=27
-    io0=17
-
+    en = 27
+    io0 = 17
 elif os.environ.get("PCB_VERSION") == "V3.1":
-    en=24
-    io0=23
- 
+    en = 24
+    io0 = 23
+else:
+    en = 24
+    io0 = 23
+    print("Set pines to V3.1") 
     
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(en, GPIO.OUT)
@@ -310,3 +312,4 @@ if __name__ == "__main__":
         
     except:
         traceback.print_exc()
+        GPIO.cleanup()

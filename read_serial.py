@@ -72,6 +72,10 @@ def reset_rasp():
     elif os.environ.get("PCB_VERSION") == "V3.1":
         en=24
         io0=23
+    else:
+        en = 24
+        io0 = 23
+        print("Set pines to V3.1") 
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(en, GPIO.OUT)
     GPIO.setup(io0, GPIO.OUT)
@@ -98,4 +102,6 @@ if __name__ == "__main__":
         main()
         
     except KeyboardInterrupt:
+        GPIO.cleanup()
         print("An error was ocurred")
+        
