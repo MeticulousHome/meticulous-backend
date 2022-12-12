@@ -9,13 +9,23 @@ import time
 import json
 from pynput.keyboard import Key, Controller
 import RPi.GPIO as GPIO
+from dotenv import load_dotenv
+import os
 
-en=27
-io0=17
+load_dotenv()
+
+if os.environ.get("PCB_VERSION") == "V3":
+    en=27
+    io0=17
+
+elif os.environ.get("PCB_VERSION") == "V3.1":
+    en=24
+    io0=23
+ 
+    
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(en, GPIO.OUT)
 GPIO.setup(io0, GPIO.OUT)
-
 keyboard = Controller()
 
 class ReadLine:

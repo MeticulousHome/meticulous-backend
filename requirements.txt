@@ -2,6 +2,7 @@ bidict==0.22.0
 evdev==1.6.0
 pynput==1.7.6
 pyserial==3.5
+python-dotenv==0.21.0
 python-engineio==4.3.4
 python-socketio==5.7.2
 python-xlib==0.31
