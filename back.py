@@ -26,8 +26,8 @@ else:
     print("Set pines to V3.1") 
     
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(en, GPIO.OUT)
-GPIO.setup(io0, GPIO.OUT)
+GPIO.setup(setup_pins.en, GPIO.OUT)
+GPIO.setup(setup_pins.io0, GPIO.OUT)
 keyboard = Controller()
 
 class ReadLine:
@@ -65,6 +65,15 @@ data_sensors = {
     "status": "idle",
     "time": 0
 }
+
+def setup_pins():
+    on_off_bt = 18
+    lcd_en = 25
+    esp_en = 8
+    en = 24
+    io0 = 23
+    lcd_flt = 7
+    lcd_esp = 12
 
 def cw_function():
     keyboard.press(Key.right)
