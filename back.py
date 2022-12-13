@@ -14,38 +14,34 @@ import os
 
 load_dotenv()
 
-on_off_bt = 18
-lcd_en = 25
-esp_en = 8
-lcd_flt = 7
-lcd_esp = 12
+
     
 def setup_pins():
-    on_off_bt = 18
-    lcd_en = 25
-    esp_en = 8
-    en = 24
-    io0 = 23
-    lcd_flt = 7
-    lcd_esp = 12
+    setup_pins.on_off_bt = 18
+    setup_pins.lcd_en = 25
+    setup_pins.esp_en = 8
+    setup_pins.en = 24
+    setup_pins.io0 = 23
+    setup_pins.lcd_flt = 7
+    setup_pins.lcd_esp = 12
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(setup_pins.on_off_bt, GPIO.IN)
     
 if os.environ.get("PCB_VERSION") == "V3":
-    en = 27
-    io0 = 17
+    setup_pins.en = 27
+    setup_pins.io0 = 17
 elif os.environ.get("PCB_VERSION") == "V3.1":
-    en = 24
-    io0 = 23
+    setup_pins.en = 24
+    setup_pins.io0 = 23
 else:
-    en = 24
-    io0 = 23
+    setup_pins.en = 24
+    setup_pins.io0 = 23
     print("Set pines to V3.1") 
     
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(en, GPIO.OUT)
-GPIO.setup(io0, GPIO.OUT)
-GPIO.setup(on_off_bt, GPIO.IN)
+GPIO.setup(setup_pins.en, GPIO.OUT)
+GPIO.setup(setup_pins.io0, GPIO.OUT)
+GPIO.setup(setup_pins.on_off_bt, GPIO.IN)
 keyboard = Controller()
 
 class ReadLine:
@@ -85,12 +81,10 @@ data_sensors = {
 }
 
 def read_on_off_bt():
-    try:
-        while True:
-            # GPIO.output(on_off_bt, 1)
-            print(GPIO.input(on_off_bt))
-    except KeyboardInterrupt:
-        GPIO.cleanup()
+   
+    # GPIO.output(on_off_bt, 1)
+    print(GPIO.input(setup_pins.on_off_bt))
+
 
 def cw_function():
     keyboard.press(Key.right)
@@ -108,15 +102,15 @@ def single_push():
     print("CLICK!")
 
 def reboot_esp():
-    GPIO.output(en, 0)
-    GPIO.output(io0, 0) 
+    GPIO.output(setup_pins.en, 0)
+    GPIO.output(setup_pins.io0, 0) 
     time.sleep(.1)
-    GPIO.output(en, 1)
-    GPIO.output(io0, 1)
+    GPIO.output(setup_pins.en, 1)
+    GPIO.output(setup_pins.io0, 1)
     time.sleep(.1)
-    GPIO.output(en, 0)
+    GPIO.output(setup_pins.en, 0)
     time.sleep(.1)
-    GPIO.output(en, 1)
+    GPIO.output(setup_pins.en, 1)
 
 @sio.event
 def connect(sid, environ):
