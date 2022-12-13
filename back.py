@@ -15,15 +15,24 @@ import os
 load_dotenv()
 
 if os.environ.get("PCB_VERSION") == "V3":
-    en = 27
-    io0 = 17
+    setup_pins.en = 27
+    setup_pins.io0 = 17
 elif os.environ.get("PCB_VERSION") == "V3.1":
-    en = 24
-    io0 = 23
+    setup_pins.en = 24
+    setup_pins.io0 = 23
 else:
+    setup_pins.en = 24
+    setup_pins.io0 = 23
+    print("Set pines to V3.1") 
+    
+def setup_pins():
+    on_off_bt = 18
+    lcd_en = 25
+    esp_en = 8
     en = 24
     io0 = 23
-    print("Set pines to V3.1") 
+    lcd_flt = 7
+    lcd_esp = 12
     
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(setup_pins.en, GPIO.OUT)
@@ -66,15 +75,6 @@ data_sensors = {
     "time": 0
 }
 
-def setup_pins():
-    on_off_bt = 18
-    lcd_en = 25
-    esp_en = 8
-    en = 24
-    io0 = 23
-    lcd_flt = 7
-    lcd_esp = 12
-
 def cw_function():
     keyboard.press(Key.right)
     keyboard.release(Key.right)
@@ -91,15 +91,15 @@ def single_push():
     print("CLICK!")
 
 def reboot_esp():
-    GPIO.output(en, 0)
-    GPIO.output(io0, 0) 
+    GPIO.output(setup_pins.en, 0)
+    GPIO.output(setup_pins.io0, 0) 
     time.sleep(.1)
-    GPIO.output(en, 1)
-    GPIO.output(io0, 1)
+    GPIO.output(setup_pins.en, 1)
+    GPIO.output(setup_pins.io0, 1)
     time.sleep(.1)
-    GPIO.output(en, 0)
+    GPIO.output(setup_pins.en, 0)
     time.sleep(.1)
-    GPIO.output(en, 1)
+    GPIO.output(setup_pins.en, 1)
 
 @sio.event
 def connect(sid, environ):
