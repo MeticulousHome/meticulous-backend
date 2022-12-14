@@ -13,7 +13,29 @@ from dotenv import load_dotenv
 import os
 import os.path
 
-load_dotenv()
+class ReadLine:
+    def __init__(self, s):
+        self.buf = bytearray()
+        self.s = s
+    
+    def readline(self):
+        i = self.buf.find(b"\n")
+        if i >= 0:
+            r = self.buf[:i+1]
+            self.buf = self.buf[i+1:]
+            return r
+        while True:
+            i = max(1, min(2048, self.s.in_waiting))
+            data = self.s.read(i)
+            i = data.find(b"\n")
+            if i >= 0:
+                r = self.buf + data[:i+1]
+                self.buf[0:] = data[i+1:]
+                return r
+            else:
+                self.buf.extend(data)
+
+# load_dotenv()
 
 
 
@@ -56,27 +78,7 @@ os.system('killall coffee-ui-demo')
 time.sleep(5)
 
 keyboard = Controller()
-class ReadLine:
-    def __init__(self, s):
-        self.buf = bytearray()
-        self.s = s
-    
-    def readline(self):
-        i = self.buf.find(b"\n")
-        if i >= 0:
-            r = self.buf[:i+1]
-            self.buf = self.buf[i+1:]
-            return r
-        while True:
-            i = max(1, min(2048, self.s.in_waiting))
-            data = self.s.read(i)
-            i = data.find(b"\n")
-            if i >= 0:
-                r = self.buf + data[:i+1]
-                self.buf[0:] = data[i+1:]
-                return r
-            else:
-                self.buf.extend(data)
+
 
 define("port", default=8080, help="run on the given port", type=int)
 define("debug", default=False, help="run in debug mode")
@@ -143,8 +145,7 @@ def enable_pcb():
 
 def read_on_off_bt():
     
-    while True:
-        return GPIO.input(on_off_bt)
+    return GPIO.input(on_off_bt)
 
 def cw_function():
     keyboard.press(Key.right)
@@ -364,20 +365,17 @@ def main():
     # send_data_thread.daemon = True
     send_data_thread.start()
     
-    off_bt_thread = threading.Thread(target=read_on_off_bt)
-    # off_bt_thread.daemon = True
-    off_bt_thread.start()
+    # off_bt_thread = threading.Thread(target=read_on_off_bt)
+    # # off_bt_thread.daemon = True
+    # off_bt_thread.start()
     
     enable_esp_lcd = threading.Thread(target=enable_pcb)
     # enable_esp_lcd.daemon = True
     enable_esp_lcd.start()
     
-    flt_pins = threading.Thread(target=read_flt_pins)
-    # flt_pins.daemon = True
-    flt_pins.start()
     
-    while(True):
-        continue
+    # while(True):
+    #     continue
 
     app = tornado.web.Application(
         [
