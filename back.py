@@ -16,7 +16,6 @@ import os.path
 load_dotenv()
 
 
-    
 
 on_off_bt = 18
 lcd_en = 25
@@ -43,8 +42,20 @@ GPIO.setup(lcd_en, GPIO.OUT)
 GPIO.setup(on_off_bt, GPIO.IN)
 GPIO.setup(lcd_flt, GPIO.IN)
 GPIO.setup(esp_flt, GPIO.IN)
-keyboard = Controller()
 
+def turn_on():
+    GPIO.output(esp_en, 1)
+    GPIO.output(lcd_en, 1)
+
+def turn_off():
+    GPIO.output(esp_en, 0)
+    GPIO.output(lcd_en, 0)
+    
+turn_on()
+os.system('killall coffee-ui-demo')
+time.sleep(5)
+
+keyboard = Controller()
 class ReadLine:
     def __init__(self, s):
         self.buf = bytearray()
@@ -104,30 +115,36 @@ def read_flt_pins():
 #             # print("Pcb turned off")
 
 def enable_pcb():
+    global keyboard
     first_time = True
     previous_state = 0
     
+    turn_on()
     while True:
         current_state = read_on_off_bt()
         if read_on_off_bt() == 1:
-            GPIO.output(esp_en, 1)
-            GPIO.output(lcd_en, 1)
-            if (current_state != previous_state) and (read_on_off_bt() == 1):
+            if (current_state != previous_state):
+                turn_on()
+                print('Killing LCD')
+                # time.sleep(5)
                 previous_state = current_state
-                os.system('killall coffee-ui-demo')
+                # os.system('killall coffee-ui-demo')
+                # os.system('kill 1848')
+                # keyboard = Controller()
+                # time.sleep(1)
+                # os.system('pkill -9 coffee-ui-demo')
+                # output = os.popen('ps -ef | grep coffee-ui-demo').read()
+                # os.system('kill' + output)
+
+                # os.system('export DISPLAY=:0')
         if read_on_off_bt() == 0:
-            GPIO.output(esp_en, 0)
-            GPIO.output(lcd_en, 0)
+            turn_off()
             # print("Pcb turned off")
-        else:
-            current_state = read_on_off_bt()
-            # print("LIVE LCD")
 
 def read_on_off_bt():
     
     while True:
         return GPIO.input(on_off_bt)
-
 
 def cw_function():
     keyboard.press(Key.right)
@@ -167,6 +184,7 @@ def disconnect(sid):
 def msg(sid, data):
     time.sleep(0.05)
     data = "action,"+data+"\x03"
+    print(data)
     arduino.write(data.encode("utf-8"))
 
 @sio.on('parameters')
@@ -347,17 +365,20 @@ def main():
     send_data_thread.start()
     
     off_bt_thread = threading.Thread(target=read_on_off_bt)
-    off_bt_thread.daemon = True
+    # off_bt_thread.daemon = True
     off_bt_thread.start()
     
     enable_esp_lcd = threading.Thread(target=enable_pcb)
-    enable_esp_lcd.daemon = True
+    # enable_esp_lcd.daemon = True
     enable_esp_lcd.start()
     
     flt_pins = threading.Thread(target=read_flt_pins)
-    flt_pins.daemon = True
+    # flt_pins.daemon = True
     flt_pins.start()
     
+    while(True):
+        continue
+
     app = tornado.web.Application(
         [
             (r"/socket.io/", socketio.get_tornado_handler(sio)),
