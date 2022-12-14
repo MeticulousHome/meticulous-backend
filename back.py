@@ -102,9 +102,43 @@ def msg(sid, data):
 
 @sio.on('preset')
 def msg(sid, data):
-    json_data = json.dumps(data, indent=1, sort_keys=False)
-    json_data = "json\n"+json_data+"\x03"
-    arduino.write(json_data.encode("utf-8"))
+    # json_data = json.dumps(data, indent=1, sort_keys=False)
+    # json_data = "json\n"+json_data+"\x03"
+    # arduino.write(json_data.encode("utf-8"))
+    if (data == "breville"):
+        with open('./presets/breville.json','r',encoding="utf-8") as file:
+            json_data = json.dumps(data, indent=1, sort_keys=False)
+            json_data = "json\n"+file+"\x03"
+            arduino.write(json_data.encode("utf-8"))
+    elif (data == "cube"):
+        with open('./presets/cube.json','r',encoding="utf-8") as file:
+            json_data = json.dumps(data, indent=1, sort_keys=False)
+            json_data = "json\n"+file+"\x03"
+            arduino.write(json_data.encode("utf-8"))
+    elif (data == "diletta"):
+        with open('./presets/diletta.json','r',encoding="utf-8") as file:
+            json_data = json.dumps(data, indent=1, sort_keys=False)
+            json_data = "json\n"+file+"\x03"
+            arduino.write(json_data.encode("utf-8"))
+    elif (data == "flair"):
+        with open('./presets/flair.json','r',encoding="utf-8") as file:
+            json_data = json.dumps(data, indent=1, sort_keys=False)
+            json_data = "json\n"+file+"\x03"
+            arduino.write(json_data.encode("utf-8"))
+    elif (data == "la-pavoni"):
+        with open('./presets/la-pavoni.json','r',encoding="utf-8") as file:
+            json_data = json.dumps(data, indent=1, sort_keys=False)
+            json_data = "json\n"+file+"\x03"
+            arduino.write(json_data.encode("utf-8"))
+    elif (data == "rocket"):
+        with open('./presets/rocket.json','r',encoding="utf-8") as file:
+            json_data = json.dumps(data, indent=1, sort_keys=False)
+            json_data = "json\n"+file+"\x03"
+            arduino.write(json_data.encode("utf-8"))
+    else:
+        print("Preset not valid")
+
+
 
 
 # arduino = serial.Serial("COM4",115200)
