@@ -11,6 +11,7 @@ from pynput.keyboard import Key, Controller
 import RPi.GPIO as GPIO
 from dotenv import load_dotenv
 import os
+import os.path
 
 load_dotenv()
 
@@ -21,7 +22,7 @@ on_off_bt = 18
 lcd_en = 25
 esp_en = 8
 lcd_flt = 7
-lcd_esp = 12
+esp_flt = 12
     
 if os.environ.get("PCB_VERSION") == "V3":
     en = 27
@@ -37,7 +38,11 @@ else:
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(en, GPIO.OUT)
 GPIO.setup(io0, GPIO.OUT)
+GPIO.setup(esp_en, GPIO.OUT)
+GPIO.setup(lcd_en, GPIO.OUT)
 GPIO.setup(on_off_bt, GPIO.IN)
+GPIO.setup(lcd_flt, GPIO.IN)
+GPIO.setup(esp_flt, GPIO.IN)
 keyboard = Controller()
 
 class ReadLine:
@@ -76,10 +81,52 @@ data_sensors = {
     "time": 0
 }
 
+def read_flt_pins():
+    while True:
+        if GPIO.input(esp_flt) == 0:
+            GPIO.output(esp_en, 0)
+            print("There's is a cortocircuit in the ESP switch")
+        if GPIO.input(lcd_flt) == 0:
+            GPIO.output(lcd_en, 0)
+            print("There's is a cortocircuit in the LCD switch")
+
+
+# def enable_pcb():
+    
+#     while True:
+#         if read_on_off_bt() == 1:
+#             GPIO.output(esp_en, 1)
+#             GPIO.output(lcd_en, 1)
+#             # print("Pcb turned on")
+#         if read_on_off_bt() == 0:
+#             GPIO.output(esp_en, 0)
+#             GPIO.output(lcd_en, 0)
+#             # print("Pcb turned off")
+
+def enable_pcb():
+    first_time = True
+    previous_state = 0
+    
+    while True:
+        current_state = read_on_off_bt()
+        if read_on_off_bt() == 1:
+            GPIO.output(esp_en, 1)
+            GPIO.output(lcd_en, 1)
+            if (current_state != previous_state) and (read_on_off_bt() == 1):
+                previous_state = current_state
+                os.system('killall coffee-ui-demo')
+        if read_on_off_bt() == 0:
+            GPIO.output(esp_en, 0)
+            GPIO.output(lcd_en, 0)
+            # print("Pcb turned off")
+        else:
+            current_state = read_on_off_bt()
+            # print("LIVE LCD")
+
 def read_on_off_bt():
-   
-    # GPIO.output(on_off_bt, 1)
-    print(GPIO.input(on_off_bt))
+    
+    while True:
+        return GPIO.input(on_off_bt)
 
 
 def cw_function():
@@ -302,6 +349,14 @@ def main():
     off_bt_thread = threading.Thread(target=read_on_off_bt)
     off_bt_thread.daemon = True
     off_bt_thread.start()
+    
+    enable_esp_lcd = threading.Thread(target=enable_pcb)
+    enable_esp_lcd.daemon = True
+    enable_esp_lcd.start()
+    
+    flt_pins = threading.Thread(target=read_flt_pins)
+    flt_pins.daemon = True
+    flt_pins.start()
     
     app = tornado.web.Application(
         [
