@@ -102,9 +102,9 @@ def msg(sid, data):
 
 @sio.on('preset')
 def msg(sid, data):
-    json_data = json.dumps(data, indent=1, sort_keys=False)
-    json_data = "json\n"+json_data+"\x03"
-    arduino.write(json_data.encode("utf-8"))
+    # json_data = json.dumps(data, indent=1, sort_keys=False)
+    # json_data = "json\n"+json_data+"\x03"
+    # arduino.write(json_data.encode("utf-8"))
     if (data == "breville"):
         with open('./presets/breville.json','r',encoding="utf-8") as file:
             json_data = json.load(file)
