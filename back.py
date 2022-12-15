@@ -123,13 +123,14 @@ def enable_pcb():
     
     turn_on()
     while True:
+        time.sleep(0.1)
         current_state = read_on_off_bt()
-        if read_on_off_bt() == 1:
-            if (current_state != previous_state):
-                turn_on()
-                print('Killing LCD')
+        if current_state == 1:
+            # if (current_state != previous_state):
+            turn_on()
+            # print('Killing LCD')
                 # time.sleep(5)
-                previous_state = current_state
+                # previous_state = current_state
                 # os.system('killall coffee-ui-demo')
                 # os.system('kill 1848')
                 # keyboard = Controller()
@@ -139,12 +140,12 @@ def enable_pcb():
                 # os.system('kill' + output)
 
                 # os.system('export DISPLAY=:0')
-        if read_on_off_bt() == 0:
+        else:
             turn_off()
             # print("Pcb turned off")
 
 def read_on_off_bt():
-    
+    time.sleep(0.1)
     return GPIO.input(on_off_bt)
 
 def cw_function():
