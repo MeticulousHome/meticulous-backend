@@ -424,7 +424,7 @@
               "source": "Weight Raw",
               "weight_reference_id": 1,
               "operator": ">=",
-              "value": 33,
+              "value": 50,
               "next_node_id": 14
             },
             {
@@ -467,7 +467,7 @@
               "source": "Weight Raw",
               "weight_reference_id": 1,
               "operator": ">=",
-              "value": 33,
+              "value": 50,
               "next_node_id": 14
             },
             {
