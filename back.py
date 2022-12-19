@@ -10,8 +10,15 @@ import json
 from pynput.keyboard import Key, Controller
 import RPi.GPIO as GPIO
 from dotenv import load_dotenv
+from datetime import datetime
 import os
 import os.path
+
+comando = '/home/meticulous/meticulous-raspberry-setup/backend_for_esp32/clean_logs.sh'
+lock = threading.Lock()
+file_path = '/home/meticulous/meticulous-raspberry-setup/backend_for_esp32/logs/'
+buffer=""
+
 
 class ReadLine:
     def __init__(self, s):
@@ -102,19 +109,6 @@ def read_flt_pins():
         if GPIO.input(lcd_flt) == 0:
             GPIO.output(lcd_en, 0)
             print("There's is a cortocircuit in the LCD switch")
-
-
-# def enable_pcb():
-    
-#     while True:
-#         if read_on_off_bt() == 1:
-#             GPIO.output(esp_en, 1)
-#             GPIO.output(lcd_en, 1)
-#             # print("Pcb turned on")
-#         if read_on_off_bt() == 0:
-#             GPIO.output(esp_en, 0)
-#             GPIO.output(lcd_en, 0)
-#             # print("Pcb turned off")
 
 def enable_pcb():
     global keyboard
@@ -260,6 +254,33 @@ def msg(sid, data):
 # arduino = serial.Serial("COM4",115200)
 arduino = serial.Serial('/dev/ttyS0',115200)
 
+def add_to_buffer(message_to_save: str):
+
+    global buffer
+    global lock
+    with lock:
+        buffer = buffer + message_to_save
+
+def save_log():
+    global file_name
+    global file_path
+    global lock
+    global buffer
+    with lock:
+        with open(file_path + file_name, 'a+', newline='') as file:
+            current_date_time = datetime.now().strftime("%Y_%m_%d %H:%M:%S.%f, ")
+            file.write(current_date_time)
+            file.write(buffer)
+
+def log():
+    global buffer
+    while True:
+        if buffer!="":
+            save_log()
+            buffer=""
+        else:
+            pass
+
 def read_arduino():
     start_time = time.time()
     # global start_time
@@ -280,7 +301,7 @@ def read_arduino():
             except:
                 print("decoding fails")
                 continue
-
+            add_to_buffer(data_str)
             data_str_sensors = data_str.split(',')
             if data_str_sensors[0] == 'Data':
                 data_sensors["pressure"] = data_str_sensors[1]
@@ -420,19 +441,15 @@ def main():
     send_data_thread = threading.Thread(target=send_data) 
     # send_data_thread.daemon = True
     send_data_thread.start()
-    
-    # off_bt_thread = threading.Thread(target=read_on_off_bt)
-    # # off_bt_thread.daemon = True
-    # off_bt_thread.start()
-    
+
+    log_thread=threading.Thread(target=log)
+    log_thread.start()
+        
     enable_esp_lcd = threading.Thread(target=enable_pcb)
     # enable_esp_lcd.daemon = True
     enable_esp_lcd.start()
     
     
-    # while(True):
-    #     continue
-
     app = tornado.web.Application(
         [
             (r"/socket.io/", socketio.get_tornado_handler(sio)),
@@ -455,6 +472,9 @@ def menu():
     
 
 if __name__ == "__main__":
+    os.system(comando)
+    date = datetime.now().strftime("%Y_%m_%d")
+    file_name = 'Fika_' + date + '.txt' 
     menu()
     reboot_esp()
     try:
