@@ -33,26 +33,14 @@ class ReadLine:
                 
 arduino = serial.Serial('/dev/ttyS0',115200) #Arduino port declaration
 
-#Pins choose according to the PCB version. 
-if os.environ.get("PCB_VERSION") == "V3":
-    en=27
-    io0=17
-elif os.environ.get("PCB_VERSION") == "V3.1":
-    en=24
-    io0=23
-else:
-    en = 24
-    io0 = 23
-    print("Set pines to V3.1") 
+
 esp_en = 8 #Enable ESP pin declaration
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(en, GPIO.OUT)
-GPIO.setup(io0, GPIO.OUT)
 GPIO.setup(esp_en , GPIO.OUT)
 
 #function to read the Serial Communication
 def read_arduino():
-    
+    GPIO.output(esp_en, 1) #Enable the ESP
     arduino.reset_input_buffer() #A Serial function member to reset the buffer
     uart = ReadLine(arduino) #Serial communication optimization class declaration  with a serial device as an argument
     
@@ -62,7 +50,7 @@ def read_arduino():
     tr_1.deamon = True
     tr_1.start()
     
-    GPIO.output(esp_en, 1) #Enable the ESP
+
     
     #Start data collection
     
@@ -90,6 +78,20 @@ def send_data():
             
 #function to reset the rasp      
 def reset_rasp():
+    #Pins choose according to the PCB version. 
+    if os.environ.get("PCB_VERSION") == "V3":
+        en=27
+        io0=17
+    elif os.environ.get("PCB_VERSION") == "V3.1":
+        en=24
+        io0=23
+    else:
+        en = 24
+        io0 = 23
+        print("Set pines to V3.1") 
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(en, GPIO.OUT)
+    GPIO.setup(io0, GPIO.OUT)
     GPIO.output(en, 0)
     GPIO.output(io0, 0)
     time.sleep(1)
