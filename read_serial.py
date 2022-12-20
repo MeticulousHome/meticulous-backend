@@ -31,44 +31,57 @@ class ReadLine:
             else:
                 self.buf.extend(data)
                 
-arduino = serial.Serial('/dev/ttyS0',115200)
+arduino = serial.Serial('/dev/ttyS0',115200) #Arduino port declaration
 
-#class to read the Serial Communication
+
+esp_en = 8 #Enable ESP pin declaration
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(esp_en , GPIO.OUT)
+
+#function to read the Serial Communication
 def read_arduino():
+    GPIO.output(esp_en, 1) #Enable the ESP
+    arduino.reset_input_buffer() #A Serial function member to reset the buffer
+    uart = ReadLine(arduino) #Serial communication optimization class declaration  with a serial device as an argument
     
-    start_time = time.time()
-    arduino.reset_input_buffer()
-    uart = ReadLine(arduino)
+    #Reset the rasp before obtaining data from the serial device (in this case an ESP device)
+    
+    tr_1 = threading.Thread(target=reset_rasp)
+    tr_1.deamon = True
+    tr_1.start()
+    
 
-    old_status = ""
-    time_flag = False 
+    
+    #Start data collection
+    
     while True:
-        data = uart.readline()
+        data = uart.readline() #read bits from the serial device
         if len(data) > 0:
             try:
-                data_str = data.decode('utf-8')
+                data_str = data.decode('utf-8') #decode the information
             except:
                 print("decoding fails")
                 continue
-            print(data_str)
+            print(data_str) #print the information
        
-#Class to select options menus       
+#function to select options menus          
+#This function is only used to interact with the test software.    
 def send_data():
     while (True):
-        _input = input()
-        if _input == "reset":
+        _input = input() #Function for entering an option
+        if _input == "reset": #If the prompt is "reset", call the thread to reset the ESP
             tr = threading.Thread(target=reset_rasp)
             tr.deamon = True
             tr.start()
         else:
-            arduino.write(str.encode(_input))
+            arduino.write(str.encode(_input)) #else encode the option to interact with the test software
             
-#Class to reset the rasp      
+#function to reset the rasp      
 def reset_rasp():
+    #Pins choose according to the PCB version. 
     if os.environ.get("PCB_VERSION") == "V3":
         en=27
         io0=17
-
     elif os.environ.get("PCB_VERSION") == "V3.1":
         en=24
         io0=23
@@ -90,10 +103,10 @@ def reset_rasp():
     print("Raspberry is reseted")     
     
 def main():
-    t1 = threading.Thread(target=send_data)
+    t1 = threading.Thread(target=send_data) #Thread to send data
     t1.deamon = True
     t1.start()
-    t2 = threading.Thread(target=read_arduino)
+    t2 = threading.Thread(target=read_arduino) #Thread to read the serial device
     t2.deamon = True
     t2.start()
     
