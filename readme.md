@@ -76,8 +76,13 @@ From line 76 to line 78 is to kill the LCD UI process. But this only works if th
 
 ## Libraries initialization
 
-**keyboard = Controller()** is to 
+**keyboard = Controller()** is used to initialize a *Controller* object from the **pynput.keyboard library** which can be used to simulate keyboard input.
 
+We define some command line options. The first is **"port"** and has a default value of 8080. It specifies the port number that the server should run on. 
+
+The second is **"debug"** and has a default value of FALSE. It specifies whether the server should run in debug mode
+
+Finally, the code initializes a **Socket.IO server** using the **AsyncServer class** from the **socketio library**. The server is configured to **allow cross-origin** resource sharing (CORS) from any origin (*), and to use the **tornado library's asynchronous mode**.
 ## Data sensors 
 
 From line 88 to 95 is used to create a dictionary and save the data from the serial device. This data are:
@@ -132,3 +137,32 @@ There are functions to detect an event with the **@sio.on** decorator. The event
     5. la-pavoni
     6. rocket
 
+## read_arduino function
+
+This function is used to read a serial device. The first step are reset the serial device buffer and create a ReadLine object with the serial device as argument. 
+
+The second step is to start the collecting data in an infinite loop using the readline method from **ReadLine class**. 
+
+The ESP (serial device) send data in specific format. This format is provided in the previous section called "data sensors".The code first splits the incoming data on the ',' character, resulting in a list of strings stored in data_str_sensors. We start collecting data if the first element of this list is the string "Data"
+
+The code then compares the current value of the "status" key with the previous value stored in **old_status**, and if they are "heating" and "preinfusion" respectively, it sets the **time_flag** to **True** and records the current time using **time.time()**. If the value of the "status" key is "idle", the **time_flag** is set to **False**
+
+If the **time_flag** is **True**, the code updates the value of the "time" key in the **data_sensors** dictionary to be the elapsed time since the **time_flag** was set to **True**. Otherwise, it sets the value of the **"time" key to 0**.
+
+If the **incoming data** does not start with "Data", the code checks if it contains the strings "CCW", "CW", or "push", and calls the corresponding functions. If none of these strings are found, the code checks the value of the print_status and sensor_status variables and the first character of the incoming data. If certain conditions are met, it prints the incoming data to the console.
+
+## async def live function
+
+This function update the status and sensors values ot the ESP to the client over the Socket.IO server
+
+## send_data function
+
+This function sends actions to the esp. This actions are:
+1. **reset**: Reset the esp
+2. **show**: Show the data from the esp
+3. **hide**: Hide the data from the esp
+4. **json**: Send a JSON file from the raspberry pi to the esp
+5. **tare**: 
+6. **stop**: Stop the running action
+7. **purge**: Purge the coffee machine
+8. **home**: 
