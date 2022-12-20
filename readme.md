@@ -166,3 +166,11 @@ This function sends actions to the esp. This actions are:
 6. **stop**: Stop the running action
 7. **purge**: Purge the coffee machine
 8. **home**: 
+
+## main function
+
+The line **parse_command_line()** decode the JSON
+
+There are three threads, one is used for read the data from the serial device. The second is used for send_data function. The third is used for enable de PCB according to the status on/off button. 
+
+And the last part is start the communication between the frontend and the backend. 
