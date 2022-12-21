@@ -101,42 +101,12 @@ data_sensors = {
     "time": 0
 }
 
-def read_flt_pins():
-    while True:
-        if GPIO.input(esp_flt) == 0:
-            GPIO.output(esp_en, 0)
-            print("There's is a cortocircuit in the ESP switch")
-        if GPIO.input(lcd_flt) == 0:
-            GPIO.output(lcd_en, 0)
-            print("There's is a cortocircuit in the LCD switch")
+
 
 def enable_pcb():
     global keyboard
-    first_time = True
-    previous_state = 0
-    
-    turn_on()
     while True:
-        time.sleep(0.1)
-        current_state = read_on_off_bt()
-        if current_state == 1:
-            # if (current_state != previous_state):
             turn_on()
-            # print('Killing LCD')
-                # time.sleep(5)
-                # previous_state = current_state
-                # os.system('killall coffee-ui-demo')
-                # os.system('kill 1848')
-                # keyboard = Controller()
-                # time.sleep(1)
-                # os.system('pkill -9 coffee-ui-demo')
-                # output = os.popen('ps -ef | grep coffee-ui-demo').read()
-                # os.system('kill' + output)
-
-                # os.system('export DISPLAY=:0')
-        else:
-            turn_off()
-            # print("Pcb turned off")
 
 def read_on_off_bt():
     time.sleep(0.1)
@@ -444,11 +414,6 @@ def main():
 
     log_thread=threading.Thread(target=log)
     log_thread.start()
-        
-    enable_esp_lcd = threading.Thread(target=enable_pcb)
-    # enable_esp_lcd.daemon = True
-    enable_esp_lcd.start()
-    
     
     app = tornado.web.Application(
         [
