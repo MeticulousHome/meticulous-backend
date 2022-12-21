@@ -81,8 +81,8 @@ def turn_off():
     GPIO.output(lcd_en, 0)
     
 turn_on()
-os.system('killall coffee-ui-demo')
-time.sleep(5)
+#os.system('killall coffee-ui-demo')
+#time.sleep(5)
 
 keyboard = Controller()
 
