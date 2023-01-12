@@ -224,8 +224,7 @@ def msg(sid, data):
 # arduino = serial.Serial("COM4",115200)
 arduino = serial.Serial('/dev/ttyS0',115200)
 
-def add_to_buffer(message_to_save: str):
-
+def add_to_buffer(message_to_save):
     global buffer
     global lock
     with lock:
@@ -238,8 +237,8 @@ def save_log():
     global buffer
     with lock:
         with open(file_path + file_name, 'a+', newline='') as file:
-            current_date_time = datetime.now().strftime("%Y_%m_%d %H:%M:%S.%f, ")
-            file.write(current_date_time)
+            # current_date_time = datetime.now().strftime("%Y_%m_%d %H:%M:%S.%f, ")
+            # file.write(current_date_time)
             file.write(buffer)
 
 def log():
@@ -250,6 +249,7 @@ def log():
             buffer=""
         else:
             pass
+        time.sleep(5)
 
 def read_arduino():
     start_time = time.time()
@@ -269,8 +269,11 @@ def read_arduino():
             try:
                 data_str = data.decode('utf-8')
             except:
-                print("decoding fails")
+                print("decoding fails, message: ", end=' ')
+                print(data)
                 continue
+            current_date_time = datetime.now().strftime("%Y_%m_%d %H:%M:%S.%f, ")
+            add_to_buffer(current_date_time)
             add_to_buffer(data_str)
             data_str_sensors = data_str.split(',')
             if data_str_sensors[0] == 'Data':
