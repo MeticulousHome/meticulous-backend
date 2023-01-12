@@ -235,11 +235,15 @@ def save_log():
     global file_path
     global lock
     global buffer
+    #start_time = time.time()
     with lock:
         with open(file_path + file_name, 'a+', newline='') as file:
             # current_date_time = datetime.now().strftime("%Y_%m_%d %H:%M:%S.%f, ")
             # file.write(current_date_time)
             file.write(buffer)
+    #end_time = time.time()
+    #elapsed_time = end_time - start_time
+    #print("El tiempo de escritura fue de {} segundos".format(elapsed_time))  
 
 def log():
     global buffer
