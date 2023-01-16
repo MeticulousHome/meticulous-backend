@@ -280,7 +280,7 @@ def read_arduino():
                 flag_idle=False
             else:
                 flag_idle=True
-            if "idle" not in data_str and flag_idle:
+            if "idle" not in data_str and flag_idle==True:
                 current_date_time = datetime.now().strftime("%Y_%m_%d %H:%M:%S.%f, ")
                 add_to_buffer(current_date_time)
                 add_to_buffer(data_str)
