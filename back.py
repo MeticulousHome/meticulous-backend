@@ -276,10 +276,11 @@ def read_arduino():
                 print("decoding fails, message: ", end=' ')
                 print(data)
                 continue
-            if "idle" in data_str:
-                flag_idle=False
-            else:
-                flag_idle=True
+            if "Sensors" not in data_str:
+                if "idle" in data_str:
+                    flag_idle=False
+                else:
+                    flag_idle=True
             if "idle" not in data_str and flag_idle==True:
                 current_date_time = datetime.now().strftime("%Y_%m_%d %H:%M:%S.%f, ")
                 add_to_buffer(current_date_time)
