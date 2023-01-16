@@ -276,7 +276,7 @@ def read_arduino():
                 print("decoding fails, message: ", end=' ')
                 print(data)
                 continue
-            if "Idle" not in data_str:
+            if "idle" not in data_str:
                 current_date_time = datetime.now().strftime("%Y_%m_%d %H:%M:%S.%f, ")
                 add_to_buffer(current_date_time)
                 add_to_buffer(data_str)
