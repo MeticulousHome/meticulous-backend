@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from datetime import datetime
 import os
 import os.path
-from operator import attrgetter
+from operator import itemgetter
 
 comando = '/home/meticulous/meticulous-raspberry-setup/backend_for_esp32/clean_logs.sh'
 lock = threading.Lock()
@@ -460,11 +460,11 @@ if __name__ == "__main__":
     files = []
     for file in os.scandir(file_path):
             if file.is_file():
-                files.append(file)
+                files.append((file, os.path.getmtime(file)))
     # ordenar los archivos por fecha de modificación
-    files.sort(key=attrgetter('st_mtime'), reverse=True)
+    files.sort(key=itemgetter(1), reverse=True)
     # obtener el nombre del último archivo modificado
-    last_modified_file = files[0].name
+    last_modified_file = files[0][0].name
     last_date=last_modified_file[5:15]
     print(last_date)
     menu()
