@@ -19,7 +19,7 @@ comando = '/home/meticulous/meticulous-raspberry-setup/backend_for_esp32/clean_l
 lock = threading.Lock()
 file_path = '/home/meticulous/meticulous-raspberry-setup/backend_for_esp32/logs/'
 buffer=""
-
+contador= 'contador.txt'
 
 class ReadLine:
     def __init__(self, s):
@@ -451,11 +451,10 @@ def menu():
     
 
 if __name__ == "__main__":
-    os.system(comando)
+    #os.system(comando)
 
-    date = datetime.now().strftime("%Y_%m_%d")
-    file_name = 'Fika_' + date + '.txt' 
-    
+    date = datetime.now().strftime("%Y_%m_%d")  
+
     # recorrer todos los archivos en el directorio
     files = []
     for file in os.scandir(file_path):
@@ -466,7 +465,26 @@ if __name__ == "__main__":
     # obtener el nombre del último archivo modificado
     last_modified_file = files[0][0].name
     last_date=last_modified_file[5:15]
-    print(last_date)
+
+    if date!=last_date:
+        flag_fecha_distinta=True
+    else:
+        flag_fecha_distinta=False
+    
+    with open(file_path + contador, 'w+', newline='') as file:
+        if file.tell() == 0:
+            session_number=1
+            file.write(str(1))
+        
+        else:
+            first_line = file.readline()
+            value = int(first_line)
+            value += 
+            session_number=value
+            file.seek(0)
+            file.write(str(value))
+    
+    file_name = 'Fika_' + date +'_'+session_number+'.txt' 
     menu()
     reboot_esp()
     try:
