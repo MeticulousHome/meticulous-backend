@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from datetime import datetime
 import os
 import os.path
+from operator import attrgetter
 
 comando = '/home/meticulous/meticulous-raspberry-setup/backend_for_esp32/clean_logs.sh'
 lock = threading.Lock()
@@ -451,8 +452,21 @@ def menu():
 
 if __name__ == "__main__":
     os.system(comando)
+
     date = datetime.now().strftime("%Y_%m_%d")
     file_name = 'Fika_' + date + '.txt' 
+    
+    # recorrer todos los archivos en el directorio
+    files = []
+    for file in os.scandir(file_path):
+            if file.is_file():
+                files.append(file)
+    # ordenar los archivos por fecha de modificación
+    files.sort(key=attrgetter('st_mtime'), reverse=True)
+    # obtener el nombre del último archivo modificado
+    last_modified_file = files[0].name
+    last_date=last_modified_file[5:15]
+    print(last_date)
     menu()
     reboot_esp()
     try:
