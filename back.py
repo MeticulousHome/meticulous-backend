@@ -102,7 +102,11 @@ data_sensors = {
     "time": 0
 }
 
-
+# "d" -> double click tare
+# "s" -> long tare
+# "x" -> double click encoder
+# "e" -> long click encoder
+# "enter" -> click boton principal
 
 def enable_pcb():
     global keyboard
@@ -123,10 +127,30 @@ def ccw_function():
     keyboard.release(Key.left)
     print("LEFT!")
 
-def single_push():
+def tare_double_function():
+    keyboard.press('d')
+    keyboard.release('d')
+    print("DOUBLE TARE!")
+
+def tare_long_function():
+    keyboard.press('l')
+    keyboard.release('l')
+    print("LONG TARE!")
+
+def encoder_push_function():
     keyboard.press(Key.space)
     keyboard.release(Key.space)
     print("CLICK!")
+
+def encoder_long_function():
+    keyboard.press('l')
+    keyboard.release('l')
+    print("LONG ENCODER!")
+
+def start_function():
+    keyboard.press(Key.enter)
+    keyboard.release(Key.enter)
+    print("START!")
 
 def reboot_esp():
     GPIO.output(en, 0)
@@ -322,7 +346,15 @@ def read_arduino():
             elif data_str.find("CW") > -1:
                 cw_function()
             elif data_str.find("push") > -1:
-                single_push()
+                encoder_push_function()
+            elif data_str.find("elng") > -1:
+                encoder_long_function()
+            elif data_str.find("ta_d") > -1:
+                tare_double_function()
+            elif data_str.find("ta_l") > -1:
+                tare_long_function()
+            elif data_str.find("strt") > -1:
+                start_function()
             else:
                 if print_status==True:
                     if sensor_status==True:
