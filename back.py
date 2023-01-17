@@ -185,7 +185,7 @@ def msg(sid, data):
     json_data = "json\n"+json_data+"\x03"
     print(json_data)
     json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
-    print("hash: ")
+    print("hash: ",end="")
     print(json_hash)
     arduino.write("hash ".encode("utf-8"))
     arduino.write(json_hash.encode("utf-8"))
