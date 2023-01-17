@@ -187,8 +187,8 @@ def msg(sid, data):
     json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
     # print("hash: ")
     # print(json_hash)
-    arduino.write("hash ")
-    arduino.write(json_hash)
+    arduino.write("hash ".encode("utf-8"))
+    arduino.write(json_hash.encode("utf-8"))
     arduino.write(json_data.encode("utf-8"))
 
 @sio.on('preset')
