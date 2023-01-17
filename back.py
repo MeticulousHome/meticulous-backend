@@ -133,8 +133,8 @@ def tare_double_function():
     print("DOUBLE TARE!")
 
 def tare_long_function():
-    keyboard.press('l')
-    keyboard.release('l')
+    keyboard.press('s')
+    keyboard.release('s')
     print("LONG TARE!")
 
 def encoder_push_function():
@@ -143,8 +143,8 @@ def encoder_push_function():
     print("CLICK!")
 
 def encoder_long_function():
-    keyboard.press('l')
-    keyboard.release('l')
+    keyboard.press('e')
+    keyboard.release('e')
     print("LONG ENCODER!")
 
 def start_function():
