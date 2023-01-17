@@ -189,7 +189,7 @@ def msg(sid, data):
     print(json_hash)
     arduino.write("hash ".encode("utf-8"))
     arduino.write(json_hash.encode("utf-8"))
-    arduino.write("\n".encode("utf-8"))
+    arduino.write("\x03".encode("utf-8"))
     arduino.write(json_data.encode("utf-8"))
 
 @sio.on('preset')
