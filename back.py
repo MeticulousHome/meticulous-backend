@@ -14,6 +14,7 @@ from datetime import datetime
 import os
 import os.path
 from operator import itemgetter
+import hashlib
 
 comando = '/home/meticulous/meticulous-raspberry-setup/backend_for_esp32/clean_logs.sh'
 lock = threading.Lock()
@@ -182,6 +183,12 @@ def msg(sid, data):
 def msg(sid, data):
     json_data = json.dumps(data, indent=1, sort_keys=False)
     json_data = "json\n"+json_data+"\x03"
+    # print(json_data)
+    json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
+    # print("hash: ")
+    # print(json_hash)
+    arduino.write("hash ")
+    arduino.write(json_hash)
     arduino.write(json_data.encode("utf-8"))
 
 @sio.on('preset')
