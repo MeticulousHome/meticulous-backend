@@ -44,7 +44,7 @@ class ReadLine:
             else:
                 self.buf.extend(data)
 
-# load_dotenv()
+load_dotenv()
 
 
 
