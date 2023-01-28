@@ -40,7 +40,11 @@ GPIO.setup(esp_en , GPIO.OUT)
 
 #function to read the Serial Communication
 def read_arduino():
-    GPIO.output(esp_en, 1) #Enable the ESP
+    if os.environ.get("PCB_VERSION") == "V3.4":
+        GPIO.output(esp_en, 0) #Enable the ESP
+        print("PCB_VERSION = V3.4") 
+    else:
+        GPIO.output(esp_en, 1) #Enable the ESP
     arduino.reset_input_buffer() #A Serial function member to reset the buffer
     uart = ReadLine(arduino) #Serial communication optimization class declaration  with a serial device as an argument
     
@@ -82,9 +86,11 @@ def reset_rasp():
     if os.environ.get("PCB_VERSION") == "V3":
         en=27
         io0=17
+        print("Set pines to V3") 
     elif os.environ.get("PCB_VERSION") == "V3.1":
         en=24
         io0=23
+        print("Set pines to V3.1") 
     else:
         en = 24
         io0 = 23

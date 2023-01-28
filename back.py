@@ -57,9 +57,11 @@ esp_flt = 12
 if os.environ.get("PCB_VERSION") == "V3":
     en = 27
     io0 = 17
+    print("Set pines to V3") 
 elif os.environ.get("PCB_VERSION") == "V3.1":
     en = 24
     io0 = 23
+    print("Set pines to V3.1") 
 else:
     en = 24
     io0 = 23
@@ -75,12 +77,22 @@ GPIO.setup(lcd_flt, GPIO.IN)
 GPIO.setup(esp_flt, GPIO.IN)
 
 def turn_on():
-    GPIO.output(esp_en, 1)
-    GPIO.output(lcd_en, 1)
+    if os.environ.get("PCB_VERSION") == "V3.4":
+        GPIO.output(esp_en, 0)
+        GPIO.output(lcd_en, 0)
+        print("PCB_VERSION = V3.4") 
+    else:
+        GPIO.output(esp_en, 1)
+        GPIO.output(lcd_en, 1)
 
 def turn_off():
-    GPIO.output(esp_en, 0)
-    GPIO.output(lcd_en, 0)
+    if os.environ.get("PCB_VERSION") == "V3.4":
+        GPIO.output(esp_en, 1)
+        GPIO.output(lcd_en, 1)
+        print("PCB_VERSION = V3.4") 
+    else:
+        GPIO.output(esp_en, 0)
+        GPIO.output(lcd_en, 0)
     
 turn_on()
 #os.system('killall coffee-ui-demo')
