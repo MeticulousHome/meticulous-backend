@@ -1,4 +1,5 @@
 import RPi.GPIO as GPIO
+import os
 from dotenv import load_dotenv
 
 load_dotenv()
