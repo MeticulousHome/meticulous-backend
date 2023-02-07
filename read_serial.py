@@ -40,9 +40,9 @@ GPIO.setup(esp_en , GPIO.OUT)
 
 #function to read the Serial Communication
 def read_arduino():
-    if os.environ.get("PCB_VERSION") == "V3.4":
+    if os.environ.get("SWITCH_VERSION") == "V3.4":
         GPIO.output(esp_en, 0) #Enable the ESP
-        print("PCB_VERSION = V3.4") 
+        print("SWITCH_VERSION = V3.4") 
     else:
         GPIO.output(esp_en, 1) #Enable the ESP
     arduino.reset_input_buffer() #A Serial function member to reset the buffer
