@@ -77,19 +77,19 @@ GPIO.setup(lcd_flt, GPIO.IN)
 GPIO.setup(esp_flt, GPIO.IN)
 
 def turn_on():
-    if os.environ.get("PCB_VERSION") == "V3.4":
+    if os.environ.get("SWITCH_VERSION") == "V3.4":
         GPIO.output(esp_en, 0)
         GPIO.output(lcd_en, 0)
-        print("PCB_VERSION = V3.4") 
+        print("SWITCH_VERSION = V3.4") 
     else:
         GPIO.output(esp_en, 1)
         GPIO.output(lcd_en, 1)
 
 def turn_off():
-    if os.environ.get("PCB_VERSION") == "V3.4":
+    if os.environ.get("SWITCH_VERSION") == "V3.4":
         GPIO.output(esp_en, 1)
         GPIO.output(lcd_en, 1)
-        print("PCB_VERSION = V3.4") 
+        print("SWITCH_VERSION = V3.4") 
     else:
         GPIO.output(esp_en, 0)
         GPIO.output(lcd_en, 0)
