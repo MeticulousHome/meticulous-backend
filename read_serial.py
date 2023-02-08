@@ -83,11 +83,11 @@ def send_data():
 #function to reset the rasp      
 def reset_rasp():
     #Pins choose according to the PCB version. 
-    if os.environ.get("PCB_VERSION") == "V3":
+    if os.environ.get("PINES_VERSION") == "V3":
         en=27
         io0=17
         print("Set pines to V3") 
-    elif os.environ.get("PCB_VERSION") == "V3.1":
+    elif os.environ.get("PINES_VERSION") == "V3.1":
         en=24
         io0=23
         print("Set pines to V3.1") 

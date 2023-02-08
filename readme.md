@@ -4,8 +4,8 @@ This repo is to run the backend of meticulous.
 
 For the correct functioning, you must create a ".env" file type and copy the following
 
-    # PCB_VERSION = V3 # PCB with 2 ADS
-    PCB_VERSION = V3.1 # PCB with 3 ADS
+    # PINES_VERSION = V3 # PCB with 2 ADS
+    PINES_VERSION = V3.1 # PCB with 3 ADS
     SWITCH_VERSION = V3.4 # enable switch at 0 
 
 The sign **#** is for comments. The "V3" value refers to the FIKA PCB with two ADS and the V3.1 value refers to the FIKA PCB withs three ADS. 
