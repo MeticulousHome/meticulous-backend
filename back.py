@@ -47,18 +47,14 @@ class ReadLine:
 load_dotenv()
 
 
-
-on_off_bt = 18
 lcd_en = 25
 esp_en = 8
-lcd_flt = 7
-esp_flt = 12
     
-if os.environ.get("PCB_VERSION") == "V3":
+if os.environ.get("PINES_VERSION") == "V3":
     en = 27
     io0 = 17
     print("Set pines to V3") 
-elif os.environ.get("PCB_VERSION") == "V3.1":
+elif os.environ.get("PINES_VERSION") == "V3.1":
     en = 24
     io0 = 23
     print("Set pines to V3.1") 
@@ -72,9 +68,6 @@ GPIO.setup(en, GPIO.OUT)
 GPIO.setup(io0, GPIO.OUT)
 GPIO.setup(esp_en, GPIO.OUT)
 GPIO.setup(lcd_en, GPIO.OUT)
-GPIO.setup(on_off_bt, GPIO.IN)
-GPIO.setup(lcd_flt, GPIO.IN)
-GPIO.setup(esp_flt, GPIO.IN)
 
 def turn_on():
     if os.environ.get("SWITCH_VERSION") == "V3.4":
@@ -125,10 +118,6 @@ def enable_pcb():
     global keyboard
     while True:
             turn_on()
-
-def read_on_off_bt():
-    time.sleep(0.1)
-    return GPIO.input(on_off_bt)
 
 def cw_function():
     keyboard.press(Key.right)
