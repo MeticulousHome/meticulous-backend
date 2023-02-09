@@ -105,7 +105,7 @@ def reset_rasp():
     time.sleep(1)
     GPIO.output(en, 1)
     time.sleep(1)
-    GPIO.cleanup() 
+    # GPIO.cleanup() 
     print("Raspberry is reseted")     
     
 def main():
