@@ -70,13 +70,18 @@ GPIO.setup(esp_en, GPIO.OUT)
 GPIO.setup(lcd_en, GPIO.OUT)
 
 def turn_on():
-    if os.environ.get("SWITCH_VERSION") == "V3.4":
+    if os.environ.get("EN_PIN_HIGH") == "0":
         GPIO.output(esp_en, 0)
         GPIO.output(lcd_en, 0)
-        print("SWITCH_VERSION = V3.4") 
-    else:
+        print("EN_PIN_HIGH = 0")
+    elif os.environ.get("EN_PIN_HIGH") == "1":
         GPIO.output(esp_en, 1)
         GPIO.output(lcd_en, 1)
+        print("EN_PIN_HIGH = 1")
+    else:
+        GPIO.output(esp_en, 0)
+        GPIO.output(lcd_en, 0)
+        print("EN_PIN_HIGH = 0 por default")
 
 def turn_off():
     if os.environ.get("SWITCH_VERSION") == "V3.4":
