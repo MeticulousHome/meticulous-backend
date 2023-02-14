@@ -345,7 +345,7 @@ def read_arduino():
             else:
                 if print_status==True:
                     if sensor_status==True:
-                        print(data_str)
+                        print(data_str, end="")
                     
                     else:
                         if data_str[0]=="E":
