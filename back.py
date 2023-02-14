@@ -249,8 +249,10 @@ def msg(sid, data):
     else:
         print("Preset not valid")
 
-
-
+@sio.on('calibration')
+def msg(sid, data):
+    _input = "action,"+data+"\x03"
+    arduino.write(str.encode(_input))
 
 
 
@@ -448,7 +450,7 @@ def send_data():
             _input = "action,"+_input+"\x03"
             arduino.write(str.encode(_input))
 
-        elif _input == "calibration":
+        elif _input[:11] == "calibration":
              _input = "action,"+_input+"\x03"
              arduino.write(str.encode(_input))
 
