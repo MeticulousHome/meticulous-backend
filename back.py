@@ -448,6 +448,10 @@ def send_data():
             _input = "action,"+_input+"\x03"
             arduino.write(str.encode(_input))
 
+        elif _input == "calibration":
+             _input = "action,"+_input+"\x03"
+             arduino.write(str.encode(_input))
+
         else:
             pass
             # if _input[0] == "j" :
@@ -489,6 +493,7 @@ def menu():
     print("json --> Al introducir esta opcion enviara el Json de nombre XXXXXX.XXXX contenido en la carpeta que contenga en codigo ")
     print("show --> Muestra datos recibidos de la esp32")
     print("hide --> Deja de mostrar datos recibidos de la esp32 exceptuando los mensajes del estado")
+    print("calibration --> Esta calculando el factor de escala de la loadcell")
     
 
 if __name__ == "__main__":
