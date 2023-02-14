@@ -165,24 +165,6 @@ def reboot_esp():
     time.sleep(.1)
     GPIO.output(en, 1)
 
-def load_json(perfil_preset):
-    with open('./presets/'+ perfil_preset ,'r',encoding="utf-8") as file:
-            json_data = json.load(file)
-            json_data = json.dumps(json_data, indent=1,sort_keys=False)
-            json_data = "json\n"+json_data+"\x03"
-            print(json_data)
-            json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
-            print("hash: ",end="")
-            print(json_hash)
-            arduino.write("hash ".encode("utf-8"))
-            arduino.write(json_hash.encode("utf-8"))
-            arduino.write("\x03".encode("utf-8"))
-            arduino.write(json_data.encode("utf-8"))
-
-            #send the instruccion to start the selected choice
-            _input = "action,"+"start"+"\x03"
-            arduino.write(str.encode(_input))  
-
 @sio.event
 def connect(sid, environ):
     print('connect ', sid)
@@ -213,29 +195,22 @@ def msg(sid, data):
 
 @sio.on('preset')
 def msg(sid, data):
-    # json_data = json.dumps(data, indent=1, sort_keys=False)
-    # json_data = "json\n"+json_data+"\x03"
-    # arduino.write(json_data.encode("utf-8"))
-    if (data == "breville"):
-        load_json("breville.json")
+    with open('./presets/'+ data +'.json' ,'r',encoding="utf-8") as file:
+        json_data = json.load(file)
+        json_data = json.dumps(json_data, indent=1,sort_keys=False)
+        json_data = "json\n"+json_data+"\x03"
+        print(json_data)
+        json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
+        print("hash: ",end="")
+        print(json_hash)
+        arduino.write("hash ".encode("utf-8"))
+        arduino.write(json_hash.encode("utf-8"))
+        arduino.write("\x03".encode("utf-8"))
+        arduino.write(json_data.encode("utf-8"))
+        #send the instruccion to start the selected choice
+        _input = "action,"+"start"+"\x03"
+        arduino.write(str.encode(_input))  
 
-    elif (data == "cube"):
-        load_json("cube.json")
-        
-    elif (data == "diletta"):
-        load_json("diletta.json")
-
-    elif (data == "flair"):
-        load_json("flair.json")
-
-    elif (data == "la-pavoni"):
-        load_json("la-pavoni.json")
-
-    elif (data == "rocket"):
-        load_json("rocket.json")
-
-    else:
-        print("Preset not valid")
 
 
 # arduino = serial.Serial("COM4",115200)
