@@ -165,6 +165,17 @@ def reboot_esp():
     time.sleep(.1)
     GPIO.output(en, 1)
 
+def send_json_hash(json_string):
+    json_data = "json\n"+json_string+"\x03"
+    print(json_data)
+    json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
+    print("hash: ",end="")
+    print(json_hash)
+    arduino.write("hash ".encode("utf-8"))
+    arduino.write(json_hash.encode("utf-8"))
+    arduino.write("\x03".encode("utf-8"))
+    arduino.write(json_data.encode("utf-8"))
+
 @sio.event
 def connect(sid, environ):
     print('connect ', sid)
@@ -183,30 +194,14 @@ def msg(sid, data):
 @sio.on('parameters')
 def msg(sid, data):
     json_data = json.dumps(data, indent=1, sort_keys=False)
-    json_data = "json\n"+json_data+"\x03"
-    print(json_data)
-    json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
-    print("hash: ",end="")
-    print(json_hash)
-    arduino.write("hash ".encode("utf-8"))
-    arduino.write(json_hash.encode("utf-8"))
-    arduino.write("\x03".encode("utf-8"))
-    arduino.write(json_data.encode("utf-8"))
+    send_json_hash(json_data)
 
 @sio.on('preset')
 def msg(sid, data):
     with open('./presets/'+ data +'.json' ,'r',encoding="utf-8") as file:
         json_data = json.load(file)
         json_data = json.dumps(json_data, indent=1,sort_keys=False)
-        json_data = "json\n"+json_data+"\x03"
-        print(json_data)
-        json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
-        print("hash: ",end="")
-        print(json_hash)
-        arduino.write("hash ".encode("utf-8"))
-        arduino.write(json_hash.encode("utf-8"))
-        arduino.write("\x03".encode("utf-8"))
-        arduino.write(json_data.encode("utf-8"))
+        send_json_hash(json_data)
         #send the instruccion to start the selected choice
         _input = "action,"+"start"+"\x03"
         arduino.write(str.encode(_input))  
