@@ -198,63 +198,40 @@ def msg(sid, data):
 
 @sio.on('preset')
 def msg(sid, data):
+    # data = data + "hola mundo"
     if (data == "breville"):
-        with open('./presets/breville.json','r',encoding="utf-8") as file:
-            json_data = json.load(file)
-            json_data = json.dumps(json_data, indent=1,sort_keys=False)
-            send_json_hash(json_data)
-            #send the instruccion to start the selected choice
-            _input = "action,"+"start"+"\x03"
-            arduino.write(str.encode(_input)) 
-
+        preset="breville.json"
+    
     elif (data == "cube"):
-        with open('./presets/cube.json','r',encoding="utf-8") as file:
-            json_data = json.load(file)
-            json_data = json.dumps(json_data, indent=1,sort_keys=False)
-            send_json_hash(json_data)
-            #send the instruccion to start the selected choice
-            _input = "action,"+"start"+"\x03"
-            arduino.write(str.encode(_input)) 
+        preset="cube.json"
 
     elif (data == "diletta"):
-        with open('./presets/diletta.json','r',encoding="utf-8") as file:
-            json_data = json.load(file)
-            json_data = json.dumps(json_data, indent=1,sort_keys=False)
-            send_json_hash(json_data)
-            #send the instruccion to start the selected choice
-            _input = "action,"+"start"+"\x03"
-            arduino.write(str.encode(_input)) 
+        preset="diletta.json"
 
     elif (data == "flair"):
-        with open('./presets/flair.json','r',encoding="utf-8") as file:
-            json_data = json.load(file)
-            json_data = json.dumps(json_data, indent=1,sort_keys=False)
-            send_json_hash(json_data)
-            #send the instruccion to start the selected choice
-            _input = "action,"+"start"+"\x03"
-            arduino.write(str.encode(_input)) 
+        preset="flair.json"
 
     elif (data == "la-pavoni"):
-        with open('./presets/la-pavoni.json','r',encoding="utf-8") as file:
-            json_data = json.load(file)
-            json_data = json.dumps(json_data, indent=1,sort_keys=False)
-            send_json_hash(json_data)
-            #send the instruccion to start the selected choice
-            _input = "action,"+"start"+"\x03"
-            arduino.write(str.encode(_input)) 
+        preset="la-pavoni.json"
 
     elif (data == "rocket"):
-        with open('./presets/rocket.json','r',encoding="utf-8") as file:
-            json_data = json.load(file)
-            json_data = json.dumps(json_data, indent=1,sort_keys=False)
-            send_json_hash(json_data)
-            #send the instruccion to start the selected choice
-            _input = "action,"+"start"+"\x03"
-            arduino.write(str.encode(_input)) 
+        preset="rocket.json"
 
     else:
         print("Preset not valid")
+        return 0
 
+    try:
+        with open('./presets/'+ preset ,'r',encoding="utf-8") as file:
+            json_data = json.load(file)
+            json_data = json.dumps(json_data, indent=1,sort_keys=False)
+            send_json_hash(json_data)
+            #send the instruccion to start the selected choice
+            _input = "action,"+"start"+"\x03"
+            arduino.write(str.encode(_input))
+    except:
+        print("Preset not found")
+        return 0
 
 # arduino = serial.Serial("COM4",115200)
 arduino = serial.Serial('/dev/ttyS0',115200)
