@@ -474,35 +474,27 @@ if __name__ == "__main__":
 
     date = datetime.now().strftime("%Y_%m_%d")  
 
-    # # recorrer todos los archivos en el directorio
-    # files = []
-    # for file in os.scandir(file_path):
-    #         if file.is_file():
-    #             files.append((file, os.path.getmtime(file)))
-    # # ordenar los archivos por fecha de modificación
-    # files.sort(key=itemgetter(1), reverse=True)
-    # # obtener el nombre del último archivo modificado
-    # last_modified_file = files[0][0].name
-    # last_date=last_modified_file[5:15]
-
-    # if date!=last_date:
-    #     flag_fecha_distinta=True
-    # else:
-    #     flag_fecha_distinta=False
     with open(file_path + contador, 'a+', newline='') as file:
         pass
-
+    
     with open(file_path + contador, 'r+', newline='') as file:
         first_line = file.readline()
-        if first_line == '' :
-            session_number=1
+        if first_line == '':
+            session_number = 1
             file.write(str(1))
         else:
-            value = int(first_line)
-            value = value + 1
-            session_number = value
-            file.seek(0)
-            file.write(str(value))
+            try:
+                value = int(first_line)
+                value = value + 1
+                session_number = value
+                file.seek(0)
+                file.write(str(value))
+            except ValueError:
+                print(f"Error: el contenido de {file_path + contador} no es un número válido.")
+                session_number = 999
+                file.seek(0)
+                file.write(str(999))
+
     
     file_name = 'Fika_' + date +'_'+ str(session_number) + '.txt' 
     menu()
