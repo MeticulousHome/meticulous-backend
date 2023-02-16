@@ -246,8 +246,7 @@ def msg(sid, data):
             arduino.write(json_data.encode("utf-8"))
             _input = "action,"+"start"+"\x03"
             arduino.write(str.encode(_input))
-    else:
-        print("Preset not valid")
+
 
 # @sio.on('calibration') #Calibration is embedded in action
 # def msg(sid, data):
