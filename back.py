@@ -249,10 +249,10 @@ def msg(sid, data):
     else:
         print("Preset not valid")
 
-@sio.on('calibration')
-def msg(sid, data):
-    _input = "action,"+data+"\x03"
-    arduino.write(str.encode(_input))
+# @sio.on('calibration') #Calibration is embedded in action
+# def msg(sid, data):
+#     _input = "action,"+data+"\x03"
+#     arduino.write(str.encode(_input))
 
 
 
