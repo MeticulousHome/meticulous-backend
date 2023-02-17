@@ -70,22 +70,32 @@ GPIO.setup(esp_en, GPIO.OUT)
 GPIO.setup(lcd_en, GPIO.OUT)
 
 def turn_on():
-    if os.environ.get("SWITCH_VERSION") == "V3.4":
+    if os.environ.get("EN_PIN_HIGH") == "0":
         GPIO.output(esp_en, 0)
         GPIO.output(lcd_en, 0)
-        print("SWITCH_VERSION = V3.4") 
-    else:
+        print("EN_PIN_HIGH = 0")
+    elif os.environ.get("EN_PIN_HIGH") == "1":
         GPIO.output(esp_en, 1)
         GPIO.output(lcd_en, 1)
+        print("EN_PIN_HIGH = 1")
+    else:
+        GPIO.output(esp_en, 0)
+        GPIO.output(lcd_en, 0)
+        print("EN_PIN_HIGH = 0 por default")
 
 def turn_off():
-    if os.environ.get("SWITCH_VERSION") == "V3.4":
+    if os.environ.get("EN_PIN_HIGH") == "0":
         GPIO.output(esp_en, 1)
         GPIO.output(lcd_en, 1)
-        print("SWITCH_VERSION = V3.4") 
-    else:
+        print("EN_PIN_HIGH = 0")
+    elif os.environ.get("EN_PIN_HIGH") == "1":
         GPIO.output(esp_en, 0)
         GPIO.output(lcd_en, 0)
+        print("EN_PIN_HIGH = 1")
+    else:
+        GPIO.output(esp_en, 1)
+        GPIO.output(lcd_en, 1)
+        print("EN_PIN_HIGH = 0 por default")
     
 turn_on()
 #os.system('killall coffee-ui-demo')
@@ -388,7 +398,7 @@ async def live():
     while True:
         await sio.emit("status", {
             "name": data_sensors["status"],
-            # "name" : "idle",
+            "name" : "idle",
             "sensors": {
                 "p": data_sensors["pressure"],
                 "f": data_sensors["flow"],
@@ -434,6 +444,21 @@ def send_data():
         elif _input=="tare" or _input=="stop" or _input=="purge" or _input=="home" or _input=="start" :
             _input = "action,"+_input+"\x03"
             arduino.write(str.encode(_input))
+            
+        elif _input == "test":
+            sensor_status=True
+            for i in range(0,10):
+                _input = "action,"+"purge"+"\x03"
+                arduino.write(str.encode(_input))
+                time.sleep(15)
+                print(_input)
+                _input = "action,"+"home"+"\x03"
+                arduino.write(str.encode(_input))
+                time.sleep(15)
+                contador = "Numero de prueba: "+str(i+1)
+                print(_input)
+                print(contador)
+            sensor_status=False
 
         elif _input[:11] == "calibration":
              _input = "action,"+_input+"\x03"
@@ -480,7 +505,8 @@ def menu():
     print("json --> Al introducir esta opcion enviara el Json de nombre XXXXXX.XXXX contenido en la carpeta que contenga en codigo ")
     print("show --> Muestra datos recibidos de la esp32")
     print("hide --> Deja de mostrar datos recibidos de la esp32 exceptuando los mensajes del estado")
-    print("calibration --> Esta calculando el factor de escala de la loadcell")
+    print("test --> Mueve el motor 10 veces de purge a home y muestra el valor de los sensores")
+    print("calibration --> Acceder a la funcion de la siguiente manera:  calibration,peso conocido,peso medido \n \t Ejemplo: calibration,100,90")
     
 
 if __name__ == "__main__":
