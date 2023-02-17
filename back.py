@@ -510,35 +510,38 @@ def menu():
     
 
 if __name__ == "__main__":
-    os.system(comando)
+    os.system(comando) #Crea la carpeta donde se guardaran los datos 
+    date = datetime.now().strftime("%Y_%m_%d") #Fecha actual
 
-    date = datetime.now().strftime("%Y_%m_%d")  
+    try: #procesp para obtener el numero de sesion 9999 si no se puede obtener el numero de sesion
+        with open(file_path + contador, 'a+', newline='') as file: #Crea el archivo donde se guardara el numero de sesion si no existe
+            pass
 
-    with open(file_path + contador, 'a+', newline='') as file:
-        pass
-    
-    with open(file_path + contador, 'r+', newline='') as file:
-        first_line = file.readline()
-        if first_line == '':
-            session_number = 1
-            file.write(str(1))
-        else:
-            try:
-                value = int(first_line)
-                value = value + 1
-                session_number = value
-                file.seek(0)
-                file.write(str(value))
-            except ValueError:
-                print(f"Error: el contenido de {file_path + contador} no es un número válido.")
-                session_number = 999
-                file.seek(0)
-                file.write(str(999))
-            except:
-                print("Error desconocido")
-                session_number = 999
-                file.seek(0)
-                file.write(str(999))    
+        with open(file_path + contador, 'r+', newline='') as file: #Abre el archivo donde se guardara el numero de sesion
+            first_line = file.readline() #Lee la primera linea del archivo
+            if first_line == '': #Si el archivo esta vacio se crea el archivo con el numero de sesion 1
+                session_number = 1 #asigna el numero de sesion 1 pues creo el archivo
+                file.write(str(1)) #Escribe el numero de sesion 1 en el archivo
+            else: #Si el archivo no esta vacio se lee el numero de sesion y se le suma 1
+                try: #procesp para obtener el numero de sesion 9999 si no se puede obtener el numero de sesion
+                    value = int(first_line)  
+                    value = value + 1 
+                    session_number = value
+                    file.seek(0) #Se posiciona al inicio del archivo
+                    file.write(str(value)) #Escribe el numero de sesion en el archivo
+                except ValueError:
+                    print(f"Error: el contenido de no es un número válido.")
+                    session_number = 999 
+                    file.seek(0)
+                    file.write(str(999))
+                except:
+                    print("Error desconocido")
+                    session_number = 999
+                    file.seek(0)
+                    file.write(str(999))    
+    except:
+        print("Error al abrir el archivo")
+        session_number = 9999
     
     file_name = 'Fika_' + date +'_'+ str(session_number) + '.txt' 
     menu()
