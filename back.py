@@ -534,7 +534,11 @@ if __name__ == "__main__":
                 session_number = 999
                 file.seek(0)
                 file.write(str(999))
-
+            except:
+                print("Error desconocido")
+                session_number = 999
+                file.seek(0)
+                file.write(str(999))    
     
     file_name = 'Fika_' + date +'_'+ str(session_number) + '.txt' 
     menu()
