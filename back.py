@@ -379,7 +379,7 @@ async def live():
     while True:
         await sio.emit("status", {
             "name": data_sensors["status"],
-            # "name" : "idle",
+            "name" : "idle",
             "sensors": {
                 "p": data_sensors["pressure"],
                 "f": data_sensors["flow"],
@@ -426,9 +426,20 @@ def send_data():
             _input = "action,"+_input+"\x03"
             arduino.write(str.encode(_input))
             
-        elif _input == "stress":
-            for i in range(1,11):
+        elif _input == "test":
+            sensor_status=True
+            for i in range(0,10):
+                _input = "action,"+"purge"+"\x03"
+                arduino.write(str.encode(_input))
+                time.sleep(15)
+                print(_input)
                 _input = "action,"+"home"+"\x03"
+                arduino.write(str.encode(_input))
+                time.sleep(15)
+                contador = "Numero de prueba: "+str(i+1)
+                print(_input)
+                print(contador)
+            sensor_status=False
 
         else:
             pass
@@ -471,7 +482,7 @@ def menu():
     print("json --> Al introducir esta opcion enviara el Json de nombre XXXXXX.XXXX contenido en la carpeta que contenga en codigo ")
     print("show --> Muestra datos recibidos de la esp32")
     print("hide --> Deja de mostrar datos recibidos de la esp32 exceptuando los mensajes del estado")
-    
+    print("test --> Mueve el motor 10 veces de purge a home y muestra el valor de los sensores")
 
 if __name__ == "__main__":
     os.system(comando)
