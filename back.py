@@ -425,6 +425,10 @@ def send_data():
         elif _input=="tare" or _input=="stop" or _input=="purge" or _input=="home" or _input=="start" :
             _input = "action,"+_input+"\x03"
             arduino.write(str.encode(_input))
+            
+        elif _input == "stress":
+            for i in range(1,11):
+                _input = "action,"+"home"+"\x03"
 
         else:
             pass
