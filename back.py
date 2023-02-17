@@ -233,6 +233,15 @@ def msg(sid, data):
         print("Preset not found")
         return 0
 
+
+# @sio.on('calibration') #Calibration is embedded in action
+# def msg(sid, data):
+#     _input = "action,"+data+"\x03"
+#     arduino.write(str.encode(_input))
+
+
+
+
 # arduino = serial.Serial("COM4",115200)
 arduino = serial.Serial('/dev/ttyS0',115200)
 
@@ -441,6 +450,10 @@ def send_data():
                 print(contador)
             sensor_status=False
 
+        elif _input[:11] == "calibration":
+             _input = "action,"+_input+"\x03"
+             arduino.write(str.encode(_input))
+
         else:
             pass
             # if _input[0] == "j" :
@@ -483,6 +496,8 @@ def menu():
     print("show --> Muestra datos recibidos de la esp32")
     print("hide --> Deja de mostrar datos recibidos de la esp32 exceptuando los mensajes del estado")
     print("test --> Mueve el motor 10 veces de purge a home y muestra el valor de los sensores")
+    print("calibration --> Acceder a la funcion de la siguiente manera:  calibration,peso conocido,peso medido \n \t Ejemplo: calibration,100,90")
+    
 
 if __name__ == "__main__":
     os.system(comando)
