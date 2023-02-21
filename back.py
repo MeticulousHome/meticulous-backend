@@ -415,9 +415,7 @@ def send_data():
             with open('fika.json','r') as openfile:
                 json_file = json.load(openfile)
             json_data = json.dumps(json_file, indent=1, sort_keys=False)
-            json_data = "json\n"+json_data+"\x03"
-            # arduino.write(json_data.encode("utf-8"))
-            arduino.write(str.encode(json_data))
+            send_json_hash(json_data)
             json_data=""
             json_file=""
             
@@ -490,7 +488,7 @@ if __name__ == "__main__":
                     file.seek(0) #Se posiciona al inicio del archivo
                     file.write(str(value)) #Escribe el numero de sesion en el archivo
                 except ValueError:
-                    print(f"Error: el contenido de no es un número válido.")
+                    print("Error, el contenido del archivo no es un número válido")
                     session_number = 999 
                     file.seek(0)
                     file.write(str(999))
