@@ -115,7 +115,8 @@ data_sensors = {
     "weight":3,
     "temperature":4,
     "status": "idle",
-    "time": 0
+    "time": 0,
+    "profile": "idle"
 }
 
 # "d" -> double click tare
@@ -326,6 +327,12 @@ def read_arduino():
                 data_sensors["status"] = status_bad.strip("\n")
                 data_sensors["status"] = data_sensors["status"].strip("\r")
 
+                try:
+                    data_sensors["profile"] = data_str_sensors[6].strip("\n")
+                    data_sensors["profile"] = data_sensors["profile"].strip("\r")
+                except:
+                    data_sensors["profile"] = "None"
+
                 c1 = old_status == "heating"
                 c2 = data_sensors["status"] == "preinfusion"
                 # print(c1, end = "")
@@ -398,14 +405,15 @@ async def live():
     while True:
         await sio.emit("status", {
             "name": data_sensors["status"],
-            "name" : "idle",
+            # "name" : "idle",
             "sensors": {
                 "p": data_sensors["pressure"],
                 "f": data_sensors["flow"],
                 "w": data_sensors["weight"],
                 "t": data_sensors["temperature"],
             },
-            "time": str(data_sensors["time"])
+            "time": str(data_sensors["time"]),
+            "profile": data_sensors["profile"]
         })
         await sio.sleep(SAMPLE_TIME)
         i = i + 1
