@@ -405,7 +405,7 @@ async def live():
     while True:
         await sio.emit("status", {
             "name": data_sensors["status"],
-            "name" : "idle",
+            # "name" : "idle",
             "sensors": {
                 "p": data_sensors["pressure"],
                 "f": data_sensors["flow"],
