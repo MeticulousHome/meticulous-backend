@@ -258,7 +258,26 @@ def msg(sid, data):
 
 
 # arduino = serial.Serial("COM4",115200)
-arduino = serial.Serial('/dev/ttyS0',115200)
+# arduino = serial.Serial('/dev/ttyS0',115200)
+# arduino = serial.Serial('/dev/ttyUSB0',115200)
+def detect_arduino_port():
+    # Try opening /dev/ttyS0 and /dev/ttyUSB0
+    reboot_esp()
+    for port in ['/dev/ttyS0', '/dev/ttyUSB0']:
+        try:
+            ser = serial.Serial(port, baudrate=115200, timeout=1)
+            time.sleep(.2)
+            # Wait for incoming data
+            incoming_data = ser.readline()
+            ser.close()
+            # If there was incoming data, return the serial port
+            if incoming_data:
+                return port
+        except (OSError, serial.SerialException):
+            pass
+
+    # If no Arduino was detected, return None
+    return None
 
 def add_to_buffer(message_to_save):
     global buffer
@@ -520,6 +539,23 @@ def menu():
     
 
 if __name__ == "__main__":
+
+    # Call the function to get the port
+    arduino_port = detect_arduino_port()
+
+    # Open the serial connection if an Arduino was detected
+    if arduino_port == '/dev/ttyS0':
+        arduino = serial.Serial('/dev/ttyS0',115200)
+        print(f"Serial connection opened on port s0")
+    elif arduino_port == '/dev/ttyUSB0':
+        arduino = serial.Serial('/dev/ttyUSB0',115200)
+        print(f"Serial connection opened on port sub")
+    else:
+        print("No arduino")
+
+    # arduino = serial.Serial('/dev/ttyS0',115200)
+    # arduino = serial.Serial('/dev/ttyUSB0',115200)
+
     os.system(comando) #Crea la carpeta donde se guardaran los datos 
     date = datetime.now().strftime("%Y_%m_%d") #Fecha actual
 
