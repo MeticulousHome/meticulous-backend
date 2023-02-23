@@ -546,12 +546,12 @@ if __name__ == "__main__":
     # Open the serial connection if an Arduino was detected
     if arduino_port == '/dev/ttyS0':
         arduino = serial.Serial('/dev/ttyS0',115200)
-        print(f"Serial connection opened on port s0")
+        print("Serial connection opened on port ttyS0")
     elif arduino_port == '/dev/ttyUSB0':
         arduino = serial.Serial('/dev/ttyUSB0',115200)
-        print(f"Serial connection opened on port sub")
+        print("Serial connection opened on port ttyUSB0")
     else:
-        print("No arduino")
+        print("No ESP32 available")
 
     # arduino = serial.Serial('/dev/ttyS0',115200)
     # arduino = serial.Serial('/dev/ttyUSB0',115200)
