@@ -58,6 +58,10 @@ elif os.environ.get("PINES_VERSION") == "V3.1":
     en = 24
     io0 = 23
     print("Set pines to V3.1") 
+elif os.environ.get("PINES_VERSION") == "MOCK_FRONT":
+    en = 21
+    io0 = 20
+    print("MOCK_FRONT")     
 else:
     en = 24
     io0 = 23
