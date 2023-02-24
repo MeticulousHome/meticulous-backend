@@ -57,11 +57,7 @@ if os.environ.get("PINES_VERSION") == "V3":
 elif os.environ.get("PINES_VERSION") == "V3.1":
     en = 24
     io0 = 23
-    print("Set pines to V3.1") 
-elif os.environ.get("PINES_VERSION") == "MOCK_FRONT":
-    en = 21
-    io0 = 20
-    print("MOCK_FRONT")     
+    print("Set pines to V3.1")    
 else:
     en = 24
     io0 = 23
@@ -274,8 +270,7 @@ def detect_arduino_port():
             if incoming_data:
                 return port
         except (OSError, serial.SerialException):
-            pass
-
+            print("No Serial port connected")
     # If no Arduino was detected, return None
     return None
 
