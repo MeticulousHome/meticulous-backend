@@ -178,8 +178,10 @@ def reboot_esp():
 
 def send_json_hash(json_string):
     json_data = "json\n"+json_string+"\x03"
-    print(json_data)
+    add_to_buffer(json_data)
+    # print(json_data)
     json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
+    add_to_buffer("hash_enviado: " + json_hash + "\n")
     print("hash: ",end="")
     print(json_hash)
     arduino.write("hash ".encode("utf-8"))
@@ -277,8 +279,9 @@ def detect_arduino_port():
 def add_to_buffer(message_to_save):
     global buffer
     global lock
+    current_date_time = datetime.now().strftime("%Y_%m_%d %H:%M:%S.%f, ")
     with lock:
-        buffer = buffer + message_to_save
+        buffer = buffer + current_date_time + message_to_save
 
 def save_log():
     global file_name
@@ -306,6 +309,10 @@ def log():
         time.sleep(5)
 
 def read_arduino():
+    #Variables to save data
+    idle_in_data = False
+    save_str = False
+    
     start_time = time.time()
     # global start_time
 
@@ -326,14 +333,23 @@ def read_arduino():
                 print("decoding fails, message: ", end=' ')
                 print(data)
                 continue
-            if "Sensors" not in data_str:
-                if "idle" in data_str:
-                    flag_idle=False
+
+            if 'Data' in data_str:
+                if 'idle' in data_str:
+                    idle_in_data = True
+                    save_str = False
                 else:
-                    flag_idle=True
-            if "idle" not in data_str and flag_idle==True:
-                current_date_time = datetime.now().strftime("%Y_%m_%d %H:%M:%S.%f, ")
-                add_to_buffer(current_date_time)
+                    idle_in_data = False
+                    save_str = True
+            elif 'Sensors' in data_str:
+                if idle_in_data:
+                    save_str = False
+                else:
+                    save_str = True
+            else:
+                save_str = True
+
+            if save_str:
                 add_to_buffer(data_str)
             data_str_sensors = data_str.split(',')
             if data_str_sensors[0] == 'Data':
@@ -392,7 +408,7 @@ def read_arduino():
                         print(data_str, end="")
                     
                     else:
-                        if data_str[0]=="E":
+                        if 'Sensors' not in data_str:
                             print(data_str)
                         else:
                             pass
