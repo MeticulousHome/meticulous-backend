@@ -153,7 +153,12 @@ def tare_long_function():
 def encoder_push_function():
     keyboard.press(Key.space)
     keyboard.release(Key.space)
-    print("CLICK!")
+    print("PUSH ENCODER!")
+
+def encoder_double_function():
+    keyboard.press('x')
+    keyboard.release('x')
+    print("DOUBLE ENCODER!")
 
 def encoder_long_function():
     keyboard.press('e')
@@ -394,6 +399,8 @@ def read_arduino():
                 cw_function()
             elif data_str.find("push") > -1:
                 encoder_push_function()
+            elif data_str.find("pu_d") > -1:
+                encoder_double_function()
             elif data_str.find("elng") > -1:
                 encoder_long_function()
             elif data_str.find("ta_d") > -1:
