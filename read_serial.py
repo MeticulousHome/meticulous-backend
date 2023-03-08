@@ -40,11 +40,15 @@ GPIO.setup(esp_en , GPIO.OUT)
 
 #function to read the Serial Communication
 def read_arduino():
-    if os.environ.get("SWITCH_VERSION") == "V3.4":
+    if os.environ.get("EN_PIN_HIGH") == "0":
         GPIO.output(esp_en, 0) #Enable the ESP
-        print("SWITCH_VERSION = V3.4") 
-    else:
+        print("EN_PIN_HIGH = 0") 
+    elif os.environ.get("EN_PIN_HIGH") == "1":
         GPIO.output(esp_en, 1) #Enable the ESP
+        print("EN_PIN_HIGH = 1")
+    else:
+        GPIO.output(esp_en, 0) #Enable the ESP
+        print("EN_PIN_HIGH = 0 por default")
     arduino.reset_input_buffer() #A Serial function member to reset the buffer
     uart = ReadLine(arduino) #Serial communication optimization class declaration  with a serial device as an argument
     
