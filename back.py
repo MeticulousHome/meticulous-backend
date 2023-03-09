@@ -269,7 +269,7 @@ def detect_arduino_port():
     for port in ['/dev/ttyS0', '/dev/ttyUSB0']:
         try:
             ser = serial.Serial(port, baudrate=115200, timeout=1)
-            time.sleep(.2)
+            time.sleep(2)
             # Wait for incoming data
             incoming_data = ser.readline()
             ser.close()
