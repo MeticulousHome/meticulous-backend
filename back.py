@@ -252,10 +252,13 @@ def msg(sid, data):
         return 0
 
 
-# @sio.on('calibration') #Calibration is embedded in action
-# def msg(sid, data):
-#     _input = "action,"+data+"\x03"
-#     arduino.write(str.encode(_input))
+@sio.on('calibration') #Calibration is embedded in action
+def msg(sid, data):
+    know_weight = "100.0"
+    current_weight = data_sensors["weight"]
+    data =know_weight+","+str(current_weight)
+    _input = "action,"+data+"\x03"
+    arduino.write(str.encode(_input))
 
 
 
