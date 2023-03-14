@@ -209,10 +209,10 @@ def msg(sid, data):
     print(data)
     arduino.write(data.encode("utf-8"))
 
-# @sio.on('parameters')
-# def msg(sid, data):
-#     json_data = json.dumps(data, indent=1, sort_keys=False)
-#     send_json_hash(json_data)
+@sio.on('parameters')
+def msg(sid, data):
+    json_data = json.dumps(data, indent=1, sort_keys=False)
+    send_json_hash(json_data)
 
 @sio.on('preset')
 def msg(sid, data):
