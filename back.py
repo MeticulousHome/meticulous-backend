@@ -209,10 +209,10 @@ def msg(sid, data):
     print(data)
     arduino.write(data.encode("utf-8"))
 
-@sio.on('parameters')
-def msg(sid, data):
-    json_data = json.dumps(data, indent=1, sort_keys=False)
-    send_json_hash(json_data)
+# @sio.on('parameters')
+# def msg(sid, data):
+#     json_data = json.dumps(data, indent=1, sort_keys=False)
+#     send_json_hash(json_data)
 
 @sio.on('preset')
 def msg(sid, data):
@@ -252,11 +252,13 @@ def msg(sid, data):
         return 0
 
 
-@sio.on('calibration') #Calibration is embedded in action
+
+#@sio.on('parameters') #To hardcode using send config
+@sio.on('calibration') #Use when calibration it is implemented
 def msg(sid, data):
     know_weight = "100.0"
     current_weight = data_sensors["weight"]
-    data =know_weight+","+str(current_weight)
+    data ="calibration"+","+know_weight+","+str(current_weight)
     _input = "action,"+data+"\x03"
     arduino.write(str.encode(_input))
 
