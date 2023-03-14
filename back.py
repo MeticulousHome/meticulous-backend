@@ -379,12 +379,13 @@ def read_arduino():
 
                 c1 = old_status == "heating"
                 c2 = data_sensors["status"] == "preinfusion"
+                c3 = data_sensors["status"] == "infusion"
                 # print(c1, end = "")
                 # print(c2, end = "")
                 # print(len(data_sensors["status"]), end = "")
 
                 # time = time.time() - start_time
-                if (c1 and c2):
+                if ((c1 and c2) or (c1 and c3)):
                     time_flag = True
                     start_time = time.time()
                     print("start_time: {:.1f}".format(start_time))
