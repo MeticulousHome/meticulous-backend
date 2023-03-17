@@ -400,8 +400,10 @@ def read_arduino():
                 old_status = data_sensors["status"]
                 # print(data_sensors["status"])
             elif data_str.find("CCW") > -1:
+                time.sleep(0.03)
                 ccw_function()
             elif data_str.find("CW") > -1:
+                time.sleep(0.03)
                 cw_function()
             elif data_str.find("push") > -1:
                 encoder_push_function()
