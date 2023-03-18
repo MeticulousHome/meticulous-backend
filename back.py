@@ -158,6 +158,8 @@ def encoder_push_function():
 def encoder_double_function():
     keyboard.press('x')
     keyboard.release('x')
+    _input = "action,"+"stop"+"\x03"
+    arduino.write(str.encode(_input))
     print("DOUBLE ENCODER!")
 
 def encoder_long_function():
