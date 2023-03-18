@@ -164,8 +164,7 @@ def encoder_double_function():
     print("DOUBLE ENCODER!")
 
 def encoder_long_function():
-    keyboard.press('e')
-    keyboard.release('e')
+    start_function()
     print("LONG ENCODER!")
 
 def start_function():
