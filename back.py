@@ -207,7 +207,11 @@ def disconnect(sid):
 
 @sio.on('action')
 def msg(sid, data):
-    time.sleep(0.5)
+    if data == "start":
+        start_function()
+        time.sleep(0.5)
+    
+    time.sleep(0.05)
     data = "action,"+data+"\x03"
     print(data)
     arduino.write(data.encode("utf-8"))
