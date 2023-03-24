@@ -12,11 +12,12 @@ with open("version.py", "r") as f:
 version_parts = current_version.split("-")[0].split(".")
 
 # Parse the command-line argument, or default to "build"
-if len(sys.argv) >= 2 and sys.argv[1] in ["major", "minor", "patch"]:
-    part_to_increment = sys.argv[1]
-    version_parts = version_parts[:3]
-else:
-    part_to_increment = "build"
+part_to_increment = "build"
+if len(sys.argv) >= 2: 
+    part_arg = sys.argv[1].replace("-", "")
+    if part_arg in ["major", "minor", "patch", "build"]:
+        part_to_increment = part_arg
+        version_parts = version_parts[:3]
 
 # Increment the version number
 if part_to_increment == "major":
