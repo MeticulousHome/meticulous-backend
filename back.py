@@ -498,7 +498,6 @@ def read_arduino():
                 if print_status==True:
                     if sensor_status==True:
                         print(data_str, end="")
-                    
                     else:
                         if 'Sensors' not in data_str:
                             print(data_str)
@@ -552,6 +551,7 @@ async def live():
             "t_tube": data_sensor_temperatures["tube"],
             "t_valv": data_sensor_temperatures["valve"],
         })
+
         await sio.emit("comunication", {
             "p": data_sensor_comunication["pressure_sensor"],
             "a_0": data_sensor_comunication["adc_0"],
@@ -559,6 +559,7 @@ async def live():
             "a_2": data_sensor_comunication["adc_2"],
             "a_3": data_sensor_comunication["adc_3"]
         })
+
         await sio.emit("actuators", {
             "m_pos": data_sensor_actuators["motor_position"],
             "m_spd": data_sensor_actuators["motor_speed"],
@@ -566,7 +567,6 @@ async def live():
             "m_cur": data_sensor_actuators["motor_current"],
             "bh_pwr": data_sensor_actuators["bandheater_power"]
         })
-
         await sio.sleep(SAMPLE_TIME)
         i = i + 1
 
