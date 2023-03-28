@@ -22,6 +22,18 @@ file_path = '/home/meticulous/meticulous-raspberry-setup/backend_for_esp32/logs/
 buffer=""
 contador= 'contador.txt'
 
+usaFormatoDeColores = True
+
+borrarFormato = "\033[0m"
+colores = [
+    "\033[1;31m", # Rojo
+    "\033[1;32m", # Verde
+    "\033[1;33m", # Amarillo
+    "\033[1;34m", # Azul
+    "\033[1;35m", # Morado
+    "\033[1;36m", # Cian
+]
+
 class ReadLine:
     def __init__(self, s):
         self.buf = bytearray()
@@ -117,6 +129,33 @@ data_sensors = {
     "status": "idle",
     "time": 0,
     "profile": "idle"
+}
+
+data_sensor_temperatures = {
+    "external_1":1,
+    "external_2":2,
+    "bar_up":3,
+    "bar_mid_up":4,
+    "bar_mid_down": 5,
+    "bar_down": 6,
+    "tube": 7,
+    "valve": 8
+}
+
+data_sensor_comunication = {
+    "pressure_sensor": 1,
+    "adc_0": 2,
+    "adc_1": 3,
+    "adc_2": 4,
+    "adc_3": 5
+}
+
+data_sensor_actuators = {
+    "motor_position": 1,
+    "motor_speed": 2,
+    "motor_power": 3,
+    "motor_current": 4,
+    "bandheater_power": 5
 }
 
 # "d" -> double click tare
@@ -370,6 +409,7 @@ def read_arduino():
             if save_str:
                 add_to_buffer(data_str)
             data_str_sensors = data_str.split(',')
+
             if data_str_sensors[0] == 'Data':
                 data_sensors["pressure"] = data_str_sensors[1]
                 data_sensors["flow"]= data_str_sensors[2]
@@ -407,6 +447,37 @@ def read_arduino():
 
                 old_status = data_sensors["status"]
                 # print(data_sensors["status"])
+
+            elif data_str_sensors[0] == 'Sensors':
+
+                if usaFormatoDeColores:
+                    sensor_values = data_str_sensors[1].split('\033[0m')
+
+                    data_sensor_temperatures["external_1"] = sensor_values[1].split('\033[1;31m')[0]
+                    data_sensor_temperatures["external_2"] = sensor_values[2].split('\033[1;32m')[0]
+                    data_sensor_temperatures["bar_up"] = sensor_values[3].split('\033[1;32m')[0]
+                    data_sensor_temperatures["bar_mid_up"] = sensor_values[4].split('\033[1;32m')[0]
+                    data_sensor_temperatures["bar_mid_down"] = sensor_values[5].split('\033[1;32m')[0]
+                    data_sensor_temperatures["bar_down"] = sensor_values[6].split('\033[1;32m')[0]
+                    data_sensor_temperatures["tube"] = sensor_values[7].split('\033[1;33m')[0]
+                    data_sensor_temperatures["valve"] = sensor_values[8].split('\033[1;34m')[0]
+
+                    data_sensor_actuators["motor_position"]=sensor_values[9].split('\033[1;34m')[0]
+                    data_sensor_actuators["motor_speed"]=sensor_values[10].split('\033[1;36m')[0]
+                    data_sensor_actuators["motor_power"]=sensor_values[11].split('\033[1;36m')[0]
+                    data_sensor_actuators["motor_current"]=sensor_values[12].split('\033[1;36m')[0]
+                    data_sensor_actuators["bandheater_power"]=sensor_values[13].split('\033[1;35m')[0]
+
+                    data_sensor_comunication["preassure_sensor"] = sensor_values[14].split('\033[1;35m')[0]
+                    data_sensor_comunication["adc_0"] = sensor_values[15].split('\033[1;35m')[0]
+                    data_sensor_comunication["adc_1"] = sensor_values[16].split('\033[1;35m')[0]
+                    data_sensor_comunication["adc_2"] = sensor_values[17].split('\033[1;35m')[0]
+                    data_sensor_comunication["adc_3"] = sensor_values[18].split('\n')[0]
+
+                #else:
+                #    para cuando no usa formato de colores
+                
+
             elif data_str.find("CCW") > -1:
                 ccw_function()
             elif data_str.find("CW") > -1:
@@ -470,6 +541,32 @@ async def live():
             "time": str(data_sensors["time"]),
             "profile": data_sensors["profile"]
         })
+
+        await sio.emit("sensors", {
+            "t_ext_1": data_sensor_temperatures["external_1"],
+            "t_ext_2": data_sensor_temperatures["external_2"],
+            "t_bar_up": data_sensor_temperatures["bar_up"],
+            "t_bar_mu": data_sensor_temperatures["bar_mid_up"],
+            "t_bar_md": data_sensor_temperatures["bar_mid_down"],
+            "t_bar_down": data_sensor_temperatures["bar_down"],
+            "t_tube": data_sensor_temperatures["tube"],
+            "t_valv": data_sensor_temperatures["valve"],
+        })
+        await sio.emit("comunication", {
+            "p": data_sensor_comunication["pressure_sensor"],
+            "a_0": data_sensor_comunication["adc_0"],
+            "a_1": data_sensor_comunication["adc_1"],
+            "a_2": data_sensor_comunication["adc_2"],
+            "a_3": data_sensor_comunication["adc_3"]
+        })
+        await sio.emit("actuators", {
+            "m_pos": data_sensor_actuators["motor_position"],
+            "m_spd": data_sensor_actuators["motor_speed"],
+            "m_pwr": data_sensor_actuators["motor_power"],
+            "m_cur": data_sensor_actuators["motor_current"],
+            "bh_pwr": data_sensor_actuators["bandheater_power"]
+        })
+
         await sio.sleep(SAMPLE_TIME)
         i = i + 1
 
