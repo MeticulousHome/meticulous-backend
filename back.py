@@ -23,6 +23,7 @@ buffer=""
 contador= 'contador.txt'
 
 usaFormatoDeColores = True
+infoSolicited = False
 
 borrarFormato = "\033[0m"
 colores = [
@@ -158,6 +159,14 @@ data_sensor_actuators = {
     "bandheater_power": 5
 }
 
+software_info = {
+    "name": 1,
+    "dashboardV": 2,
+    "lcdV": 3,
+    "firmwareV": 4,
+    "backendV": 5
+}
+
 # "d" -> double click tare
 # "s" -> long tare
 # "x" -> double click encoder
@@ -255,6 +264,10 @@ def msg(sid, data):
         data = "action,"+data+"\x03"
         print(data)
         arduino.write(data.encode("utf-8"))
+
+@sio.on('askForInfo')
+def setSendInfo(sid):
+    infoSolicited = True
 
 @sio.on('parameters')
 def msg(sid, data):
@@ -567,6 +580,19 @@ async def live():
             "m_cur": data_sensor_actuators["motor_current"],
             "bh_pwr": data_sensor_actuators["bandheater_power"]
         })
+
+        if infoSolicited:
+            await sio.emit("INFO", {
+                "name": data_sensors["status"],
+                "sensors": {
+                    "p": data_sensors["pressure"],
+                    "f": data_sensors["flow"],
+                    "w": data_sensors["weight"],
+                    "t": data_sensors["temperature"],
+                },
+                "time": str(data_sensors["time"]),
+                "profile": data_sensors["profile"]
+            })
         await sio.sleep(SAMPLE_TIME)
         i = i + 1
 
@@ -643,6 +669,8 @@ def main():
 
     log_thread=threading.Thread(target=log)
     log_thread.start()
+
+    
     
     app = tornado.web.Application(
         [
