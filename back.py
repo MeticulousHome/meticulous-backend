@@ -144,7 +144,7 @@ data_sensor_temperatures = {
 }
 
 data_sensor_comunication = {
-    "pressure_sensor": 1,
+    "preassure_sensor": 1,
     "adc_0": 2,
     "adc_1": 3,
     "adc_2": 4,
@@ -566,7 +566,7 @@ async def live():
         })
 
         await sio.emit("comunication", {
-            "p": data_sensor_comunication["pressure_sensor"],
+            "p": data_sensor_comunication["preassure_sensor"],
             "a_0": data_sensor_comunication["adc_0"],
             "a_1": data_sensor_comunication["adc_1"],
             "a_2": data_sensor_comunication["adc_2"],
