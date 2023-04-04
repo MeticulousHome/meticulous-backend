@@ -160,7 +160,7 @@ data_sensor_actuators = {
 }
 
 software_info = {
-    "name": 1,
+    "name": "coffeemaker",
     "dashboardV": 2,
     "lcdV": 3,
     "firmwareV": 4,
@@ -267,6 +267,7 @@ def msg(sid, data):
 
 @sio.on('askForInfo')
 def setSendInfo(sid):
+    global infoSolicited
     infoSolicited = True
 
 @sio.on('parameters')
@@ -528,6 +529,7 @@ def data_treatment():
 async def live():
 
     global coffee_status
+    global infoSolicited
 
     # RotaryEncoder(down_switch,up_switch,menu_switch, lambda event: asyncio.run(tuner_event(event)))
 
@@ -584,15 +586,11 @@ async def live():
         if infoSolicited:
             infoSolicited = False
             await sio.emit("INFO", {
-                "name": data_sensors["status"],
-                "sensors": {
-                    "p": data_sensors["pressure"],
-                    "f": data_sensors["flow"],
-                    "w": data_sensors["weight"],
-                    "t": data_sensors["temperature"],
-                },
-                "time": str(data_sensors["time"]),
-                "profile": data_sensors["profile"]
+                "name": software_info["name"],
+                "dashboardV" : software_info["dashboardV"],
+                "lcdV" : software_info["lcdV"],
+                "firmwareV" : software_info["firmwareV"],
+                "backendV" : software_info["backendV"],
             })
         await sio.sleep(SAMPLE_TIME)
         i = i + 1
