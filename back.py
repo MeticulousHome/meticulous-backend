@@ -582,6 +582,7 @@ async def live():
         })
 
         if infoSolicited:
+            infoSolicited = False
             await sio.emit("INFO", {
                 "name": data_sensors["status"],
                 "sensors": {
@@ -656,7 +657,7 @@ def send_data():
             # else:
             #     _input = "action,"+_input+"\x03"
             #     arduino.write(str.encode(_input))
-    
+            
 def main():
     parse_command_line()
     data_thread = threading.Thread(target=data_treatment)
@@ -670,7 +671,7 @@ def main():
     log_thread=threading.Thread(target=log)
     log_thread.start()
 
-    
+
     
     app = tornado.web.Application(
         [
