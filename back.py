@@ -15,6 +15,8 @@ import os
 import os.path
 from operator import itemgetter
 import hashlib
+import version as backend
+import subprocess
 
 comando = '/home/meticulous/meticulous-raspberry-setup/backend_for_esp32/clean_logs.sh'
 lock = threading.Lock()
@@ -23,7 +25,12 @@ buffer=""
 contador= 'contador.txt'
 
 usaFormatoDeColores = True
-infoSolicited = False
+
+sendInfoToFront = False
+
+infoReady = False
+
+#VERSION INFORMATION
 
 borrarFormato = "\033[0m"
 colores = [
@@ -81,6 +88,32 @@ GPIO.setup(en, GPIO.OUT)
 GPIO.setup(io0, GPIO.OUT)
 GPIO.setup(esp_en, GPIO.OUT)
 GPIO.setup(lcd_en, GPIO.OUT)
+
+
+def gatherVersionInfo():
+    global infoSolicited
+    software_info["name"] = "Meticulous Espresso"
+    software_info["backendV"] = backend.VERSION
+
+    #OBTENEMOS EL NOMBRE DE LA APLICACION DE LA LCD
+    auxFile = open(os.path.expanduser("~/.xsession"))
+    lcd_ui_name = auxFile.read().split('\n')[2].split()[1]
+
+    #OBTENEMOS SU VERSION USANDO LOS COMANDOS DPKG y GREP
+    command = f'dpkg --list | grep {lcd_ui_name}'
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    lcd_version = result.stdout.split()[2]
+
+    #_solicitud = "action,info\x03"
+    #arduino.write(str.encode(_solicitud))
+    infoSolicited = True
+
+    software_info["lcdV"] = lcd_version
+
+    software_info["dashboardV"] = 1.0
+    software_info["firmwareV"] = 0.0
+
+    #SOLICITAMOS LA VERSION DE FIRMWARE A LA ESP
 
 def turn_on():
     if os.environ.get("EN_PIN_HIGH") == "0":
@@ -160,7 +193,7 @@ data_sensor_actuators = {
 }
 
 software_info = {
-    "name": "coffeemaker",
+    "name": "Meticulous Espresso",
     "dashboardV": 2,
     "lcdV": 3,
     "firmwareV": 4,
@@ -267,8 +300,8 @@ def msg(sid, data):
 
 @sio.on('askForInfo')
 def setSendInfo(sid):
-    global infoSolicited
-    infoSolicited = True
+    global sendInfoToFront
+    sendInfoToFront = True
 
 @sio.on('parameters')
 def msg(sid, data):
@@ -380,6 +413,8 @@ def log():
         time.sleep(5)
 
 def read_arduino():
+    #global infoReady
+
     #Variables to save data
     idle_in_data = False
     save_str = False
@@ -416,7 +451,7 @@ def read_arduino():
                 if idle_in_data:
                     save_str = False
                 else:
-                    save_str = True
+                    save_str = True   
             else:
                 save_str = True
 
@@ -482,33 +517,33 @@ def read_arduino():
                 tare_long_function()
             elif data_str.find("strt") > -1:
                 start_function()
+
+            elif data_str_sensors[0] == 'Sensors':
+                if usaFormatoDeColores:
+                    sensor_values = data_str_sensors[1].split('\033[0m')
+                    data_sensor_temperatures["external_1"] = sensor_values[1].split('\033[1;31m')[0]
+                    data_sensor_temperatures["external_2"] = sensor_values[2].split('\033[1;32m')[0]
+                    data_sensor_temperatures["bar_up"] = sensor_values[3].split('\033[1;32m')[0]
+                    data_sensor_temperatures["bar_mid_up"] = sensor_values[4].split('\033[1;32m')[0]
+                    data_sensor_temperatures["bar_mid_down"] = sensor_values[5].split('\033[1;32m')[0]
+                    data_sensor_temperatures["bar_down"] = sensor_values[6].split('\033[1;32m')[0]
+                    data_sensor_temperatures["tube"] = sensor_values[7].split('\033[1;33m')[0]
+                    data_sensor_temperatures["valve"] = sensor_values[8].split('\033[1;34m')[0]
+                    data_sensor_actuators["motor_position"]=sensor_values[9].split('\033[1;34m')[0]
+                    data_sensor_actuators["motor_speed"]=sensor_values[10].split('\033[1;36m')[0]
+                    data_sensor_actuators["motor_power"]=sensor_values[11].split('\033[1;36m')[0]
+                    data_sensor_actuators["motor_current"]=sensor_values[12].split('\033[1;36m')[0]
+                    data_sensor_actuators["bandheater_power"]=sensor_values[13].split('\033[1;35m')[0]
+                    data_sensor_comunication["preassure_sensor"] = sensor_values[14].split('\033[1;35m')[0]
+                    data_sensor_comunication["adc_0"] = sensor_values[15].split('\033[1;35m')[0]
+                    data_sensor_comunication["adc_1"] = sensor_values[16].split('\033[1;35m')[0]
+                    data_sensor_comunication["adc_2"] = sensor_values[17].split('\033[1;35m')[0]
+                    data_sensor_comunication["adc_3"] = sensor_values[18].split('\n')[0]
+            elif data_str_sensors[0] == 'SoftwareInfo':
+                software_info["firmwareV"] = data_str_sensors[1].split('v')[1]
+                infoReady = True
             else:
-                if data_str_sensors[0] == 'Sensors':
-
-                    if usaFormatoDeColores:
-                        sensor_values = data_str_sensors[1].split('\033[0m')
-
-                        data_sensor_temperatures["external_1"] = sensor_values[1].split('\033[1;31m')[0]
-                        data_sensor_temperatures["external_2"] = sensor_values[2].split('\033[1;32m')[0]
-                        data_sensor_temperatures["bar_up"] = sensor_values[3].split('\033[1;32m')[0]
-                        data_sensor_temperatures["bar_mid_up"] = sensor_values[4].split('\033[1;32m')[0]
-                        data_sensor_temperatures["bar_mid_down"] = sensor_values[5].split('\033[1;32m')[0]
-                        data_sensor_temperatures["bar_down"] = sensor_values[6].split('\033[1;32m')[0]
-                        data_sensor_temperatures["tube"] = sensor_values[7].split('\033[1;33m')[0]
-                        data_sensor_temperatures["valve"] = sensor_values[8].split('\033[1;34m')[0]
-
-                        data_sensor_actuators["motor_position"]=sensor_values[9].split('\033[1;34m')[0]
-                        data_sensor_actuators["motor_speed"]=sensor_values[10].split('\033[1;36m')[0]
-                        data_sensor_actuators["motor_power"]=sensor_values[11].split('\033[1;36m')[0]
-                        data_sensor_actuators["motor_current"]=sensor_values[12].split('\033[1;36m')[0]
-                        data_sensor_actuators["bandheater_power"]=sensor_values[13].split('\033[1;35m')[0]
-
-                        data_sensor_comunication["preassure_sensor"] = sensor_values[14].split('\033[1;35m')[0]
-                        data_sensor_comunication["adc_0"] = sensor_values[15].split('\033[1;35m')[0]
-                        data_sensor_comunication["adc_1"] = sensor_values[16].split('\033[1;35m')[0]
-                        data_sensor_comunication["adc_2"] = sensor_values[17].split('\033[1;35m')[0]
-                        data_sensor_comunication["adc_3"] = sensor_values[18].split('\n')[0]
-
+                
                 if print_status==True:
                     if sensor_status==True:
                         print(data_str, end="")
@@ -529,6 +564,8 @@ def data_treatment():
 async def live():
 
     global coffee_status
+    global sendInfoToFront
+    global infoReady
     global infoSolicited
 
     # RotaryEncoder(down_switch,up_switch,menu_switch, lambda event: asyncio.run(tuner_event(event)))
@@ -541,8 +578,16 @@ async def live():
     SAMPLE_TIME = 0.1
     elapsed_time = 0
     i = 0
-    time = 0
+    _time = time.time()
     while True:
+
+        elapsed_time = time.time() - _time
+        if infoSolicited or (elapsed_time > 2 and not infoReady):
+            _time = time.time()
+            _solicitud = "action,info\x03"
+            arduino.write(str.encode(_solicitud))
+            infoSolicited = False
+
         await sio.emit("status", {
             "name": data_sensors["status"],
             # "name" : "idle",
@@ -583,8 +628,8 @@ async def live():
             "bh_pwr": data_sensor_actuators["bandheater_power"]
         })
 
-        if infoSolicited:
-            infoSolicited = False
+        if sendInfoToFront:
+            sendInfoToFront = False
             await sio.emit("INFO", {
                 "name": software_info["name"],
                 "dashboardV" : software_info["dashboardV"],
@@ -600,9 +645,11 @@ def send_data():
     print_status=True
     global sensor_status
     sensor_status=False
+    global sendInfoToFront
 
     while (True):
         _input = input()
+
         if _input == "reset":
             tr = threading.Thread(target=reboot_esp)
             tr.deamon = True
@@ -657,7 +704,12 @@ def send_data():
             #     arduino.write(str.encode(_input))
             
 def main():
+
+    
     parse_command_line()
+
+    gatherVersionInfo()
+
     data_thread = threading.Thread(target=data_treatment)
     # data_thread.daemon = True
     data_thread.start()
@@ -668,8 +720,6 @@ def main():
 
     log_thread=threading.Thread(target=log)
     log_thread.start()
-
-
     
     app = tornado.web.Application(
         [
