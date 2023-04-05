@@ -104,8 +104,6 @@ def gatherVersionInfo():
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
     lcd_version = result.stdout.split()[2]
 
-    #_solicitud = "action,info\x03"
-    #arduino.write(str.encode(_solicitud))
     infoSolicited = True
 
     software_info["lcdV"] = lcd_version
@@ -302,6 +300,15 @@ def msg(sid, data):
 def setSendInfo(sid):
     global sendInfoToFront
     sendInfoToFront = True
+
+@sio.on('toggle-fans')
+def setSendInfo(sid, data):
+    _input = "action,"
+    if data:
+        _input = _input + "fans-on" + "\x03"
+    else:
+        _input = _input + "fans-off" + "\x03"
+    arduino.write(str.encode(_input))
 
 @sio.on('parameters')
 def msg(sid, data):
