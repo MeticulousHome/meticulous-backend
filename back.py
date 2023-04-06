@@ -195,7 +195,8 @@ software_info = {
     "dashboardV": 2,
     "lcdV": 3,
     "firmwareV": 4,
-    "backendV": 5
+    "backendV": 5,
+    "fanStatus": "on",
 }
 
 # "d" -> double click tare
@@ -548,8 +549,9 @@ def read_arduino():
                     data_sensor_comunication["adc_1"] = sensor_values[16].split('\033[1;35m')[0]
                     data_sensor_comunication["adc_2"] = sensor_values[17].split('\033[1;35m')[0]
                     data_sensor_comunication["adc_3"] = sensor_values[18].split('\n')[0]
-            elif data_str_sensors[0] == 'SoftwareInfo':
+            elif data_str_sensors[0] == 'ESPInfo':
                 software_info["firmwareV"] = data_str_sensors[1].split('v')[1]
+                software_info["fanStatus"] = data_str_sensors[2].strip('\r\n')
                 infoReady = True
             else:
                 
@@ -591,7 +593,7 @@ async def live():
     while True:
 
         elapsed_time = time.time() - _time
-        if infoSolicited or (elapsed_time > 2 and not infoReady):
+        if infoSolicited or (elapsed_time > 2 and not infoReady) or sendInfoToFront:
             _time = time.time()
             _solicitud = "action,info\x03"
             arduino.write(str.encode(_solicitud))
@@ -645,6 +647,7 @@ async def live():
                 "lcdV" : software_info["lcdV"],
                 "firmwareV" : software_info["firmwareV"],
                 "backendV" : software_info["backendV"],
+                "fanStatus": software_info["fanStatus"],
             })
         await sio.sleep(SAMPLE_TIME)
         i = i + 1
