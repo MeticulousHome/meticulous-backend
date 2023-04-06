@@ -302,13 +302,15 @@ def setSendInfo(sid):
     sendInfoToFront = True
 
 @sio.on('toggle-fans')
-def setSendInfo(sid, data):
-    _input = "action,"
+def toggleFans(sid, data):
+    _solicitud = ""
     if data:
-        _input = _input + "fans-on" + "\x03"
+        print("fans on")
+        _solicitud ="action,fans-on\x03"
     else:
-        _input = _input + "fans-off" + "\x03"
-    arduino.write(str.encode(_input))
+        print("fans off")
+        _solicitud = "action,fans-off\x03"
+    arduino.write(str.encode(_solicitud))
 
 @sio.on('parameters')
 def msg(sid, data):
@@ -420,7 +422,7 @@ def log():
         time.sleep(5)
 
 def read_arduino():
-    #global infoReady
+    global infoReady
 
     #Variables to save data
     idle_in_data = False
