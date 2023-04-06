@@ -312,6 +312,7 @@ def toggleFans(sid, data):
         print("fans off")
         _solicitud = "action,fans-off\x03"
     arduino.write(str.encode(_solicitud))
+    software_info["fanStatus"] = 'on' if data else 'off'
 
 @sio.on('parameters')
 def msg(sid, data):
