@@ -283,7 +283,7 @@ def connect(sid, environ):
 @sio.event
 def disconnect(sid):
     print('disconnect ', sid)
-
+sendInfoToFront
 @sio.on('action')
 def msg(sid, data):
     if data == "start":
@@ -301,6 +301,11 @@ def msg(sid, data):
 def setSendInfo(sid):
     global sendInfoToFront
     sendInfoToFront = True
+
+@sio.on('stopInfo')
+def StopInfo(sid):
+    global sendInfoToFront
+    sendInfoToFront = False
 
 @sio.on('toggle-fans')
 def toggleFans(sid, data):
@@ -594,11 +599,10 @@ async def live():
     while True:
 
         elapsed_time = time.time() - _time
-        if infoSolicited or (elapsed_time > 2 and not infoReady) or sendInfoToFront:
+        if infoSolicited and (elapsed_time > 2 and not infoReady):
             _time = time.time()
             _solicitud = "action,info\x03"
             arduino.write(str.encode(_solicitud))
-            infoSolicited = False
 
         await sio.emit("status", {
             "name": data_sensors["status"],
@@ -613,35 +617,34 @@ async def live():
             "profile": data_sensors["profile"]
         })
 
-        await sio.emit("sensors", {
-            "t_ext_1": data_sensor_temperatures["external_1"],
-            "t_ext_2": data_sensor_temperatures["external_2"],
-            "t_bar_up": data_sensor_temperatures["bar_up"],
-            "t_bar_mu": data_sensor_temperatures["bar_mid_up"],
-            "t_bar_md": data_sensor_temperatures["bar_mid_down"],
-            "t_bar_down": data_sensor_temperatures["bar_down"],
-            "t_tube": data_sensor_temperatures["tube"],
-            "t_valv": data_sensor_temperatures["valve"],
-        })
-
-        await sio.emit("comunication", {
-            "p": data_sensor_comunication["preassure_sensor"],
-            "a_0": data_sensor_comunication["adc_0"],
-            "a_1": data_sensor_comunication["adc_1"],
-            "a_2": data_sensor_comunication["adc_2"],
-            "a_3": data_sensor_comunication["adc_3"]
-        })
-
-        await sio.emit("actuators", {
-            "m_pos": data_sensor_actuators["motor_position"],
-            "m_spd": data_sensor_actuators["motor_speed"],
-            "m_pwr": data_sensor_actuators["motor_power"],
-            "m_cur": data_sensor_actuators["motor_current"],
-            "bh_pwr": data_sensor_actuators["bandheater_power"]
-        })
-
         if sendInfoToFront:
-            sendInfoToFront = False
+            await sio.emit("sensors", {
+                "t_ext_1": data_sensor_temperatures["external_1"],
+                "t_ext_2": data_sensor_temperatures["external_2"],
+                "t_bar_up": data_sensor_temperatures["bar_up"],
+                "t_bar_mu": data_sensor_temperatures["bar_mid_up"],
+                "t_bar_md": data_sensor_temperatures["bar_mid_down"],
+                "t_bar_down": data_sensor_temperatures["bar_down"],
+                "t_tube": data_sensor_temperatures["tube"],
+                "t_valv": data_sensor_temperatures["valve"],
+            })
+            
+            await sio.emit("comunication", {
+                "p": data_sensor_comunication["preassure_sensor"],
+                "a_0": data_sensor_comunication["adc_0"],
+                "a_1": data_sensor_comunication["adc_1"],
+                "a_2": data_sensor_comunication["adc_2"],
+                "a_3": data_sensor_comunication["adc_3"]
+            })
+    
+            await sio.emit("actuators", {
+                "m_pos": data_sensor_actuators["motor_position"],
+                "m_spd": data_sensor_actuators["motor_speed"],
+                "m_pwr": data_sensor_actuators["motor_power"],
+                "m_cur": data_sensor_actuators["motor_current"],
+                "bh_pwr": data_sensor_actuators["bandheater_power"]
+            })
+    
             await sio.emit("INFO", {
                 "name": software_info["name"],
                 "dashboardV" : software_info["dashboardV"],
@@ -658,7 +661,6 @@ def send_data():
     print_status=True
     global sensor_status
     sensor_status=False
-    global sendInfoToFront
 
     while (True):
         _input = input()
