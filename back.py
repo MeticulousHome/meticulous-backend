@@ -555,9 +555,20 @@ def read_arduino():
                     data_sensor_comunication["adc_1"] = sensor_values[16].split('\033[1;35m')[0]
                     data_sensor_comunication["adc_2"] = sensor_values[17].split('\033[1;35m')[0]
                     data_sensor_comunication["adc_3"] = sensor_values[18].split('\n')[0]
+
             elif data_str_sensors[0] == 'ESPInfo':
-                software_info["firmwareV"] = data_str_sensors[1].split('v')[1]
-                software_info["fanStatus"] = data_str_sensors[2].strip('\r\n')
+
+                try:
+                    software_info["fanStatus"] = data_str_sensors[2].strip('\r\n')
+                except:
+                    add_to_buffer("(E): ESP did not send fanStatus correctly")
+
+                try:
+                    software_info["firmwareV"] = data_str_sensors[1]
+                except:
+                    software_info["firmwareV"]  = "not found"
+                    add_to_buffer("(E): ESP did not send firmware version correctly")
+
                 infoReady = True
             else:
                 
