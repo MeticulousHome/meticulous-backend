@@ -6,7 +6,8 @@ For the correct functioning, you must create a ".env" file type and copy the fol
 
     # PINES_VERSION = V3 # PCB with 2 ADS
     PINES_VERSION = V3.1 # PCB with 3 ADS
-    SWITCH_VERSION = V3.4 # enable switch at 0 
+    EN_PIN_HIGH = 0 # enable switch at 0 
+    # EN_PIN_HIGH = 1  #enable switch at 1
 
 The sign **#** is for comments. The "V3" value refers to the FIKA PCB with two ADS and the V3.1 value refers to the FIKA PCB withs three ADS. 
 
@@ -175,3 +176,10 @@ The line **parse_command_line()** decode the JSON
 There are three threads, one is used for read the data from the serial device. The second is used for send_data function. The third is used for enable de PCB according to the status on/off button. 
 
 And the last part is start the communication between the frontend and the backend. 
+
+## Versioning
+This package uses `version.py` to track its version, which is an auto-generated file and should not be edited manually. To update the version number, run the `update_version.py` script with one e following arguments: `patch`, `minor`, or `major`. The script will increment the specified part of the version number by one.
+
+This package follows semantic versioning, which means that version numbers are in the format `MAJOR.MINOR.PATCH`. For more information about semantic versioning and how to determine which part of the version number to increment, please refer to https://semver.org/.
+
+During development, we should keep the major version number at 0, such as `0.x.x`. Once the package is ready for production use, we will update the major version number to 1, such as `1.x.x`.
