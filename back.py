@@ -467,7 +467,7 @@ def read_arduino():
                 if idle_in_data:
                     save_str = False
                 else:
-                    save_str = True   
+                    save_str = True  
             else:
                 save_str = True
 
@@ -516,7 +516,6 @@ def read_arduino():
                 #else:
                 #    para cuando no usa formato de colores
                 
-
             elif data_str.find("CCW") > -1:
                 ccw_function()
             elif data_str.find("CW") > -1:
@@ -536,26 +535,28 @@ def read_arduino():
 
             elif data_str_sensors[0] == 'Sensors':
                 if usaFormatoDeColores:
-                    sensor_values = data_str_sensors[1].split('\033[0m')
-                    data_sensor_temperatures["external_1"] = sensor_values[1].split('\033[1;31m')[0]
-                    data_sensor_temperatures["external_2"] = sensor_values[2].split('\033[1;32m')[0]
-                    data_sensor_temperatures["bar_up"] = sensor_values[3].split('\033[1;32m')[0]
-                    data_sensor_temperatures["bar_mid_up"] = sensor_values[4].split('\033[1;32m')[0]
-                    data_sensor_temperatures["bar_mid_down"] = sensor_values[5].split('\033[1;32m')[0]
-                    data_sensor_temperatures["bar_down"] = sensor_values[6].split('\033[1;32m')[0]
-                    data_sensor_temperatures["tube"] = sensor_values[7].split('\033[1;33m')[0]
-                    data_sensor_temperatures["valve"] = sensor_values[8].split('\033[1;34m')[0]
-                    data_sensor_actuators["motor_position"]=sensor_values[9].split('\033[1;34m')[0]
-                    data_sensor_actuators["motor_speed"]=sensor_values[10].split('\033[1;36m')[0]
-                    data_sensor_actuators["motor_power"]=sensor_values[11].split('\033[1;36m')[0]
-                    data_sensor_actuators["motor_current"]=sensor_values[12].split('\033[1;36m')[0]
-                    data_sensor_actuators["bandheater_power"]=sensor_values[13].split('\033[1;35m')[0]
-                    data_sensor_comunication["preassure_sensor"] = sensor_values[14].split('\033[1;35m')[0]
-                    data_sensor_comunication["adc_0"] = sensor_values[15].split('\033[1;35m')[0]
-                    data_sensor_comunication["adc_1"] = sensor_values[16].split('\033[1;35m')[0]
-                    data_sensor_comunication["adc_2"] = sensor_values[17].split('\033[1;35m')[0]
-                    data_sensor_comunication["adc_3"] = sensor_values[18].split('\n')[0]
-
+                    try:
+                        sensor_values = data_str_sensors[1].split('\033[0m')
+                        data_sensor_temperatures["external_1"] = sensor_values[1].split('\033[1;31m')[0]
+                        data_sensor_temperatures["external_2"] = sensor_values[2].split('\033[1;32m')[0]
+                        data_sensor_temperatures["bar_up"] = sensor_values[3].split('\033[1;32m')[0]
+                        data_sensor_temperatures["bar_mid_up"] = sensor_values[4].split('\033[1;32m')[0]
+                        data_sensor_temperatures["bar_mid_down"] = sensor_values[5].split('\033[1;32m')[0]
+                        data_sensor_temperatures["bar_down"] = sensor_values[6].split('\033[1;32m')[0]
+                        data_sensor_temperatures["tube"] = sensor_values[7].split('\033[1;33m')[0]
+                        data_sensor_temperatures["valve"] = sensor_values[8].split('\033[1;34m')[0]
+                        data_sensor_actuators["motor_position"]=sensor_values[9].split('\033[1;34m')[0]
+                        data_sensor_actuators["motor_speed"]=sensor_values[10].split('\033[1;36m')[0]
+                        data_sensor_actuators["motor_power"]=sensor_values[11].split('\033[1;36m')[0]
+                        data_sensor_actuators["motor_current"]=sensor_values[12].split('\033[1;36m')[0]
+                        data_sensor_actuators["bandheater_power"]=sensor_values[13].split('\033[1;35m')[0]
+                        data_sensor_comunication["preassure_sensor"] = sensor_values[14].split('\033[1;35m')[0]
+                        data_sensor_comunication["adc_0"] = sensor_values[15].split('\033[1;35m')[0]
+                        data_sensor_comunication["adc_1"] = sensor_values[16].split('\033[1;35m')[0]
+                        data_sensor_comunication["adc_2"] = sensor_values[17].split('\033[1;35m')[0]
+                        data_sensor_comunication["adc_3"] = sensor_values[18].split('\n')[0]
+                    except:
+                        add_to_buffer("(E): ESP did not send sensor values correctly")
                     if sensor_status:
                         print(data_str, end="")
 
@@ -570,7 +571,7 @@ def read_arduino():
                     software_info["firmwareV"] = data_str_sensors[1]
                 except:
                     software_info["firmwareV"]  = "not found"
-                    add_to_buffer("(E): ESP did not send firmware version correctly")
+                    add_to_buffer("(E): ESP did not send firmware version correctly\n")
 
                 infoReady = True
 
