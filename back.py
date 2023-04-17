@@ -265,6 +265,7 @@ def reboot_esp():
 
 def send_json_hash(json_string):
     json_data = "json\n"+json_string+"\x03"
+    detect_source(json_data)
     add_to_buffer(json_data)
     # print(json_data)
     json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
@@ -275,6 +276,10 @@ def send_json_hash(json_string):
     arduino.write(json_hash.encode("utf-8"))
     arduino.write("\x03".encode("utf-8"))
     arduino.write(json_data.encode("utf-8"))
+
+def detect_source(json_data):
+    source_name = json_data["source"]
+    print(source_name)
 
 @sio.event
 def connect(sid, environ):

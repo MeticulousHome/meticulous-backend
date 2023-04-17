@@ -1,5 +1,6 @@
 {
  "name": "UI",
+ "source": "lcd",
  "stages": [
   {
    "name": "heating",
