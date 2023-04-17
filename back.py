@@ -324,6 +324,10 @@ def msg(sid, data):
     json_data = json.dumps(data, indent=1, sort_keys=False)
     send_json_hash(json_data)
 
+@sio.on('send_profile')
+def forwardJSON(sid,data):
+    sio.emit('save_profile', data)
+
 @sio.on('preset')
 def msg(sid, data):
     # data = data + "hola mundo"
