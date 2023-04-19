@@ -283,7 +283,7 @@ def connect(sid, environ):
 @sio.event
 def disconnect(sid):
     print('disconnect ', sid)
-sendInfoToFront
+#sendInfoToFront
 @sio.on('action')
 def msg(sid, data):
     if data == "start":
@@ -325,8 +325,9 @@ def msg(sid, data):
     send_json_hash(json_data)
 
 @sio.on('send_profile')
-def forwardJSON(sid,data):
-    sio.emit('save_profile', data)
+async def forwardJSON(sid,data):
+    print(json.dumps(data, indent=1, sort_keys=False))
+    await sio.emit('save_profile', data)
 
 @sio.on('preset')
 def msg(sid, data):
