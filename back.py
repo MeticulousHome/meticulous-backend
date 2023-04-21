@@ -30,6 +30,8 @@ sendInfoToFront = False
 
 infoReady = False
 
+lastJSON_source = "None"
+
 #VERSION INFORMATION
 
 borrarFormato = "\033[0m"
@@ -265,8 +267,10 @@ def reboot_esp():
 
 def send_json_hash(json_string):
     json_data = "json\n"+json_string+"\x03"
+    #proof = detect_source(json_string,json_data)
+    #print(proof)
     add_to_buffer(json_data)
-    # print(json_data)
+    print(json_data)
     json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
     add_to_buffer("hash_enviado: " + json_hash + "\n")
     print("hash: ",end="")
@@ -275,6 +279,58 @@ def send_json_hash(json_string):
     arduino.write(json_hash.encode("utf-8"))
     arduino.write("\x03".encode("utf-8"))
     arduino.write(json_data.encode("utf-8"))
+
+#def detect_source(json_string,json_data):
+#    lcd_exist = False
+#    parsed_json = json.loads(json_string)
+#    # all_json = " ".join(json_data.values())
+#    source = parsed_json["source"]
+#    source = source.lower()
+#    stages = parsed_json["stages"]
+#    if "preinfusion" in json_string:
+#        infusion = True
+#    # if source == "lcd":
+#    #     lcd_exist = True
+#    #     # preinfusion_exist = any(stage['name'] == 'preinfusion' for stage in parsed_json['stages'])
+#    #     if 'preinfusion' in parsed_json:
+#    #         preinfusion_exist = True
+#    #     else:
+#    #         preinfusion_exist = False
+#    #     infusion_exist = any(stage['name'] == 'infusion' for stage in parsed_json['stages'])
+#    # else:
+#    #     lcd_exist = False
+#    
+#    return infusion
+
+def detect_source(json_data):
+    source = ""
+    #preinfusion_exists = -1
+    #infusion_exists = -1
+    #preinfusion_10 = 0
+    #preinfusion_11 = 0
+    #infusion_13 = 0
+    #infusion_20 = 0
+
+    source = json_data["source"]
+    source = source.lower()
+    #stages = json_data["stages"]
+    #for i, stage in enumerate(stages):
+    #    print(stage["name"])
+    #    if preinfusion_exists == -1 and stage["name"] == "preinfusion":
+    #        preinfusion_exists = i
+    #        continue
+    #    if infusion_exists == -1 and stage["name"] == "infusion":
+    #        infusion_exists = i
+    #    print(f'{preinfusion_exists},{infusion_exists}')
+    #if preinfusion_exists != -1:
+    #    preinfusion_10 = stages[preinfusion_exists]["nodes"][0]["controllers"][2]["curve"]["points"][0][1]
+    #    preinfusion_11 = stages[preinfusion_exists]["nodes"][1]["controllers"][0]["curve"]["points"][0][1]
+    #if infusion_exists != -1:
+    #    infusion_13 = stages[infusion_exists]["nodes"][1]["controllers"][1]["curve"]["points"][0][1]
+    #    infusion_20 = stages[infusion_exists]["nodes"][2]["controllers"][0]["curve"]["points"][0][1]
+    #print(f'{source},{preinfusion_10},{preinfusion_11},{infusion_13},{infusion_20}')
+    
+    return source
 
 @sio.event
 def connect(sid, environ):
@@ -323,6 +379,7 @@ def toggleFans(sid, data):
 def msg(sid, data):
     json_data = json.dumps(data, indent=1, sort_keys=False)
     send_json_hash(json_data)
+    lastJSON_source = detect_source(data)
 
 @sio.on('send_profile')
 async def forwardJSON(sid,data):
@@ -359,6 +416,7 @@ def msg(sid, data):
             json_data = json.load(file)
             json_data = json.dumps(json_data, indent=1,sort_keys=False)
             send_json_hash(json_data)
+            lastJSON_source = detect_source(json_data)
             #send the instruccion to start the selected choice
             _input = "action,"+"start"+"\x03"
             arduino.write(str.encode(_input))
@@ -626,7 +684,8 @@ async def live():
                 "t": data_sensors["temperature"],
             },
             "time": str(data_sensors["time"]),
-            "profile": data_sensors["profile"]
+            "profile": data_sensors["profile"],
+            "source": lastJSON_source,
         })
 
         if sendInfoToFront:
@@ -694,6 +753,7 @@ def send_data():
                 json_file = json.load(openfile)
             json_data = json.dumps(json_file, indent=1, sort_keys=False)
             send_json_hash(json_data)
+            lastJSON_source = detect_source(json_file)
             json_data=""
             json_file=""
             
