@@ -312,7 +312,7 @@ def detect_source(json_data):
     #infusion_20 = 0
 
     source = json_data["source"]
-    source = source.lower()
+    source = source.upper()
     #stages = json_data["stages"]
     #for i, stage in enumerate(stages):
     #    print(stage["name"])
@@ -329,7 +329,7 @@ def detect_source(json_data):
     #    infusion_13 = stages[infusion_exists]["nodes"][1]["controllers"][1]["curve"]["points"][0][1]
     #    infusion_20 = stages[infusion_exists]["nodes"][2]["controllers"][0]["curve"]["points"][0][1]
     #print(f'{source},{preinfusion_10},{preinfusion_11},{infusion_13},{infusion_20}')
-    
+    print(source)
     return source
 
 @sio.event
@@ -377,9 +377,11 @@ def toggleFans(sid, data):
 
 @sio.on('parameters')
 def msg(sid, data):
+    global lastJSON_source
     json_data = json.dumps(data, indent=1, sort_keys=False)
     send_json_hash(json_data)
     lastJSON_source = detect_source(data)
+    print(lastJSON_source)
 
 @sio.on('send_profile')
 async def forwardJSON(sid,data):
@@ -388,6 +390,7 @@ async def forwardJSON(sid,data):
 
 @sio.on('preset')
 def msg(sid, data):
+    global lastJSON_source
     # data = data + "hola mundo"
     if (data == "breville"):
         preset="breville.json"
@@ -654,6 +657,7 @@ async def live():
     global sendInfoToFront
     global infoReady
     global infoSolicited
+    global lastJSON_source
 
     # RotaryEncoder(down_switch,up_switch,menu_switch, lambda event: asyncio.run(tuner_event(event)))
 
@@ -732,6 +736,7 @@ def send_data():
     print_status=True
     global sensor_status
     sensor_status=False
+    global lastJSON_source
 
     while (True):
         _input = input()
