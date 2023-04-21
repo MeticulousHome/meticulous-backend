@@ -280,37 +280,18 @@ def send_json_hash(json_string):
     arduino.write("\x03".encode("utf-8"))
     arduino.write(json_data.encode("utf-8"))
 
-#def detect_source(json_string,json_data):
-#    lcd_exist = False
-#    parsed_json = json.loads(json_string)
-#    # all_json = " ".join(json_data.values())
-#    source = parsed_json["source"]
-#    source = source.lower()
-#    stages = parsed_json["stages"]
-#    if "preinfusion" in json_string:
-#        infusion = True
-#    # if source == "lcd":
-#    #     lcd_exist = True
-#    #     # preinfusion_exist = any(stage['name'] == 'preinfusion' for stage in parsed_json['stages'])
-#    #     if 'preinfusion' in parsed_json:
-#    #         preinfusion_exist = True
-#    #     else:
-#    #         preinfusion_exist = False
-#    #     infusion_exist = any(stage['name'] == 'infusion' for stage in parsed_json['stages'])
-#    # else:
-#    #     lcd_exist = False
-#    
-#    return infusion
-
 def detect_source(json_data):
-    source = ""
+
+    # Commented code retreieves data points from profile Infusion: nodes 13, 20 and Preinfusion: nodes 10, 11
+    # Is not completly working as LCD JSON and Dashboard JSON are subtly different 
+
     #preinfusion_exists = -1
     #infusion_exists = -1
     #preinfusion_10 = 0
     #preinfusion_11 = 0
     #infusion_13 = 0
     #infusion_20 = 0
-
+    source = ""
     source = json_data["source"]
     source = source.upper()
     #stages = json_data["stages"]
@@ -621,8 +602,9 @@ def read_arduino():
                         data_sensor_comunication["adc_1"] = sensor_values[16].split('\033[1;35m')[0]
                         data_sensor_comunication["adc_2"] = sensor_values[17].split('\033[1;35m')[0]
                         data_sensor_comunication["adc_3"] = sensor_values[18].split('\n')[0]
-                    except:
-                        add_to_buffer("(E): ESP did not send sensor values correctly")
+                        raise InvalidData("ESP did not send sensor values correctyl")
+                    except InvalidData as e:
+                        add_to_buffer("(E): " + str(e))
                     if sensor_status:
                         print(data_str, end="")
 
