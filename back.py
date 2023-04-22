@@ -602,9 +602,8 @@ def read_arduino():
                         data_sensor_comunication["adc_1"] = sensor_values[16].split('\033[1;35m')[0]
                         data_sensor_comunication["adc_2"] = sensor_values[17].split('\033[1;35m')[0]
                         data_sensor_comunication["adc_3"] = sensor_values[18].split('\n')[0]
-                        raise InvalidData("ESP did not send sensor values correctyl")
-                    except InvalidData as e:
-                        add_to_buffer("(E): " + str(e))
+                    except:
+                        add_to_buffer("(E): ESP did not send sensor values correctly")
                     if sensor_status:
                         print(data_str, end="")
 
