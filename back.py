@@ -30,7 +30,7 @@ sendInfoToFront = False
 
 infoReady = False
 
-lastJSON_source = "None"
+lastJSON_source = "LCD"
 
 #VERSION INFORMATION
 
@@ -292,8 +292,11 @@ def detect_source(json_data):
     #infusion_13 = 0
     #infusion_20 = 0
     source = ""
-    source = json_data["source"]
-    source = source.upper()
+    try:
+        source = json_data["source"]
+        source = source.upper()
+    except:
+        source = "LCD"
     #stages = json_data["stages"]
     #for i, stage in enumerate(stages):
     #    print(stage["name"])
