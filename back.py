@@ -270,7 +270,7 @@ def send_json_hash(json_string):
     #proof = detect_source(json_string,json_data)
     #print(proof)
     add_to_buffer(json_data)
-    print(json_data)
+    #print(json_data)
     json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
     add_to_buffer("hash_enviado: " + json_hash + "\n")
     print("hash: ",end="")
@@ -310,7 +310,7 @@ def detect_source(json_data):
     #    infusion_13 = stages[infusion_exists]["nodes"][1]["controllers"][1]["curve"]["points"][0][1]
     #    infusion_20 = stages[infusion_exists]["nodes"][2]["controllers"][0]["curve"]["points"][0][1]
     #print(f'{source},{preinfusion_10},{preinfusion_11},{infusion_13},{infusion_20}')
-    print(source)
+    #print(source)
     return source
 
 @sio.event
