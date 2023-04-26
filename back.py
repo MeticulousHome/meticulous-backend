@@ -270,7 +270,7 @@ def send_json_hash(json_string):
     #proof = detect_source(json_string,json_data)
     #print(proof)
     add_to_buffer(json_data)
-    #print(json_data)
+    print(json_data)
     json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
     add_to_buffer("hash_enviado: " + json_hash + "\n")
     print("hash: ",end="")
@@ -414,7 +414,7 @@ def msg(sid, data):
 
 
 #@sio.on('parameters') #To hardcode using send config
-@sio.on('calibration') #Use when calibration it is implemented
+@sio.on('calibrate') #Use when calibration it is implemented
 def msg(sid, data):
     know_weight = "100.0"
     current_weight = data_sensors["weight"]
