@@ -1,0 +1,88 @@
+name: Generate Update File
+
+on: 
+  push:
+     branches:
+       - main
+  pull_request:
+     branches:
+      - main
+      - dev
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Cache library
+        uses: actions/cache@v2
+        with:
+          path: requirements.txt
+          key: ${{ runner.os }}-library-${{ hashFiles('requirements.txt') }}
+          restore-keys: ${{ runner.os }}-library-
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Prepare files and folders
+        run: |
+          mkdir -p library
+          mkdir -p meticulous/library 
+          mkdir -p meticulous/backend_for_esp32 
+          cp .pio/build/esp32doit-devkit-v1/firmware.bin DinamicFiles/
+          cp .pio/build/esp32doit-devkit-v1/partitions.bin DinamicFiles/
+
+      - name: Clone repo
+        uses: actions/checkout@v2
+        with:
+          repository: FFFuego/program_esp32_via_raspi
+          token: ${{ secrets.G_CLONE_TOKEN }}
+          path: AuxFolder/program_esp32_via_raspi
+          ref: main
+
+      - name: Copiar Archivos a la salida y crear archivos de librerias
+        run: |
+          cp -rf AuxFolder/program_esp32_via_raspi meticulous/
+          cd AuxFolder/program_esp32_via_raspi
+          mkdir library
+          python3 -m venv venv && source venv/bin/activate
+          cd library
+          pip download -r ../requirements.txt
+          deactivate
+          cp -rf . ../../../meticulous/library/
+          cd
+
+      - name: remplazar los archivos del repo con los compilados
+        run: |
+          rm -rf meticulous/program_esp32_via_raspi/DinamicFiles
+          cp -rf DinamicFiles meticulous/program_esp32_via_raspi/
+
+      - name: upload files
+        uses: actions/upload-artifact@v2
+        with:
+          name: Update_files_firmware
+          path: meticulous
+
+      - uses: montudor/action-zip@v1
+        name: Preparing ZIP
+
+        if: github.event_name == 'pull_request' && github.base_ref == 'dev'
+
+        with:
+          args: zip -qq -r update_flow.zip meticulous/
+
+      - name: Set Version
+        if: github.event_name == 'pull_request' && github.base_ref == 'dev'
+        run: | 
+          echo "BUILD_VERSION=$(python -c 'from version import VERSION; print(VERSION)')" >> $GITHUB_ENV
+
+      - name: Release
+        if: github.event_name == 'pull_request' && github.base_ref == 'dev'
+
+        env:
+          GITHUB_TOKEN: "${{ secrets.G_CLONE_TOKEN }}"
+        run: |
+          gh release create ${{ env.BUILD_VERSION }} update_flow.zip -R https://github.com/FFFuego/Meticulous-Releases
