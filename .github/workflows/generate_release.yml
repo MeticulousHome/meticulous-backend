@@ -23,7 +23,7 @@ jobs:
           python-version: '3.9'
 
       - name: Update version
-        run: python update_version.py patch
+        run: python update-version.py patch
 
       - name: Set Version
         run: | 
