@@ -1,18 +1,13 @@
 name: Generate Update File
-
-on: 
-  push:
-     branches:
-       - main
+on:
   pull_request:
-     branches:
-      - main
+    types: [closed]
+    branches:
       - dev
-  workflow_dispatch:
-
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: (github.event.pull_request.merged == true || github.event.pull_request.rebase == true ) && github.event.pull_request.base.ref == 'dev'
     steps:
       - uses: actions/checkout@v3
 
@@ -27,62 +22,62 @@ jobs:
         with:
           python-version: '3.9'
 
-      - name: Prepare files and folders
+      - name: Update version
+        run: python update_version.py patch
+
+      - name: Set Version
+        run: | 
+          echo "BUILD_VERSION=$(python -c 'from version import VERSION; print(VERSION)')" >> $GITHUB_ENV
+
+      - name: Add, commit and push changes
+        uses: ad-m/github-push-action@master
+        with:
+          branch: 'dev'
+          directory: './'
+          github_token: ${{ secrets.G_CLONE_TOKEN }}
+      - run: |
+          git config --global user.name "Gab0JS"
+          git config --global user.email "gabriel.julian.s.morales.martinez@gmail.com"
+          git add version.py
+          git commit -m "New version ${{ env.BUILD_VERSION }}, Update version from Workflow"
+          git push origin dev
+
+      - name: Create folder to copy the files
         run: |
-          mkdir -p library
           mkdir -p meticulous/library 
           mkdir -p meticulous/backend_for_esp32 
-          cp .pio/build/esp32doit-devkit-v1/firmware.bin DinamicFiles/
-          cp .pio/build/esp32doit-devkit-v1/partitions.bin DinamicFiles/
 
-      - name: Clone repo
-        uses: actions/checkout@v2
-        with:
-          repository: FFFuego/program_esp32_via_raspi
-          token: ${{ secrets.G_CLONE_TOKEN }}
-          path: AuxFolder/program_esp32_via_raspi
-          ref: main
-
-      - name: Copiar Archivos a la salida y crear archivos de librerias
+      - name: Copy files, excep the folder meticulous using exclude 
         run: |
-          cp -rf AuxFolder/program_esp32_via_raspi meticulous/
-          cd AuxFolder/program_esp32_via_raspi
-          mkdir library
+          cp -rf !(meticulous) meticulous/backend_for_esp32
+
+      - name: Create folder to save library
+        run: |
+          mkdir -p library
+
+      - name: Create virtual environment, download dependencies and copy them to the library folder of meticulous
+        run: |
           python3 -m venv venv && source venv/bin/activate
           cd library
           pip download -r ../requirements.txt
           deactivate
-          cp -rf . ../../../meticulous/library/
+          cp -rf . ../meticulous/library/
           cd
-
-      - name: remplazar los archivos del repo con los compilados
-        run: |
-          rm -rf meticulous/program_esp32_via_raspi/DinamicFiles
-          cp -rf DinamicFiles meticulous/program_esp32_via_raspi/
 
       - name: upload files
         uses: actions/upload-artifact@v2
         with:
-          name: Update_files_firmware
+          name: Update_files_backend
           path: meticulous
 
       - uses: montudor/action-zip@v1
         name: Preparing ZIP
-
-        if: github.event_name == 'pull_request' && github.base_ref == 'dev'
-
         with:
-          args: zip -qq -r update_flow.zip meticulous/
-
-      - name: Set Version
-        if: github.event_name == 'pull_request' && github.base_ref == 'dev'
-        run: | 
-          echo "BUILD_VERSION=$(python -c 'from version import VERSION; print(VERSION)')" >> $GITHUB_ENV
+          args: zip -qq -r update_back.zip meticulous/
 
       - name: Release
-        if: github.event_name == 'pull_request' && github.base_ref == 'dev'
-
         env:
           GITHUB_TOKEN: "${{ secrets.G_CLONE_TOKEN }}"
         run: |
-          gh release create ${{ env.BUILD_VERSION }} update_flow.zip -R https://github.com/FFFuego/Meticulous-Releases
+          gh release create backend_for_esp32-${{ env.BUILD_VERSION }} update_back.zip -R https://github.com/FFFuego/Meticulous-Releases
+          echo "Release created, And version updated to ${{ env.BUILD_VERSION }}"
