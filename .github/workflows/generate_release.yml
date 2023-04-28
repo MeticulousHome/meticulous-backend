@@ -3,11 +3,11 @@ on:
   pull_request:
     types: [closed]
     branches:
-      - dev
+      - feature/workflow_to_release
 jobs:
   build:
     runs-on: ubuntu-latest
-    if: (github.event.pull_request.merged == true || github.event.pull_request.rebase == true ) && github.event.pull_request.base.ref == 'dev'
+    if: (github.event.pull_request.merged == true || github.event.pull_request.rebase == true ) && github.event.pull_request.base.ref == 'feature/workflow_to_release'
     steps:
       - uses: actions/checkout@v3
 
@@ -32,7 +32,7 @@ jobs:
       - name: Add, commit and push changes
         uses: ad-m/github-push-action@master
         with:
-          branch: 'dev'
+          branch: 'feature/workflow_to_release'
           directory: './'
           github_token: ${{ secrets.G_CLONE_TOKEN }}
       - run: |
@@ -40,7 +40,7 @@ jobs:
           git config --global user.email "gabriel.julian.s.morales.martinez@gmail.com"
           git add version.py
           git commit -m "New version ${{ env.BUILD_VERSION }}, Update version from Workflow"
-          git push origin dev
+          git push origin feature/workflow_to_release
 
       - name: Create folder to copy the files
         run: |
