@@ -49,7 +49,7 @@ jobs:
 
       - name: Copy files, excep the folder meticulous using exclude 
         run: |
-          cp -rf !(meticulous) meticulous/backend_for_esp32
+          rsync -avq --exclude='meticulous' ./ meticulous/backend_for_esp32/
 
       - name: Create folder to save library
         run: |
