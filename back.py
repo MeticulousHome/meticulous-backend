@@ -8,7 +8,6 @@ import threading
 import time
 import json
 from pynput.keyboard import Key, Controller
-import RPi.GPIO as GPIO
 from dotenv import load_dotenv
 from datetime import datetime
 import os
@@ -17,10 +16,14 @@ from operator import itemgetter
 import hashlib
 import version as backend
 import subprocess
+import gpiod
 
-comando = '/home/meticulous/meticulous-raspberry-setup/backend_for_esp32/clean_logs.sh'
+base_dir = os.path.dirname(os.path.abspath(__file__))
+
+
+comando = os.path.join(base_dir, 'clean_logs.sh')
 lock = threading.Lock()
-file_path = '/home/meticulous/meticulous-raspberry-setup/backend_for_esp32/logs/'
+file_path = os.path.join(base_dir, 'logs')
 buffer=""
 contador= 'contador.txt'
 
@@ -69,6 +72,10 @@ load_dotenv()
 
 lcd_en = 25
 esp_en = 8
+
+chip_number = 0
+chip = gpiod.chip(chip_number)
+
     
 if os.environ.get("PINES_VERSION") == "V3":
     en = 27
@@ -83,12 +90,11 @@ else:
     io0 = 23
     print("Set pines to V3.1") 
     
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(en, GPIO.OUT)
-GPIO.setup(io0, GPIO.OUT)
-GPIO.setup(esp_en, GPIO.OUT)
-GPIO.setup(lcd_en, GPIO.OUT)
-
+    lines = chip.get_lines([en, io0, esp_en, lcd_en])
+    config = gpiod.line_request()
+    config.consumer = "meticulos-backend"
+    config.request_type = gpiod.line_request.DIRECTION_OUTPUT
+    lines.request(config)
 
 def gatherVersionInfo():
     global infoSolicited
@@ -115,30 +121,30 @@ def gatherVersionInfo():
 
 def turn_on():
     if os.environ.get("EN_PIN_HIGH") == "0":
-        GPIO.output(esp_en, 0)
-        GPIO.output(lcd_en, 0)
+        lines.get(esp_en).set_value(0)
+        lines.get(lcd_en).set_value(0)
         print("EN_PIN_HIGH = 0")
     elif os.environ.get("EN_PIN_HIGH") == "1":
-        GPIO.output(esp_en, 1)
-        GPIO.output(lcd_en, 1)
+        lines.get(esp_en).set_value(1)
+        lines.get(lcd_en).set_value(1)
         print("EN_PIN_HIGH = 1")
     else:
-        GPIO.output(esp_en, 0)
-        GPIO.output(lcd_en, 0)
+        lines.get(esp_en).set_value(0)
+        lines.get(lcd_en).set_value(0)
         print("EN_PIN_HIGH = 0 por default")
 
 def turn_off():
     if os.environ.get("EN_PIN_HIGH") == "0":
-        GPIO.output(esp_en, 1)
-        GPIO.output(lcd_en, 1)
+        lines.get(esp_en).set_value(1)
+        lines.get(lcd_en).set_value(1)
         print("EN_PIN_HIGH = 0")
     elif os.environ.get("EN_PIN_HIGH") == "1":
-        GPIO.output(esp_en, 0)
-        GPIO.output(lcd_en, 0)
+        lines.get(esp_en).set_value(0)
+        lines.get(lcd_en).set_value(0)
         print("EN_PIN_HIGH = 1")
     else:
-        GPIO.output(esp_en, 1)
-        GPIO.output(lcd_en, 1)
+        lines.get(esp_en).set_value(1)
+        lines.get(lcd_en).set_value(1)
         print("EN_PIN_HIGH = 0 por default")
     
 turn_on()
@@ -253,15 +259,15 @@ def start_function():
     print("START!")
 
 def reboot_esp():
-    GPIO.output(en, 0)
-    GPIO.output(io0, 0) 
+    lines.get(esp_en).set_value(0)
+    lines.get(io0).set_value(0)
     time.sleep(.1)
-    GPIO.output(en, 1)
-    GPIO.output(io0, 1)
+    lines.get(en).set_value(1)
+    lines.get(io0).set_value(1)
     time.sleep(.1)
-    GPIO.output(en, 0)
+    lines.get(en).set_value(0)
     time.sleep(.1)
-    GPIO.output(en, 1)
+    lines.get(en).set_value(1)
 
 def send_json_hash(json_string):
     json_data = "json\n"+json_string+"\x03"
@@ -825,4 +831,4 @@ if __name__ == "__main__":
         
     except:
         traceback.print_exc()
-        GPIO.cleanup()
+        chip.reset()
