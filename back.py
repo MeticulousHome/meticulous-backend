@@ -542,7 +542,7 @@ def read_arduino():
                 except:
                     data_sensors["profile"] = "None"
 
-                c1 = old_status == "heating"
+                c1 = old_status == "closing valve"
                 c2 = data_sensors["status"] == "preinfusion"
                 c3 = data_sensors["status"] == "infusion"
                 # print(c1, end = "")
