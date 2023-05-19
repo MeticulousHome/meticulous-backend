@@ -5,7 +5,7 @@ on:
     types:
       - closed
     branches:
-      - erase/merge_versioning.
+      - erase/merge_versioning
   workflow_dispatch:
     inputs:
       version_bump_type:
@@ -15,7 +15,7 @@ on:
 
 jobs:
   update_version:
-    if: ((github.event.pull_request.merged == true || github.event.pull_request.rebase == true ) && github.event.pull_request.base.ref == 'erase/merge_versioning.') || github.event_name == 'workflow_dispatch'
+    if: ((github.event.pull_request.merged == true || github.event.pull_request.rebase == true ) && github.event.pull_request.base.ref == 'erase/merge_versioning') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
