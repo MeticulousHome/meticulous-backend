@@ -30,6 +30,8 @@ sendInfoToFront = False
 
 infoReady = False
 
+lastJSON_source = "LCD"
+
 #VERSION INFORMATION
 
 borrarFormato = "\033[0m"
@@ -265,8 +267,10 @@ def reboot_esp():
 
 def send_json_hash(json_string):
     json_data = "json\n"+json_string+"\x03"
+    #proof = detect_source(json_string,json_data)
+    #print(proof)
     add_to_buffer(json_data)
-    # print(json_data)
+    #print(json_data)
     json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
     add_to_buffer("hash_enviado: " + json_hash + "\n")
     print("hash: ",end="")
@@ -276,6 +280,42 @@ def send_json_hash(json_string):
     arduino.write("\x03".encode("utf-8"))
     arduino.write(json_data.encode("utf-8"))
 
+def detect_source(json_data):
+
+    # Commented code retreieves data points from profile Infusion: nodes 13, 20 and Preinfusion: nodes 10, 11
+    # Is not completly working as LCD JSON and Dashboard JSON are subtly different 
+
+    #preinfusion_exists = -1
+    #infusion_exists = -1
+    #preinfusion_10 = 0
+    #preinfusion_11 = 0
+    #infusion_13 = 0
+    #infusion_20 = 0
+    source = ""
+    try:
+        source = json_data["source"]
+        source = source.upper()
+    except:
+        source = "LCD"
+    #stages = json_data["stages"]
+    #for i, stage in enumerate(stages):
+    #    print(stage["name"])
+    #    if preinfusion_exists == -1 and stage["name"] == "preinfusion":
+    #        preinfusion_exists = i
+    #        continue
+    #    if infusion_exists == -1 and stage["name"] == "infusion":
+    #        infusion_exists = i
+    #    print(f'{preinfusion_exists},{infusion_exists}')
+    #if preinfusion_exists != -1:
+    #    preinfusion_10 = stages[preinfusion_exists]["nodes"][0]["controllers"][2]["curve"]["points"][0][1]
+    #    preinfusion_11 = stages[preinfusion_exists]["nodes"][1]["controllers"][0]["curve"]["points"][0][1]
+    #if infusion_exists != -1:
+    #    infusion_13 = stages[infusion_exists]["nodes"][1]["controllers"][1]["curve"]["points"][0][1]
+    #    infusion_20 = stages[infusion_exists]["nodes"][2]["controllers"][0]["curve"]["points"][0][1]
+    #print(f'{source},{preinfusion_10},{preinfusion_11},{infusion_13},{infusion_20}')
+    #print(source)
+    return source
+
 @sio.event
 def connect(sid, environ):
     print('connect ', sid)
@@ -283,7 +323,7 @@ def connect(sid, environ):
 @sio.event
 def disconnect(sid):
     print('disconnect ', sid)
-sendInfoToFront
+#sendInfoToFront
 @sio.on('action')
 def msg(sid, data):
     if data == "start":
@@ -321,11 +361,20 @@ def toggleFans(sid, data):
 
 @sio.on('parameters')
 def msg(sid, data):
+    global lastJSON_source
     json_data = json.dumps(data, indent=1, sort_keys=False)
     send_json_hash(json_data)
+    lastJSON_source = detect_source(data)
+    print(lastJSON_source)
+
+@sio.on('send_profile')
+async def forwardJSON(sid,data):
+    print(json.dumps(data, indent=1, sort_keys=False))
+    await sio.emit('save_profile', data)
 
 @sio.on('preset')
 def msg(sid, data):
+    global lastJSON_source
     # data = data + "hola mundo"
     if (data == "breville"):
         preset="breville.json"
@@ -354,6 +403,7 @@ def msg(sid, data):
             json_data = json.load(file)
             json_data = json.dumps(json_data, indent=1,sort_keys=False)
             send_json_hash(json_data)
+            lastJSON_source = detect_source(json_data)
             #send the instruccion to start the selected choice
             _input = "action,"+"start"+"\x03"
             arduino.write(str.encode(_input))
@@ -364,8 +414,10 @@ def msg(sid, data):
 
 
 #@sio.on('parameters') #To hardcode using send config
-@sio.on('calibration') #Use when calibration it is implemented
-def msg(sid, data):
+
+#data seems to not be used but is kept as optional to ease implementation if needed
+@sio.on('calibrate') #Use when calibration it is implemented
+def msg(sid, data=True):
     know_weight = "100.0"
     current_weight = data_sensors["weight"]
     data ="calibration"+","+know_weight+","+str(current_weight)
@@ -467,7 +519,7 @@ def read_arduino():
                 if idle_in_data:
                     save_str = False
                 else:
-                    save_str = True   
+                    save_str = True  
             else:
                 save_str = True
 
@@ -516,7 +568,6 @@ def read_arduino():
                 #else:
                 #    para cuando no usa formato de colores
                 
-
             elif data_str.find("CCW") > -1:
                 ccw_function()
             elif data_str.find("CW") > -1:
@@ -536,26 +587,28 @@ def read_arduino():
 
             elif data_str_sensors[0] == 'Sensors':
                 if usaFormatoDeColores:
-                    sensor_values = data_str_sensors[1].split('\033[0m')
-                    data_sensor_temperatures["external_1"] = sensor_values[1].split('\033[1;31m')[0]
-                    data_sensor_temperatures["external_2"] = sensor_values[2].split('\033[1;32m')[0]
-                    data_sensor_temperatures["bar_up"] = sensor_values[3].split('\033[1;32m')[0]
-                    data_sensor_temperatures["bar_mid_up"] = sensor_values[4].split('\033[1;32m')[0]
-                    data_sensor_temperatures["bar_mid_down"] = sensor_values[5].split('\033[1;32m')[0]
-                    data_sensor_temperatures["bar_down"] = sensor_values[6].split('\033[1;32m')[0]
-                    data_sensor_temperatures["tube"] = sensor_values[7].split('\033[1;33m')[0]
-                    data_sensor_temperatures["valve"] = sensor_values[8].split('\033[1;34m')[0]
-                    data_sensor_actuators["motor_position"]=sensor_values[9].split('\033[1;34m')[0]
-                    data_sensor_actuators["motor_speed"]=sensor_values[10].split('\033[1;36m')[0]
-                    data_sensor_actuators["motor_power"]=sensor_values[11].split('\033[1;36m')[0]
-                    data_sensor_actuators["motor_current"]=sensor_values[12].split('\033[1;36m')[0]
-                    data_sensor_actuators["bandheater_power"]=sensor_values[13].split('\033[1;35m')[0]
-                    data_sensor_comunication["preassure_sensor"] = sensor_values[14].split('\033[1;35m')[0]
-                    data_sensor_comunication["adc_0"] = sensor_values[15].split('\033[1;35m')[0]
-                    data_sensor_comunication["adc_1"] = sensor_values[16].split('\033[1;35m')[0]
-                    data_sensor_comunication["adc_2"] = sensor_values[17].split('\033[1;35m')[0]
-                    data_sensor_comunication["adc_3"] = sensor_values[18].split('\n')[0]
-
+                    try:
+                        sensor_values = data_str_sensors[1].split('\033[0m')
+                        data_sensor_temperatures["external_1"] = sensor_values[1].split('\033[1;31m')[0]
+                        data_sensor_temperatures["external_2"] = sensor_values[2].split('\033[1;32m')[0]
+                        data_sensor_temperatures["bar_up"] = sensor_values[3].split('\033[1;32m')[0]
+                        data_sensor_temperatures["bar_mid_up"] = sensor_values[4].split('\033[1;32m')[0]
+                        data_sensor_temperatures["bar_mid_down"] = sensor_values[5].split('\033[1;32m')[0]
+                        data_sensor_temperatures["bar_down"] = sensor_values[6].split('\033[1;32m')[0]
+                        data_sensor_temperatures["tube"] = sensor_values[7].split('\033[1;33m')[0]
+                        data_sensor_temperatures["valve"] = sensor_values[8].split('\033[1;34m')[0]
+                        data_sensor_actuators["motor_position"]=sensor_values[9].split('\033[1;34m')[0]
+                        data_sensor_actuators["motor_speed"]=sensor_values[10].split('\033[1;36m')[0]
+                        data_sensor_actuators["motor_power"]=sensor_values[11].split('\033[1;36m')[0]
+                        data_sensor_actuators["motor_current"]=sensor_values[12].split('\033[1;36m')[0]
+                        data_sensor_actuators["bandheater_power"]=sensor_values[13].split('\033[1;35m')[0]
+                        data_sensor_comunication["preassure_sensor"] = sensor_values[14].split('\033[1;35m')[0]
+                        data_sensor_comunication["adc_0"] = sensor_values[15].split('\033[1;35m')[0]
+                        data_sensor_comunication["adc_1"] = sensor_values[16].split('\033[1;35m')[0]
+                        data_sensor_comunication["adc_2"] = sensor_values[17].split('\033[1;35m')[0]
+                        data_sensor_comunication["adc_3"] = sensor_values[18].split('\n')[0]
+                    except:
+                        add_to_buffer("(E): ESP did not send sensor values correctly")
                     if sensor_status:
                         print(data_str, end="")
 
@@ -570,7 +623,7 @@ def read_arduino():
                     software_info["firmwareV"] = data_str_sensors[1]
                 except:
                     software_info["firmwareV"]  = "not found"
-                    add_to_buffer("(E): ESP did not send firmware version correctly")
+                    add_to_buffer("(E): ESP did not send firmware version correctly\n")
 
                 infoReady = True
 
@@ -590,6 +643,7 @@ async def live():
     global sendInfoToFront
     global infoReady
     global infoSolicited
+    global lastJSON_source
 
     # RotaryEncoder(down_switch,up_switch,menu_switch, lambda event: asyncio.run(tuner_event(event)))
 
@@ -620,7 +674,8 @@ async def live():
                 "t": data_sensors["temperature"],
             },
             "time": str(data_sensors["time"]),
-            "profile": data_sensors["profile"]
+            "profile": data_sensors["profile"],
+            "source": lastJSON_source,
         })
 
         if sendInfoToFront:
@@ -667,6 +722,7 @@ def send_data():
     print_status=True
     global sensor_status
     sensor_status=False
+    global lastJSON_source
 
     while (True):
         _input = input()
@@ -688,6 +744,7 @@ def send_data():
                 json_file = json.load(openfile)
             json_data = json.dumps(json_file, indent=1, sort_keys=False)
             send_json_hash(json_data)
+            lastJSON_source = detect_source(json_file)
             json_data=""
             json_file=""
             
