@@ -1,83 +1,103 @@
-name: Generate Update File
+name: Generate_release_on_push_on_dev
+
 on:
   pull_request:
-    types: [closed]
+    types:
+      - closed
     branches:
       - feature/workflow_to_release
+  workflow_dispatch:
+    inputs:
+      version_bump_type:
+        description: "Version bump type (major, minor, patch)"
+        required: false
+        default: "patch"
+
 jobs:
-  build:
+  update_version:
+    if: ((github.event.pull_request.merged == true || github.event.pull_request.rebase == true ) && github.event.pull_request.base.ref == 'feature/workflow_to_release') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    if: (github.event.pull_request.merged == true || github.event.pull_request.rebase == true ) && github.event.pull_request.base.ref == 'feature/workflow_to_release'
     steps:
-      - uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with: 
+        token: ${{ secrets.G_CLONE_TOKEN }}
 
-      - name: Cache library
-        uses: actions/cache@v2
-        with:
-          path: requirements.txt
-          key: ${{ runner.os }}-library-${{ hashFiles('requirements.txt') }}
-          restore-keys: ${{ runner.os }}-library-
+    - name: Cache library
+      uses: actions/cache@v2
+      with:
+        path: requirements.txt
+        key: ${{ runner.os }}-library-${{ hashFiles('requirements.txt') }}
+        restore-keys: ${{ runner.os }}-library-
 
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
 
-      - name: Update version
-        run: python update-version.py patch
+    - name: Get PR description
+      id: get_pr_description
+      run: |
+        echo "::set-output name=pr_description::$(jq -r '.pull_request.body' $GITHUB_EVENT_PATH)"
+      shell: bash
 
-      - name: Set Version
-        run: | 
-          echo "BUILD_VERSION=$(python -c 'from version import VERSION; print(VERSION)')" >> $GITHUB_ENV
+    - name: Update version and CHANGELOG
+      run: |
+        PR_DESCRIPTION="${{ steps.get_pr_description.outputs.pr_description }}"
+        # Convert empty string to null to prevent JSONDecodeError
+        if [ -z "$PR_DESCRIPTION" ]; then
+          PR_DESCRIPTION="null"
+        fi
+        python .github/workflows/scripts/update_version.py "${{ github.ref }}" "$PR_DESCRIPTION" "${{ github.event.inputs.version_bump_type }}"
+      shell: bash
 
-      - name: Add, commit and push changes
-        uses: ad-m/github-push-action@master
-        with:
-          branch: 'feature/workflow_to_release'
-          directory: './'
-          github_token: ${{ secrets.G_CLONE_TOKEN }}
-      - run: |
-          git config --global user.name "Gab0JS"
-          git config --global user.email "gabriel.julian.s.morales.martinez@gmail.com"
-          git add version.py
-          git commit -m "New version ${{ env.BUILD_VERSION }}, Update version from Workflow"
-          git push origin feature/workflow_to_release
+    - name: Set Version
+      run: | 
+        echo "BUILD_VERSION=$(python -c 'from version import VERSION; print(VERSION)')" >> $GITHUB_ENV
+        
+    - name: Commit and push changes
+      run: |
+        git config user.name "GitHub Actions Bot"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add platformio.ini CHANGELOG.md
+        git commit -m "Update version to ${{ env.BUILD_VERSION }} and CHANGELOG"
+        git push
 
-      - name: Create folder to copy the files
-        run: |
-          mkdir -p meticulous/library 
-          mkdir -p meticulous/backend_for_esp32 
+    - name: Create folder to copy the files
+      run: |
+        mkdir -p meticulous/library 
+        mkdir -p meticulous/backend_for_esp32 
 
-      - name: Copy files, excep the folder meticulous using exclude 
-        run: |
-          rsync -avq --exclude='meticulous' ./ meticulous/backend_for_esp32/
+    - name: Copy files, excep the folder meticulous using exclude 
+      run: |
+        rsync -avq --exclude='meticulous' ./ meticulous/backend_for_esp32/
 
-      - name: Create folder to save library
-        run: |
-          mkdir -p library
+    - name: Create folder to save library
+      run: |
+        mkdir -p library
 
-      - name: Create virtual environment, download dependencies and copy them to the library folder of meticulous
-        run: |
-          python3 -m venv venv && source venv/bin/activate
-          cd library
-          pip download -r ../requirements.txt
-          deactivate
-          cp -rf . ../meticulous/library/
-          cd
+    - name: Create virtual environment, download dependencies and copy them to the library folder of meticulous
+      run: |
+        python3 -m venv venv && source venv/bin/activate
+        cd library
+        pip download -r ../requirements.txt --platform manylinux_2_28_aarch64 --platform manylinux_2_17_aarch64 --python-version 3.9 --implementation cp --abi cp39 --no-deps
+        deactivate
+        cp -rf . ../meticulous/library/
+        cd
 
-      - name: upload files
-        uses: actions/upload-artifact@v2
-        with:
-          name: Update_files_backend
-          path: meticulous
+    - name: upload files
+      uses: actions/upload-artifact@v2
+      with:
+        name: Update_files_backend
+        path: meticulous
 
-      - uses: montudor/action-zip@v1
-        name: Preparing ZIP
-        with:
-          args: zip -qq -r update_back.zip meticulous/
+    - uses: montudor/action-zip@v1
+      name: Preparing ZIP
+      with:
+        args: zip -qq -r update_back.zip meticulous/
 
-      - name: Release
-        env:
-          GITHUB_TOKEN: "${{ secrets.G_CLONE_TOKEN }}"
-        run: |
-          gh release create backend_for_esp32-${{ env.BUILD_VERSION }} update_back.zip -R https://github.com/FFFuego/Meticulous-Releases
-          echo "Release created, And version updated to ${{ env.BUILD_VERSION }}"
+    - name: Release
+      env:
+        GITHUB_TOKEN: "${{ secrets.G_CLONE_TOKEN }}"
+      run: |
+        gh release create backend_for_esp32-${{ env.BUILD_VERSION }} update_back.zip -R https://github.com/FFFuego/Meticulous-Releases
+        echo "Release created, And version updated to ${{ env.BUILD_VERSION }}"
