@@ -414,8 +414,10 @@ def msg(sid, data):
 
 
 #@sio.on('parameters') #To hardcode using send config
-@sio.on('calibration') #Use when calibration it is implemented
-def msg(sid, data):
+
+#data seems to not be used but is kept as optional to ease implementation if needed
+@sio.on('calibrate') #Use when calibration it is implemented
+def msg(sid, data=True):
     know_weight = "100.0"
     current_weight = data_sensors["weight"]
     data ="calibration"+","+know_weight+","+str(current_weight)
@@ -540,7 +542,7 @@ def read_arduino():
                 except:
                     data_sensors["profile"] = "None"
 
-                c1 = old_status == "heating"
+                c1 = old_status == "closing valve"
                 c2 = data_sensors["status"] == "preinfusion"
                 c3 = data_sensors["status"] == "infusion"
                 # print(c1, end = "")
