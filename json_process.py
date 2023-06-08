@@ -1,16 +1,16 @@
 import json
 
 # Assuming the content is in a file named 'data.json'
-with open('data.json') as f:
-    data = json.load(f)
+with open('lever.json') as f:
+    lever = json.load(f)
 
-stages = data['stages']
+lever_stages = lever['stages']
 
 # Create a dictionary to store all stages
 all_stages = {}
 
 # Iterate over the stages
-for stage in stages:
+for stage in lever_stages:
     stage_dict = {
         'name': stage['name'],
         'points': stage['points'],
