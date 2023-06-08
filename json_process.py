@@ -25,6 +25,12 @@ for stage in stages:
 # Now you can use the all_stages dictionary
 preinfusion = all_stages['Preinfusion']
 infusion = all_stages['Infusion']
+# preinfusion_stop_weight = preinfusion['stop_weight']
+# infusion_source = infusion['source']
+
+# print(preinfusion_stop_weight)
+# print(infusion_source)
+
 
 print(preinfusion)
 print(infusion)
