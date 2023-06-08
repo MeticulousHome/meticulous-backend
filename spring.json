@@ -1,0 +1,9 @@
+{   "name": "My Example",
+    "automatic_purge": true,
+    "temperature": 98.6,
+    "preinfusion": false,    
+    "preheat": true,    
+    "pressure": 1.2,    
+    "out_weight": 0.5,    
+    "source": "lcd"
+}
