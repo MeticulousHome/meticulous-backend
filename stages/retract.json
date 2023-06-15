@@ -1,0 +1,100 @@
+{
+    "retract": {
+      "name": "retracting",
+      "nodes": [
+        {
+          "id": 31,
+          "controllers": [
+            {
+              "kind": "weight_reference",
+              "id": 2
+            },
+            {
+              "kind": "time_reference",
+              "id": 17
+            }
+          ],
+          "triggers": [
+            {
+              "kind": "exit",
+              "next_node_id": 14
+            }
+          ]
+        },
+        {
+          "id": -2,
+          "controllers": [
+            {
+              "kind": "end_profile"
+            }
+          ],
+          "triggers": []
+        },
+        {
+          "id": 14,
+          "controllers": [
+            {
+              "kind": "move_piston_controller",
+              "algorithm": "Piston Fast",
+              "direction": "UP",
+              "speed": 4.0
+            },
+            {
+              "kind": "time_reference",
+              "id": 18
+            }
+          ],
+          "triggers": [
+            {
+              "kind": "piston_position_trigger",
+              "position_reference_id": 1,
+              "operator": "<=",
+              "value": -4.0,
+              "next_node_id": 15,
+              "source": "Piston Position Raw"
+            },
+            {
+              "kind": "timer_trigger",
+              "timer_reference_id": 17,
+              "operator": ">=",
+              "value": 5,
+              "next_node_id": 15
+            }
+          ]
+        },
+        {
+          "id": 15,
+          "controllers": [
+            {
+              "kind": "move_piston_controller",
+              "algorithm": "Piston Fast",
+              "direction": "UP",
+              "speed": 6.0
+            }
+          ],
+          "triggers": [
+            {
+              "kind": "timer_trigger",
+              "timer_reference_id": 18,
+              "operator": ">=",
+              "value": 3,
+              "next_node_id": 32
+            }
+          ]
+        },
+        {
+          "id": 32,
+          "controllers": [],
+          "triggers": [
+            {
+              "kind": "piston_speed_trigger",
+              "operator": "==",
+              "value": 0,
+              "next_node_id": -2
+            }
+          ]
+        }
+      ]
+    }
+  }
+  

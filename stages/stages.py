@@ -1,9 +1,6 @@
 import os
 import json
 
-import os
-import json
-
 def select_json_structure(option):
     try:
         dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -17,4 +14,4 @@ def select_json_structure(option):
         print(f"El archivo '{option}' no es un JSON válido.")
 
 if __name__ == "__main__":
-    print(select_json_structure("purge"))
+    print(select_json_structure("retract"))

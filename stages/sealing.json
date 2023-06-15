@@ -1,0 +1,31 @@
+{
+    "sealing": {
+        "name": "closing valve",
+        "nodes": [
+            {
+                "id": 21,
+                "controllers": [
+                    {
+                        "kind": "move_piston_controller",
+                        "algorithm": "Piston Ease-In",
+                        "direction": "DOWN",
+                        "speed": 5
+                    },
+                    {
+                        "kind": "time_reference",
+                        "id": 3
+                    }
+                ],
+                "triggers": [
+                    {
+                        "kind": "pressure_value_trigger",
+                        "source": "Pressure Raw",
+                        "operator": ">=",
+                        "value": 0.2,
+                        "next_node_id": 42
+                    }
+                ]
+            }
+        ]
+    }
+}

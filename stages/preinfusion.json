@@ -1,0 +1,138 @@
+{
+    "name": "preinfusion",
+    "nodes": [
+        {
+            "id": 43,
+            "controllers": [
+                {
+                    "kind": "time_reference",
+                    "id": 5
+                }
+            ],
+            "triggers": [
+                {
+                    "kind": "exit",
+                    "next_node_id": 10
+                }
+            ]
+        },
+        {
+            "id": 10,
+            "controllers": [
+                {
+                    "kind": "temperature_controller",
+                    "algorithm": "Cylinder Temperature PID v1.0",
+                    "curve": {
+                        "id": 3,
+                        "interpolation_kind": "linear_interpolation",
+                        "points": [
+                            [
+                                0,
+                                25.0
+                            ]
+                        ],
+                        "time_reference_id": 2
+                    }
+                },
+                {
+                    "kind": "flow_controller",
+                    "algorithm": "Flow PID v1.0",
+                    "curve": {
+                        "id": 4,
+                        "interpolation_kind": "catmull_interpolation",
+                        "points": "POINTS_FLOW_CONTROLLER",
+                        "time_reference_id": 5
+                    }
+                },
+                {
+                    "kind": "position_reference",
+                    "id": 1
+                }
+            ],
+            "triggers": [
+                {
+                    "kind": "timer_trigger",
+                    "timer_reference_id": 5,
+                    "operator": ">=",
+                    "value": "MAX_PREINFUSION_TIME",
+                    "next_node_id": 12
+                },
+                {
+                    "kind": "pressure_value_trigger",
+                    "source": "Pressure Predictive",
+                    "operator": ">=",
+                    "value": "PRESSURE_LIMIT",
+                    "next_node_id": 11
+                },
+                {
+                    "kind": "weight_value_trigger",
+                    "source": "Weight Raw",
+                    "weight_reference_id": 1,
+                    "operator": ">=",
+                    "value": "PREINFUSION_STOP_WEIGHT",
+                    "next_node_id": 12
+                },
+                {
+                    "kind": "button_trigger",
+                    "source": "Encoder Button",
+                    "gesture": "Single Tap",
+                    "next_node_id": 12
+                }
+            ]
+        },
+        {
+            "id": 11,
+            "controllers": [
+                {
+                    "kind": "pressure_controller",
+                    "algorithm": "Pressure PID v1.0",
+                    "curve": {
+                        "id": 6,
+                        "interpolation_kind": "catmull_interpolation",
+                        "points": [
+                            [
+                                0,
+                                "PRESSURE_LIMIT"
+                            ]
+                        ],
+                        "time_reference_id": 5
+                    }
+                },
+                {
+                    "kind": "position_reference",
+                    "id": 1
+                }
+            ],
+            "triggers": [
+                {
+                    "kind": "timer_trigger",
+                    "timer_reference_id": 5,
+                    "operator": ">=",
+                    "value": "MAX_PREINFUSION_TIME",
+                    "next_node_id": 12
+                },
+                {
+                    "kind": "flow_curve_trigger",
+                    "source": "Flow Raw",
+                    "operator": ">=",
+                    "curve_id": 4,
+                    "next_node_id": 10
+                },
+                {
+                    "kind": "weight_value_trigger",
+                    "source": "Weight Raw",
+                    "weight_reference_id": 1,
+                    "operator": ">=",
+                    "value": "PREINFUSION_STOP_WEIGHT",
+                    "next_node_id": 12
+                },
+                {
+                    "kind": "button_trigger",
+                    "source": "Encoder Button",
+                    "gesture": "Single Tap",
+                    "next_node_id": 12
+                }
+            ]
+        }
+    ]
+}
