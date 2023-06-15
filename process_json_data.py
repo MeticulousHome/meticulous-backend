@@ -1,6 +1,10 @@
 import json
 from stages.stages import select_json_structure
 
+def generate_json(payload):
+    pass
+
 
 if __name__ == "__main__":
-    print(select_json_structure("automatic_purge"))
+    with open(".json/dashboard.json", "r") as f:
+        data = json.load(f)
