@@ -1,0 +1,33 @@
+{
+    "name": "press dial",
+    "nodes": [
+        {
+            "id": 8,
+            "controllers": [
+                {
+                    "kind": "temperature_controller",
+                    "algorithm": "Water Temperature PID v1.0",
+                    "curve": {
+                        "id": 1,
+                        "interpolation_kind": "linear_interpolation",
+                        "points": [
+                            [
+                                0,
+                                "TEMPERATURE"
+                            ]
+                        ],
+                        "time_reference_id": 2
+                    }
+                }
+            ],
+            "triggers": [
+                {
+                    "kind": "button_trigger",
+                    "source": "Encoder Button",
+                    "gesture": "Single Tap",
+                    "next_node_id": 33
+                }
+            ]
+        }
+    ]
+}
