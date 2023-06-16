@@ -184,6 +184,10 @@
          {
           "kind": "position_reference",
           "id": 5
+         },
+         {
+          "kind": "time_reference",
+          "id": 20
          }
         ],
         "triggers": [
@@ -191,7 +195,7 @@
           "kind": "temperature_value_trigger",
           "source": "Tube Temperature",
           "operator": ">=",
-          "value": 85,
+          "value": 80,
           "next_node_id": 8
          },
          {
@@ -205,28 +209,51 @@
           "kind": "button_trigger",
           "source": "Encoder Button",
           "gesture": "Single Tap",
-          "next_node_id": 8
+          "next_node_id": 33
          }
         ]
-       },
+       }
+      ]
+     },
+     {
+      "name": "press dial",
+      "nodes": [
        {
         "id": 8,
         "controllers": [
          {
           "kind": "temperature_controller",
-          "algorithm": "Cylinder Temperature PID v1.0",
+          "algorithm": "Water Temperature PID v1.0",
           "curve": {
            "id": 1,
            "interpolation_kind": "linear_interpolation",
            "points": [
             [
              0,
-             25
+             85
             ]
            ],
            "time_reference_id": 2
           }
-         },
+         }
+        ],
+        "triggers": [
+         {
+          "kind": "button_trigger",
+          "source": "Encoder Button",
+          "gesture": "Single Tap",
+          "next_node_id": 33
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "name": "retracting",
+      "nodes": [
+       {
+        "id": 33,
+        "controllers": [
          {
           "kind": "move_piston_controller",
           "algorithm": "Piston Ease-In",
@@ -303,7 +330,7 @@
       ]
      },
      {
-      "name": "heating",
+      "name": "closing valve",
       "nodes": [
        {
         "id": 21,
@@ -521,7 +548,7 @@
           "timer_reference_id": 4,
           "operator": ">=",
           "value": 100,
-          "next_node_id": 31
+          "next_node_id": 34
          },
          {
           "kind": "weight_value_trigger",
@@ -529,7 +556,7 @@
           "weight_reference_id": 1,
           "operator": ">=",
           "value": 36,
-          "next_node_id": 31
+          "next_node_id": 34
          },
          {
           "kind": "flow_value_trigger",
@@ -542,7 +569,7 @@
           "kind": "button_trigger",
           "source": "Encoder Button",
           "gesture": "Single Tap",
-          "next_node_id": 31
+          "next_node_id": 34
          }
         ]
        },
@@ -575,7 +602,7 @@
           "timer_reference_id": 4,
           "operator": ">=",
           "value": 100,
-          "next_node_id": 31
+          "next_node_id": 34
          },
          {
           "kind": "weight_value_trigger",
@@ -583,7 +610,7 @@
           "weight_reference_id": 1,
           "operator": ">=",
           "value": 36,
-          "next_node_id": 31
+          "next_node_id": 34
          },
          {
           "kind": "pressure_curve_trigger",
@@ -596,6 +623,39 @@
           "kind": "button_trigger",
           "source": "Encoder Button",
           "gesture": "Single Tap",
+          "next_node_id": 34
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "name": "idle",
+      "nodes": [
+       {
+        "id": 34,
+        "controllers": [
+         {
+          "kind": "time_reference",
+          "id": 25
+         }
+        ],
+        "triggers": [
+         {
+          "kind": "exit",
+          "next_node_id": 35
+         }
+        ]
+       },
+       {
+        "id": 35,
+        "controllers": [],
+        "triggers": [
+         {
+          "kind": "timer_trigger",
+          "timer_reference_id": 25,
+          "operator": ">=",
+          "value": 0.2,
           "next_node_id": 31
          }
         ]
@@ -603,7 +663,7 @@
       ]
      },
      {
-      "name": "infusion",
+      "name": "retracting",
       "nodes": [
        {
         "id": 31,
@@ -700,7 +760,7 @@
       ]
      },
      {
-      "name": "purge",
+      "name": "remove cup",
       "nodes": [
        {
         "id": 19,
@@ -733,7 +793,12 @@
           "next_node_id": 16
          }
         ]
-       },
+       }
+      ]
+     },
+     {
+      "name": "purge",
+      "nodes": [
        {
         "id": 16,
         "controllers": [
