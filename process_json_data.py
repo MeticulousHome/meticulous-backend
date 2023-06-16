@@ -1,29 +1,13 @@
 import json
-from stages.stages import select_json_structure
+import stages.stages as stages
 
-def find_key_value(data, target_value):
-    # Traverse the dictionary and search for the target value
-    if isinstance(data, dict):
-        for key, value in data.items():
-            if find_key_value(value, target_value):
-                return True
-            if key == target_value or value == target_value:
-                return True
 
-    # If it's a list, search in each element of the list
-    if isinstance(data, list):
-        for item in data:
-            if find_key_value(item, target_value):
-                return True
-
-    # The searched value was not found
-    return False
 
 def generate_json(payload):
     if payload.get("source") == "DASHBOARD":
         print("Coming from DASHBOARD")
         # Search if the value "spring" exists anywhere in the dictionary
-        found = find_key_value(payload, "spring")
+        found = stages.find_key_value(payload, "spring")
         if found:
             print("The value 'spring' was found")
         else:
