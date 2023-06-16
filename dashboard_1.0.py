@@ -11,18 +11,18 @@ import stages.stages as stages
 
 #     return stage
 
-def get_stage_modified(kind,payload,init_node,end_node):
+def stage_modifier(kind,payload,init_node,end_node):
     json_stage_modified = stages.select_json_structure("curve")
     for key in payload:
         json_stage_modified[key] = payload[key]
     return json_stage_modified
 
-def get_stages(payload):
+def get_modified_stages(payload):
     current_node = 300
     stages = payload["stages"]
     json_stages = []
     for stage in stages:
-        json_stages.append(get_stage_modified(stage["kind"],stage,current_node,current_node+1))
+        json_stages.append(stage_modifier(stage["kind"],stage,current_node,current_node+1))
         current_node = current_node + 1
 
     return json_stages
@@ -36,5 +36,5 @@ if __name__ == "__main__":
     with open("dashboard.json", "r") as f:
         data = json.load(f)
     
-    print(get_stages(data))
+    print(get_modified_stages(data))
     
