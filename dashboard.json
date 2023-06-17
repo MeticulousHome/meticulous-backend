@@ -15,7 +15,7 @@
         "control_method": "flow",
         "interpolation_method": "linear"        }
     },    {      "name": "stage 2",
-      "kind": "curve_1.0",
+      "kind": "curve_2.0",
       "parameters": {
         "points": [[0,8],[0,6]],
         "stop_weight": 40.0,

@@ -27,14 +27,32 @@ def get_modified_stages(payload):
 
     return json_stages
 
-        
+def generate_json(json_template,payload):
+    modified_stages = get_modified_stages(payload)
+    # Buscar el índice del campo "idle"
+    index_idle = None
+    for i, stage in enumerate(json_template['stages']):
+        if stage['name'] == 'idle':
+            index_idle = i
+            break
+    # Insertar el diccionario hijo entre "idle" y "closing valve"
+    json_template['stages'].insert(index_idle + 1, modified_stages)
+
+        # Guardar el diccionario en un archivo JSON
+    with open("new.json", "w") as f:
+        json.dump(json_template, f, indent=4)
+
+    return json_template
+
+    
 
         
-
 if __name__ == "__main__":
     # Read the JSON file
+    with open("./json/templeate.json", "r") as f:
+        json_template = json.load(f)
     with open("dashboard.json", "r") as f:
-        data = json.load(f)
+        payload = json.load(f)
     
-    print(get_modified_stages(data))
-    
+    # generate_json(json_template,payload)
+    print(stages.select_json_structure("curve"))
