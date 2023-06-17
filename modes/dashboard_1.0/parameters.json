@@ -1,0 +1,29 @@
+{
+    "action": "to_play",
+    "name": "Juanito",
+    "temperature": 82.0,
+    "preheat": true,
+    "source": "dashboard",
+    "stages": [    {
+        "name": "stage 1",
+        "kind": "curve_1.0",
+        "parameters": {
+          "points": [[0,4],[30,4]],
+          "stop_weight": 1.0,
+          "stop_time": 35.0,
+          "max_limit_trigger": 8.0,
+          "control_method": "flow",
+          "interpolation_method": "linear"        }
+      },    {      "name": "stage 2",
+        "kind": "curve_2.0",
+        "parameters": {
+          "points": [[0,8],[0,6]],
+          "stop_weight": 40.0,
+          "stop_time": 30.0,
+          "max_limit_trigger": 8.0,
+          "control_method": "pressure",
+          "interpolation_method": "smooth"      }
+      }
+    ]
+  }
+  
