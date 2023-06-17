@@ -107,7 +107,36 @@ def get_pre_purge_stage(parameters: json,start_node: int, end_node: int):
                     }
                 ]
             },
-            {
+        ]
+    }
+    
+    # This code is ready when water detection is implemented
+    
+    #     water_detection_node = {
+    #     "id": 5,
+    #     "controllers": [
+    #         {
+    #             "kind": "time_reference",
+    #             "id": 2
+    #         }
+    #     ],
+    #     "triggers": [
+    #         {
+    #             "kind": "water_detection_trigger",
+    #             "value": True,
+    #             "next_node_id": 7
+    #         },
+    #         {
+    #             "kind": "timer_trigger",
+    #             "timer_reference_id": 2,
+    #             "operator": ">=",
+    #             "value": 100,
+    #             "next_node_id": 6
+    #         }
+    #     ]
+    # }
+        
+    water_detection_node = {
                 "id": 5,
                 "controllers": [
                     {
@@ -124,17 +153,13 @@ def get_pre_purge_stage(parameters: json,start_node: int, end_node: int):
                 "triggers": [
                     {
                         "kind": "water_detection_trigger",
-                        "value": true,
+                        "value": True,
                         "next_node_id": end_node
                     },
-                    {
-                        "kind": "water_detection_trigger",
-                        "value": false,
-                        "next_node_id": 6
-                    }
                 ]
-            },
-            {
+            }
+    
+    no_water_node = {
                 "id": 6,
                 "controllers": [
                     {
@@ -158,12 +183,24 @@ def get_pre_purge_stage(parameters: json,start_node: int, end_node: int):
                         "next_node_id": -2
                     }
                 ]
-            }
-        ]
     }
-    
-    return pre_purge_stage
+    water_detection_value = water_detection_node['triggers'][0]['value']
 
+    # Set next_node_id based on the water_detection_value
+    end_node = end_node if water_detection_value else 6
+    water_detection_node['triggers'][0]['next_node_id'] = end_node
+
+    # Merge the dictionaries
+    if water_detection_value:
+        # Merge pre_purge_stage with water_detection_node
+        pre_purge_stage['nodes'].append(water_detection_node)
+    else:
+        # Merge pre_purge_stage with water_detection_node and no_water_node
+        pre_purge_stage['nodes'].extend([water_detection_node, no_water_node])
+
+    # The merged dictionary is now in pre_purge_stage
+    return pre_purge_stage
+    
 
 
 
