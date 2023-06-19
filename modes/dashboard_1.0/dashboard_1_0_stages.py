@@ -21,7 +21,7 @@ def get_stages(parameters: json):
     current_stage += 1
     closing_valve_stage = get_closing_valve_stage(parameters, current_stage, current_stage + 1)
     current_stage += 1
-    stage_curves_stage = get__stage_curves(parameters, current_stage, current_stage + 1)
+    stage_curves = get__stage_curves(parameters, current_stage, current_stage + 1)
     current_stage += 1
     idle_stage = get_idle_stage(parameters, current_stage, current_stage + 1)
     current_stage += 1
@@ -38,7 +38,7 @@ def get_stages(parameters: json):
     stages.extend(heating_stage if isinstance(heating_stage, list) else [heating_stage])
     stages.append(retracting_stage)
     stages.append(closing_valve_stage)
-    stages.append(stage_curves_stage )
+    stages.append(stage_curves)
     stages.append(idle_stage)
     stages.append(retracting_2_stage)
 
