@@ -1,7 +1,7 @@
 import json
 
 def get__stage_curves(parameters: dict, start_node: int, end_node: int):
-    stages_list = []
+    stages_dict = {}
     values = parameters["stages"]
     
     for stage in values:
@@ -164,14 +164,15 @@ def get__stage_curves(parameters: dict, start_node: int, end_node: int):
                 }
             ]
         }
-        #stages_list.append(curve_template)
-    return curve_template
+        stages_dict[name] = curve_template
+        
+    return list(stages_dict.values())
 
 
 if __name__ == '__main__':
     # Read the JSON file
-    with open("../dashboard.json", "r") as f:
+    with open("parameters.json", "r") as f:
         payload = json.load(f)
 
     stage_modified = get__stage_curves(payload, 300, 301)
-    print(stage_modified[1])
+    print(stage_modified)
