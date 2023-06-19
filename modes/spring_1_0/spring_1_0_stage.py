@@ -2,11 +2,11 @@ import json
 
 def get_spring_stage(parameters: json,start_node: int, end_node: int):
     
-    spring_stage = {
+    spring_stage =     {
       "name": "spring",
       "nodes": [
         {
-          "id": 38,
+          "id": start_node,
           "controllers": [
             {
               "kind": "position_reference",
@@ -60,7 +60,7 @@ def get_spring_stage(parameters: json,start_node: int, end_node: int):
               "position_reference_id": 7,
               "operator": ">=",
               "value": 60,
-              "next_node_id": 34,
+              "next_node_id": end_node,
               "source": "Piston Position Raw"
             },
             {
@@ -76,13 +76,13 @@ def get_spring_stage(parameters: json,start_node: int, end_node: int):
               "weight_reference_id": 1,
               "operator": ">=",
               "value": 45,
-              "next_node_id": 34
+              "next_node_id": end_node
             },
             {
               "kind": "button_trigger",
               "source": "Encoder Button",
               "gesture": "Single Tap",
-              "next_node_id": 34
+              "next_node_id": end_node
             }
           ]
         },
@@ -121,7 +121,7 @@ def get_spring_stage(parameters: json,start_node: int, end_node: int):
               "position_reference_id": 7,
               "operator": ">=",
               "value": 60,
-              "next_node_id": 34,
+              "next_node_id": end_node,
               "source": "Piston Position Raw"
             },
             {
@@ -130,20 +130,21 @@ def get_spring_stage(parameters: json,start_node: int, end_node: int):
               "weight_reference_id": 1,
               "operator": ">=",
               "value": 45,
-              "next_node_id": 34
+              "next_node_id": end_node
             },
             {
               "kind": "button_trigger",
               "source": "Encoder Button",
               "gesture": "Single Tap",
-              "next_node_id": 34
+              "next_node_id": end_node
             }
           ]
         }
       ]
     }
     
-    return spring_stage
+    # return spring_stage
+    return {}
 
 
 if __name__ == '__main__':

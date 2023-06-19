@@ -6,6 +6,7 @@ from closing_valve_stage import get_closing_valve_stage as get_closing_valve_sta
 from preinfusion_stage import get_preinfusion_stage as get_preinfusion_stage
 from idle_stage import get_idle_stage as get_idle_stage
 from retracting_2_stage import get_retracting_2_stage as get_retracting_2_stage
+from spring_1_0_stage import get_spring_stage as get_spring_stage
 
 def get_stages(parameters: json):    
     stages = []
@@ -21,28 +22,20 @@ def get_stages(parameters: json):
     current_stage += 1
     preinfusion_stage = get_preinfusion_stage(parameters, current_stage, current_stage + 1)
     current_stage += 1
-    infusion_stage = get_infusion_stage(parameters, current_stage, current_stage + 1)
+    spring_stage = get_spring_stage (parameters, current_stage, current_stage + 1)
     current_stage += 1
     idle_stage = get_idle_stage(parameters, current_stage, current_stage + 1)
     current_stage += 1
     retracting_2_stage = get_retracting_2_stage(parameters, current_stage, current_stage + 1)
     current_stage += 1
-    if (parameters["automatic_purge"]):
-        remove_cup_stage = get_remove_cup_stage(parameters, current_stage, current_stage + 1)
-        current_stage += 1
-        end_purge_stage = get_end_purge_stage(parameters, current_stage, current_stage + 1)
-        current_stage += 1
 
     stages.append(prepurge_stage)
     stages.extend(heating_stage if isinstance(heating_stage, list) else [heating_stage])
     stages.append(retracting_stage)
     stages.append(closing_valve_stage)
     stages.append(preinfusion_stage)
-    stages.append(infusion_stage)
+    stages.append(spring_stage)
     stages.append(idle_stage)
     stages.append(retracting_2_stage)
-    if (parameters["automatic_purge"]):
-        stages.append(remove_cup_stage)
-        stages.append(end_purge_stage)
 
     return stages
