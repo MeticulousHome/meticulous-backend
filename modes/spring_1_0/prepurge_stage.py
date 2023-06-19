@@ -204,7 +204,8 @@ def get_prepurge_stage(parameters: json,start_node: int, end_node: int):
         prepurge_stage['nodes'].extend([water_detection_node, no_water_node])
 
     # The merged dictionary is now in pre_purge_stage
-    return prepurge_stage
+    # return prepurge_stage
+    return {}
     
 
 

@@ -100,7 +100,8 @@ def get_retracting_2_stage(parameters: json,start_node: int, end_node: int):
          ]
        } 
     
-    return retracting_2_stage
+    # return retracting_2_stage
+    return {}
 
 
 if __name__ == '__main__':

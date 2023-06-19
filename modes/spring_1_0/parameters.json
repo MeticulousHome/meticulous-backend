@@ -1,11 +1,15 @@
 {
     "action": "to_play",
-    "name": "My Example", 
-    "automatic_purge": true,
-    "temperature": 98.6,  
-    "preinfusion": false,  
-    "preheat": true,   
-    "pressure": 1.2,  
-    "out_weight": 0.5,  
-    "source": "lcd"
+    "name": "spring",
+    "temperature": 82.0,
+    "preheat": true,
+    "preinfusion": true,  
+    "source": "dashboard",
+    "automatic_purge": true,  
+    "parameters": {      
+        "max": 86,      
+        "min": 80,
+        "max_pressure": 10,      
+        "weight_trigger": 50  
+    }
 }

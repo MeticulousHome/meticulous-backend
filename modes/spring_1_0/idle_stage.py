@@ -35,7 +35,8 @@ def get_idle_stage(parameters: json, start_node: int, end_node: int):
         ]
     }
     
-    return idle_stage
+    # return idle_stage
+    return {}
 
 
 if __name__ == '__main__':

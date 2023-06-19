@@ -130,8 +130,8 @@ def get_preinfusion_stage(parameters: json, start_node: int, end_node: int):
        }
       ]
      }
-    return preinfusion_stage
-
+    # return preinfusion_stage
+    return {}
 
 if __name__ == '__main__':
   
