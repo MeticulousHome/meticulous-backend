@@ -14,12 +14,19 @@ def generate_dashboard_1_0(parameters: dict):
         print("Warning: source is not defined")
 
     stages = get_stages(parameters)
-    
+
     if stages is None:
         print("Error: stages is not defined")
         return None
-    return json.dumps(get_stages, indent=4)
-    
+
+    dashboard_json = {
+        "name": name,
+        "stages": stages,
+        "source": source,
+    }
+
+    return json.dumps(dashboard_json, indent=4)
+
 if __name__ == "__main__":
     #import json parameters from file
     parameters = None

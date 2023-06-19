@@ -1,6 +1,7 @@
 {
     "action": "to_play",
     "name": "Juanito",
+    "automatic_purge": true,
     "temperature": 82.0,
     "preheat": true,
     "source": "dashboard",
