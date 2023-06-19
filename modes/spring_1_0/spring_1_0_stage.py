@@ -2,6 +2,28 @@ import json
 
 def get_spring_stage(parameters: json,start_node: int, end_node: int):
     
+    try:
+        max_pressure = parameters['parameters']['max_pressure']
+    except:
+        print('Error: Max pressure is not defined')
+        return None
+    try:
+        max_power = parameters['parameters']['max']
+    except:
+        print('Error: Max power is not defined')
+        return None
+    try:
+        min_power = parameters['parameters']['min']
+    except:
+        print('Error: Min power is not defined')
+        return None
+    try:
+        weight_trigger = parameters['parameters']['weight_trigger']
+    except:
+        print('Error: Weight trigger is not defined')
+        return None
+    
+      
     spring_stage =     {
       "name": "spring",
       "nodes": [
@@ -40,11 +62,11 @@ def get_spring_stage(parameters: json,start_node: int, end_node: int):
                 "points": [
                   [
                     0,
-                    50
+                    min_power
                   ],
                   [
                     60,
-                    90
+                    max_power
                   ]
                 ],
                 "reference": {
@@ -67,7 +89,7 @@ def get_spring_stage(parameters: json,start_node: int, end_node: int):
               "kind": "pressure_value_trigger",
               "source": "Pressure Predictive",
               "operator": ">=",
-              "value": 11,
+              "value": max_pressure,
               "next_node_id": 41
             },
             {
@@ -75,7 +97,7 @@ def get_spring_stage(parameters: json,start_node: int, end_node: int):
               "source": "Weight Raw",
               "weight_reference_id": 1,
               "operator": ">=",
-              "value": 45,
+              "value": weight_trigger,
               "next_node_id": end_node
             },
             {
@@ -98,7 +120,7 @@ def get_spring_stage(parameters: json,start_node: int, end_node: int):
                 "points": [
                   [
                     0,
-                    11
+                    max_pressure
                   ]
                 ],
                 "reference": {
@@ -129,7 +151,7 @@ def get_spring_stage(parameters: json,start_node: int, end_node: int):
               "source": "Weight Raw",
               "weight_reference_id": 1,
               "operator": ">=",
-              "value": 45,
+              "value": weight_trigger,
               "next_node_id": end_node
             },
             {
@@ -143,15 +165,13 @@ def get_spring_stage(parameters: json,start_node: int, end_node: int):
       ]
     }
     
-    # return spring_stage
-    return {}
+    return spring_stage
+    # return {}
 
 
 if __name__ == '__main__':
-  
-    parameters = '{"preheat": true,"temperature": 200}'
-
-    json_parameters = json.loads(parameters)
+    with open('parameters.json') as json_file:
+        json_parameters = json.load(json_file)
 
     spring_stage = get_spring_stage(json_parameters, 200, 1)
     print(json.dumps(spring_stage, indent=4))
