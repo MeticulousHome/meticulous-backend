@@ -1,6 +1,6 @@
 import json
 
-def get_infusion_stage(parameters: dict, start_node: int, end_node: int):
+def get__stage_curves(parameters: dict, start_node: int, end_node: int):
     stages_list = []
     values = parameters["stages"]
     
@@ -173,5 +173,5 @@ if __name__ == '__main__':
     with open("../dashboard.json", "r") as f:
         payload = json.load(f)
 
-    stage_modified = get_preinfusion_stage(payload, 300, 301)
+    stage_modified = get__stage_curves(payload, 300, 301)
     print(stage_modified[1])
