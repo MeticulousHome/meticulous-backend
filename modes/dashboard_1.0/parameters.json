@@ -47,6 +47,10 @@
         "control_method": "pressure",
         "interpolation_method": "smooth"
       }
+    },
+    {
+      "name": "stage 3",
+      "kind": "spring_1.0"
     }
   ]
 }
