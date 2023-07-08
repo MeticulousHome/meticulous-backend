@@ -1,6 +1,7 @@
 import json
 
 def get_end_purge_stage(parameters: json, start_node: int, end_node: int):
+    
     end_purge_stage =      {
       "name": "purge",
       "nodes": [
@@ -81,8 +82,8 @@ def get_end_purge_stage(parameters: json, start_node: int, end_node: int):
       ]
      }
     
-    # return end_purge_stage
-    return {}
+    return end_purge_stage
+    # return {}
 
 
 if __name__ == '__main__':

@@ -2,8 +2,8 @@
     "action": "to_play",
     "name": "spring",
     "temperature": 82.0,
-    "preheat": true,
-    "preinfusion": true,  
+    "preheat": false,
+    "preinfusion": false,  
     "source": "dashboard",
     "automatic_purge": true,  
     "parameters": {      

@@ -12,6 +12,7 @@ def get_heating_stage(parameters: json, start_node: int, end_node: int):
         return None
     
     preheat_next_node_id = end_node if not preheat else 8
+    
     heating_stage = {
         "name": "heating",
         "nodes": [
@@ -99,8 +100,8 @@ def get_heating_stage(parameters: json, start_node: int, end_node: int):
             ],
         }
     
-    # return heating_stage if not preheat else [heating_stage, preheat_stage]
-    return {}
+    return heating_stage if not preheat else [heating_stage, preheat_stage]
+    # return {}
 
 
 if __name__ == '__main__':

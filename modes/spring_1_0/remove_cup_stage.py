@@ -1,6 +1,7 @@
 import json
 
 def get_remove_cup_stage(parameters: json, start_node: int, end_node: int):
+    
     remove_cup_stage =  {
       "name": "remove cup",
       "nodes": [
@@ -39,8 +40,8 @@ def get_remove_cup_stage(parameters: json, start_node: int, end_node: int):
       ]
      }
     
-    # return remove_cup_stage
-    return {}
+    return remove_cup_stage
+    # return {}
 
 
 if __name__ == '__main__':

@@ -1,6 +1,7 @@
 import json
 
 def get_idle_stage(parameters: json, start_node: int, end_node: int):
+    
     idle_stage = {
         "name": "idle",
         "nodes": [
@@ -35,8 +36,8 @@ def get_idle_stage(parameters: json, start_node: int, end_node: int):
         ]
     }
     
-    # return idle_stage
-    return {}
+    return idle_stage
+    # return {}
 
 
 if __name__ == '__main__':

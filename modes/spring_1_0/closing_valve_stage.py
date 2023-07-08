@@ -32,8 +32,8 @@ def get_closing_valve_stage(parameters: json,start_node: int, end_node: int):
         ]
     }
     
-    # return closing_valve_stage
-    return {}
+    return closing_valve_stage
+    # return {}
 
 
 if __name__ == '__main__':
