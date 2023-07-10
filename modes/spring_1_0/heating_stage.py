@@ -25,7 +25,7 @@ def get_heating_stage(parameters: json, start_node: int, end_node: int):
                     "curve": {
                         "id": 0,
                         "interpolation_kind": "linear_interpolation",
-                        "points": [[0, temperature]],
+                        "points": [[0, 180]],
                         "reference": {
                             "kind": "time",
                             "id": 2,

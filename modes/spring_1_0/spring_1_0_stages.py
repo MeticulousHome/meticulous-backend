@@ -24,7 +24,7 @@ def get_stages(parameters: json):
     current_stage += 1
     if (parameters["preinfusion"]):
         preinfusion_stage = get_preinfusion_stage(parameters, current_stage, current_stage + 1)
-    current_stage += 1
+        current_stage += 1
     spring_stage = get_spring_stage (parameters, current_stage, current_stage + 1)
     current_stage += 1
     idle_stage = get_idle_stage(parameters, current_stage, current_stage + 1)
