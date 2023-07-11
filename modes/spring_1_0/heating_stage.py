@@ -12,6 +12,9 @@ def get_heating_stage(parameters: json, start_node: int, end_node: int):
         return None
     
     preheat_next_node_id = end_node if not preheat else 8
+    control_algorithm = "Cylinder Temperature PID v1.0" if not preheat else "Water Temperature PID v1.0"
+    temperature_algorithm = 180 if not preheat else temperature
+    start_node_preheat = 8 if preheat else end_node
     
     heating_stage = {
         "name": "heating",
@@ -21,11 +24,11 @@ def get_heating_stage(parameters: json, start_node: int, end_node: int):
             "controllers": [
                 {
                     "kind": "temperature_controller",
-                    "algorithm": "Cylinder Temperature PID v1.0",
+                    "algorithm": control_algorithm,
                     "curve": {
                         "id": 0,
                         "interpolation_kind": "linear_interpolation",
-                        "points": [[0, 180]],
+                        "points": [[0, temperature_algorithm]],
                         "reference": {
                             "kind": "time",
                             "id": 2,
@@ -60,7 +63,7 @@ def get_heating_stage(parameters: json, start_node: int, end_node: int):
                     "kind": "button_trigger",
                     "source": "Encoder Button",
                     "gesture": "Single Tap",
-                    "next_node_id": end_node,
+                    "next_node_id": start_node_preheat,
                 },
             ],
             },
@@ -72,7 +75,7 @@ def get_heating_stage(parameters: json, start_node: int, end_node: int):
             "name": "press dial",
             "nodes": [
                 {
-                "id": 8,
+                "id": start_node_preheat,
                 "controllers": [
                     {
                     "kind": "temperature_controller",
