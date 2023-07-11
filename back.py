@@ -110,7 +110,7 @@ def gatherVersionInfo():
 
     software_info["lcdV"] = lcd_version
 
-    software_info["dashboardV"] = 1.0
+    # software_info["dashboardV"] = 1.0
     software_info["firmwareV"] = 0.0
 
     #SOLICITAMOS LA VERSION DE FIRMWARE A LA ESP
@@ -194,7 +194,7 @@ data_sensor_actuators = {
 
 software_info = {
     "name": "Meticulous Espresso",
-    "dashboardV": 2,
+    # "dashboardV": 2,
     "lcdV": 3,
     "firmwareV": 4,
     "backendV": 5,
@@ -708,7 +708,7 @@ async def live():
     
             await sio.emit("INFO", {
                 "name": software_info["name"],
-                "dashboardV" : software_info["dashboardV"],
+                # "dashboardV" : software_info["dashboardV"],
                 "lcdV" : software_info["lcdV"],
                 "firmwareV" : software_info["firmwareV"],
                 "backendV" : software_info["backendV"],
