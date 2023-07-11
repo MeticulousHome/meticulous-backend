@@ -11,7 +11,6 @@ def get_heating_stage(parameters: json, start_node: int, end_node: int):
         print('Error: temperature is not defined')
         return None
     
-    preheat_next_node_id = end_node if not preheat else 8
     control_algorithm = "Cylinder Temperature PID v1.0" if not preheat else "Water Temperature PID v1.0"
     temperature_algorithm = 180 if not preheat else temperature
     start_node_preheat = 8 if preheat else end_node
@@ -50,7 +49,7 @@ def get_heating_stage(parameters: json, start_node: int, end_node: int):
                     "source": "Tube Temperature",
                     "operator": ">=",
                     "value": temperature,
-                    "next_node_id": preheat_next_node_id,
+                    "next_node_id": start_node_preheat,
                 },
                 {
                     "kind": "timer_trigger",
