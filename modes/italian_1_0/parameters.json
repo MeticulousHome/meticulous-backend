@@ -1,6 +1,6 @@
 {
     "action": "to_play",
-    "name": "My Example", 
+    "name": "Italian", 
     "automatic_purge": true,
     "temperature": 98.6,  
     "preinfusion": false,  

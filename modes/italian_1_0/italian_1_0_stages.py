@@ -22,8 +22,9 @@ def get_stages(parameters: json):
     current_stage += 1
     closing_valve_stage = get_closing_valve_stage(parameters, current_stage, current_stage + 1)
     current_stage += 1
-    preinfusion_stage = get_preinfusion_stage(parameters, current_stage, current_stage + 1)
-    current_stage += 1
+    if (parameters["preinfusion"]):
+        preinfusion_stage = get_preinfusion_stage(parameters, current_stage, current_stage + 1)
+        current_stage += 1
     infusion_stage = get_infusion_stage(parameters, current_stage, current_stage + 1)
     current_stage += 1
     idle_stage = get_idle_stage(parameters, current_stage, current_stage + 1)
@@ -40,7 +41,8 @@ def get_stages(parameters: json):
     stages.extend(heating_stage if isinstance(heating_stage, list) else [heating_stage])
     stages.append(retracting_stage)
     stages.append(closing_valve_stage)
-    stages.append(preinfusion_stage)
+    if (parameters["preinfusion"]):
+        stages.append(preinfusion_stage)
     stages.append(infusion_stage)
     stages.append(idle_stage)
     stages.append(retracting_2_stage)
