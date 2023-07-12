@@ -13,8 +13,10 @@ from end_purge_stage import get_end_purge_stage as get_end_purge_stage
 def get_stages(parameters: json):    
     stages = []
     current_stage = 300
+    initial_node = -1
+    final_node = -2
 
-    prepurge_stage = get_prepurge_stage(parameters, current_stage, current_stage + 1)
+    prepurge_stage = get_prepurge_stage(parameters, initial_node, current_stage)
     current_stage += 1
     heating_stage = get_heating_stage(parameters, current_stage, current_stage + 1)
     current_stage += 1
@@ -29,12 +31,13 @@ def get_stages(parameters: json):
     current_stage += 1
     idle_stage = get_idle_stage(parameters, current_stage, current_stage + 1)
     current_stage += 1
-    retracting_2_stage = get_retracting_2_stage(parameters, current_stage, current_stage + 1)
+    retracting_2_stage = get_retracting_2_stage(parameters, current_stage, final_node if not parameters["automatic_purge"] else current_stage + 1)
     current_stage += 1
-    if (parameters["automatic_purge"]):
+    
+    if (parameters["automatic_purge"]):    
         remove_cup_stage = get_remove_cup_stage(parameters, current_stage, current_stage + 1)
         current_stage += 1
-        end_purge_stage = get_end_purge_stage(parameters, current_stage, current_stage + 1)
+        end_purge_stage = get_end_purge_stage(parameters, current_stage, final_node)
         current_stage += 1
 
     stages.append(prepurge_stage)
