@@ -25,7 +25,7 @@ def get_retracting_2_stage(parameters: json,start_node: int, end_node: int):
              ]
            },
            {
-             "id": end_node,
+             "id": -2,
              "controllers": [
                {
                  "kind": "end_profile"
