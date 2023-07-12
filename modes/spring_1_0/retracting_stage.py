@@ -1,10 +1,5 @@
 import json
 
-def get_retracting_stage(parameters: json, start_stage: int, end_stage: int):
-    return {}
-
-import json
-
 def get_retracting_stage(parameters: json,start_node: int, end_node: int):
     
     retracting_stage = {
