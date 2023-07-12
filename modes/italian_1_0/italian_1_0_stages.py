@@ -17,7 +17,6 @@ def get_stages(parameters: json):
     final_node = -2
 
     prepurge_stage = get_prepurge_stage(parameters, initial_node, current_stage)
-    current_stage += 1
     heating_stage = get_heating_stage(parameters, current_stage, current_stage + 1)
     current_stage += 1
     retracting_stage = get_retracting_stage(parameters, current_stage, current_stage + 1)
