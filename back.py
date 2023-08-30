@@ -21,7 +21,7 @@ import subprocess
 comando = '/home/meticulous/meticulous-raspberry-setup/backend_for_esp32/clean_logs.sh'
 lock = threading.Lock()
 file_path = '/home/meticulous/meticulous-raspberry-setup/backend_for_esp32/logs/'
-buffer=""
+buffer=""infoReady
 contador= 'contador.txt'
 
 usaFormatoDeColores = True
@@ -199,6 +199,10 @@ software_info = {
     "firmwareV": 4,
     "backendV": 5,
     "fanStatus": "on",
+}
+
+hardware_info = {
+    "mainVoltage": "240"
 }
 
 # "d" -> double click tare
@@ -613,19 +617,28 @@ def read_arduino():
                         print(data_str, end="")
 
             elif data_str_sensors[0] == 'ESPInfo':
-
-                try:
-                    software_info["fanStatus"] = data_str_sensors[2].strip('\r\n')
-                except:
-                    add_to_buffer("(E): ESP did not send fanStatus correctly")
+                info_not_valid = False
 
                 try:
                     software_info["firmwareV"] = data_str_sensors[1]
                 except:
                     software_info["firmwareV"]  = "not found"
                     add_to_buffer("(E): ESP did not send firmware version correctly\n")
+                    info_not_valid = True
+                
+                try:
+                    software_info["fanStatus"] = data_str_sensors[2]
+                except:
+                    add_to_buffer("(E): ESP did not send fanStatus correctly")
+                    info_not_valid = True
 
-                infoReady = True
+                try:
+                    hardware_info["mainVoltage"] = data_str_sensors[3].strip('\r\n')
+                except:
+                    add_to_buffer("(E): ESP did not send main voltage value correctly")
+                    info_not_valid = True
+                
+                infoReady = not info_not_valid      #if the info received is valid, then fla info ready, else dont flag it
 
             elif print_status:
                     print(data_str)
@@ -713,6 +726,7 @@ async def live():
                 "firmwareV" : software_info["firmwareV"],
                 "backendV" : software_info["backendV"],
                 "fanStatus": software_info["fanStatus"],
+                "mainVoltage": hardware_info["mainVoltage"],
             })
         await sio.sleep(SAMPLE_TIME)
         i = i + 1
