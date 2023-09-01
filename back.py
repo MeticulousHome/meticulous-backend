@@ -7,10 +7,10 @@ import serial
 import threading
 import time
 import json
-from pynput.keyboard import Key, Controller
+#from pynput.keyboard import Key, Controller
 # import RPi.GPIO as GPIO          ################# Debera haber un if que confirme en el entorno (raspberry o VAR-SOM-MX8M-NANO)
 import gpiod                       ################# En base a ello instalara la libreria correspondiente (RPi.GPIO o gpiod)
-from dotenv import load_dotenv
+#from dotenv import load_dotenv #################!!!!!!!!!!!NO hay librerias en som
 from datetime import datetime
 import os
 import os.path
@@ -67,7 +67,7 @@ class ReadLine:
             else:
                 self.buf.extend(data)
 
-load_dotenv()
+#load_dotenv()####################!!!!No libreria en som#
 
 
 # lcd_en = 25
@@ -178,7 +178,7 @@ turn_on()
 #os.system('killall coffee-ui-demo')
 #time.sleep(5)
 
-keyboard = Controller()
+#keyboard = Controller()
 
 
 define("port", default=8080, help="run on the given port", type=int)
@@ -248,33 +248,33 @@ def enable_pcb():
             turn_on()
 
 def cw_function():
-    keyboard.press(Key.right)
-    keyboard.release(Key.right)
+    #keyboard.press(Key.right)
+    #keyboard.release(Key.right)
     print("RIGHT!")
 
 def ccw_function():
-    keyboard.press(Key.left)
-    keyboard.release(Key.left)
+    #keyboard.press(Key.left)
+    #keyboard.release(Key.left)
     print("LEFT!")
 
 def tare_double_function():
-    keyboard.press('d')
-    keyboard.release('d')
+    #keyboard.press('d')
+    #keyboard.release('d')
     print("DOUBLE TARE!")
 
 def tare_long_function():
-    keyboard.press('s')
-    keyboard.release('s')
+    #keyboard.press('s')
+    #keyboard.release('s')
     print("LONG TARE!")
 
 def encoder_push_function():
-    keyboard.press(Key.space)
-    keyboard.release(Key.space)
+    #keyboard.press(Key.space)
+    #keyboard.release(Key.space)
     print("PUSH ENCODER!")
 
 def encoder_double_function():
-    keyboard.press('x')
-    keyboard.release('x')
+    #keyboard.press('x')
+    #keyboard.release('x')
     if (data_sensors["status"] != "idle"):
         _input = "action,"+"stop"+"\x03"
         arduino.write(str.encode(_input))
@@ -285,8 +285,8 @@ def encoder_long_function():
     print("LONG ENCODER!")
 
 def start_function():
-    keyboard.press(Key.enter)
-    keyboard.release(Key.enter)
+    #keyboard.press(Key.enter)
+    #keyboard.release(Key.enter)
     print("START!")
 
 def reboot_esp():
