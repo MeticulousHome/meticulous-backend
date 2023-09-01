@@ -3,10 +3,10 @@ import time
 # import RPi.GPIO as GPIO   ######Decidir entorno de trabajo########
 import gpiod  ####################
 import threading 
-from dotenv import load_dotenv
+#from dotenv import load_dotenv#####!!!!!!!!!!!!!!No tienen la libreria la som
 import os
 
-load_dotenv()
+#load_dotenv()  ######################!!!!!!!!!!!!!!!!!!!!!Sin libreria para la som
 
 #Class to optimize serial communication
     
