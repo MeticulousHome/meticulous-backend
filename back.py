@@ -560,8 +560,8 @@ def read_arduino():
             else:
                 save_str = True
 
-            if save_str:
-                add_to_buffer(data_str)
+            #if save_str:
+            #    add_to_buffer(data_str)
             data_str_sensors = data_str.split(',')
 
             if data_str_sensors[0] == 'Data':
