@@ -309,10 +309,10 @@ def send_json_hash(json_string):
     json_data = "json\n"+json_string+"\x03"
     #proof = detect_source(json_string,json_data)
     #print(proof)
-    add_to_buffer(json_data)
+    #add_to_buffer(json_data)
     #print(json_data)
     json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
-    add_to_buffer("hash_enviado: " + json_hash + "\n")
+    #add_to_buffer("hash_enviado: " + json_hash + "\n")
     print("hash: ",end="")
     print(json_hash)
     arduino.write("hash ".encode("utf-8"))
@@ -649,7 +649,8 @@ def read_arduino():
                         data_sensor_comunication["adc_2"] = sensor_values[17].split('\033[1;35m')[0]
                         data_sensor_comunication["adc_3"] = sensor_values[18].split('\n')[0]
                     except:
-                        add_to_buffer("(E): ESP did not send sensor values correctly")
+                        pass
+                        #add_to_buffer("(E): ESP did not send sensor values correctly")
                     if sensor_status:
                         print(data_str, end="")
 
