@@ -309,10 +309,10 @@ def send_json_hash(json_string):
     json_data = "json\n"+json_string+"\x03"
     #proof = detect_source(json_string,json_data)
     #print(proof)
-    #add_to_buffer(json_data)
+    add_to_buffer(json_data)
     #print(json_data)
     json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
-    #add_to_buffer("hash_enviado: " + json_hash + "\n")
+    add_to_buffer("hash_enviado: " + json_hash + "\n")
     print("hash: ",end="")
     print(json_hash)
     arduino.write("hash ".encode("utf-8"))
@@ -564,8 +564,8 @@ def read_arduino():
             else:
                 save_str = True
 
-            #if save_str:
-            #    add_to_buffer(data_str)
+            if save_str:
+                add_to_buffer(data_str)
             data_str_sensors = data_str.split(',')
 
             if data_str_sensors[0] == 'Data':
@@ -583,7 +583,7 @@ def read_arduino():
                 except:
                     data_sensors["profile"] = "None"
 
-                c1 = old_status == "closing valve"
+                c1 = old_status == "heating"
                 c2 = data_sensors["status"] == "preinfusion"
                 c3 = data_sensors["status"] == "infusion"
                 # print(c1, end = "")
@@ -649,8 +649,8 @@ def read_arduino():
                         data_sensor_comunication["adc_2"] = sensor_values[17].split('\033[1;35m')[0]
                         data_sensor_comunication["adc_3"] = sensor_values[18].split('\n')[0]
                     except:
-                        pass
-                        #add_to_buffer("(E): ESP did not send sensor values correctly")
+                        #pass
+                        add_to_buffer("(E): ESP did not send sensor values correctly")
                     if sensor_status:
                         print(data_str, end="")
 
