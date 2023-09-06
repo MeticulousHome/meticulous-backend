@@ -104,9 +104,9 @@ config.request_type = gpiod.line_request.DIRECTION_OUTPUT
 esp_en = chip4.get_line(9)
 en = chip0.get_line(7)  
 io0 = chip0.get_line(8)
-buffer = chip3.get_line(26)
+buffer_pin = chip3.get_line(26)
 
-lines = [esp_en, en, io0, buffer]
+lines = [esp_en, en, io0, buffer_pin]
 for line in lines:
     try:
         line.request(config)
@@ -151,7 +151,7 @@ def turn_on():
     #     GPIO.output(lcd_en, 0)
     #     print("EN_PIN_HIGH = 0 por default")########Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
     esp_en.set_value(0) ##############################
-    buffer.set_value(0)
+    buffer_pin.set_value(0)
     # lcd_en.set_value(0)
     print("EN_PIN_HIGH = 0 por default")
 
@@ -170,7 +170,7 @@ def turn_off():
     #     GPIO.output(lcd_en, 1)
     #     print("EN_PIN_HIGH = 0 por default")########Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
     esp_en.set_value(1)##############################
-    buffer.set_value(1)
+    buffer_pin.set_value(1)
     # lcd_en.set_value(1)
     print("EN_PIN_HIGH = 0 por default")    
 
