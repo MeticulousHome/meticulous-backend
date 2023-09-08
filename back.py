@@ -352,6 +352,9 @@ def rcvPckg(sid, data):
     with open(os.path.expanduser("~/update/updtPckg.tar.gz"), 'wb') as file:
         file.write(data)
     #Create a thread that will decompress the data and call the updater script
+    print("File received")
+    tr = threading.Thread(target=startUpdate)
+    tr.start()
 
 
 @sio.on('askForInfo')
