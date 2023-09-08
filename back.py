@@ -266,11 +266,12 @@ def reboot_esp():
     GPIO.output(en, 1)
 
 def send_json_hash(json_string):
-    json_data = "json\n"+json_string+"\x03"
+    json_data_string = json.dumps(json_string, indent=1, sort_keys=False)
+    json_data = "json\n"+json_data_string+"\x03"
     #proof = detect_source(json_string,json_data)
     #print(proof)
     add_to_buffer(json_data)
-    #print(json_data)
+    # print(json_data)
     json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
     add_to_buffer("hash_enviado: " + json_hash + "\n")
     print("hash: ",end="")
@@ -362,7 +363,23 @@ def toggleFans(sid, data):
 @sio.on('parameters')
 def msg(sid, data):
     global lastJSON_source
-    json_data = json.dumps(data, indent=1, sort_keys=False)
+    # json_data = json.dumps(data, indent=1, sort_keys=False)
+    send_json_hash(json_data)
+    lastJSON_source = detect_source(data)
+    print(lastJSON_source)
+    
+@sio.on('italian_1.0')
+def msg(sid, data):
+    global lastJSON_source
+    # json_data = json.dumps(data, indent=1, sort_keys=False)
+    send_json_hash(json_data)
+    lastJSON_source = detect_source(data)
+    print(lastJSON_source)
+    
+@sio.on('dashboard_1.0')
+def msg(sid, data):
+    global lastJSON_source
+    # json_data = json.dumps(data, indent=1, sort_keys=False)
     send_json_hash(json_data)
     lastJSON_source = detect_source(data)
     print(lastJSON_source)
@@ -545,12 +562,13 @@ def read_arduino():
                 c1 = old_status == "closing valve"
                 c2 = data_sensors["status"] == "preinfusion"
                 c3 = data_sensors["status"] == "infusion"
+                c4 = data_sensors["status"] == "spring"
                 # print(c1, end = "")
                 # print(c2, end = "")
                 # print(len(data_sensors["status"]), end = "")
 
                 # time = time.time() - start_time
-                if ((c1 and c2) or (c1 and c3)):
+                if ((c1 and c2) or (c1 and c3) or (c1 and c4)):
                     time_flag = True
                     start_time = time.time()
                     print("start_time: {:.1f}".format(start_time))
@@ -742,8 +760,9 @@ def send_data():
         elif _input== "json":
             with open('fika.json','r') as openfile:
                 json_file = json.load(openfile)
-            json_data = json.dumps(json_file, indent=1, sort_keys=False)
-            send_json_hash(json_data)
+            # json_data = json.dumps(json_file, indent=1, sort_keys=False)
+            # print(json_data)
+            send_json_hash(json_file)
             lastJSON_source = detect_source(json_file)
             json_data=""
             json_file=""
