@@ -337,6 +337,14 @@ def msg(sid, data):
         print(data)
         arduino.write(data.encode("utf-8"))
 
+@sio.on('UpdateFile')
+def rcvPckg(sid, data):
+    #receive and create a file to save the udpateFile
+    with open(os.path.expanduser("~/update/updtPckg.tar.gz"), 'wb') as file:
+        file.write(data)
+    #Create a thread that will decompress the data and call the updater script
+
+
 @sio.on('askForInfo')
 def setSendInfo(sid):
     global sendInfoToFront
@@ -821,6 +829,19 @@ def menu():
     print("test --> Mueve el motor 10 veces de purge a home y muestra el valor de los sensores")
     print("calibration --> Acceder a la funcion de la siguiente manera:  calibration,peso conocido,peso medido \n \t Ejemplo: calibration,100,90")
     
+def startUpdate():
+    path = "~/update/updtPckg.tar.gz"
+
+    #extract the directory of the update
+    command = f'sudo tar -xzf ~/update/updtPckg.tar.gz -C ~/update'
+    subprocess.run(command, shell=True)
+
+    #delete the compressed file
+    command = 'sudo rm ~/update/updtPckg.tar.gz'
+    subprocess.run(command, shell=True)
+    
+
+
 
 if __name__ == "__main__":
 
