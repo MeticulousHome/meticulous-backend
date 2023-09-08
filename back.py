@@ -91,6 +91,15 @@ GPIO.setup(io0, GPIO.OUT)
 GPIO.setup(esp_en, GPIO.OUT)
 GPIO.setup(lcd_en, GPIO.OUT)
 
+def createUpdateDir():
+    # Specify the directory path you want to create
+    directory_path = os.path.expanduser("~/update")
+
+    # Check if the directory already exists
+    if not os.path.exists(directory_path):
+    # Create the directory if it does not exist
+        os.makedirs(directory_path)
+        #print(f"Directory '{directory_path}' created successfully.")
 
 def gatherVersionInfo():
     global infoSolicited
@@ -791,7 +800,8 @@ def send_data():
             
 def main():
 
-    
+    createUpdateDir()
+
     parse_command_line()
 
     gatherVersionInfo()
@@ -839,7 +849,7 @@ def startUpdate():
     #delete the compressed file
     command = 'sudo rm ~/update/updtPckg.tar.gz'
     subprocess.run(command, shell=True)
-    
+
 
 
 
