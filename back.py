@@ -346,16 +346,18 @@ def msg(sid, data):
         print(data)
         arduino.write(data.encode("utf-8"))
 
-@sio.on('UpdateFile')
-def rcvPckg(sid, data):
-    #receive and create a file to save the udpateFile
-    with open(os.path.expanduser("~/update/updtPckg.tar.gz"), 'wb') as file:
-        file.write(data)
-    #Create a thread that will decompress the data and call the updater script
+@sio.on('endTransmition')
+def endRecept(sid):
     print("File received")
     tr = threading.Thread(target=startUpdate)
     tr.start()
 
+@sio.on('UpdateFile')
+def rcvPckg(sid, data):
+    #receive and create a file to save the udpateFile
+    with open(os.path.expanduser("~/update/updtPckg.tar.gz"), 'ab') as file:
+        file.write(data)
+    #Create a thread that will decompress the data and call the updater script
 
 @sio.on('askForInfo')
 def setSendInfo(sid):
