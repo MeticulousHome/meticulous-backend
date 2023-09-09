@@ -270,8 +270,8 @@ def send_json_hash(json_string):
     json_data = "json\n"+json_data_string+"\x03"
     #proof = detect_source(json_string,json_data)
     #print(proof)
-    add_to_buffer(json_data)
-    # print(json_data)
+    add_to_buffer(json_data_string)
+    print(json_data)
     json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
     add_to_buffer("hash_enviado: " + json_hash + "\n")
     print("hash: ",end="")
@@ -364,25 +364,25 @@ def toggleFans(sid, data):
 def msg(sid, data):
     global lastJSON_source
     # json_data = json.dumps(data, indent=1, sort_keys=False)
-    send_json_hash(json_data)
+    send_json_hash(data)
     lastJSON_source = detect_source(data)
-    print(lastJSON_source)
+    # print(lastJSON_source)
     
 @sio.on('italian_1.0')
 def msg(sid, data):
     global lastJSON_source
     # json_data = json.dumps(data, indent=1, sort_keys=False)
-    send_json_hash(json_data)
+    send_json_hash(data)
     lastJSON_source = detect_source(data)
-    print(lastJSON_source)
+    # print(lastJSON_source)
     
 @sio.on('dashboard_1.0')
 def msg(sid, data):
     global lastJSON_source
     # json_data = json.dumps(data, indent=1, sort_keys=False)
-    send_json_hash(json_data)
+    send_json_hash(data)
     lastJSON_source = detect_source(data)
-    print(lastJSON_source)
+    # print(lastJSON_source)
 
 @sio.on('send_profile')
 async def forwardJSON(sid,data):
