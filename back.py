@@ -110,7 +110,6 @@ def gatherVersionInfo():
 
     software_info["lcdV"] = lcd_version
 
-    # software_info["dashboardV"] = 1.0
     software_info["firmwareV"] = 0.0
 
     #SOLICITAMOS LA VERSION DE FIRMWARE A LA ESP
@@ -194,7 +193,6 @@ data_sensor_actuators = {
 
 software_info = {
     "name": "Meticulous Espresso",
-    # "dashboardV": 2,
     "lcdV": 3,
     "firmwareV": 4,
     "backendV": 5,
@@ -270,8 +268,8 @@ def send_json_hash(json_string):
     json_data = "json\n"+json_data_string+"\x03"
     #proof = detect_source(json_string,json_data)
     #print(proof)
-    add_to_buffer(json_data_string)
-    print(json_data)
+    add_to_buffer(json_data)
+    # print(json_data)
     json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
     add_to_buffer("hash_enviado: " + json_hash + "\n")
     print("hash: ",end="")
@@ -282,39 +280,14 @@ def send_json_hash(json_string):
     arduino.write(json_data.encode("utf-8"))
 
 def detect_source(json_data):
-
-    # Commented code retreieves data points from profile Infusion: nodes 13, 20 and Preinfusion: nodes 10, 11
-    # Is not completly working as LCD JSON and Dashboard JSON are subtly different 
-
-    #preinfusion_exists = -1
-    #infusion_exists = -1
-    #preinfusion_10 = 0
-    #preinfusion_11 = 0
-    #infusion_13 = 0
-    #infusion_20 = 0
+    
     source = ""
     try:
         source = json_data["source"]
         source = source.upper()
     except:
         source = "LCD"
-    #stages = json_data["stages"]
-    #for i, stage in enumerate(stages):
-    #    print(stage["name"])
-    #    if preinfusion_exists == -1 and stage["name"] == "preinfusion":
-    #        preinfusion_exists = i
-    #        continue
-    #    if infusion_exists == -1 and stage["name"] == "infusion":
-    #        infusion_exists = i
-    #    print(f'{preinfusion_exists},{infusion_exists}')
-    #if preinfusion_exists != -1:
-    #    preinfusion_10 = stages[preinfusion_exists]["nodes"][0]["controllers"][2]["curve"]["points"][0][1]
-    #    preinfusion_11 = stages[preinfusion_exists]["nodes"][1]["controllers"][0]["curve"]["points"][0][1]
-    #if infusion_exists != -1:
-    #    infusion_13 = stages[infusion_exists]["nodes"][1]["controllers"][1]["curve"]["points"][0][1]
-    #    infusion_20 = stages[infusion_exists]["nodes"][2]["controllers"][0]["curve"]["points"][0][1]
-    #print(f'{source},{preinfusion_10},{preinfusion_11},{infusion_13},{infusion_20}')
-    #print(source)
+
     return source
 
 @sio.event
@@ -324,7 +297,9 @@ def connect(sid, environ):
 @sio.event
 def disconnect(sid):
     print('disconnect ', sid)
+    
 #sendInfoToFront
+
 @sio.on('action')
 def msg(sid, data):
     if data == "start":
@@ -363,26 +338,23 @@ def toggleFans(sid, data):
 @sio.on('parameters')
 def msg(sid, data):
     global lastJSON_source
-    # json_data = json.dumps(data, indent=1, sort_keys=False)
     send_json_hash(data)
     lastJSON_source = detect_source(data)
-    # print(lastJSON_source)
+    print(lastJSON_source)
     
 @sio.on('italian_1.0')
 def msg(sid, data):
     global lastJSON_source
-    # json_data = json.dumps(data, indent=1, sort_keys=False)
     send_json_hash(data)
     lastJSON_source = detect_source(data)
-    # print(lastJSON_source)
+    print(lastJSON_source)
     
 @sio.on('dashboard_1.0')
 def msg(sid, data):
     global lastJSON_source
-    # json_data = json.dumps(data, indent=1, sort_keys=False)
     send_json_hash(data)
     lastJSON_source = detect_source(data)
-    # print(lastJSON_source)
+    print(lastJSON_source)
 
 @sio.on('send_profile')
 async def forwardJSON(sid,data):
@@ -726,7 +698,6 @@ async def live():
     
             await sio.emit("INFO", {
                 "name": software_info["name"],
-                # "dashboardV" : software_info["dashboardV"],
                 "lcdV" : software_info["lcdV"],
                 "firmwareV" : software_info["firmwareV"],
                 "backendV" : software_info["backendV"],
