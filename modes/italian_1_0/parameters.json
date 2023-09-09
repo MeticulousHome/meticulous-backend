@@ -1,11 +1,12 @@
 {
-    "action": "to_play",
-    "name": "Italian", 
-    "automatic_purge": true,
-    "temperature": 98.6,  
-    "preinfusion": false,  
-    "preheat": true,   
-    "pressure": 1.2,  
-    "out_weight": 0.5,  
-    "source": "lcd"
+  "name": "Italian v1.0",
+  "kind": "italian_1_0",
+  "automatic_purge": false,
+  "temperature": 80,
+  "preinfusion": false,
+  "preheat": false,
+  "pressure": 8,
+  "out_weight": 36,
+  "action": "to_play",
+  "source": "lcd"
 }

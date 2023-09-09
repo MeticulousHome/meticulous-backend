@@ -827,9 +827,6 @@ if __name__ == "__main__":
     else:
         print("No ESP32 available")
 
-    # arduino = serial.Serial('/dev/ttyS0',115200)
-    # arduino = serial.Serial('/dev/ttyUSB0',115200)
-
     os.system(comando) #Crea la carpeta donde se guardaran los datos 
     date = datetime.now().strftime("%Y_%m_%d") #Fecha actual
 

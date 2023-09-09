@@ -1,15 +1,16 @@
 {
-    "action": "to_play",
-    "name": "spring",
-    "temperature": 82.0,
-    "preheat": false,
-    "preinfusion": false,  
+    "name": "Spring v1.0",
+    "kind": "spring_1_0",
     "source": "dashboard",
-    "automatic_purge": true,  
-    "parameters": {      
-        "max": 86,      
-        "min": 80,
-        "max_pressure": 10,      
-        "weight_trigger": 50  
-    }
-}
+    "temperature": 80,
+    "preheat": false,
+    "automatic_purge": false,
+    "preinfusion": false,
+    "parameters": {
+      "max_power": 80,
+      "min_power": 70,
+      "max_pressure": 8,
+      "weight_trigger": 36
+    },
+    "action": "to_play"
+  }
