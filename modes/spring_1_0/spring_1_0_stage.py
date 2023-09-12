@@ -8,12 +8,12 @@ def get_spring_stage(parameters: json,start_node: int, end_node: int):
         print('Error: Max pressure is not defined')
         return None
     try:
-        max_power = parameters['parameters']['max']
+        max_power = parameters['parameters']['max_power']
     except:
         print('Error: Max power is not defined')
         return None
     try:
-        min_power = parameters['parameters']['min']
+        min_power = parameters['parameters']['min_power']
     except:
         print('Error: Min power is not defined')
         return None

@@ -1,7 +1,7 @@
 {
     "name": "Spring v1.0",
     "kind": "spring_1_0",
-    "source": "dashboard",
+    "source": "lcd",
     "temperature": 80,
     "preheat": false,
     "automatic_purge": false,
