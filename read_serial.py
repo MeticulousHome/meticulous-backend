@@ -1,11 +1,12 @@
 import serial
 import time
-import RPi.GPIO as GPIO
+# import RPi.GPIO as GPIO   ######Decidir entorno de trabajo########
+import gpiod  ####################
 import threading 
-from dotenv import load_dotenv
+#from dotenv import load_dotenv#####!!!!!!!!!!!!!!No tienen la libreria la som
 import os
 
-load_dotenv()
+#load_dotenv()  ######################!!!!!!!!!!!!!!!!!!!!!Sin libreria para la som
 
 #Class to optimize serial communication
     
@@ -31,24 +32,43 @@ class ReadLine:
             else:
                 self.buf.extend(data)
                 
-arduino = serial.Serial('/dev/ttyS0',115200) #Arduino port declaration
+# arduino = serial.Serial('/dev/ttyS0',115200) #Arduino port declaration ##############Deacuerdo al entorno de trabajo################
+arduino = serial.Serial('/dev/ttymxc0',115200) #Arduino port declaration
+
+# esp_en = 8 #Enable ESP pin declaration
+# GPIO.setmode(GPIO.BCM)
+# GPIO.setup(esp_en , GPIO.OUT) ######################Deacuerdo al entorno de trabajo################
+chip0 = gpiod.chip('gpiochip0')#######################
+chip4 = gpiod.chip('gpiochip4')
+chip3 = gpiod.chip('gpiochip3')
+
+config = gpiod.line_request()
+config.consumer = 'myapp'
+config.request_type = gpiod.line_request.DIRECTION_OUTPUT
 
 
-esp_en = 8 #Enable ESP pin declaration
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(esp_en , GPIO.OUT)
+esp_en = chip4.get_line(9)
+en = chip0.get_line(7)
+io0 = chip0.get_line(8)
+buffer = chip3.get_line(26)
+
+esp_en.request(config)
+en.request(config)
+io0.request(config)
+buffer.request(config)
 
 #function to read the Serial Communication
 def read_arduino():
-    if os.environ.get("EN_PIN_HIGH") == "0":
-        GPIO.output(esp_en, 0) #Enable the ESP
-        print("EN_PIN_HIGH = 0") 
-    elif os.environ.get("EN_PIN_HIGH") == "1":
-        GPIO.output(esp_en, 1) #Enable the ESP
-        print("EN_PIN_HIGH = 1")
-    else:
-        GPIO.output(esp_en, 0) #Enable the ESP
-        print("EN_PIN_HIGH = 0 por default")
+    # if os.environ.get("EN_PIN_HIGH") == "0":
+    #     GPIO.output(esp_en, 0) #Enable the ESP
+    #     print("EN_PIN_HIGH = 0") 
+    # elif os.environ.get("EN_PIN_HIGH") == "1":
+    #     GPIO.output(esp_en, 1) #Enable the ESP
+    #     print("EN_PIN_HIGH = 1")
+    # else:
+    #     GPIO.output(esp_en, 0) #Enable the ESP
+    #     print("EN_PIN_HIGH = 0 por default")######################Deacuerdo al entorno de trabajo################
+    esp_en.set_value(0) #Enable the ESP ##############
     arduino.reset_input_buffer() #A Serial function member to reset the buffer
     uart = ReadLine(arduino) #Serial communication optimization class declaration  with a serial device as an argument
     
@@ -86,33 +106,40 @@ def send_data():
             
 #function to reset the rasp      
 def reset_rasp():
-    #Pins choose according to the PCB version. 
-    if os.environ.get("PINES_VERSION") == "V3":
-        en=27
-        io0=17
-        print("Set pines to V3") 
-    elif os.environ.get("PINES_VERSION") == "V3.1":
-        en=24
-        io0=23
-        print("Set pines to V3.1") 
-    else:
-        en = 24
-        io0 = 23
-        print("Set pines to V3.1") 
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setup(en, GPIO.OUT)
-    GPIO.setup(io0, GPIO.OUT)
-    GPIO.output(en, 0)
-    GPIO.output(io0, 0)
-    time.sleep(1)
-    GPIO.output(io0, 1)
-    time.sleep(1)
-    GPIO.output(en, 1)
-    time.sleep(1)
-    # GPIO.cleanup() 
-    print("Raspberry is reseted")     
+    # #Pins choose according to the PCB version. 
+    # if os.environ.get("PINES_VERSION") == "V3":
+    #     en=27
+    #     io0=17
+    #     print("Set pines to V3") 
+    # elif os.environ.get("PINES_VERSION") == "V3.1":
+    #     en=24
+    #     io0=23
+    #     print("Set pines to V3.1") 
+    # else:
+    #     en = 24
+    #     io0 = 23
+    #     print("Set pines to V3.1") 
+    # GPIO.setmode(GPIO.BCM)
+    # GPIO.setup(en, GPIO.OUT)
+    # GPIO.setup(io0, GPIO.OUT)
+    # GPIO.output(en, 0)
+    # GPIO.output(io0, 0)
+    # time.sleep(1)
+    # GPIO.output(io0, 1)
+    # time.sleep(1)
+    # GPIO.output(en, 1)
+    # time.sleep(1)
+    # # GPIO.cleanup() 
+    # print("Raspberry is reseted") ######################Deacuerdo al entorno de trabajo################
+    en.set_value(1)#########################
+    io0.set_value(1)
+    time.sleep(.1)
+    en.set_value(0)
+    io0.set_value(0)
+    print("Raspberry is reseted")   
     
 def main():
+    buffer.set_value(0)
     t1 = threading.Thread(target=send_data) #Thread to send data
     t1.deamon = True
     t1.start()
@@ -125,6 +152,6 @@ if __name__ == "__main__":
         main()
         
     except KeyboardInterrupt:
-        GPIO.cleanup()
+        # GPIO.cleanup()
         print("An error was ocurred")
         
