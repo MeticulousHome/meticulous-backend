@@ -326,10 +326,6 @@ def reboot_esp():
     pins["en"].set_value(0)
     pins["io0"].set_value(0)
 
-def poweroff_esp():
-    GPIO.output(en, 0)
-    GPIO.output(io0, 0)
-
 def send_json_hash(json_string):
     json_data = "json\n"+json_string+"\x03"
     #proof = detect_source(json_string,json_data)
@@ -789,7 +785,7 @@ def startUpdate():
     subprocess.run(command, shell=True)
 
     #turns the ESP off
-    poweroff_esp()
+    turn_off()
 
     #stop frontend (not now)
     # command = 'pm2 stop frontend -s'
