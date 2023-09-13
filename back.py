@@ -23,6 +23,7 @@ lock = threading.Lock()
 file_path = '/home/meticulous/meticulous-raspberry-setup/backend_for_esp32/logs/'
 buffer=""
 contador= 'contador.txt'
+autoupdate_path = "~/meticulous-raspberry-setup/meticulous-autoupdate"
 
 usaFormatoDeColores = True
 
@@ -274,6 +275,10 @@ def reboot_esp():
     time.sleep(.1)
     GPIO.output(en, 1)
 
+def poweroff_esp():
+    GPIO.output(en, 0)
+    GPIO.output(io0, 0)
+
 def send_json_hash(json_string):
     json_data = "json\n"+json_string+"\x03"
     #proof = detect_source(json_string,json_data)
@@ -354,6 +359,7 @@ def endRecept(sid):
 
 @sio.on('UpdateFile')
 def rcvPckg(sid, data):
+    createUpdateDir()
     #receive and create a file to save the udpateFile
     with open(os.path.expanduser("~/update/updtPckg.tar.gz"), 'ab') as file:
         file.write(data)
@@ -805,8 +811,6 @@ def send_data():
             
 def main():
 
-    createUpdateDir()
-
     parse_command_line()
 
     gatherVersionInfo()
@@ -847,13 +851,28 @@ def menu():
 def startUpdate():
     path = "~/update/updtPckg.tar.gz"
 
-    #extract the directory of the update
+    #extract the directory of the update 
     command = f'sudo tar -xzf ~/update/updtPckg.tar.gz -C ~/update'
     subprocess.run(command, shell=True)
 
     #delete the compressed file
     command = 'sudo rm ~/update/updtPckg.tar.gz'
     subprocess.run(command, shell=True)
+
+    #turns the ESP off
+    poweroff_esp()
+
+    #stop frontend (not now)
+    # command = 'pm2 stop frontend -s'
+    # subprocess.run(command, shell=True)
+    
+    #we dont stop the lcd yet to use it as the only communication channel available
+    
+    #call the update script
+    command = f'cd {autoupdate_path} && python update_protocol.py'
+    update_success = subprocess.run(command, shell=True, capture_output=True, text=True).stdout
+
+    print(update_success)
 
 
 
