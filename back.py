@@ -18,6 +18,7 @@ from operator import itemgetter
 import hashlib
 import version as backend
 import subprocess
+from typing import Dict
 
 #CLASSES DEFINITIONS
 class ReadLine:
@@ -97,6 +98,7 @@ lock = threading.Lock()
 file_path = './logs/'       #Change to use reduced path.
 buffer=""
 contador= 'contador.txt'
+autoupdate_path = "~/meticulous-raspberry-setup/meticulous-autoupdate"
 
 usaFormatoDeColores = True
 
@@ -111,7 +113,7 @@ sio = socketio.AsyncServer(cors_allowed_origins='*', async_mode='tornado')
 keyboard = Controller()
 
 #pin variables declaration
-pins = {}########Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
+pins: Dict[str,gpiod.line] = {}########Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
 
 #chip variables declaration
 chip0 = None ########Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
@@ -128,6 +130,11 @@ colores = [
     "\033[1;35m", # Morado
     "\033[1;36m", # Cian
 ]
+
+#thread variables
+data_thread = None
+send_data_thread = None
+stopESPcomm = False
 
 #FUNCTION DEFINITIONS
 #load_dotenv()####################!!!!No libreria en som#
@@ -182,20 +189,18 @@ def initialize_GPIO():
     pins["io0"]= chip0.get_line(8)
     pins["buffer_pin"]= chip3.get_line(26)
 
-    for key,pin in pins:
+    for key in pins:
         try:
-            pin.request(config)
+            pins[key].request(config)
         except OSError:
-            print(f"Error:'{key}' pin at {pin.offset()} could not be set to output")
+            print(f"Error:'{key}' pin at {pins[key].offset()} could not be set to output")
 
-def close_GPIO_chips():
-    global chip0
-    global chip3
-    global chip4
-
-    chip0.close()
-    chip3.close()
-    chip4.close()
+def release_pins():
+    for key in pins:
+        try:
+            pins[key].release()
+        except OSError:
+            print(f"Error:'{key}' pin at {pins[key].offset()} could not be released")
 
 def gatherVersionInfo():
     global infoSolicited
@@ -448,7 +453,7 @@ def read_arduino():
 
     old_status = ""
     time_flag = False
-    while True:
+    while not stopESPcomm:
         data = uart.readline()
         if len(data) > 0:
             # data_bit = bytes(data)
@@ -677,7 +682,7 @@ def send_data():
     sensor_status=False
     global lastJSON_source
 
-    while (True):
+    while not stopESPcomm:
         _input = input()
 
         if _input == "reset":
@@ -735,6 +740,8 @@ def send_data():
             #     arduino.write(str.encode(_input))
             
 def main():
+    global data_thread
+    global send_data_thread
 
     parse_command_line()
 
@@ -774,6 +781,12 @@ def menu():
     print("calibration --> Acceder a la funcion de la siguiente manera:  calibration,peso conocido,peso medido \n \t Ejemplo: calibration,100,90")
     
 def startUpdate():
+    global data_thread
+    global send_data_thread
+    global stopESPcomm
+
+    stopESPcomm = True
+
     path = "~/update/updtPckg.tar.gz"
 
     #extract the directory of the update 
@@ -791,14 +804,43 @@ def startUpdate():
     # command = 'pm2 stop frontend -s'
     # subprocess.run(command, shell=True)
     
-    #we dont stop the lcd yet to use it as the only communication channel available
+    #stops the task that comunicates with the ESP
+    if data_thread != None:
+        data_thread.join()
+    if send_data_thread != None:
+        send_data_thread.join()
+
+    #free's the GPIO
+    release_pins()
     
     #call the update script (will use the script as a module)
     command = f'cd {autoupdate_path} && python update_protocol.py'
     update_success = subprocess.run(command, shell=True, capture_output=True, text=True).stdout
 
+    #takes the GPIO back
+    initialize_GPIO()
+
+    #we dont stop the lcd yet to use it as the only communication channel available
     print(update_success)
 
+def startArduino_comms():
+    # Call the function to get the port
+    arduino_port = detect_arduino_port()
+    # Open the serial connection if an Arduino was detected
+    # if arduino_port == '/dev/ttyS0':
+    #     arduino = serial.Serial('/dev/ttyS0',115200)
+    #     print("Serial connection opened on port ttyS0") ####Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
+    if arduino_port == '/dev/ttymxc0':########################
+        arduino = serial.Serial('/dev/ttymxc0',115200)
+        return arduino
+        print("Serial connection opened on port ttymxc0")
+    elif arduino_port == '/dev/ttyUSB0':
+        arduino = serial.Serial('/dev/ttyUSB0',115200)
+        return arduino
+        print("Serial connection opened on port ttyUSB0")
+    else:
+        print("No ESP32 available")
+        return None
 
 #SOCKET CALLBACKS
 @sio.event
@@ -933,21 +975,11 @@ define("debug", default=False, help="run in debug mode")
 
 if __name__ == "__main__":
 
-    # Call the function to get the port
-    arduino_port = detect_arduino_port()
+    
+    arduino = startArduino_comms()
 
-    # Open the serial connection if an Arduino was detected
-    # if arduino_port == '/dev/ttyS0':
-    #     arduino = serial.Serial('/dev/ttyS0',115200)
-    #     print("Serial connection opened on port ttyS0") ####Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
-    if arduino_port == '/dev/ttymxc0':########################
-        arduino = serial.Serial('/dev/ttymxc0',115200)
-        print("Serial connection opened on port ttymxc0")
-    elif arduino_port == '/dev/ttyUSB0':
-        arduino = serial.Serial('/dev/ttyUSB0',115200)
-        print("Serial connection opened on port ttyUSB0")
-    else:
-        print("No ESP32 available")
+    if arduino == None:
+        print("No ESP detected")
 
     # arduino = serial.Serial('/dev/ttyS0',115200)
     # arduino = serial.Serial('/dev/ttyUSB0',115200)
