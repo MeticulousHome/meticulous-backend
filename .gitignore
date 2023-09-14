@@ -2,3 +2,4 @@ venv/
 logs/
 .env
 stages/italian_1_0/__pycache__/
+__pycache__/version.cpython-311.pyc

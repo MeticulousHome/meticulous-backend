@@ -9,7 +9,7 @@ import time
 import json
 from pynput.keyboard import Key, Controller
 # import RPi.GPIO as GPIO          ################# Debera haber un if que confirme en el entorno (raspberry o VAR-SOM-MX8M-NANO)
-import gpiod                       ################# En base a ello instalara la libreria correspondiente (RPi.GPIO o gpiod)
+# import gpiod                       ################# En base a ello instalara la libreria correspondiente (RPi.GPIO o gpiod)
 #from dotenv import load_dotenv #################!!!!!!!!!!!NO hay librerias en som
 from datetime import datetime
 import os
@@ -91,27 +91,27 @@ class ReadLine:
 # GPIO.setup(io0, GPIO.OUT)
 # GPIO.setup(esp_en, GPIO.OUT)
 # GPIO.setup(lcd_en, GPIO.OUT)  ###################### Debera haber un if que confirme en el entorno (raspberry o VAR-SOM-MX8M-NANO)
-chip0 = gpiod.chip('gpiochip0') ####################### En base a ello definir el comando adecuado para controlar gpio's
-chip4 = gpiod.chip('gpiochip4')
-chip3 = gpiod.chip('gpiochip3')
+# chip0 = gpiod.chip('gpiochip0') ####################### En base a ello definir el comando adecuado para controlar gpio's
+# chip4 = gpiod.chip('gpiochip4')
+# chip3 = gpiod.chip('gpiochip3')
 
-config = gpiod.line_request()
-config.consumer = 'myapp'
-config.request_type = gpiod.line_request.DIRECTION_OUTPUT
+# config = gpiod.line_request()
+# config.consumer = 'myapp'
+# config.request_type = gpiod.line_request.DIRECTION_OUTPUT
 
 # Initialize GPIO lines
 #lcd_en = chip0.get_line(13)  
-esp_en = chip4.get_line(9)
-en = chip0.get_line(7)  
-io0 = chip0.get_line(8)
-buffer_pin = chip3.get_line(26)
+# esp_en = chip4.get_line(9)
+# en = chip0.get_line(7)  
+# io0 = chip0.get_line(8)
+# buffer_pin = chip3.get_line(26)
 
-lines = [esp_en, en, io0, buffer_pin]
-for line in lines:
-    try:
-        line.request(config)
-    except OSError:
-        print(f"Error: pin {line.offset()} could not be set to output")
+# lines = [esp_en, en, io0, buffer_pin]
+# for line in lines:
+#     try:
+#         line.request(config)
+#     except OSError:
+#         print(f"Error: pin {line.offset()} could not be set to output")
 
 def gatherVersionInfo():
     global infoSolicited
@@ -149,9 +149,9 @@ def turn_on():
     #     GPIO.output(esp_en, 0)
     #     GPIO.output(lcd_en, 0)
     #     print("EN_PIN_HIGH = 0 por default")########Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
-    esp_en.set_value(0) ##############################
-    buffer_pin.set_value(0)
-    # lcd_en.set_value(0)
+#     esp_en.set_value(0) ##############################
+#     buffer_pin.set_value(0)
+#     # lcd_en.set_value(0)
     print("EN_PIN_HIGH = 0 por default")
 
 
@@ -168,9 +168,9 @@ def turn_off():
     #     GPIO.output(esp_en, 1)
     #     GPIO.output(lcd_en, 1)
     #     print("EN_PIN_HIGH = 0 por default")########Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
-    esp_en.set_value(1)##############################
-    buffer_pin.set_value(1)
-    # lcd_en.set_value(1)
+#     esp_en.set_value(1)##############################
+#     buffer_pin.set_value(1)
+#     # lcd_en.set_value(1)
     print("EN_PIN_HIGH = 0 por default")    
 
 turn_on()
@@ -283,21 +283,21 @@ def start_function():
     keyboard.release(Key.enter)
     print("START!")
 
-def reboot_esp():
-    # GPIO.output(en, 0)
-    # GPIO.output(io0, 0) 
-    # time.sleep(.1)
-    # GPIO.output(en, 1)
-    # GPIO.output(io0, 1)
-    # time.sleep(.1)
-    # GPIO.output(en, 0)
-    # time.sleep(.1)
-    # GPIO.output(en, 1)#########Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
-    en.set_value(1)##############
-    io0.set_value(1)
-    time.sleep(.1)
-    en.set_value(0)
-    io0.set_value(0)
+# def reboot_esp():
+#     # GPIO.output(en, 0)
+#     # GPIO.output(io0, 0) 
+#     # time.sleep(.1)
+#     # GPIO.output(en, 1)
+#     # GPIO.output(io0, 1)
+#     # time.sleep(.1)
+#     # GPIO.output(en, 0)
+#     # time.sleep(.1)
+#     # GPIO.output(en, 1)#########Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
+#     en.set_value(1)##############
+#     io0.set_value(1)
+#     time.sleep(.1)
+#     en.set_value(0)
+#     io0.set_value(0)
 
 def send_json_hash(json_string):
     json_data_string = json.dumps(json_string, indent=1, sort_keys=False)
@@ -457,7 +457,7 @@ def msg(sid, data=True):
 # arduino = serial.Serial('/dev/ttyUSB0',115200)
 def detect_arduino_port():
     # Try opening /dev/ttyS0 and /dev/ttyUSB0
-    reboot_esp()
+    # reboot_esp()
     # for port in ['/dev/ttyS0', '/dev/ttyUSB0']: ######################### Debera haber un if que confirme en el entorno (raspberry o VAR-SOM-MX8M-NANO)d_
     for port in ['/dev/ttymxc0', '/dev/ttyUSB0']:
         try:
@@ -905,7 +905,7 @@ if __name__ == "__main__":
     
     file_name = 'Fika_' + date +'_'+ str(session_number) + '.txt' 
     menu()
-    reboot_esp()
+    #reboot_esp()
     try:
         main()
         
