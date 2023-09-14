@@ -1,14 +1,14 @@
 import json
-from prepurge_stage import get_prepurge_stage as get_prepurge_stage
-from heating_stage import get_heating_stage as get_heating_stage
-from retracting_stage import get_retracting_stage as get_retracting_stage
-from closing_valve_stage import get_closing_valve_stage as get_closing_valve_stage
-from preinfusion_stage import get_preinfusion_stage as get_preinfusion_stage
-from infusion_stage import get_infusion_stage as get_infusion_stage
-from idle_stage import get_idle_stage as get_idle_stage
-from retracting_2_stage import get_retracting_2_stage as get_retracting_2_stage
-from remove_cup_stage import get_remove_cup_stage as get_remove_cup_stage
-from end_purge_stage import get_end_purge_stage as get_end_purge_stage
+from .prepurge_stage import get_prepurge_stage as get_prepurge_stage
+from .heating_stage import get_heating_stage as get_heating_stage
+from .retracting_stage import get_retracting_stage as get_retracting_stage
+from .closing_valve_stage import get_closing_valve_stage as get_closing_valve_stage
+from .preinfusion_stage import get_preinfusion_stage as get_preinfusion_stage
+from .infusion_stage import get_infusion_stage as get_infusion_stage
+from .idle_stage import get_idle_stage as get_idle_stage
+from .retracting_2_stage import get_retracting_2_stage as get_retracting_2_stage
+from .remove_cup_stage import get_remove_cup_stage as get_remove_cup_stage
+from .end_purge_stage import get_end_purge_stage as get_end_purge_stage
 
 def get_stages(parameters: json):    
     stages = []
