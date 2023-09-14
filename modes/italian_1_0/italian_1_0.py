@@ -1,5 +1,5 @@
 import json
-from italian_1_0_stages import get_stages as get_stages
+from .italian_1_0_stages import get_stages as get_stages
 
 def generate_italian_1_0(parameters: json):
     try:
