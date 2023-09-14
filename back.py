@@ -136,6 +136,9 @@ data_thread = None
 send_data_thread = None
 stopESPcomm = False
 
+#serial variables
+arduino = None
+
 #FUNCTION DEFINITIONS
 #load_dotenv()####################!!!!No libreria en som#
 def createUpdateDir():
@@ -784,6 +787,7 @@ def startUpdate():
     global data_thread
     global send_data_thread
     global stopESPcomm
+    global arduino
 
     stopESPcomm = True
 
@@ -810,6 +814,7 @@ def startUpdate():
     if send_data_thread != None:
         send_data_thread.join()
 
+    arduino.close()
     #free's the GPIO
     release_pins()
     
@@ -820,6 +825,14 @@ def startUpdate():
     #takes the GPIO back
     initialize_GPIO()
 
+    #starts the arduino again
+    arduino = startArduino_comms()
+
+    stopESPcomm = False
+
+    #restart threads
+    data_thread = threading.Thread(target=data_treatment)
+    send_data_thread = threading.Thread(target=send_data)
     #we dont stop the lcd yet to use it as the only communication channel available
     print(update_success)
 
@@ -831,12 +844,12 @@ def startArduino_comms():
     #     arduino = serial.Serial('/dev/ttyS0',115200)
     #     print("Serial connection opened on port ttyS0") ####Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
     if arduino_port == '/dev/ttymxc0':########################
-        arduino = serial.Serial('/dev/ttymxc0',115200)
-        return arduino
+        _arduino = serial.Serial('/dev/ttymxc0',115200)
+        return _arduino
         print("Serial connection opened on port ttymxc0")
     elif arduino_port == '/dev/ttyUSB0':
-        arduino = serial.Serial('/dev/ttyUSB0',115200)
-        return arduino
+        _arduino = serial.Serial('/dev/ttyUSB0',115200)
+        return _arduino
         print("Serial connection opened on port ttyUSB0")
     else:
         print("No ESP32 available")
