@@ -19,6 +19,7 @@ import hashlib
 import version as backend
 import subprocess
 from typing import Dict
+import asyncio
 
 #CLASSES DEFINITIONS
 class ReadLine:
@@ -112,6 +113,8 @@ sio = socketio.AsyncServer(cors_allowed_origins='*', async_mode='tornado')
 
 keyboard = Controller()
 
+send_data_callback = False
+send_end_transmition = False
 #pin variables declaration
 pins: Dict[str,gpiod.line] = {}########Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
 
@@ -138,6 +141,10 @@ stopESPcomm = False
 
 #serial variables
 arduino = None
+
+#file interaction
+logFile_data = None
+data_offset = 0
 
 #FUNCTION DEFINITIONS
 #load_dotenv()####################!!!!No libreria en som#
@@ -855,6 +862,76 @@ def startArduino_comms():
         print("No ESP32 available")
         return None
 
+def sendLogs(offset: int):
+    global logFile_data
+    global data_offset
+    global send_data_callback
+    global send_end_transmition
+    blob_size_to_send = 716800
+    sliceLength = blob_size_to_send if blob_size_to_send < (logFile_data.__len__() - offset) else (logFile_data.__len__() - offset)
+    dataChunk = logFile_data[offset:offset+blob_size_to_send]
+    data_offset = data_offset+sliceLength
+    ended = data_offset >= logFile_data.__len__()
+
+    #We send chunks of data recursively while there is still data to send
+
+    if ended:
+        task_send_data = asyncio.create_task(send_data(dataChunk))
+        asyncio.run(task_send_data)
+        task_end_data = asyncio.create_task(sendEnd())
+        asyncio.run(task_end_data)
+        # send_end_transmition = True
+    else:
+        send_data_callback = True
+        task_send_data = asyncio.create_task(send_data(dataChunk))
+        asyncio.run(task_send_data)
+
+async def sendData(data:bytes):
+    await sio.emit("logsFile", data, callback=sendLogs(data_offset))
+async def sendEnd():
+    await sio.emit("endTransmition")
+
+def prepLogs():
+    global logFile_data
+    #create a temporal directory to hold all history logs and update logs
+    temp_logs_path = os.path.expanduser("~/logs")
+
+    # Check if the directory already exists (shouldn't)
+    if not os.path.exists(temp_logs_path):
+    # Create the directory if it does not exist
+        os.makedirs(temp_logs_path)
+        #print(f"Directory '{temp_logs_path}' created successfully.")
+    else:
+        print("directory: [ ~/logs ] exist, you forgot to delete it U MF, i'll do it for You")
+        subprocess.run(f'sudo rm -r {temp_logs_path}',shell=True)
+        os.makedirs(temp_logs_path)
+    
+    #copy all logs from history and backend logs to ~/logs
+    #checamos si existe history
+    history_path_logs = os.path.expanduser("~/history/logs")
+    history_path_u_logs = os.path.expanduser("~/history/u_logs")
+    recent_logs = os.path.expanduser("~/meticulous-raspberry-setup/backend_for_esp32/logs")
+    #y copiamos sus contenidos
+    if os.path.exists(history_path_logs):
+        os.makedirs(f'{temp_logs_path}/history_logs')
+        subprocess.run(f'sudp cp {history_path_logs}/*.txt {temp_logs_path}/history_logs',shell=True)
+    if os.path.exists(history_path_u_logs): 
+        os.makedirs(f'{temp_logs_path}/update_logs')
+        subprocess.run(f'sudp cp {history_path_u_logs}/*.txt {temp_logs_path}/update_logs',shell=True)
+    if os.path.exists(recent_logs):
+        os.makedirs(f'{temp_logs_path}/recent_logs')
+        subprocess.run(f'sudp cp {recent_logs}/*.txt {temp_logs_path}/recent_logs',shell=True)
+
+    #comprimimos la carpeta
+    subprocess.run(f'tar -cvf ~/logs.tar {temp_logs_path}',shell=True)
+    subprocess.run(f'gzip ~/logs.tar',shell=True)
+
+    #load the compressed file
+    with open(os.path.expanduser("~/logs.tar.gz"), 'rb') as file:
+        logFile_data = file.read()
+
+    sendLogs(data_offset)
+    
 #SOCKET CALLBACKS
 @sio.event
 def connect(sid, environ):
@@ -890,7 +967,14 @@ def rcvPckg(sid, data):
     with open(os.path.expanduser("~/update/updtPckg.tar.gz"), 'ab') as file:
         file.write(data)
     #Create a thread that will decompress the data and call the updater script
+@sio.on('sendLogs'):
+def sendLogs(sid):
+    print("sendingLogs")
+    tr = threading.Thread(target=prepLogs)
+    tr.start()
+    tr.daemon=True
 
+@sio.on('')
 @sio.on('askForInfo')
 def setSendInfo(sid):
     global sendInfoToFront
