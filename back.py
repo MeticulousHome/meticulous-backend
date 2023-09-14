@@ -1,3 +1,4 @@
+from modes.italian_1_0.italian_1_0 import generate_italian_1_0
 from tornado.options import define, options, parse_command_line
 import socketio
 import tornado.web
@@ -459,6 +460,8 @@ def feed_profile(sid, data):
     if kind_value:
         if kind_value =="italian_1_0":
             print("Italian 1.0")
+            json_result = generate_italian_1_0(obj)
+            print(json_result)
         if kind_value =="dashboard_1_0":
             print("Dashboard 1.0")
         if kind_value =="spring_1_0":
