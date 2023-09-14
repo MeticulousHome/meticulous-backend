@@ -450,9 +450,22 @@ def msg(sid, data=True):
     arduino.write(str.encode(_input))
 
 @sio.on('feed_profile')
-def handle_feed_profile(sid, json_file):
-    # Aquí puedes manejar el archivo JSON recibido
-    print("JSON recibido:", json_file)
+def feed_profile(sid, data):
+    # print("Received JSON:", data)  # Print the received JSON data
+    # Deserialize the JSON
+    obj = json.loads(data)
+    # Extract and print the value of "kind"
+    kind_value = obj.get('kind', None)
+    if kind_value:
+        if kind_value =="italian_1_0":
+            print("Italian 1.0")
+        if kind_value =="dashboard_1_0":
+            print("Dashboard 1.0")
+        if kind_value =="spring_1_0":
+            print("Spring 1.0")
+    else:
+        print("The 'kind' key is not present in the received JSON.")
+    
 
 
 # arduino = serial.Serial("COM4",115200)
@@ -872,7 +885,7 @@ if __name__ == "__main__":
     #     print("Serial connection opened on port ttyUSB0")
     # else:
     #     print("No ESP32 available")
-    arduino = serial.Serial('COM4',115200)
+    arduino = serial.Serial('/dev/ttyUSB0', 115200)
     # os.system(comando) #Crea la carpeta donde se guardaran los datos 
     date = datetime.now().strftime("%Y_%m_%d") #Fecha actual
 
