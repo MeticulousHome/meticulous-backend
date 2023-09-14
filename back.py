@@ -19,11 +19,11 @@ import hashlib
 import version as backend
 import subprocess
 
-comando = './clean_logs.sh' #Changue to use reduced path.
-lock = threading.Lock()    
-file_path = './logs/'       #Change to use reduced path.
-buffer=""
-contador= 'contador.txt'
+# # comando = './clean_logs.sh' #Changue to use reduced path.
+# lock = threading.Lock()    
+# file_path = './logs/'       #Change to use reduced path.
+# buffer=""
+# contador= 'contador.txt'
 
 usaFormatoDeColores = True
 
@@ -304,10 +304,10 @@ def send_json_hash(json_string):
     json_data = "json\n"+json_data_string+"\x03"
     #proof = detect_source(json_string,json_data)
     #print(proof)
-    add_to_buffer(json_data)
+    # add_to_buffer(json_data)
     # print(json_data)
     json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
-    add_to_buffer("hash_enviado: " + json_hash + "\n")
+    # add_to_buffer("hash_enviado: " + json_hash + "\n")
     print("hash: ",end="")
     print(json_hash)
     arduino.write("hash ".encode("utf-8"))
@@ -449,7 +449,10 @@ def msg(sid, data=True):
     _input = "action,"+data+"\x03"
     arduino.write(str.encode(_input))
 
-
+@sio.on('feed_profile')
+def handle_feed_profile(sid, json_file):
+    # Aquí puedes manejar el archivo JSON recibido
+    print("JSON recibido:", json_file)
 
 
 # arduino = serial.Serial("COM4",115200)
@@ -474,37 +477,37 @@ def detect_arduino_port():
     # If no Arduino was detected, return None
     return None
 
-def add_to_buffer(message_to_save):
-    global buffer
-    global lock
-    current_date_time = datetime.now().strftime("%Y_%m_%d %H:%M:%S.%f, ")
-    with lock:
-        buffer = buffer + current_date_time + message_to_save
+# def add_to_buffer(message_to_save):
+#     global buffer
+#     global lock
+#     current_date_time = datetime.now().strftime("%Y_%m_%d %H:%M:%S.%f, ")
+#     with lock:
+#         buffer = buffer + current_date_time + message_to_save
 
-def save_log():
-    global file_name
-    global file_path
-    global lock
-    global buffer
-    #start_time = time.time()
-    with lock:
-        with open(file_path + file_name, 'a+', newline='') as file:
-            # current_date_time = datetime.now().strftime("%Y_%m_%d %H:%M:%S.%f, ")
-            # file.write(current_date_time)
-            file.write(buffer)
-    #end_time = time.time()
-    #elapsed_time = end_time - start_time
-    #print("El tiempo de escritura fue de {} segundos".format(elapsed_time))  
+# def save_log():
+#     global file_name
+#     global file_path
+#     global lock
+#     global buffer
+#     #start_time = time.time()
+#     with lock:
+#         with open(file_path + file_name, 'a+', newline='') as file:
+#             # current_date_time = datetime.now().strftime("%Y_%m_%d %H:%M:%S.%f, ")
+#             # file.write(current_date_time)
+#             file.write(buffer)
+#     #end_time = time.time()
+#     #elapsed_time = end_time - start_time
+#     #print("El tiempo de escritura fue de {} segundos".format(elapsed_time))  
 
-def log():
-    global buffer
-    while True:
-        if buffer!="":
-            save_log()
-            buffer=""
-        else:
-            pass
-        time.sleep(5)
+# def log():
+#     global buffer
+#     while True:
+#         if buffer!="":
+#             save_log()
+#             buffer=""
+#         else:
+#             pass
+#         time.sleep(5)
 
 def read_arduino():
     global infoReady
@@ -550,7 +553,8 @@ def read_arduino():
                 save_str = True
 
             if save_str:
-                add_to_buffer(data_str)
+                pass
+                # add_to_buffer(data_str)
             data_str_sensors = data_str.split(',')
 
             if data_str_sensors[0] == 'Data':
@@ -635,8 +639,8 @@ def read_arduino():
                         data_sensor_comunication["adc_2"] = sensor_values[17].split('\033[1;35m')[0]
                         data_sensor_comunication["adc_3"] = sensor_values[18].split('\n')[0]
                     except:
-                        #pass
-                        add_to_buffer("(E): ESP did not send sensor values correctly")
+                        pass
+                        # add_to_buffer("(E): ESP did not send sensor values correctly")
                     if sensor_status:
                         print(data_str, end="")
 
@@ -652,7 +656,7 @@ def read_arduino():
                     software_info["firmwareV"] = data_str_sensors[1]
                 except:
                     software_info["firmwareV"]  = "not found"
-                    add_to_buffer("(E): ESP did not send firmware version correctly\n")
+                    # add_to_buffer("(E): ESP did not send firmware version correctly\n")
 
                 infoReady = True
 
@@ -751,7 +755,7 @@ def send_data():
     global sensor_status
     sensor_status=False
     global lastJSON_source
-
+    return
     while (True):
         _input = input()
 
@@ -825,8 +829,8 @@ def main():
     # send_data_thread.daemon = True
     send_data_thread.start()
 
-    log_thread=threading.Thread(target=log)
-    log_thread.start()
+    # log_thread=threading.Thread(target=log)
+    # log_thread.start()
     
     app = tornado.web.Application(
         [
@@ -854,22 +858,22 @@ def menu():
 if __name__ == "__main__":
 
     # Call the function to get the port
-    arduino_port = detect_arduino_port()
+    # arduino_port = detect_arduino_port()
 
     # Open the serial connection if an Arduino was detected
     # if arduino_port == '/dev/ttyS0':
     #     arduino = serial.Serial('/dev/ttyS0',115200)
     #     print("Serial connection opened on port ttyS0") ####Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
-    if arduino_port == '/dev/ttymxc0':########################
-        arduino = serial.Serial('/dev/ttymxc0',115200)
-        print("Serial connection opened on port ttymxc0")
-    elif arduino_port == '/dev/ttyUSB0':
-        arduino = serial.Serial('/dev/ttyUSB0',115200)
-        print("Serial connection opened on port ttyUSB0")
-    else:
-        print("No ESP32 available")
-
-    os.system(comando) #Crea la carpeta donde se guardaran los datos 
+    # if arduino_port == '/dev/ttymxc0':########################
+    #     arduino = serial.Serial('/dev/ttymxc0',115200)
+    #     print("Serial connection opened on port ttymxc0")
+    # elif arduino_port == '/dev/ttyUSB0':
+    #     arduino = serial.Serial('/dev/ttyUSB0',115200)
+    #     print("Serial connection opened on port ttyUSB0")
+    # else:
+    #     print("No ESP32 available")
+    arduino = serial.Serial('COM4',115200)
+    # os.system(comando) #Crea la carpeta donde se guardaran los datos 
     date = datetime.now().strftime("%Y_%m_%d") #Fecha actual
 
     try: #procesp para obtener el numero de sesion 9999 si no se puede obtener el numero de sesion
