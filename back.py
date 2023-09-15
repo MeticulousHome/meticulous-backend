@@ -880,6 +880,7 @@ def sendLogs(offset: int):
         asyncio.run(task_send_data)
         task_end_data = asyncio.create_task(sendEnd())
         asyncio.run(task_end_data)
+        subprocess.run(f'sudo rm -r ~/logs',shell=True)
         # send_end_transmition = True
     else:
         send_data_callback = True
