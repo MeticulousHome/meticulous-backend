@@ -969,7 +969,7 @@ def rcvPckg(sid, data):
     with open(os.path.expanduser("~/update/updtPckg.tar.gz"), 'ab') as file:
         file.write(data)
     #Create a thread that will decompress the data and call the updater script
-@sio.on('sendLogs'):
+@sio.on('sendLogs')
 def sendLogs(sid):
     print("sendingLogs")
     tr = threading.Thread(target=prepLogs)
