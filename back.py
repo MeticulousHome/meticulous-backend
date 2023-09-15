@@ -462,7 +462,7 @@ def feed_profile(sid, data):
             print("Is Italian 1.0")
             json_result = generate_italian_1_0(obj)
             print(json_result)
-            # send_json_hash(json_result)
+            send_json_hash(json_result)
             return
         if kind_value =="dashboard_1_0":
             print("Dashboard 1.0")
@@ -675,6 +675,12 @@ def read_arduino():
                 except:
                     software_info["firmwareV"]  = "not found"
                     # add_to_buffer("(E): ESP did not send firmware version correctly\n")
+                
+                try:
+                    software_info["voltageLevel"] = float(data_str_sensors[3].strip('\r\n'))
+                except:
+                    software_info["voltageLevel"] = None  # o puedes poner un valor predeterminado, como 0.0
+                    # add_to_buffer("(E): ESP did not send voltage level correctly\n")
 
                 infoReady = True
 
