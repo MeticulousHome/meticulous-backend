@@ -2,6 +2,18 @@ import json
 
 def get_infusion_stage(parameters: json, start_node: int, end_node: int):
     
+    try:
+        out_weight = parameters["out_weight"]
+    except:
+        print('Error: Out weight is not defined')
+        return None
+    
+    try:
+        pressure = parameters["pressure"]
+    except:
+        print('Error: Pressure is not defined')
+        return None
+    
     infusion_stage =   {
         "name": "infusion",
         "nodes": [
@@ -47,7 +59,7 @@ def get_infusion_stage(parameters: json, start_node: int, end_node: int):
                 "points": [
                  [
                   0,
-                  8
+                  pressure
                  ]
                 ],
                 "time_reference_id": 4
@@ -71,7 +83,7 @@ def get_infusion_stage(parameters: json, start_node: int, end_node: int):
                "source": "Weight Raw",
                "weight_reference_id": 1,
                "operator": ">=",
-               "value": 36,
+               "value": out_weight,
                "next_node_id": end_node
               },
               {
@@ -125,7 +137,7 @@ def get_infusion_stage(parameters: json, start_node: int, end_node: int):
                "source": "Weight Raw",
                "weight_reference_id": 1,
                "operator": ">=",
-               "value": 36,
+               "value": out_weight,
                "next_node_id": end_node
               },
               {
