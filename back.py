@@ -976,7 +976,6 @@ def sendLogs(sid):
     tr.start()
     tr.daemon=True
 
-@sio.on('')
 @sio.on('askForInfo')
 def setSendInfo(sid):
     global sendInfoToFront
