@@ -452,16 +452,18 @@ def msg(sid, data=True):
 
 @sio.on('feed_profile')
 def feed_profile(sid, data):
-    # print("Received JSON:", data)  # Print the received JSON data
+    print("Received JSON:", data)  # Print the received JSON data
     # Deserialize the JSON
     obj = json.loads(data)
     # Extract and print the value of "kind"
     kind_value = obj.get('kind', None)
     if kind_value:
         if kind_value =="italian_1_0":
-            print("Italian 1.0")
+            print("Is Italian 1.0")
             json_result = generate_italian_1_0(obj)
             print(json_result)
+            # send_json_hash(json_result)
+            return
         if kind_value =="dashboard_1_0":
             print("Dashboard 1.0")
         if kind_value =="spring_1_0":
@@ -771,7 +773,7 @@ def send_data():
     global sensor_status
     sensor_status=False
     global lastJSON_source
-    return
+    
     while (True):
         _input = input()
 
