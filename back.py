@@ -828,7 +828,8 @@ def startUpdate():
     #call the update script (will use the script as a module)
     command = f'cd {autoupdate_path} && python update_protocol.py'
     update_success = subprocess.run(command, shell=True, capture_output=True, text=True).stdout
-
+    print(update_success)
+    exit(0)
     #takes the GPIO back
     initialize_GPIO()
 
@@ -841,7 +842,6 @@ def startUpdate():
     data_thread = threading.Thread(target=data_treatment)
     send_data_thread = threading.Thread(target=send_data)
     #we dont stop the lcd yet to use it as the only communication channel available
-    print(update_success)
 
 def startArduino_comms():
     # Call the function to get the port
