@@ -378,20 +378,6 @@ def msg(sid, data):
     send_json_hash(data)
     lastJSON_source = detect_source(data)
     print(lastJSON_source)
-    
-@sio.on('italian_1.0')
-def msg(sid, data):
-    global lastJSON_source
-    send_json_hash(data)
-    lastJSON_source = detect_source(data)
-    print(lastJSON_source)
-    
-@sio.on('dashboard_1.0')
-def msg(sid, data):
-    global lastJSON_source
-    send_json_hash(data)
-    lastJSON_source = detect_source(data)
-    print(lastJSON_source)
 
 @sio.on('send_profile')
 async def forwardJSON(sid,data):
@@ -462,8 +448,8 @@ def feed_profile(sid, data):
             print("Is Italian 1.0")
             json_result = generate_italian_1_0(obj)
             print(json_result)
-            send_json_hash(json_result)
-            return
+            obj_json = json.loads(json_result)
+            send_json_hash(obj_json)
         if kind_value =="dashboard_1_0":
             print("Dashboard 1.0")
         if kind_value =="spring_1_0":
