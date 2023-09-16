@@ -300,9 +300,9 @@ def start_function():
 #     en.set_value(0)
 #     io0.set_value(0)
 
-def send_json_hash(json_string):
-    json_data_string = json.dumps(json_string, indent=1, sort_keys=False)
-    json_data = "json\n"+json_data_string+"\x03"
+def send_json_hash(json_obj):
+    json_string = json.dumps(json_obj)
+    json_data = "json\n" + json_string + "\x03"
     #proof = detect_source(json_string,json_data)
     #print(proof)
     # add_to_buffer(json_data)
@@ -413,7 +413,6 @@ def msg(sid, data):
     try:
         with open('./presets/'+ preset ,'r',encoding="utf-8") as file:
             json_data = json.load(file)
-            json_data = json.dumps(json_data, indent=1,sort_keys=False)
             send_json_hash(json_data)
             lastJSON_source = detect_source(json_data)
             #send the instruccion to start the selected choice
