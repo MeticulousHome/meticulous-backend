@@ -99,7 +99,7 @@ lock = threading.Lock()
 file_path = './logs/'       #Change to use reduced path.
 buffer=""
 contador= 'contador.txt'
-autoupdate_path = "~/meticulous-raspberry-setup/meticulous-autoupdate"
+autoupdate_path = "./meticulous-raspberry-setup/meticulous-autoupdate"
 
 usaFormatoDeColores = True
 
@@ -798,15 +798,15 @@ def startUpdate():
 
     stopESPcomm = True
 
-    path = "~/update/updtPckg.tar.gz"
+    path = "./update/updtPckg.tar.gz"
 
     #extract the directory of the update 
-    command = f'sudo tar -xzf ~/update/updtPckg.tar.gz -C ~/update'
-    subprocess.run(command, shell=True)
+    command = f'sudo tar -xzf {path} -C ./update'
+    subprocess.run(command, shell=True,cwd=user_path)
 
     #delete the compressed file
-    command = 'sudo rm ~/update/updtPckg.tar.gz'
-    subprocess.run(command, shell=True)
+    command = f'sudo rm {path}'
+    subprocess.run(command, shell=True,cwd=user_path)
 
     #turns the ESP off
     turn_off()
@@ -826,8 +826,8 @@ def startUpdate():
     release_pins()
     
     #call the update script (will use the script as a module)
-    command = f'cd {autoupdate_path} && python update_protocol.py'
-    update_success = subprocess.run(command, shell=True, capture_output=True, text=True).stdout
+    command = f'python {autoupdate_path}/update_protocol.py'
+    update_success = subprocess.run(command, shell=True, capture_output=True, text=True,cwd=user_path).stdout
     print(update_success)
     exit(0)
     #takes the GPIO back
@@ -880,8 +880,8 @@ def sendLogs(offset: int):
         asyncio.run(task_send_data)
         task_end_data = asyncio.create_task(sendEnd())
         asyncio.run(task_end_data)
-        subprocess.run(f'sudo rm -r ~/logs',shell=True)
-        subprocess.run(f'sudo rm -r ~/logs.tar.gz',shell=True)
+        subprocess.run(f'sudo rm -r ./logs',shell=True, cwd=user_path)
+        subprocess.run(f'sudo rm -r ./logs.tar.gz',shell=True, cwd=user_path)
         # send_end_transmition = True
     else:
         send_data_callback = True
@@ -905,7 +905,7 @@ def prepLogs():
         #print(f"Directory '{temp_logs_path}' created successfully.")
     else:
         print("directory: [ ~/logs ] exist, you forgot to delete it U MF, i'll do it for You")
-        subprocess.run(f'sudo rm -r {temp_logs_path}',shell=True)
+        subprocess.run(f'sudo rm -r ./logs',shell=True,cwd=user_path)
         os.makedirs(temp_logs_path)
     
     #copy all logs from history and backend logs to ~/logs
@@ -916,18 +916,18 @@ def prepLogs():
     #y copiamos sus contenidos
     if os.path.exists(history_path_logs):
         os.makedirs(f'{temp_logs_path}/history_logs')
-        subprocess.run(f'sudp cp {history_path_logs}/*.txt {temp_logs_path}/history_logs',shell=True)
+        subprocess.run(f'sudp cp ./history/logs/*.txt ./logs/history_logs',shell=True,cwd=user_path)
     if os.path.exists(history_path_u_logs): 
-        os.makedirs(f'{temp_logs_path}/update_logs')
-        subprocess.run(f'sudp cp {history_path_u_logs}/*.txt {temp_logs_path}/update_logs',shell=True)
+        os.makedirs(f'./logs/update_logs')
+        subprocess.run(f'sudp cp ./history/u_logs/*.txt ./logs/update_logs',shell=True,cwd=user_path)
     if os.path.exists(recent_logs):
         os.makedirs(f'{temp_logs_path}/recent_logs')
-        subprocess.run(f'sudp cp {recent_logs}/*.txt {temp_logs_path}/recent_logs',shell=True)
+        subprocess.run(f'sudp cp ./meticulous-raspberry-setup/backend_for_esp32/logs/*.txt ./logs/recent_logs',shell=True,cwd=user_path)
 
     #comprimimos la carpeta
-    subprocess.run(f'tar -cvf ~/logs.tar {temp_logs_path}',shell=True)
-    subprocess.run(f'gzip ~/logs.tar',shell=True)
-
+    subprocess.run(f'tar -cvf ./logs.tar ./logs',shell=True,cwd=user_path)
+    subprocess.run(f'gzip ~/logs.tar',shell=True,cwd=user_path)
+    
     #load the compressed file
     with open(os.path.expanduser("~/logs.tar.gz"), 'rb') as file:
         logFile_data = file.read()
