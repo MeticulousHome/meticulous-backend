@@ -20,7 +20,7 @@ import hashlib
 import version as backend
 import subprocess
 
-# comando = './clean_logs.sh' #Changue to use reduced path.
+comando = './clean_logs.sh' #Changue to use reduced path.
 lock = threading.Lock()    
 file_path = './logs/'       #Change to use reduced path.
 buffer=""
@@ -101,7 +101,7 @@ config.consumer = 'myapp'
 config.request_type = gpiod.line_request.DIRECTION_OUTPUT
 
 # Initialize GPIO lines
-lcd_en = chip0.get_line(13)  
+# lcd_en = chip0.get_line(13)  
 esp_en = chip4.get_line(9)
 en = chip0.get_line(7)  
 io0 = chip0.get_line(8)
@@ -556,7 +556,6 @@ def read_arduino():
                 save_str = True
 
             if save_str:
-                pass
                 add_to_buffer(data_str)
             data_str_sensors = data_str.split(',')
 
@@ -642,7 +641,6 @@ def read_arduino():
                         data_sensor_comunication["adc_2"] = sensor_values[17].split('\033[1;35m')[0]
                         data_sensor_comunication["adc_3"] = sensor_values[18].split('\n')[0]
                     except:
-                        pass
                         add_to_buffer("(E): ESP did not send sensor values correctly")
                     if sensor_status:
                         print(data_str, end="")
@@ -881,7 +879,6 @@ if __name__ == "__main__":
         print("Serial connection opened on port ttyUSB0")
     else:
         print("No ESP32 available")
-    arduino = serial.Serial('/dev/ttyUSB0', 115200)
     os.system(comando) #Crea la carpeta donde se guardaran los datos 
     date = datetime.now().strftime("%Y_%m_%d") #Fecha actual
 
