@@ -7,9 +7,9 @@ import serial
 import threading
 import time
 import json
-from pynput.keyboard import Key, Controller
+# from pynput.keyboard import Key, Controller
 # import RPi.GPIO as GPIO          ################# Debera haber un if que confirme en el entorno (raspberry o VAR-SOM-MX8M-NANO)
-import gpiod                       ################# En base a ello instalara la libreria correspondiente (RPi.GPIO o gpiod)
+# import gpiod                       ################# En base a ello instalara la libreria correspondiente (RPi.GPIO o gpiod)
 #from dotenv import load_dotenv #################!!!!!!!!!!!NO hay librerias en som
 from datetime import datetime
 import os
@@ -91,27 +91,27 @@ class ReadLine:
 # GPIO.setup(io0, GPIO.OUT)
 # GPIO.setup(esp_en, GPIO.OUT)
 # GPIO.setup(lcd_en, GPIO.OUT)  ###################### Debera haber un if que confirme en el entorno (raspberry o VAR-SOM-MX8M-NANO)
-chip0 = gpiod.chip('gpiochip0') ####################### En base a ello definir el comando adecuado para controlar gpio's
-chip4 = gpiod.chip('gpiochip4')
-chip3 = gpiod.chip('gpiochip3')
+# chip0 = gpiod.chip('gpiochip0') ####################### En base a ello definir el comando adecuado para controlar gpio's
+# chip4 = gpiod.chip('gpiochip4')
+# chip3 = gpiod.chip('gpiochip3')
 
-config = gpiod.line_request()
-config.consumer = 'myapp'
-config.request_type = gpiod.line_request.DIRECTION_OUTPUT
+# config = gpiod.line_request()
+# config.consumer = 'myapp'
+# config.request_type = gpiod.line_request.DIRECTION_OUTPUT
 
 # Initialize GPIO lines
 #lcd_en = chip0.get_line(13)  
-esp_en = chip4.get_line(9)
-en = chip0.get_line(7)  
-io0 = chip0.get_line(8)
-buffer_pin = chip3.get_line(26)
+# esp_en = chip4.get_line(9)
+# en = chip0.get_line(7)  
+# io0 = chip0.get_line(8)
+# buffer_pin = chip3.get_line(26)
 
-lines = [esp_en, en, io0, buffer_pin]
-for line in lines:
-    try:
-        line.request(config)
-    except OSError:
-        print(f"Error: pin {line.offset()} could not be set to output")
+# lines = [esp_en, en, io0, buffer_pin]
+# for line in lines:
+#     try:
+#         line.request(config)
+#     except OSError:
+#         print(f"Error: pin {line.offset()} could not be set to output")
 
 def gatherVersionInfo():
     global infoSolicited
@@ -150,8 +150,8 @@ def turn_on():
     #     GPIO.output(esp_en, 0)
     #     GPIO.output(lcd_en, 0)
     #     print("EN_PIN_HIGH = 0 por default")########Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
-    esp_en.set_value(0) ##############################
-    buffer_pin.set_value(0)
+    # esp_en.set_value(0) ##############################
+    # buffer_pin.set_value(0)
     # lcd_en.set_value(0)
     print("EN_PIN_HIGH = 0 por default")
 
@@ -178,7 +178,7 @@ turn_on()
 #os.system('killall coffee-ui-demo')
 #time.sleep(5)
 
-keyboard = Controller()
+# keyboard = Controller()
 
 
 define("port", default=8080, help="run on the given port", type=int)
@@ -295,11 +295,12 @@ def reboot_esp():
     # GPIO.output(en, 0)
     # time.sleep(.1)
     # GPIO.output(en, 1)#########Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
-    en.set_value(1)##############
-    io0.set_value(1)
-    time.sleep(.1)
-    en.set_value(0)
-    io0.set_value(0)
+    # en.set_value(1)##############
+    # io0.set_value(1)
+    # time.sleep(.1)
+    # en.set_value(0)
+    # io0.set_value(0)
+    return 0
 
 def send_json_hash(json_string):
     json_data = "json\n"+json_string+"\x03"
@@ -311,10 +312,10 @@ def send_json_hash(json_string):
     add_to_buffer("hash_enviado: " + json_hash + "\n")
     print("hash: ",end="")
     print(json_hash)
-    arduino.write("hash ".encode("utf-8"))
-    arduino.write(json_hash.encode("utf-8"))
-    arduino.write("\x03".encode("utf-8"))
-    arduino.write(json_data.encode("utf-8"))
+    # arduino.write("hash ".encode("utf-8"))
+    # arduino.write(json_hash.encode("utf-8"))
+    # arduino.write("\x03".encode("utf-8"))
+    # arduino.write(json_data.encode("utf-8"))
 
 def detect_source(json_data):
 
@@ -362,16 +363,38 @@ def disconnect(sid):
 #sendInfoToFront
 @sio.on('action')
 def msg(sid, data):
+    print("action event")
     if data == "start":
         time.sleep(0.5)
         data = "action,"+data+"\x03"
         print(data)
-        arduino.write(data.encode("utf-8"))
+        # arduino.write(data.encode("utf-8"))
     else:
         time.sleep(0.05)
         data = "action,"+data+"\x03"
         print(data)
-        arduino.write(data.encode("utf-8"))
+        # arduino.write(data.encode("utf-8"))
+
+@sio.on('feed_profile')
+async def msg(sid, data):
+    print("feed_profile event")
+    print(data)
+
+    # convert data to json object
+    json_data = json.loads(data)
+
+    # print(json_data)
+    # now evaluate the json_data to know if it is a property called "action" with value "to_save" 
+    if json_data["action"] == "save_in_dial":
+        print("save_in_dial")
+        # emit the event to save the profile using "save_in_dial" event
+        await sio.emit('save_in_dial', '{"name":"Classic","kind":"dashboard_1_0","temperature":86,"preheat":false,"source":"dashboard","action":"to_save","stages":[{"parameters":{"control_method":"flow","interpolation_method":"catmull","points":[[0,4],[20,4]]},"triggers":[{"kind":"weight","value":0.3},{"kind":"time","value":20}],"limits":[{"kind":"pressure","value":6}],"kind":"curve_1.0","name":"Preinfusion"},{"parameters":{"control_method":"pressure","interpolation_method":"catmull","points":[[0,8],[40,8]]},"triggers":[{"kind":"weight","value":33},{"kind":"time","value":40}],"limits":[{"kind":"flow","value":8}],"kind":"curve_1.0","name":"Infusion"}]}')
+
+
+# @sio.on('save_in_dial')
+# def msg(sid, data):
+#     print("save_in_dial event")
+#     print(data)
 
 @sio.on('askForInfo')
 def setSendInfo(sid):
@@ -397,6 +420,7 @@ def toggleFans(sid, data):
 
 @sio.on('parameters')
 def msg(sid, data):
+    print("parameters event")
     global lastJSON_source
     json_data = json.dumps(data, indent=1, sort_keys=False)
     send_json_hash(json_data)
@@ -405,11 +429,13 @@ def msg(sid, data):
 
 @sio.on('send_profile')
 async def forwardJSON(sid,data):
+    print("send_profile event")
     print(json.dumps(data, indent=1, sort_keys=False))
     await sio.emit('save_profile', data)
 
 @sio.on('preset')
 def msg(sid, data):
+    print("preset event")
     global lastJSON_source
     # data = data + "hola mundo"
     if (data == "breville"):
@@ -454,6 +480,7 @@ def msg(sid, data):
 #data seems to not be used but is kept as optional to ease implementation if needed
 @sio.on('calibrate') #Use when calibration it is implemented
 def msg(sid, data=True):
+    print("calibrate event")
     know_weight = "100.0"
     current_weight = data_sensors["weight"]
     data ="calibration"+","+know_weight+","+str(current_weight)
@@ -691,31 +718,59 @@ async def live():
 #         json_file.close()
 
     process_started = False
-    SAMPLE_TIME = 0.1
+    SAMPLE_TIME = 1
     elapsed_time = 0
     i = 0
     _time = time.time()
+
+    pressure_var = 0
+    flow_var = 0
+    weight_var = 0
+    temperature_var = 0
+    time_var = 0
+
     while True:
 
         elapsed_time = time.time() - _time
         if infoSolicited and (elapsed_time > 2 and not infoReady):
             _time = time.time()
             _solicitud = "action,info\x03"
-            arduino.write(str.encode(_solicitud))
+            # arduino.write(str.encode(_solicitud))
 
         await sio.emit("status", {
-            "name": data_sensors["status"],
+            "name": "idle",
             # "name" : "idle",
             "sensors": {
-                "p": data_sensors["pressure"],
-                "f": data_sensors["flow"],
-                "w": data_sensors["weight"],
-                "t": data_sensors["temperature"],
+                "p": pressure_var,
+                "f": flow_var,
+                "w": weight_var,
+                "t": temperature_var,
+                # "p": data_sensors["pressure"],
+                # "f": data_sensors["flow"],
+                # "w": data_sensors["weight"],
+                # "t": data_sensors["temperature"],
             },
-            "time": str(data_sensors["time"]),
-            "profile": data_sensors["profile"],
-            "source": lastJSON_source,
+            "time": 0,
+            # "time": str(data_sensors["time"]),
+            "profile": "idle",
+            "source": "",
         })
+        pressure_var = pressure_var + 1
+        flow_var = flow_var + 0.3
+        weight_var = weight_var + 0.5
+        temperature_var = temperature_var + 0.7
+        time_var = time_var + 1
+
+        if (pressure_var > 8):
+            pressure_var = 0
+        if (flow_var > 8):
+            flow_var = 0
+        if (weight_var > 100):
+            weight_var = 0
+        if (temperature_var > 100):
+            temperature_var = 0
+        if (time_var > 200):
+            time_var = 0
 
         if sendInfoToFront:
             await sio.emit("sensors", {
@@ -823,20 +878,20 @@ def send_data():
 def main():
 
     
-    parse_command_line()
+    # parse_command_line()
 
     gatherVersionInfo()
 
-    data_thread = threading.Thread(target=data_treatment)
+    # data_thread = threading.Thread(target=data_treatment)
     # data_thread.daemon = True
-    data_thread.start()
+    # data_thread.start()
 
     send_data_thread = threading.Thread(target=send_data) 
-    # send_data_thread.daemon = True
+    send_data_thread.daemon = True
     send_data_thread.start()
 
-    log_thread=threading.Thread(target=log)
-    log_thread.start()
+    # log_thread=threading.Thread(target=log)
+    # log_thread.start()
     
     app = tornado.web.Application(
         [
@@ -864,61 +919,61 @@ def menu():
 if __name__ == "__main__":
 
     # Call the function to get the port
-    arduino_port = detect_arduino_port()
+    # arduino_port = detect_arduino_port()
 
     # Open the serial connection if an Arduino was detected
     # if arduino_port == '/dev/ttyS0':
     #     arduino = serial.Serial('/dev/ttyS0',115200)
     #     print("Serial connection opened on port ttyS0") ####Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
-    if arduino_port == '/dev/ttymxc0':########################
-        arduino = serial.Serial('/dev/ttymxc0',115200)
-        print("Serial connection opened on port ttymxc0")
-    elif arduino_port == '/dev/ttyUSB0':
-        arduino = serial.Serial('/dev/ttyUSB0',115200)
-        print("Serial connection opened on port ttyUSB0")
-    else:
-        print("No ESP32 available")
+    # if arduino_port == '/dev/ttymxc0':########################
+    #     arduino = serial.Serial('/dev/ttymxc0',115200)
+    #     print("Serial connection opened on port ttymxc0")
+    # elif arduino_port == '/dev/ttyUSB0':
+    #     arduino = serial.Serial('/dev/ttyUSB0',115200)
+    #     print("Serial connection opened on port ttyUSB0")
+    # else:
+    #     print("No ESP32 available")
 
     # arduino = serial.Serial('/dev/ttyS0',115200)
     # arduino = serial.Serial('/dev/ttyUSB0',115200)
 
-    os.system(comando) #Crea la carpeta donde se guardaran los datos 
-    date = datetime.now().strftime("%Y_%m_%d") #Fecha actual
+    # os.system(comando) #Crea la carpeta donde se guardaran los datos 
+    # date = datetime.now().strftime("%Y_%m_%d") #Fecha actual
 
-    try: #procesp para obtener el numero de sesion 9999 si no se puede obtener el numero de sesion
-        with open(file_path + contador, 'a', newline='') as file: #Crea el archivo donde se guardara el numero de sesion si no existe
-            pass
+    # try: #procesp para obtener el numero de sesion 9999 si no se puede obtener el numero de sesion
+    #     with open(file_path + contador, 'a', newline='') as file: #Crea el archivo donde se guardara el numero de sesion si no existe
+    #         pass
 
-        with open(file_path + contador, 'r', newline='') as file: #Abre el archivo donde se guardara el numero de sesion
-            first_line = file.readline() #Lee la primera linea del archivo
-        if first_line == '': #Si el archivo esta vacio se crea el archivo con el numero de sesion 1
-            session_number = 1 #asigna el numero de sesion 1 pues creo el archivo
-            with open(file_path + contador, 'w', newline='') as file:
-                file.write(str(1)) #Escribe el numero de sesion 1 en el archivo
-        else: #Si el archivo no esta vacio se lee el numero de sesion y se le suma 1
-            try: #procesp para obtener el numero de sesion 9999 si no se puede obtener el numero de sesion
-                value = int(first_line)  
-                value = value + 1 
-                session_number = value
-                with open(file_path + contador, 'w', newline='') as file:
-                    file.write(str(value)) #Escribe el numero de sesion en el archivo
-            except ValueError:
-                print("Error, el contenido del archivo no es un número válido")
-                session_number = 999 
-                with open(file_path + contador, 'w', newline='') as file:
-                    file.write(str(999))
-            except:
-                print("Error desconocido")
-                session_number = 999
-                with open(file_path + contador, 'w', newline='') as file:
-                    file.write(str(999))    
-    except:
-        print("Error al abrir el archivo")
-        session_number = 9999
+    #     with open(file_path + contador, 'r', newline='') as file: #Abre el archivo donde se guardara el numero de sesion
+    #         first_line = file.readline() #Lee la primera linea del archivo
+    #     if first_line == '': #Si el archivo esta vacio se crea el archivo con el numero de sesion 1
+    #         session_number = 1 #asigna el numero de sesion 1 pues creo el archivo
+    #         with open(file_path + contador, 'w', newline='') as file:
+    #             file.write(str(1)) #Escribe el numero de sesion 1 en el archivo
+    #     else: #Si el archivo no esta vacio se lee el numero de sesion y se le suma 1
+    #         try: #procesp para obtener el numero de sesion 9999 si no se puede obtener el numero de sesion
+    #             value = int(first_line)  
+    #             value = value + 1 
+    #             session_number = value
+    #             with open(file_path + contador, 'w', newline='') as file:
+    #                 file.write(str(value)) #Escribe el numero de sesion en el archivo
+    #         except ValueError:
+    #             print("Error, el contenido del archivo no es un número válido")
+    #             session_number = 999 
+    #             with open(file_path + contador, 'w', newline='') as file:
+    #                 file.write(str(999))
+    #         except:
+    #             print("Error desconocido")
+    #             session_number = 999
+    #             with open(file_path + contador, 'w', newline='') as file:
+    #                 file.write(str(999))    
+    # except:
+    #     print("Error al abrir el archivo")
+    #     session_number = 9999
     
-    file_name = 'Fika_' + date +'_'+ str(session_number) + '.txt' 
-    menu()
-    reboot_esp()
+    # file_name = 'Fika_' + date +'_'+ str(session_number) + '.txt' 
+    # menu()
+    # reboot_esp()
     try:
         main()
         
