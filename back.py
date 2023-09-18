@@ -10,7 +10,7 @@ import time
 import json
 from pynput.keyboard import Key, Controller
 # import RPi.GPIO as GPIO          ################# Debera haber un if que confirme en el entorno (raspberry o VAR-SOM-MX8M-NANO)
-# import gpiod                       ################# En base a ello instalara la libreria correspondiente (RPi.GPIO o gpiod)
+import gpiod                       ################# En base a ello instalara la libreria correspondiente (RPi.GPIO o gpiod)
 #from dotenv import load_dotenv #################!!!!!!!!!!!NO hay librerias en som
 from datetime import datetime
 import os
@@ -20,11 +20,11 @@ import hashlib
 import version as backend
 import subprocess
 
-# # comando = './clean_logs.sh' #Changue to use reduced path.
-# lock = threading.Lock()    
-# file_path = './logs/'       #Change to use reduced path.
-# buffer=""
-# contador= 'contador.txt'
+# comando = './clean_logs.sh' #Changue to use reduced path.
+lock = threading.Lock()    
+file_path = './logs/'       #Change to use reduced path.
+buffer=""
+contador= 'contador.txt'
 
 usaFormatoDeColores = True
 
@@ -92,27 +92,27 @@ class ReadLine:
 # GPIO.setup(io0, GPIO.OUT)
 # GPIO.setup(esp_en, GPIO.OUT)
 # GPIO.setup(lcd_en, GPIO.OUT)  ###################### Debera haber un if que confirme en el entorno (raspberry o VAR-SOM-MX8M-NANO)
-# chip0 = gpiod.chip('gpiochip0') ####################### En base a ello definir el comando adecuado para controlar gpio's
-# chip4 = gpiod.chip('gpiochip4')
-# chip3 = gpiod.chip('gpiochip3')
+chip0 = gpiod.chip('gpiochip0') ####################### En base a ello definir el comando adecuado para controlar gpio's
+chip4 = gpiod.chip('gpiochip4')
+chip3 = gpiod.chip('gpiochip3')
 
-# config = gpiod.line_request()
-# config.consumer = 'myapp'
-# config.request_type = gpiod.line_request.DIRECTION_OUTPUT
+config = gpiod.line_request()
+config.consumer = 'myapp'
+config.request_type = gpiod.line_request.DIRECTION_OUTPUT
 
 # Initialize GPIO lines
-#lcd_en = chip0.get_line(13)  
-# esp_en = chip4.get_line(9)
-# en = chip0.get_line(7)  
-# io0 = chip0.get_line(8)
-# buffer_pin = chip3.get_line(26)
+lcd_en = chip0.get_line(13)  
+esp_en = chip4.get_line(9)
+en = chip0.get_line(7)  
+io0 = chip0.get_line(8)
+buffer_pin = chip3.get_line(26)
 
-# lines = [esp_en, en, io0, buffer_pin]
-# for line in lines:
-#     try:
-#         line.request(config)
-#     except OSError:
-#         print(f"Error: pin {line.offset()} could not be set to output")
+lines = [esp_en, en, io0, buffer_pin]
+for line in lines:
+    try:
+        line.request(config)
+    except OSError:
+        print(f"Error: pin {line.offset()} could not be set to output")
 
 def gatherVersionInfo():
     global infoSolicited
@@ -150,9 +150,9 @@ def turn_on():
     #     GPIO.output(esp_en, 0)
     #     GPIO.output(lcd_en, 0)
     #     print("EN_PIN_HIGH = 0 por default")########Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
-#     esp_en.set_value(0) ##############################
-#     buffer_pin.set_value(0)
-#     # lcd_en.set_value(0)
+    esp_en.set_value(0) ##############################
+    buffer_pin.set_value(0)
+    # lcd_en.set_value(0)
     print("EN_PIN_HIGH = 0 por default")
 
 
@@ -169,9 +169,9 @@ def turn_off():
     #     GPIO.output(esp_en, 1)
     #     GPIO.output(lcd_en, 1)
     #     print("EN_PIN_HIGH = 0 por default")########Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
-#     esp_en.set_value(1)##############################
-#     buffer_pin.set_value(1)
-#     # lcd_en.set_value(1)
+    esp_en.set_value(1)##############################
+    buffer_pin.set_value(1)
+    # lcd_en.set_value(1)
     print("EN_PIN_HIGH = 0 por default")    
 
 turn_on()
@@ -284,31 +284,31 @@ def start_function():
     keyboard.release(Key.enter)
     print("START!")
 
-# def reboot_esp():
-#     # GPIO.output(en, 0)
-#     # GPIO.output(io0, 0) 
-#     # time.sleep(.1)
-#     # GPIO.output(en, 1)
-#     # GPIO.output(io0, 1)
-#     # time.sleep(.1)
-#     # GPIO.output(en, 0)
-#     # time.sleep(.1)
-#     # GPIO.output(en, 1)#########Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
-#     en.set_value(1)##############
-#     io0.set_value(1)
-#     time.sleep(.1)
-#     en.set_value(0)
-#     io0.set_value(0)
+def reboot_esp():
+    # GPIO.output(en, 0)
+    # GPIO.output(io0, 0) 
+    # time.sleep(.1)
+    # GPIO.output(en, 1)
+    # GPIO.output(io0, 1)
+    # time.sleep(.1)
+    # GPIO.output(en, 0)
+    # time.sleep(.1)
+    # GPIO.output(en, 1)#########Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
+    en.set_value(1)##############
+    io0.set_value(1)
+    time.sleep(.1)
+    en.set_value(0)
+    io0.set_value(0)
 
 def send_json_hash(json_obj):
     json_string = json.dumps(json_obj)
     json_data = "json\n" + json_string + "\x03"
     #proof = detect_source(json_string,json_data)
     #print(proof)
-    # add_to_buffer(json_data)
+    add_to_buffer(json_data)
     # print(json_data)
     json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
-    # add_to_buffer("hash_enviado: " + json_hash + "\n")
+    add_to_buffer("hash_enviado: " + json_hash + "\n")
     print("hash: ",end="")
     print(json_hash)
     arduino.write("hash ".encode("utf-8"))
@@ -463,7 +463,7 @@ def feed_profile(sid, data):
 # arduino = serial.Serial('/dev/ttyUSB0',115200)
 def detect_arduino_port():
     # Try opening /dev/ttyS0 and /dev/ttyUSB0
-    # reboot_esp()
+    reboot_esp()
     # for port in ['/dev/ttyS0', '/dev/ttyUSB0']: ######################### Debera haber un if que confirme en el entorno (raspberry o VAR-SOM-MX8M-NANO)d_
     for port in ['/dev/ttymxc0', '/dev/ttyUSB0']:
         try:
@@ -480,37 +480,37 @@ def detect_arduino_port():
     # If no Arduino was detected, return None
     return None
 
-# def add_to_buffer(message_to_save):
-#     global buffer
-#     global lock
-#     current_date_time = datetime.now().strftime("%Y_%m_%d %H:%M:%S.%f, ")
-#     with lock:
-#         buffer = buffer + current_date_time + message_to_save
+def add_to_buffer(message_to_save):
+    global buffer
+    global lock
+    current_date_time = datetime.now().strftime("%Y_%m_%d %H:%M:%S.%f, ")
+    with lock:
+        buffer = buffer + current_date_time + message_to_save
 
-# def save_log():
-#     global file_name
-#     global file_path
-#     global lock
-#     global buffer
-#     #start_time = time.time()
-#     with lock:
-#         with open(file_path + file_name, 'a+', newline='') as file:
-#             # current_date_time = datetime.now().strftime("%Y_%m_%d %H:%M:%S.%f, ")
-#             # file.write(current_date_time)
-#             file.write(buffer)
-#     #end_time = time.time()
-#     #elapsed_time = end_time - start_time
-#     #print("El tiempo de escritura fue de {} segundos".format(elapsed_time))  
+def save_log():
+    global file_name
+    global file_path
+    global lock
+    global buffer
+    #start_time = time.time()
+    with lock:
+        with open(file_path + file_name, 'a+', newline='') as file:
+            # current_date_time = datetime.now().strftime("%Y_%m_%d %H:%M:%S.%f, ")
+            # file.write(current_date_time)
+            file.write(buffer)
+    #end_time = time.time()
+    #elapsed_time = end_time - start_time
+    #print("El tiempo de escritura fue de {} segundos".format(elapsed_time))  
 
-# def log():
-#     global buffer
-#     while True:
-#         if buffer!="":
-#             save_log()
-#             buffer=""
-#         else:
-#             pass
-#         time.sleep(5)
+def log():
+    global buffer
+    while True:
+        if buffer!="":
+            save_log()
+            buffer=""
+        else:
+            pass
+        time.sleep(5)
 
 def read_arduino():
     global infoReady
@@ -557,7 +557,7 @@ def read_arduino():
 
             if save_str:
                 pass
-                # add_to_buffer(data_str)
+                add_to_buffer(data_str)
             data_str_sensors = data_str.split(',')
 
             if data_str_sensors[0] == 'Data':
@@ -643,7 +643,7 @@ def read_arduino():
                         data_sensor_comunication["adc_3"] = sensor_values[18].split('\n')[0]
                     except:
                         pass
-                        # add_to_buffer("(E): ESP did not send sensor values correctly")
+                        add_to_buffer("(E): ESP did not send sensor values correctly")
                     if sensor_status:
                         print(data_str, end="")
 
@@ -659,13 +659,13 @@ def read_arduino():
                     software_info["firmwareV"] = data_str_sensors[1]
                 except:
                     software_info["firmwareV"]  = "not found"
-                    # add_to_buffer("(E): ESP did not send firmware version correctly\n")
+                    add_to_buffer("(E): ESP did not send firmware version correctly\n")
                 
                 try:
                     software_info["voltageLevel"] = float(data_str_sensors[3].strip('\r\n'))
                 except:
                     software_info["voltageLevel"] = None  # o puedes poner un valor predeterminado, como 0.0
-                    # add_to_buffer("(E): ESP did not send voltage level correctly\n")
+                    add_to_buffer("(E): ESP did not send voltage level correctly\n")
 
                 infoReady = True
 
@@ -838,8 +838,8 @@ def main():
     # send_data_thread.daemon = True
     send_data_thread.start()
 
-    # log_thread=threading.Thread(target=log)
-    # log_thread.start()
+    log_thread=threading.Thread(target=log)
+    log_thread.start()
     
     app = tornado.web.Application(
         [
@@ -867,22 +867,22 @@ def menu():
 if __name__ == "__main__":
 
     # Call the function to get the port
-    # arduino_port = detect_arduino_port()
+    arduino_port = detect_arduino_port()
 
     # Open the serial connection if an Arduino was detected
     # if arduino_port == '/dev/ttyS0':
     #     arduino = serial.Serial('/dev/ttyS0',115200)
     #     print("Serial connection opened on port ttyS0") ####Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
-    # if arduino_port == '/dev/ttymxc0':########################
-    #     arduino = serial.Serial('/dev/ttymxc0',115200)
-    #     print("Serial connection opened on port ttymxc0")
-    # elif arduino_port == '/dev/ttyUSB0':
-    #     arduino = serial.Serial('/dev/ttyUSB0',115200)
-    #     print("Serial connection opened on port ttyUSB0")
-    # else:
-    #     print("No ESP32 available")
+    if arduino_port == '/dev/ttymxc0':########################
+        arduino = serial.Serial('/dev/ttymxc0',115200)
+        print("Serial connection opened on port ttymxc0")
+    elif arduino_port == '/dev/ttyUSB0':
+        arduino = serial.Serial('/dev/ttyUSB0',115200)
+        print("Serial connection opened on port ttyUSB0")
+    else:
+        print("No ESP32 available")
     arduino = serial.Serial('/dev/ttyUSB0', 115200)
-    # os.system(comando) #Crea la carpeta donde se guardaran los datos 
+    os.system(comando) #Crea la carpeta donde se guardaran los datos 
     date = datetime.now().strftime("%Y_%m_%d") #Fecha actual
 
     try: #procesp para obtener el numero de sesion 9999 si no se puede obtener el numero de sesion
@@ -918,7 +918,7 @@ if __name__ == "__main__":
     
     file_name = 'Fika_' + date +'_'+ str(session_number) + '.txt' 
     menu()
-    #reboot_esp()
+    reboot_esp()
     try:
         main()
         
