@@ -1,5 +1,5 @@
 import json
-from dashboard_1_0_stages import get_stages as get_stages
+from .dashboard_1_0_stages import get_stages as get_stages
 
 def generate_dashboard_1_0(parameters: dict):
     try:
