@@ -100,6 +100,7 @@ file_path = './logs/'       #Change to use reduced path.
 buffer=""
 contador= 'contador.txt'
 autoupdate_path = "./meticulous-raspberry-setup/meticulous-autoupdate"
+user_path=os.path.expanduser("~/")
 
 usaFormatoDeColores = True
 
@@ -827,7 +828,12 @@ def startUpdate():
     command = f'python {autoupdate_path}/update_protocol.py'
     update_success = subprocess.run(command, shell=True, capture_output=True, text=True,cwd=user_path).stdout
     print(update_success)
-    exit(0)
+    
+    PID = subprocess.run("systemctl status back.service | grep -oP 'Main PID: \K\d+'",shell=True,capture_output=True,text=True,cwd=user_path).stdout
+
+    #y lo matamos alv _(~o _ o~)_/\_(0 _ 0)_
+
+    subprocess.run(f'sudo kill -9 {PID}',shell=True,cwd=user_path)
     #takes the GPIO back
     initialize_GPIO()
 
