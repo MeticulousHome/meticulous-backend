@@ -314,7 +314,7 @@ def encoder_double_function():
     keyboard.release('x')
     if (data_sensors["status"] != "idle"):
         _input = "action,"+"stop"+"\x03"
-        if(arduino != None) arduino.write(str.encode(_input))
+        if(arduino != None): arduino.write(str.encode(_input))
     print("DOUBLE ENCODER!")
 
 def encoder_long_function():
@@ -352,10 +352,10 @@ def send_json_hash(json_string):
     add_to_buffer("hash_enviado: " + json_hash + "\n")
     print("hash: ",end="")
     print(json_hash)
-    if(arduino != None) arduino.write("hash ".encode("utf-8"))
-    if(arduino != None) arduino.write(json_hash.encode("utf-8"))
-    if(arduino != None) arduino.write("\x03".encode("utf-8"))
-    if(arduino != None) arduino.write(json_data.encode("utf-8"))
+    if(arduino != None): arduino.write("hash ".encode("utf-8"))
+    if(arduino != None): arduino.write(json_hash.encode("utf-8"))
+    if(arduino != None): arduino.write("\x03".encode("utf-8"))
+    if(arduino != None): arduino.write(json_data.encode("utf-8"))
 
 def detect_source(json_data):
 
@@ -604,7 +604,7 @@ def read_arduino():
 # print(data_str)
     
 def data_treatment():
-    if(arduino != None) read_arduino()
+    if(arduino != None): read_arduino()
 
 async def live():
 
@@ -631,7 +631,7 @@ async def live():
         if infoSolicited and (elapsed_time > 2 and not infoReady):
             _time = time.time()
             _solicitud = "action,info\x03"
-            if(arduino != None) arduino.write(str.encode(_solicitud))
+            if(arduino != None): arduino.write(str.encode(_solicitud))
 
         await sio.emit("status", {
             "name": data_sensors["status"],
@@ -720,17 +720,17 @@ def send_data():
 
         elif _input=="tare" or _input=="stop" or _input=="purge" or _input=="home" or _input=="start" :
             _input = "action,"+_input+"\x03"
-            if(arduino != None) arduino.write(str.encode(_input))
+            if(arduino != None): arduino.write(str.encode(_input))
             
         elif _input == "test":
             sensor_status=True
             for i in range(0,10):
                 _input = "action,"+"purge"+"\x03"
-                if(arduino != None) arduino.write(str.encode(_input))
+                if(arduino != None): arduino.write(str.encode(_input))
                 time.sleep(15)
                 print(_input)
                 _input = "action,"+"home"+"\x03"
-                if(arduino != None) arduino.write(str.encode(_input))
+                if(arduino != None): arduino.write(str.encode(_input))
                 time.sleep(15)
                 contador = "Numero de prueba: "+str(i+1)
                 print(_input)
@@ -739,7 +739,7 @@ def send_data():
 
         elif _input[:11] == "calibration":
             _input = "action,"+_input+"\x03"
-            if(arduino != None) arduino.write(str.encode(_input))
+            if(arduino != None): arduino.write(str.encode(_input))
 
         else:
             pass
@@ -820,7 +820,7 @@ def startUpdate():
     if data_thread != None:
         data_thread.join()
 
-    if(arduino != None) arduino.close()
+    if(arduino != None): arduino.close()
     #free's the GPIO
     release_pins()
     
@@ -953,12 +953,12 @@ def msg(sid, data):
         time.sleep(0.5)
         data = "action,"+data+"\x03"
         print(data)
-        if(arduino != None) arduino.write(data.encode("utf-8"))
+        if(arduino != None): arduino.write(data.encode("utf-8"))
     else:
         time.sleep(0.05)
         data = "action,"+data+"\x03"
         print(data)
-        if(arduino != None) arduino.write(data.encode("utf-8"))
+        if(arduino != None): arduino.write(data.encode("utf-8"))
         
 @sio.on('endTransmition')
 def endRecept(sid):
@@ -999,7 +999,7 @@ def toggleFans(sid, data):
     else:
         print("fans off")
         _solicitud = "action,fans-off\x03"
-    if(arduino != None) arduino.write(str.encode(_solicitud))
+    if(arduino != None): arduino.write(str.encode(_solicitud))
     software_info["fanStatus"] = 'on' if data else 'off'
 
 @sio.on('parameters')
@@ -1049,7 +1049,7 @@ def msg(sid, data):
             lastJSON_source = detect_source(json_data)
             #send the instruccion to start the selected choice
             _input = "action,"+"start"+"\x03"
-            if(arduino != None) arduino.write(str.encode(_input))
+            if(arduino != None): arduino.write(str.encode(_input))
     except:
         print("Preset not found")
         return 0
@@ -1063,7 +1063,7 @@ def msg(sid, data=True):
     current_weight = data_sensors["weight"]
     data ="calibration"+","+know_weight+","+str(current_weight)
     _input = "action,"+data+"\x03"
-    if(arduino != None) arduino.write(str.encode(_input))
+    if(arduino != None): arduino.write(str.encode(_input))
 
 initialize_GPIO()
 turn_on()
