@@ -449,6 +449,9 @@ def feed_profile(sid, data):
             print(json_result)
             obj_json = json.loads(json_result)
             send_json_hash(obj_json)
+            time.sleep(3)
+            _input = "action,"+"start"+"\x03"
+            arduino.write(str.encode(_input))
         if kind_value =="dashboard_1_0":
             print("Dashboard 1.0")
         if kind_value =="spring_1_0":
