@@ -1,18 +1,9 @@
-# bidict==0.22.0
-# evdev==1.6.0
-# pynput==1.7.6
-# pyserial==3.5
-# python-dotenv==0.21.0
-# python-engineio==4.3.4
-# python-socketio==5.7.2
-# python-xlib==0.31
-# RPi.GPIO==0.7.1
-# six==1.16.0
-# threaded==4.1.0
-# tornado==6.2
 bidict==0.22.1
 gpiod==1.5.4
+pynput==1.7.6
 pyserial==3.5
 python-engineio==4.6.1
 python-socketio==5.8.0
+python-xlib==0.33
+six==1.16.0
 tornado==6.3.3
