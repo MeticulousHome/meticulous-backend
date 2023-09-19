@@ -447,9 +447,9 @@ def feed_profile(sid, data):
     if kind_value:
         if kind_value =="italian_1_0":
             print("Is Italian 1.0")
-            json_result = generate_italian_1_0(obj)
+            json_result = generate_italian_1_0(obj) #<class 'str'>
             print(json_result)
-            obj_json = json.loads(json_result)
+            obj_json = json.loads(json_result) #<class 'dict'>
             send_json_hash(obj_json)
             time.sleep(5)
             _input = "action,"+"start"+"\x03"
@@ -457,9 +457,9 @@ def feed_profile(sid, data):
             
         if kind_value =="dashboard_1_0":
             print("Is Dashboard 1.0")
-            json_result = generate_dashboard_1_0(obj)
+            json_result = generate_dashboard_1_0(obj)  #<class 'str'>
             print(json_result)
-            obj_json = json.loads(json_result)
+            obj_json = json.loads(json_result) #<class 'dict'>
             send_json_hash(obj_json)
             time.sleep(5)
             _input = "action,"+"start"+"\x03"
