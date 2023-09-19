@@ -18,7 +18,7 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
             if limit["kind"] == "pressure":
                 max_limit_trigger = limit["value"]
                 
-        interpolation_kind = stage["parameters"]["interpolation_method"]
+        interpolation_kind = stage["parameters"]["interpolation_method"]+"_interpolation"
         if "parameters" in stage and "control_method" in stage["parameters"]:
             if stage["parameters"]["control_method"] == "flow":
                 control_kind = "pressure_controller"
