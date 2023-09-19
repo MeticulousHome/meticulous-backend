@@ -1,15 +1,23 @@
 import json
 
-def get_curve_stage(kind, parameters: dict, start_node: int, end_node: int):
+def get_curve_stage(parameters: json, start_node: int, end_node: int):
     stages_list = []
     values = parameters["stages"]
+    max_limit_trigger = 0
     
     for stage in values:
         name = stage["name"]
-        points_controller = stage["parameters"]["points"]
-        stop_weight = stage["parameters"]["stop_weight"]
-        max_time = stage["parameters"]["stop_time"]
-        max_limit_trigger = stage["parameters"]["max_limit_trigger"]
+        points_controller = stage["parameters"]["points"]        
+
+        for trigger in stage["triggers"]:
+            if trigger["kind"] == "weight":
+                stop_weight = trigger["value"]
+            if trigger["kind"] == "time":
+                max_time = trigger["value"]
+        for limit in stage["limits"]:
+            if limit["kind"] == "pressure":
+                max_limit_trigger = limit["value"]
+                
         interpolation_kind = stage["parameters"]["interpolation_method"]
         if "parameters" in stage and "control_method" in stage["parameters"]:
             if stage["parameters"]["control_method"] == "flow":
@@ -170,7 +178,7 @@ def get_curve_stage(kind, parameters: dict, start_node: int, end_node: int):
 
 if __name__ == '__main__':
     # Read the JSON file
-    with open("../dashboard.json", "r") as f:
+    with open("parameters.json", "r") as f:
         payload = json.load(f)
 
     stage_modified = get_curve_stage(payload, 300, 301)
