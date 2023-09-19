@@ -441,6 +441,7 @@ def feed_profile(sid, data):
     print("Received JSON:", data)  # Print the received JSON data
     # Deserialize the JSON
     obj = json.loads(data)
+    print("Deserialized JSON:", obj)  # Print the deserialized JSON data
     # Extract and print the value of "kind"
     kind_value = obj.get('kind', None)
     if kind_value:
@@ -450,12 +451,21 @@ def feed_profile(sid, data):
             print(json_result)
             obj_json = json.loads(json_result)
             send_json_hash(obj_json)
+            time.sleep(5)
+            _input = "action,"+"start"+"\x03"
+            arduino.write(str.encode(_input))
+            
         if kind_value =="dashboard_1_0":
             print("Is Dashboard 1.0")
             json_result = generate_dashboard_1_0(obj)
             print(json_result)
             obj_json = json.loads(json_result)
             send_json_hash(obj_json)
+            time.sleep(5)
+            _input = "action,"+"start"+"\x03"
+            arduino.write(str.encode(_input))
+            print("se envio start")
+        
         if kind_value =="spring_1_0":
             print("Spring 1.0")
     else:
