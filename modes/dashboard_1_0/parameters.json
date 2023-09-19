@@ -1,62 +1,78 @@
 {
-  "name": "Dashboard v1.0",
+  "name": "Dash",
   "kind": "dashboard_1_0",
-  "temperature": 0,
-  "preheat": false,
-  "source": "dash",
+  "temperature": 89,
+  "preheat": "False",
+  "source": "dashboard",
+  "action": "to_play",
   "stages": [
     {
-      "name": "stage 1",
-      "kind": "spring_1.0",
       "parameters": {
-        "max_power": 80,
-        "min_power": 70
+        "control_method": "flow",
+        "interpolation_method": "catmull",
+        "points": [
+          [
+            0,
+            4
+          ],
+          [
+            20,
+            4
+          ]
+        ]
       },
       "triggers": [
         {
           "kind": "weight",
-          "value": 36
+          "value": 0.3
         },
         {
           "kind": "time",
-          "value": 50
+          "value": 20
         }
       ],
       "limits": [
         {
           "kind": "pressure",
-          "value": 8
+          "value": 6
         }
-      ]
+      ],
+      "kind": "curve_1.0",
+      "name": "Preinfusion"
     },
     {
-      "name": "stage 2",
-      "kind": "curve_1.0",
       "parameters": {
+        "control_method": "pressure",
+        "interpolation_method": "catmull",
         "points": [
-          [0, 2.5],
-          [30, 1]
-        ],
-        "control_method": "flow",
-        "interpolation_method": "linear"
+          [
+            0,
+            8
+          ],
+          [
+            40,
+            8
+          ]
+        ]
       },
       "triggers": [
         {
           "kind": "weight",
-          "value": 36
+          "value": 33
         },
         {
           "kind": "time",
-          "value": 50
+          "value": 40
         }
       ],
       "limits": [
         {
-          "kind": "pressure",
+          "kind": "flow",
           "value": 8
         }
-      ]
+      ],
+      "kind": "curve_1.0",
+      "name": "Infusion"
     }
-  ],
-  "action": "to_play"
+  ]
 }
