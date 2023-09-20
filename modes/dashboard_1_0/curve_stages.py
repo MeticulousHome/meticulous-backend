@@ -6,7 +6,7 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
     max_limit_trigger = 0
     
     for stage in values:
-        name = stage["name"]
+        name = stage["name"].lower()
         points_controller = stage["parameters"]["points"]        
 
         for trigger in stage["triggers"]:
