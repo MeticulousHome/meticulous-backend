@@ -386,9 +386,13 @@ async def msg(sid, data):
     # print(json_data)
     # now evaluate the json_data to know if it is a property called "action" with value "to_save" 
     if json_data["action"] == "save_in_dial":
-        print("save_in_dial")
+        print("sending to dial...")
+
+        # remove the property "action" from the json_data
+        json_data.pop("action")
+
         # emit the event to save the profile using "save_in_dial" event
-        await sio.emit('save_in_dial', '{"name":"Classic","kind":"dashboard_1_0","temperature":86,"preheat":false,"source":"dashboard","action":"to_save","stages":[{"parameters":{"control_method":"flow","interpolation_method":"catmull","points":[[0,4],[20,4]]},"triggers":[{"kind":"weight","value":0.3},{"kind":"time","value":20}],"limits":[{"kind":"pressure","value":6}],"kind":"curve_1.0","name":"Preinfusion"},{"parameters":{"control_method":"pressure","interpolation_method":"catmull","points":[[0,8],[40,8]]},"triggers":[{"kind":"weight","value":33},{"kind":"time","value":40}],"limits":[{"kind":"flow","value":8}],"kind":"curve_1.0","name":"Infusion"}]}')
+        await sio.emit('save_in_dial', json.dumps(json_data))
 
 
 # @sio.on('save_in_dial')
@@ -718,7 +722,7 @@ async def live():
 #         json_file.close()
 
     process_started = False
-    SAMPLE_TIME = 1
+    SAMPLE_TIME = 0.1
     elapsed_time = 0
     i = 0
     _time = time.time()
@@ -755,7 +759,7 @@ async def live():
             "profile": "idle",
             "source": "",
         })
-        pressure_var = pressure_var + 1
+        pressure_var = pressure_var + 0.1
         flow_var = flow_var + 0.3
         weight_var = weight_var + 0.5
         temperature_var = temperature_var + 0.7
