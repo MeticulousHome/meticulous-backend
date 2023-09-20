@@ -27,7 +27,7 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
                 trigger_source = "Flow Raw"
                 control_kind_secondary = "flow_controller"
                 algorithm_secondary = "Flow PID v1.0"
-                pressure_flow_curve_trigger = "pressure_flow_curve_trigger"
+                pressure_flow_curve_trigger = "pressure_curve_trigger"
                 curve_trigger_source = "Pressure Raw"
                 
             if stage["parameters"]["control_method"] == "pressure":
@@ -37,7 +37,7 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
                 trigger_source = "Pressure Raw"
                 control_kind_secondary = "pressure_controller"
                 algorithm_secondary = "Pressure PID v1.0"
-                pressure_flow_curve_trigger = "pressure_flow_curve_trigger"
+                pressure_flow_curve_trigger =  "flow_curve_trigger"
                 curve_trigger_source = "Flow Raw"
 
         curve_template ={
@@ -70,7 +70,10 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
                                 "points": [
                                     [0, 25.0]
                                 ],
-                                "time_reference_id": 4
+                        "reference": {
+                            "kind": "time",
+                            "id": 4
+                        }
                             }
                         },
                         {
@@ -80,7 +83,10 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
                                 "id": 7,
                                 "interpolation_kind": interpolation_kind,
                                 "points": points_controller,
-                                "time_reference_id": 4
+                        "reference": {
+                            "kind": "time",
+                            "id": 4
+                        }
                             }
                         },
                         {
@@ -131,7 +137,10 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
                                 "points": [
                                     [0, max_limit_trigger]
                                 ],
-                                "time_reference_id": 4
+                        "reference": {
+                            "kind": "time",
+                            "id": 4
+                        }
                             }
                         },
                         {
@@ -182,4 +191,4 @@ if __name__ == '__main__':
         payload = json.load(f)
 
     stage_modified = get_curve_stage(payload, 300, 301)
-    print(stage_modified[1])
+    print(stage_modified)
