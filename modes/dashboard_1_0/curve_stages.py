@@ -3,57 +3,82 @@ import json
 def get_curve_stage(parameters: json, start_node: int, end_node: int):
     stages_list = []
     values = parameters["stages"]
-    max_limit_trigger = 0
     increment_node = 1000 
     
-    # Initial values for the curve ids
+    # Valores iniciales para los IDs de las curvas
     temperature_curve_id = 101
     secondary_curve_id = 547
     primary_curve_id = 929
     main_node_id = 13
     secondary_node_id = 20
     
-    for index,stage in enumerate(values):
-        name = stage["name"].lower()
-        points_controller = stage["parameters"]["points"]        
+    # Usamos enumerate para obtener el índice actual del bucle
+    for index, stage in enumerate(values):
+        if stage["kind"] == "curve_1.0":
+            stages_list.append(get_curve(stage, start_node, end_node, temperature_curve_id, secondary_curve_id, primary_curve_id, main_node_id, secondary_node_id, index, increment_node, len(values)))
+        elif stage["kind"] == "spring":
+            stages_list.append(get_spring())
+        
+        # Incremento de los IDs para la siguiente iteración
+        temperature_curve_id += 1
+        primary_curve_id += 1
+        main_node_id += 1
+        secondary_node_id += 1
+        start_node += increment_node
 
-        for trigger in stage["triggers"]:
-            if trigger["kind"] == "weight":
-                stop_weight = trigger["value"]
-            if trigger["kind"] == "time":
-                max_time = trigger["value"]
-        for limit in stage["limits"]:
-            if limit["kind"] == "pressure":
-                max_limit_trigger = limit["value"]
-                
-        interpolation_kind = stage["parameters"]["interpolation_method"]+"_interpolation"
-        if "parameters" in stage and "control_method" in stage["parameters"]:
-            if stage["parameters"]["control_method"] == "flow":
-                control_kind = "pressure_controller"
-                algorithm = "Pressure PID v1.0"
-                press_flow_triger = "flow_value_trigger"
-                trigger_source = "Flow Raw"
-                control_kind_secondary = "flow_controller"
-                algorithm_secondary = "Flow PID v1.0"
-                pressure_flow_curve_trigger = "pressure_curve_trigger"
-                curve_trigger_source = "Pressure Raw"
-                
-            if stage["parameters"]["control_method"] == "pressure":
-                control_kind = "flow_controller"
-                algorithm = "Flow PID v1.0"
-                press_flow_triger = "pressure_value_trigger"
-                trigger_source = "Pressure Raw"
-                control_kind_secondary = "pressure_controller"
-                algorithm_secondary = "Pressure PID v1.0"
-                pressure_flow_curve_trigger =  "flow_curve_trigger"
-                curve_trigger_source = "Flow Raw"
-        #check if the stage is the last one
-        if index == len(values)-1:
-             next_end_node = end_node
-        else:
-            next_end_node = start_node + increment_node
+    return stages_list
 
-        curve_template ={
+def get_curve(parameters, start_node, end_node, temperature_curve_id, secondary_curve_id, primary_curve_id, main_node_id, secondary_node_id, index, increment_node, total_stages):
+    # Extracting necessary data from parameters
+    name = parameters["name"].lower()
+    points_controller = parameters["parameters"]["points"]
+    interpolation_kind = parameters["parameters"]["interpolation_method"] + "_interpolation"
+
+    max_time = 0
+    stop_weight = 0
+    max_limit_trigger = 0
+ 
+
+    for trigger in parameters["triggers"]:
+        if trigger["kind"] == "time":
+            max_time = trigger["value"]
+        elif trigger["kind"] == "weight":
+            stop_weight = trigger["value"]
+
+    for limit in parameters["limits"]:
+        if limit["kind"] == "pressure":
+            max_limit_trigger = limit["value"]
+        elif limit["kind"] == "flow":
+            max_limit_trigger = limit["value"]
+            
+    interpolation_kind = parameters["parameters"]["interpolation_method"] + "_interpolation"
+    
+        # Determining control kinds and algorithms
+    if parameters["parameters"]["control_method"] == "flow":
+        control_kind = "pressure_controller"
+        algorithm = "Pressure PID v1.0"
+        press_flow_triger = "flow_value_trigger"
+        trigger_source = "Flow Raw"
+        control_kind_secondary = "flow_controller"
+        algorithm_secondary = "Flow PID v1.0"
+        pressure_flow_curve_trigger = "pressure_curve_trigger"
+        curve_trigger_source = "Pressure Raw"
+    else:
+        control_kind = "flow_controller"
+        algorithm = "Flow PID v1.0"
+        press_flow_triger = "pressure_value_trigger"
+        trigger_source = "Pressure Raw"
+        control_kind_secondary = "pressure_controller"
+        algorithm_secondary = "Pressure PID v1.0"
+        pressure_flow_curve_trigger =  "flow_curve_trigger"
+        curve_trigger_source = "Flow Raw"
+        
+    if index == total_stages - 1:
+        next_end_node = end_node
+    else:
+        next_end_node = start_node + increment_node
+        
+    curve_template ={
             "name": name,
             "nodes": [
                 {
@@ -194,24 +219,64 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
                 }
             ]
         }
-        stages_list.append(curve_template)
+    return curve_template
         
-        # Increment the IDs for the next iteration
-        temperature_curve_id += 1
-        secondary_curve_id += 1
-        primary_curve_id += 1
-        main_node_id += 1
-        secondary_node_id += 1
-        start_node += increment_node
-
         
-    return stages_list
+def get_spring():
+    # Mock JSON for spring
+    return {
+        "name": "Mock Spring",
+        "kind": "spring"
+    }
+    
+if __name__ == "__main__":
+    # JSON de prueba
+    data = {
+        "name": "Dash",
+        "kind": "dashboard_1_0",
+        "temperature": 89,
+        "preheat": True,
+        "source": "dashboard",
+        "action": "to_play",
+        "stages": [
+            {
+                "parameters": {
+                    "control_method": "pressure",
+                    "interpolation_method": "linear",
+                    "points": [[0, 4], [9, 9], [20, 9]]
+                },
+                "triggers": [
+                    {"kind": "weight", "value": 0.3},
+                    {"kind": "time", "value": 20}
+                ],
+                "limits": [
+                    {"kind": "flow", "value": 6}
+                ],
+                "kind": "spring",
+                "name": "Preinfusion"
+            },
+            {
+                "parameters": {
+                    "control_method": "flow",
+                    "interpolation_method": "catmull",
+                    "points": [[0, 0], [9, 8], [40, 8]]
+                },
+                "triggers": [
+                    {"kind": "weight", "value": 33},
+                    {"kind": "time", "value": 40}
+                ],
+                "limits": [
+                    {"kind": "pressure", "value": 8}
+                ],
+                "kind": "spring",
+                "name": "Infusion"
+            }
+        ]
+    }
 
-
-if __name__ == '__main__':
-    # Read the JSON file
-    with open("parameters.json", "r") as f:
-        payload = json.load(f)
-
-    stage_modified = get_curve_stage(payload, 300, 301)
-    print(stage_modified)
+    # Llamamos a la función con el JSON de prueba
+    result = get_curve_stage(data, 300, 301)
+    
+    # Imprimimos el resultado
+    for stage in result:
+        print(json.dumps(stage, indent=4))
