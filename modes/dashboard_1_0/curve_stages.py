@@ -55,7 +55,7 @@ def get_curve(parameters, start_node, end_node, temperature_curve_id, secondary_
     interpolation_kind = parameters["parameters"]["interpolation_method"] + "_interpolation"
     
         # Determining control kinds and algorithms
-    if parameters["parameters"]["control_method"] == "flow":
+    if parameters["parameters"]["control_method"] == "pressure":
         control_kind = "pressure_controller"
         algorithm = "Pressure PID v1.0"
         press_flow_triger = "flow_value_trigger"
