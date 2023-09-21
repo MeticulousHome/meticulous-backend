@@ -4,13 +4,16 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
     stages_list = []
     values = parameters["stages"]
     max_limit_trigger = 0
+    increment_node = 1000 
     
     # Initial values for the curve ids
     temperature_curve_id = 101
     secondary_curve_id = 547
     primary_curve_id = 929
+    main_node_id = 13
+    secondary_node_id = 20
     
-    for stage in values:
+    for index,stage in enumerate(values):
         name = stage["name"].lower()
         points_controller = stage["parameters"]["points"]        
 
@@ -44,6 +47,11 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
                 algorithm_secondary = "Pressure PID v1.0"
                 pressure_flow_curve_trigger =  "flow_curve_trigger"
                 curve_trigger_source = "Flow Raw"
+        #check if the stage is the last one
+        if index == len(values)-1:
+             next_end_node = end_node
+        else:
+            next_end_node = start_node + increment_node
 
         curve_template ={
             "name": name,
@@ -59,12 +67,12 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
                     "triggers": [
                         {
                             "kind": "exit",
-                            "next_node_id": 13
+                            "next_node_id": main_node_id
                         }
                     ]
                 },
                 {
-                    "id": 13,
+                    "id": main_node_id,
                     "controllers": [
                         {
                             "kind": "temperature_controller",
@@ -105,7 +113,7 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
                             "timer_reference_id": 4,
                             "operator": ">=",
                             "value": max_time,
-                            "next_node_id": end_node
+                            "next_node_id": next_end_node
                         },
                         {
                             "kind": "weight_value_trigger",
@@ -113,25 +121,25 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
                             "weight_reference_id": 1,
                             "operator": ">=",
                             "value": stop_weight,
-                            "next_node_id": end_node
+                            "next_node_id": next_end_node
                         },
                         {
                             "kind": press_flow_triger,
                             "source": trigger_source,
                             "operator": ">=",
                             "value": max_limit_trigger,
-                            "next_node_id": 20
+                            "next_node_id": secondary_node_id
                         },
                         {
                             "kind": "button_trigger",
                             "source": "Encoder Button",
                             "gesture": "Single Tap",
-                            "next_node_id": end_node
+                            "next_node_id": next_end_node
                         }
                     ]
                 },
                 {
-                    "id": 20,
+                    "id": secondary_node_id,
                     "controllers": [
                         {
                             "kind": control_kind_secondary,
@@ -159,7 +167,7 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
                             "timer_reference_id": 4,
                             "operator": ">=",
                             "value": max_time,
-                            "next_node_id": end_node
+                            "next_node_id": next_end_node
                         },
                         {
                             "kind": "weight_value_trigger",
@@ -167,20 +175,20 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
                             "weight_reference_id": 1,
                             "operator": ">=",
                             "value": stop_weight,
-                            "next_node_id": end_node
+                            "next_node_id": next_end_node
                         },
                         {
                             "kind": pressure_flow_curve_trigger,
                             "source": curve_trigger_source,
                             "operator": ">=",
                             "curve_id": primary_curve_id,
-                            "next_node_id": end_node
+                            "next_node_id": next_end_node
                         },
                         {
                             "kind": "button_trigger",
                             "source": "Encoder Button",
                             "gesture": "Single Tap",
-                            "next_node_id": end_node
+                            "next_node_id": next_end_node
                         }
                     ]
                 }
@@ -192,6 +200,9 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
         temperature_curve_id += 1
         secondary_curve_id += 1
         primary_curve_id += 1
+        main_node_id += 1
+        secondary_node_id += 1
+        start_node += increment_node
 
         
     return stages_list
