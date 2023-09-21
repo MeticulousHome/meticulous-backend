@@ -15,16 +15,26 @@ time_id_generator = IDGenerator(5200)
 curve_id_generator = IDGenerator(5300)
 
 
-def get_spring(start_node, end_node, max_power, min_power, pressure_limit, spring_stop_weight):
+def get_spring(stage,start_node, end_node):
     # Assigning start and end node IDs
     INIT_NODE_ID = start_node
     END_NODE_ID = end_node
 
-    MAX_POWER = max_power
-    MIN_POWER = min_power
+    # Extracting necessary data from stage
+    MAX_POWER = stage["parameters"]["max_power"]
+    MIN_POWER = stage["parameters"]["min_power"]
+    
+    # Initializing default values (in case they are not provided)
+    PRESSURE_LIMIT = 0
+    SPRING_STOP_WEIGHT = 0
+    
+    for trigger in stage["triggers"]:
+        if trigger["kind"] == "weight":
+            SPRING_STOP_WEIGHT = trigger["value"]
 
-    PRESSURE_LIMIT = pressure_limit
-    SPRING_STOP_WEIGHT = spring_stop_weight
+    for limit in stage["limits"]:
+        if limit["kind"] == "pressure":
+            PRESSURE_LIMIT = limit["value"]
 
     # Assigning consecutive IDs
     INTERNAL_NODE_1_ID = node_id_generator.get_next()
@@ -164,41 +174,50 @@ def get_spring(start_node, end_node, max_power, min_power, pressure_limit, sprin
     return template
 
 if __name__ == "__main__":
-    # Mock numbers for the function call
+    # Mock data for the function call
+    mock_1 = {
+        "parameters": {
+            "max_power": 50,
+            "min_power": 10
+        },
+        "triggers": [
+            {"kind": "weight", "value": 35}
+        ],
+        "limits": [
+            {"kind": "pressure", "value": 75}
+        ],
+        "kind": "spring_1.0",
+        "name": "Spring"
+    }
+    
     start_node_mock = 100
     end_node_mock = 101
-    max_power_mock = 50
-    min_power_mock = 10
-    pressure_limit_mock = 75
-    spring_stop_weight_mock = 35
 
-    spring_stage = get_spring(
-        start_node=start_node_mock,
-        end_node=end_node_mock,
-        max_power=max_power_mock,
-        min_power=min_power_mock,
-        pressure_limit=pressure_limit_mock,
-        spring_stop_weight=spring_stop_weight_mock
-    )
+    spring_stage = get_spring(mock_1, start_node_mock, end_node_mock)
 
     print("SPRING STAGE 1")
     print(json.dumps(spring_stage, indent=4))
 
+    # Second mock for the second test
+    mock_2 = {
+        "parameters": {
+            "max_power": 51,
+            "min_power": 11
+        },
+        "triggers": [
+            {"kind": "weight", "value": 36}
+        ],
+        "limits": [
+            {"kind": "pressure", "value": 76}
+        ],
+        "kind": "spring_1.0",
+        "name": "Spring 2"
+    }
+
     start_node_mock = 101
     end_node_mock = 102
-    max_power_mock = 51
-    min_power_mock = 11
-    pressure_limit_mock = 76
-    spring_stop_weight_mock = 36
 
-    spring_stage = get_spring(
-        start_node=start_node_mock,
-        end_node=end_node_mock,
-        max_power=max_power_mock,
-        min_power=min_power_mock,
-        pressure_limit=pressure_limit_mock,
-        spring_stop_weight=spring_stop_weight_mock
-    )
+    spring_stage = get_spring(mock_2, start_node_mock, end_node_mock)
 
     print("SPRING STAGE 2")
     print(json.dumps(spring_stage, indent=4))
