@@ -1,4 +1,5 @@
 from modes.italian_1_0.italian_1_0 import generate_italian_1_0
+from modes.dashboard_1_0.dashboard_1_0 import generate_dashboard_1_0
 from tornado.options import define, options, parse_command_line
 import socketio
 import tornado.web
@@ -436,7 +437,7 @@ def msg(sid, data=True):
     arduino.write(str.encode(_input))
 
 @sio.on('feed_profile')
-def feed_profile(sid, data):
+async def feed_profile(sid, data):
     print("Received JSON:", data)  # Print the received JSON data
     # Deserialize the JSON
     obj = json.loads(data)
@@ -445,15 +446,33 @@ def feed_profile(sid, data):
     if kind_value:
         if kind_value =="italian_1_0":
             print("Is Italian 1.0")
-            json_result = generate_italian_1_0(obj)
+            json_result = generate_italian_1_0(obj) #<class 'str'>
             print(json_result)
-            obj_json = json.loads(json_result)
+            obj_json = json.loads(json_result) #<class 'dict'>
             send_json_hash(obj_json)
-            time.sleep(3)
+            time.sleep(5)
             _input = "action,"+"start"+"\x03"
             arduino.write(str.encode(_input))
+            
         if kind_value =="dashboard_1_0":
-            print("Dashboard 1.0")
+            print("Is Dashboard 1.0")
+            action_value = obj.get('action', None)
+            if action_value == "to_play":
+                json_result = generate_dashboard_1_0(obj)  #<class 'str'>
+                print(json_result)
+                obj_json = json.loads(json_result) #<class 'dict'>
+                send_json_hash(obj_json)
+                time.sleep(5)
+                _input = "action,"+"start"+"\x03"
+                arduino.write(str.encode(_input))
+                print("Se envio start")
+            elif action_value == "save_in_dial":
+                # The following remove the property "action" from the json_data
+                obj.pop("action")
+                # emit the event to save the profile using "save_in_dial" event
+                print("Se envio save_in_dial: ",obj)
+                await sio.emit("save_in_dial",json.dumps(obj))
+        
         if kind_value =="spring_1_0":
             print("Spring 1.0")
     else:
@@ -559,7 +578,8 @@ def read_arduino():
                 save_str = True
 
             if save_str:
-                add_to_buffer(data_str)
+                pass
+                # add_to_buffer(data_str)
             data_str_sensors = data_str.split(',')
 
             if data_str_sensors[0] == 'Data':
@@ -644,6 +664,7 @@ def read_arduino():
                         data_sensor_comunication["adc_2"] = sensor_values[17].split('\033[1;35m')[0]
                         data_sensor_comunication["adc_3"] = sensor_values[18].split('\n')[0]
                     except:
+                        # pass
                         add_to_buffer("(E): ESP did not send sensor values correctly")
                     if sensor_status:
                         print(data_str, end="")
@@ -882,6 +903,7 @@ if __name__ == "__main__":
         print("Serial connection opened on port ttyUSB0")
     else:
         print("No ESP32 available")
+    # arduino = serial.Serial('/dev/ttyUSB0', 115200)
     os.system(comando) #Crea la carpeta donde se guardaran los datos 
     date = datetime.now().strftime("%Y_%m_%d") #Fecha actual
 

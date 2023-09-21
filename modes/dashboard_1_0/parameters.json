@@ -1,0 +1,78 @@
+{
+  "name": "Dash",
+  "kind": "dashboard_1_0",
+  "temperature": 89,
+  "preheat": "False",
+  "source": "dashboard",
+  "action": "to_play",
+  "stages": [
+    {
+      "parameters": {
+        "control_method": "flow",
+        "interpolation_method": "catmull",
+        "points": [
+          [
+            0,
+            4
+          ],
+          [
+            20,
+            4
+          ]
+        ]
+      },
+      "triggers": [
+        {
+          "kind": "weight",
+          "value": 0.3
+        },
+        {
+          "kind": "time",
+          "value": 20
+        }
+      ],
+      "limits": [
+        {
+          "kind": "pressure",
+          "value": 6
+        }
+      ],
+      "kind": "curve_1.0",
+      "name": "Preinfusion"
+    },
+    {
+      "parameters": {
+        "control_method": "pressure",
+        "interpolation_method": "catmull",
+        "points": [
+          [
+            0,
+            8
+          ],
+          [
+            40,
+            8
+          ]
+        ]
+      },
+      "triggers": [
+        {
+          "kind": "weight",
+          "value": 33
+        },
+        {
+          "kind": "time",
+          "value": 40
+        }
+      ],
+      "limits": [
+        {
+          "kind": "flow",
+          "value": 8
+        }
+      ],
+      "kind": "curve_1.0",
+      "name": "Infusion"
+    }
+  ]
+}
