@@ -5,6 +5,11 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
     values = parameters["stages"]
     max_limit_trigger = 0
     
+    # Initial values for the curve ids
+    temperature_curve_id = 101
+    secondary_curve_id = 547
+    primary_curve_id = 929
+    
     for stage in values:
         name = stage["name"].lower()
         points_controller = stage["parameters"]["points"]        
@@ -65,7 +70,7 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
                             "kind": "temperature_controller",
                             "algorithm": "Cylinder Temperature PID v1.0",
                             "curve": {
-                                "id": 12,
+                                "id": temperature_curve_id,
                                 "interpolation_kind": "linear_interpolation",
                                 "points": [
                                     [0, 25.0]
@@ -80,7 +85,7 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
                             "kind": control_kind,
                             "algorithm": algorithm,
                             "curve": {
-                                "id": 7,
+                                "id": primary_curve_id,
                                 "interpolation_kind": interpolation_kind,
                                 "points": points_controller,
                         "reference": {
@@ -132,7 +137,7 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
                             "kind": control_kind_secondary,
                             "algorithm": algorithm_secondary,
                             "curve": {
-                                "id": 9,
+                                "id": secondary_curve_id,
                                 "interpolation_kind": "catmull_interpolation",
                                 "points": [
                                     [0, max_limit_trigger]
@@ -168,7 +173,7 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
                             "kind": pressure_flow_curve_trigger,
                             "source": curve_trigger_source,
                             "operator": ">=",
-                            "curve_id": 7,
+                            "curve_id": primary_curve_id,
                             "next_node_id": end_node
                         },
                         {
@@ -182,6 +187,13 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
             ]
         }
         stages_list.append(curve_template)
+        
+        # Increment the IDs for the next iteration
+        temperature_curve_id += 1
+        secondary_curve_id += 1
+        primary_curve_id += 1
+
+        
     return stages_list
 
 
