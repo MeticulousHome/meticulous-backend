@@ -437,11 +437,10 @@ def msg(sid, data=True):
     arduino.write(str.encode(_input))
 
 @sio.on('feed_profile')
-def feed_profile(sid, data):
+async def feed_profile(sid, data):
     print("Received JSON:", data)  # Print the received JSON data
     # Deserialize the JSON
     obj = json.loads(data)
-    print("Deserialized JSON:", obj)  # Print the deserialized JSON data
     # Extract and print the value of "kind"
     kind_value = obj.get('kind', None)
     if kind_value:
@@ -457,14 +456,22 @@ def feed_profile(sid, data):
             
         if kind_value =="dashboard_1_0":
             print("Is Dashboard 1.0")
-            json_result = generate_dashboard_1_0(obj)  #<class 'str'>
-            print(json_result)
-            obj_json = json.loads(json_result) #<class 'dict'>
-            send_json_hash(obj_json)
-            time.sleep(5)
-            _input = "action,"+"start"+"\x03"
-            arduino.write(str.encode(_input))
-            print("se envio start")
+            action_value = obj.get('action', None)
+            if action_value == "to_play":
+                json_result = generate_dashboard_1_0(obj)  #<class 'str'>
+                print(json_result)
+                obj_json = json.loads(json_result) #<class 'dict'>
+                send_json_hash(obj_json)
+                time.sleep(5)
+                _input = "action,"+"start"+"\x03"
+                arduino.write(str.encode(_input))
+                print("Se envio start")
+            elif action_value == "save_in_dial":
+                # The following remove the property "action" from the json_data
+                obj.pop("action")
+                # emit the event to save the profile using "save_in_dial" event
+                print("Se envio save_in_dial: ",obj)
+                await sio.emit("save_in_dial",json.dumps(obj))
         
         if kind_value =="spring_1_0":
             print("Spring 1.0")
