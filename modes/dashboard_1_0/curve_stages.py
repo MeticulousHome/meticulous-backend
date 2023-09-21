@@ -1,3 +1,4 @@
+from .spring_1_0 import get_spring
 import json
 
 def get_curve_stage(parameters: json, start_node: int, end_node: int):
@@ -17,7 +18,7 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
         if stage["kind"] == "curve_1.0":
             stages_list.append(get_curve(stage, start_node, end_node, temperature_curve_id, secondary_curve_id, primary_curve_id, main_node_id, secondary_node_id, index, increment_node, len(values)))
         elif stage["kind"] == "spring_1.0":
-            stages_list.append(get_spring())
+            stages_list.append(get_spring(stage,start_node, end_node))
         
         # Incremento de los IDs para la siguiente iteración
         temperature_curve_id += 1
@@ -221,60 +222,51 @@ def get_curve(parameters, start_node, end_node, temperature_curve_id, secondary_
             ]
         }
     return curve_template
-        
-        
-def get_spring():
-    # Mock JSON for spring
-    return {
-        "name": "Mock Spring",
-        "kind": "spring"
-    }
+              
     
 if __name__ == "__main__":
     # JSON de prueba
 
     data = {
-        "name": "Dash",
-        "kind": "dashboard_1_0",
-        "temperature": 89,
-        "preheat": True,
-        "source": "dashboard",
-        "action": "to_play",
-        "stages": [
-            {
-                "parameters": {
-                    "control_method": "pressure",
-                    "interpolation_method": "linear",
-                    "points": [[0, 4], [9, 9], [20, 9]]
-                },
-                "triggers": [
-                    {"kind": "weight", "value": 0.3},
-                    {"kind": "time", "value": 20}
-                ],
-                "limits": [
-                    {"kind": "flow", "value": 6}
-                ],
-                "kind": "spring_1.0",
-                "name": "Preinfusion"
+    "name": "Dash",
+    "kind": "dashboard_1_0",
+    "temperature": 89,
+    "preheat": "false",
+    "source": "dashboard",
+    "action": "to_play",
+    "stages": [
+        {
+            "parameters": {
+                "max_power": 25,
+                "min_power": 35
             },
-            {
-                "parameters": {
-                    "control_method": "flow",
-                    "interpolation_method": "catmull",
-                    "points": [[0, 0], [9, 8], [40, 8]]
-                },
-                "triggers": [
-                    {"kind": "weight", "value": 33},
-                    {"kind": "time", "value": 40}
-                ],
-                "limits": [
-                    {"kind": "pressure", "value": 8}
-                ],
-                "kind": "spring_1.0",
-                "name": "Infusion"
-            }
-        ]
-    }
+            "triggers": [
+                {"kind": "weight", "value": 0.3}
+            ],
+            "limits": [
+                {"kind": "pressure", "value": 6}
+            ],
+            "kind": "spring_1.0",
+            "name": "Spring"
+        },
+        {
+            "parameters": {
+                "control_method": "pressure",
+                "interpolation_method": "catmull",
+                "points": [[0, 0], [7, 7], [40, 7]]
+            },
+            "triggers": [
+                {"kind": "weight", "value": 33},
+                {"kind": "time", "value": 40}
+            ],
+            "limits": [
+                {"kind": "flow", "value": 8}
+            ],
+            "kind": "curve_1.0",
+            "name": "Infusion"
+        }
+    ]
+}
 
     # Llamamos a la función con el JSON de prueba
     result = get_curve_stage(data, 300, 301)
