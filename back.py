@@ -49,10 +49,7 @@ class UploadHandler(tornado.web.RequestHandler):
     def set_default_headers(self):
         self.set_header("Access-Control-Allow-Origin", "http://192.168.50.10:3000")
         self.set_header("Access-Control-Allow-Headers", "x-requested-with, Content-MD5, Content-Length")
-        self.set_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, PUT')
-
-    def check_origin(self, origin):
-        return origin in allowed_origins
+        self.set_header('Access-Control-Allow-Methods', 'OPTIONS, PUT')
 
     def put(self):
         createUpdateDir()
@@ -151,8 +148,6 @@ infoReady = False
 lastJSON_source = "LCD"
 
 sio = socketio.AsyncServer(cors_allowed_origins='*', async_mode='tornado')
-
-allowed_origins = ["http://192.168.50.10:3000"]
 
 keyboard = Controller()
 
