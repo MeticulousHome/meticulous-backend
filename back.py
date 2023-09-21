@@ -102,7 +102,7 @@ config.consumer = 'myapp'
 config.request_type = gpiod.line_request.DIRECTION_OUTPUT
 
 # Initialize GPIO lines
-lcd_en = chip0.get_line(13)  
+# lcd_en = chip0.get_line(13)  
 esp_en = chip4.get_line(9)
 en = chip0.get_line(7)  
 io0 = chip0.get_line(8)
@@ -485,7 +485,7 @@ async def feed_profile(sid, data):
 # arduino = serial.Serial('/dev/ttyUSB0',115200)
 def detect_arduino_port():
     # Try opening /dev/ttyS0 and /dev/ttyUSB0
-    # reboot_esp()
+    reboot_esp()
     # for port in ['/dev/ttyS0', '/dev/ttyUSB0']: ######################### Debera haber un if que confirme en el entorno (raspberry o VAR-SOM-MX8M-NANO)d_
     for port in ['/dev/ttymxc0', '/dev/ttyUSB0']:
         try:
@@ -940,7 +940,7 @@ if __name__ == "__main__":
     
     file_name = 'Fika_' + date +'_'+ str(session_number) + '.txt' 
     menu()
-    #reboot_esp()
+    reboot_esp()
     try:
         main()
         
