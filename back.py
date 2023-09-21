@@ -102,7 +102,7 @@ config.consumer = 'myapp'
 config.request_type = gpiod.line_request.DIRECTION_OUTPUT
 
 # Initialize GPIO lines
-lcd_en = chip0.get_line(13)  
+# lcd_en = chip0.get_line(13)  
 esp_en = chip4.get_line(9)
 en = chip0.get_line(7)  
 io0 = chip0.get_line(8)
@@ -903,7 +903,7 @@ if __name__ == "__main__":
         print("Serial connection opened on port ttyUSB0")
     else:
         print("No ESP32 available")
-    arduino = serial.Serial('/dev/ttyUSB0', 115200)
+    # arduino = serial.Serial('/dev/ttyUSB0', 115200)
     os.system(comando) #Crea la carpeta donde se guardaran los datos 
     date = datetime.now().strftime("%Y_%m_%d") #Fecha actual
 
