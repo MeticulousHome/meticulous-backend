@@ -16,11 +16,12 @@ def get_curve_stage(parameters: json, start_node: int, end_node: int):
     for index, stage in enumerate(values):
         if stage["kind"] == "curve_1.0":
             stages_list.append(get_curve(stage, start_node, end_node, temperature_curve_id, secondary_curve_id, primary_curve_id, main_node_id, secondary_node_id, index, increment_node, len(values)))
-        elif stage["kind"] == "spring":
+        elif stage["kind"] == "spring_1.0":
             stages_list.append(get_spring())
         
         # Incremento de los IDs para la siguiente iteración
         temperature_curve_id += 1
+        secondary_curve_id += 1
         primary_curve_id += 1
         main_node_id += 1
         secondary_node_id += 1
@@ -231,6 +232,7 @@ def get_spring():
     
 if __name__ == "__main__":
     # JSON de prueba
+
     data = {
         "name": "Dash",
         "kind": "dashboard_1_0",
@@ -252,7 +254,7 @@ if __name__ == "__main__":
                 "limits": [
                     {"kind": "flow", "value": 6}
                 ],
-                "kind": "spring",
+                "kind": "spring_1.0",
                 "name": "Preinfusion"
             },
             {
@@ -268,7 +270,7 @@ if __name__ == "__main__":
                 "limits": [
                     {"kind": "pressure", "value": 8}
                 ],
-                "kind": "spring",
+                "kind": "spring_1.0",
                 "name": "Infusion"
             }
         ]
