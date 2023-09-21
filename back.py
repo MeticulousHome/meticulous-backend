@@ -57,29 +57,26 @@ class UploadHandler(tornado.web.RequestHandler):
         received_sha = self.request.headers.get('Content-MD5')
 
         computed_sha = hashlib.sha256(received_file).hexdigest()
-        print("received sha: " + received_sha)
-        print("compted sha: " + computed_sha)
-        print("data size: " + str(self.request.headers.get('Content-Length')))
 
         if computed_sha == received_sha:
             self.set_status(200)
             self.write("File received and verified successfully!")
-            print("File received")
+            add_to_buffer("Update File received")
             with open(os.path.expanduser("~/update/updtPckg.tar.gz"), 'wb') as file:
                 file.write(received_file)
             return
+            add_to_buffer("File saved, starting update process")
             tr = threading.Thread(target=startUpdate)
             tr.start()
         else:
             self.set_status(400)
             self.write("sha checksum mismatch!")
+            add_to_buffer("File received erroneusly")
         
-
     def options(self):
         # no body
         self.set_status(204)
         self.finish()
-
 
 #GLOBAL VARIABLES DECLARATIONS
 
@@ -847,6 +844,10 @@ def startUpdate():
     command = f'sudo rm {path}'
     subprocess.run(command, shell=True,cwd=user_path)
 
+    #Logging
+    add_to_buffer("File package extracted")
+    add_to_buffer("Turning ESP off")
+
     #turns the ESP off
     turn_off()
 
@@ -861,29 +862,23 @@ def startUpdate():
     if(arduino != None): arduino.close()
     #free's the GPIO
     release_pins()
-    
+
+    #Logging
+    add_to_buffer("GPIO released")
+    add_to_buffer("Update protocol is starting")
     #call the update script (will use the script as a module)
     command = f'python {autoupdate_path}/update_protocol.py'
     update_success = subprocess.run(command, shell=True, capture_output=True, text=True,cwd=user_path).stdout
+
     print(update_success)
-    
+    add_to_buffer("Update completed\nTo see the update log please go to: ~/history/u_logs")
+
+    add_to_buffer("Stopping backend")
     PID = subprocess.run("systemctl status back.service | grep -oP 'Main PID: \K\d+'",shell=True,capture_output=True,text=True,cwd=user_path).stdout
 
     #y lo matamos alv _(~o _ o~)_/\_(0 _ 0)_
 
     subprocess.run(f'sudo kill -9 {PID}',shell=True,cwd=user_path)
-    #takes the GPIO back
-    initialize_GPIO()
-
-    #starts the arduino again
-    arduino = startArduino_comms()
-
-    stopESPcomm = False
-
-    #restart threads
-    data_thread = threading.Thread(target=data_treatment)
-    send_data_thread = threading.Thread(target=send_data)
-    #we dont stop the lcd yet to use it as the only communication channel available
 
 def startArduino_comms():
     # Call the function to get the port
