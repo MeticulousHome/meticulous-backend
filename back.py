@@ -20,7 +20,8 @@ import version as backend
 import subprocess
 from typing import Dict
 import asyncio
-
+import hashlib
+import base64
 #CLASSES DEFINITIONS
 class ReadLine:
     def __init__(self, s):
@@ -43,6 +44,45 @@ class ReadLine:
                 return r
             else:
                 self.buf.extend(data)
+
+class UploadHandler(tornado.web.RequestHandler):
+    def set_default_headers(self):
+        self.set_header("Access-Control-Allow-Origin", "http://192.168.50.10:3000")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with, Content-MD5, Content-Length")
+        self.set_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, PUT')
+
+    def check_origin(self, origin):
+        return origin in allowed_origins
+
+    def put(self):
+        createUpdateDir()
+        received_file = self.request.body
+        received_sha = self.request.headers.get('Content-MD5')
+
+        computed_sha = hashlib.sha256(received_file).hexdigest()
+        print("received sha: " + received_sha)
+        print("compted sha: " + computed_sha)
+        print("data size: " + str(self.request.headers.get('Content-Length')))
+
+        if computed_sha == received_sha:
+            self.set_status(200)
+            self.write("File received and verified successfully!")
+            print("File received")
+            with open(os.path.expanduser("~/update/updtPckg.tar.gz"), 'wb') as file:
+                file.write(received_file)
+            return
+            tr = threading.Thread(target=startUpdate)
+            tr.start()
+        else:
+            self.set_status(400)
+            self.write("sha checksum mismatch!")
+        
+
+    def options(self):
+        # no body
+        self.set_status(204)
+        self.finish()
+
 
 #GLOBAL VARIABLES DECLARATIONS
 
@@ -111,6 +151,8 @@ infoReady = False
 lastJSON_source = "LCD"
 
 sio = socketio.AsyncServer(cors_allowed_origins='*', async_mode='tornado')
+
+allowed_origins = ["http://192.168.50.10:3000"]
 
 keyboard = Controller()
 
@@ -772,6 +814,7 @@ def main():
     app = tornado.web.Application(
         [
             (r"/socket.io/", socketio.get_tornado_handler(sio)),
+            (r"/update", UploadHandler)
         ],
         debug=options.debug,
     )
@@ -959,19 +1002,6 @@ def msg(sid, data):
         data = "action,"+data+"\x03"
         print(data)
         if(arduino != None): arduino.write(data.encode("utf-8"))
-        
-@sio.on('endTransmition')
-def endRecept(sid):
-    print("File received")
-    tr = threading.Thread(target=startUpdate)
-    tr.start()
-
-@sio.on('UpdateFile')
-def rcvPckg(sid, data):
-    createUpdateDir()
-    #receive and create a file to save the udpateFile
-    with open(os.path.expanduser("~/update/updtPckg.tar.gz"), 'ab') as file:
-        file.write(data)
     #Create a thread that will decompress the data and call the updater script
 @sio.on('sendLogs')
 def sendLogs(sid):
