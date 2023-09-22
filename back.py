@@ -78,7 +78,6 @@ class UploadHandler(tornado.web.RequestHandler):
         self.set_header('Access-Control-Allow-Methods', 'OPTIONS, PUT')
 
     def put(self):
-        createUpdateDir()
         received_file = self.request.body
         received_sha = self.request.headers.get('Content-MD5')
 
@@ -90,7 +89,6 @@ class UploadHandler(tornado.web.RequestHandler):
             add_to_buffer("Update File received")
             with open(os.path.expanduser("~/update/updtPckg.tar.gz"), 'wb') as file:
                 file.write(received_file)
-            return
             add_to_buffer("File saved, starting update process")
             tr = threading.Thread(target=startUpdate)
             tr.start()
@@ -101,6 +99,7 @@ class UploadHandler(tornado.web.RequestHandler):
         
     def options(self):
         # no body
+        createUpdateDir()
         self.set_status(204)
         self.finish()
 #load_dotenv()####################!!!!No libreria en som#
@@ -960,7 +959,7 @@ def startUpdate():
     add_to_buffer("Turning ESP off")
 
     #turns the ESP off
-    turn_off()
+    # turn_off()
 
     #stop frontend (not now)
     # command = 'pm2 stop frontend -s'
