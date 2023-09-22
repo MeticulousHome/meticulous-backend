@@ -18,7 +18,8 @@ from operator import itemgetter
 import hashlib
 import version as backend
 import subprocess
-
+import hashlib
+import base64
 
 comando = './clean_logs.sh' #Changue to use reduced path.
 lock = threading.Lock()    
@@ -70,6 +71,38 @@ class ReadLine:
             else:
                 self.buf.extend(data)
 
+class UploadHandler(tornado.web.RequestHandler):
+    def set_default_headers(self):
+        self.set_header("Access-Control-Allow-Origin", "http://192.168.50.10:3000")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with, Content-MD5, Content-Length")
+        self.set_header('Access-Control-Allow-Methods', 'OPTIONS, PUT')
+
+    def put(self):
+        createUpdateDir()
+        received_file = self.request.body
+        received_sha = self.request.headers.get('Content-MD5')
+
+        computed_sha = hashlib.sha256(received_file).hexdigest()
+
+        if computed_sha == received_sha:
+            self.set_status(200)
+            self.write("File received and verified successfully!")
+            add_to_buffer("Update File received")
+            with open(os.path.expanduser("~/update/updtPckg.tar.gz"), 'wb') as file:
+                file.write(received_file)
+            return
+            add_to_buffer("File saved, starting update process")
+            tr = threading.Thread(target=startUpdate)
+            tr.start()
+        else:
+            self.set_status(400)
+            self.write("sha checksum mismatch!")
+            add_to_buffer("File received erroneusly")
+        
+    def options(self):
+        # no body
+        self.set_status(204)
+        self.finish()
 #load_dotenv()####################!!!!No libreria en som#
 
 
@@ -884,6 +917,7 @@ def main():
     app = tornado.web.Application(
         [
             (r"/socket.io/", socketio.get_tornado_handler(sio)),
+            (r"/update", UploadHandler)
         ],
         debug=options.debug,
     )
