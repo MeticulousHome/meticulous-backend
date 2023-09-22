@@ -20,12 +20,16 @@ from operator import itemgetter
 import hashlib
 import version as backend
 import subprocess
+import hashlib
+import base64
 
 comando = './clean_logs.sh' #Changue to use reduced path.
 lock = threading.Lock()    
 file_path = './logs/'       #Change to use reduced path.
 buffer=""
 contador= 'contador.txt'
+autoupdate_path = "./meticulous-raspberry-setup/meticulous-autoupdate"
+user_path=os.path.expanduser("~/")
 
 usaFormatoDeColores = True
 
@@ -69,6 +73,37 @@ class ReadLine:
             else:
                 self.buf.extend(data)
 
+class UploadHandler(tornado.web.RequestHandler):
+    def set_default_headers(self):
+        self.set_header("Access-Control-Allow-Origin", "http://192.168.50.10:3000")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with, Content-MD5, Content-Length")
+        self.set_header('Access-Control-Allow-Methods', 'OPTIONS, PUT')
+
+    def put(self):
+        received_file = self.request.body
+        received_sha = self.request.headers.get('Content-MD5')
+
+        computed_sha = hashlib.sha256(received_file).hexdigest()
+
+        if computed_sha == received_sha:
+            self.set_status(200)
+            self.write("File received and verified successfully!")
+            add_to_buffer("Update File received")
+            with open(os.path.expanduser("~/update/updtPckg.tar.gz"), 'wb') as file:
+                file.write(received_file)
+            add_to_buffer("File saved, starting update process")
+            tr = threading.Thread(target=startUpdate)
+            tr.start()
+        else:
+            self.set_status(400)
+            self.write("sha checksum mismatch!")
+            add_to_buffer("File received erroneusly")
+        
+    def options(self):
+        # no body
+        createUpdateDir()
+        self.set_status(204)
+        self.finish()
 #load_dotenv()####################!!!!No libreria en som#
 
 
@@ -96,6 +131,14 @@ class ReadLine:
 chip0 = gpiod.chip('gpiochip0') ####################### En base a ello definir el comando adecuado para controlar gpio's
 chip4 = gpiod.chip('gpiochip4')
 chip3 = gpiod.chip('gpiochip3')
+
+#thread variables
+data_thread = None
+send_data_thread = None
+stopESPcomm = False
+
+#serial variables
+arduino = None
 
 config = gpiod.line_request()
 config.consumer = 'myapp'
@@ -137,6 +180,24 @@ def gatherVersionInfo():
     software_info["firmwareV"] = 0.0
 
     #SOLICITAMOS LA VERSION DE FIRMWARE A LA ESP
+
+def createUpdateDir():
+    # Specify the directory path you want to create
+    directory_path = os.path.expanduser("~/update")
+
+    # Check if the directory already exists
+    if not os.path.exists(directory_path):
+    # Create the directory if it does not exist
+        os.makedirs(directory_path)
+        #print(f"Directory '{directory_path}' created successfully.")
+
+def release_pins():
+    for line in lines:
+        try:
+            line.release()
+        except OSError:
+            print(f"Error: pin {line.offset()} could not be released")
+            add_to_buffer(f"Error: pin {line.offset()} could not be released")
 
 def turn_on():
     # if os.environ.get("EN_PIN_HIGH") == "0":
@@ -232,6 +293,10 @@ software_info = {
     "fanStatus": "on",
 }
 
+hardware_info = {
+    "mainVoltage": "240"
+}
+
 # "d" -> double click tare
 # "s" -> long tare
 # "x" -> double click encoder
@@ -273,7 +338,7 @@ def encoder_double_function():
     keyboard.release('x')
     if (data_sensors["status"] != "idle"):
         _input = "action,"+"stop"+"\x03"
-        arduino.write(str.encode(_input))
+        if(arduino != None): arduino.write(str.encode(_input))
     print("DOUBLE ENCODER!")
 
 def encoder_long_function():
@@ -312,10 +377,10 @@ def send_json_hash(json_obj):
     add_to_buffer("hash_enviado: " + json_hash + "\n")
     print("hash: ",end="")
     print(json_hash)
-    arduino.write("hash ".encode("utf-8"))
-    arduino.write(json_hash.encode("utf-8"))
-    arduino.write("\x03".encode("utf-8"))
-    arduino.write(json_data.encode("utf-8"))
+    if(arduino != None): arduino.write("hash ".encode("utf-8"))
+    if(arduino != None): arduino.write(json_hash.encode("utf-8"))
+    if(arduino != None): arduino.write("\x03".encode("utf-8"))
+    if(arduino != None): arduino.write(json_data.encode("utf-8"))
 
 def detect_source(json_data):
     
@@ -325,7 +390,6 @@ def detect_source(json_data):
         source = source.upper()
     except:
         source = "LCD"
-
     return source
 
 @sio.event
@@ -344,12 +408,12 @@ def msg(sid, data):
         time.sleep(0.5)
         data = "action,"+data+"\x03"
         print(data)
-        arduino.write(data.encode("utf-8"))
+        if(arduino != None): arduino.write(data.encode("utf-8"))
     else:
         time.sleep(0.05)
         data = "action,"+data+"\x03"
         print(data)
-        arduino.write(data.encode("utf-8"))
+        if(arduino != None): arduino.write(data.encode("utf-8"))
 
 @sio.on('askForInfo')
 def setSendInfo(sid):
@@ -370,7 +434,7 @@ def toggleFans(sid, data):
     else:
         print("fans off")
         _solicitud = "action,fans-off\x03"
-    arduino.write(str.encode(_solicitud))
+    if(arduino != None): arduino.write(str.encode(_solicitud))
     software_info["fanStatus"] = 'on' if data else 'off'
 
 @sio.on('parameters')
@@ -418,7 +482,7 @@ def msg(sid, data):
             lastJSON_source = detect_source(json_data)
             #send the instruccion to start the selected choice
             _input = "action,"+"start"+"\x03"
-            arduino.write(str.encode(_input))
+            if(arduino != None): arduino.write(str.encode(_input))
     except:
         print("Preset not found")
         return 0
@@ -434,7 +498,7 @@ def msg(sid, data=True):
     current_weight = data_sensors["weight"]
     data ="calibration"+","+know_weight+","+str(current_weight)
     _input = "action,"+data+"\x03"
-    arduino.write(str.encode(_input))
+    if(arduino != None): arduino.write(str.encode(_input))
 
 @sio.on('feed_profile')
 async def feed_profile(sid, data):
@@ -670,26 +734,28 @@ def read_arduino():
                         print(data_str, end="")
 
             elif data_str_sensors[0] == 'ESPInfo':
-
-                try:
-                    software_info["fanStatus"] = data_str_sensors[2].strip('\r\n')
-                except:
-                    pass
-                    #add_to_buffer("(E): ESP did not send fanStatus correctly")
+                info_not_valid = False
 
                 try:
                     software_info["firmwareV"] = data_str_sensors[1]
                 except:
                     software_info["firmwareV"]  = "not found"
                     add_to_buffer("(E): ESP did not send firmware version correctly\n")
+                    info_not_valid = True
                 
                 try:
-                    software_info["voltageLevel"] = float(data_str_sensors[3].strip('\r\n'))
+                    software_info["fanStatus"] = data_str_sensors[2]
                 except:
-                    software_info["voltageLevel"] = None  # o puedes poner un valor predeterminado, como 0.0
-                    add_to_buffer("(E): ESP did not send voltage level correctly\n")
+                    add_to_buffer("(E): ESP did not send fanStatus correctly")
+                    info_not_valid = True
 
-                infoReady = True
+                try:
+                    hardware_info["mainVoltage"] = data_str_sensors[3].strip('\r\n')
+                except:
+                    add_to_buffer("(E): ESP did not send main voltage value correctly")
+                    info_not_valid = True
+                
+                infoReady = not info_not_valid      #if the info received is valid, then fla info ready, else dont flag it
 
             elif print_status:
                     print(data_str)
@@ -699,7 +765,7 @@ def read_arduino():
 # print(data_str)
     
 def data_treatment():
-    read_arduino()
+    if(arduino != None): read_arduino()
 
 async def live():
 
@@ -726,7 +792,7 @@ async def live():
         if infoSolicited and (elapsed_time > 2 and not infoReady):
             _time = time.time()
             _solicitud = "action,info\x03"
-            arduino.write(str.encode(_solicitud))
+            if(arduino != None): arduino.write(str.encode(_solicitud))
 
         await sio.emit("status", {
             "name": data_sensors["status"],
@@ -776,6 +842,7 @@ async def live():
                 "firmwareV" : software_info["firmwareV"],
                 "backendV" : software_info["backendV"],
                 "fanStatus": software_info["fanStatus"],
+                "mainVoltage": hardware_info["mainVoltage"],
             })
         await sio.sleep(SAMPLE_TIME)
         i = i + 1
@@ -815,17 +882,17 @@ def send_data():
 
         elif _input=="tare" or _input=="stop" or _input=="purge" or _input=="home" or _input=="start" :
             _input = "action,"+_input+"\x03"
-            arduino.write(str.encode(_input))
+            if(arduino != None): arduino.write(str.encode(_input))
             
         elif _input == "test":
             sensor_status=True
             for i in range(0,10):
                 _input = "action,"+"purge"+"\x03"
-                arduino.write(str.encode(_input))
+                if(arduino != None): arduino.write(str.encode(_input))
                 time.sleep(15)
                 print(_input)
                 _input = "action,"+"home"+"\x03"
-                arduino.write(str.encode(_input))
+                if(arduino != None): arduino.write(str.encode(_input))
                 time.sleep(15)
                 contador = "Numero de prueba: "+str(i+1)
                 print(_input)
@@ -834,7 +901,7 @@ def send_data():
 
         elif _input[:11] == "calibration":
              _input = "action,"+_input+"\x03"
-             arduino.write(str.encode(_input))
+             if(arduino != None): arduino.write(str.encode(_input))
 
         else:
             pass
@@ -846,7 +913,8 @@ def send_data():
             #     arduino.write(str.encode(_input))
             
 def main():
-
+    global data_thread
+    global send_data_thread
     
     parse_command_line()
 
@@ -866,6 +934,7 @@ def main():
     app = tornado.web.Application(
         [
             (r"/socket.io/", socketio.get_tornado_handler(sio)),
+            (r"/update", UploadHandler)
         ],
         debug=options.debug,
     )
@@ -885,6 +954,59 @@ def menu():
     print("test --> Mueve el motor 10 veces de purge a home y muestra el valor de los sensores")
     print("calibration --> Acceder a la funcion de la siguiente manera:  calibration,peso conocido,peso medido \n \t Ejemplo: calibration,100,90")
     
+def startUpdate():
+    global data_thread
+    global send_data_thread
+    global stopESPcomm
+    global arduino
+
+    stopESPcomm = True
+
+    path = "./update/updtPckg.tar.gz"
+
+    #extract the directory of the update 
+    command = f'sudo tar -xzf {path} -C ./update'
+    subprocess.run(command, shell=True,cwd=user_path)
+
+    #delete the compressed file
+    command = f'sudo rm {path}'
+    subprocess.run(command, shell=True,cwd=user_path)
+
+    #Logging
+    add_to_buffer("File package extracted")
+    add_to_buffer("Turning ESP off")
+
+    #turns the ESP off
+    # turn_off()
+
+    #stop frontend (not now)
+    # command = 'pm2 stop frontend -s'
+    # subprocess.run(command, shell=True)
+    
+    #stops the task that comunicates with the ESP
+    if data_thread != None:
+        data_thread.join()
+
+    if(arduino != None): arduino.close()
+    #free's the GPIO
+    release_pins()
+
+    #Logging
+    add_to_buffer("GPIO released")
+    add_to_buffer("Update protocol is starting")
+    #call the update script (will use the script as a module)
+    command = f'python {autoupdate_path}/update_protocol.py'
+    update_success = subprocess.run(command, shell=True, capture_output=True, text=True,cwd=user_path).stdout
+
+    print(update_success)
+    add_to_buffer("Update completed\nTo see the update log please go to: ~/history/u_logs")
+
+    add_to_buffer("Stopping backend")
+    PID = subprocess.run("systemctl status back.service | grep -oP 'Main PID: \K\d+'",shell=True,capture_output=True,text=True,cwd=user_path).stdout
+
+    #y lo matamos alv _(~o _ o~)_/\_(0 _ 0)_
+
+    subprocess.run(f'sudo kill -9 {PID}',shell=True,cwd=user_path)
 
 if __name__ == "__main__":
 
