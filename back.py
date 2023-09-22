@@ -19,11 +19,14 @@ import hashlib
 import version as backend
 import subprocess
 
+
 comando = './clean_logs.sh' #Changue to use reduced path.
 lock = threading.Lock()    
 file_path = './logs/'       #Change to use reduced path.
 buffer=""
 contador= 'contador.txt'
+autoupdate_path = "./meticulous-raspberry-setup/meticulous-autoupdate"
+user_path=os.path.expanduser("~/")
 
 usaFormatoDeColores = True
 
@@ -95,6 +98,14 @@ chip0 = gpiod.chip('gpiochip0') ####################### En base a ello definir e
 chip4 = gpiod.chip('gpiochip4')
 chip3 = gpiod.chip('gpiochip3')
 
+#thread variables
+data_thread = None
+send_data_thread = None
+stopESPcomm = False
+
+#serial variables
+arduino = None
+
 config = gpiod.line_request()
 config.consumer = 'myapp'
 config.request_type = gpiod.line_request.DIRECTION_OUTPUT
@@ -136,6 +147,23 @@ def gatherVersionInfo():
     software_info["firmwareV"] = 0.0
 
     #SOLICITAMOS LA VERSION DE FIRMWARE A LA ESP
+
+def createUpdateDir():
+    # Specify the directory path you want to create
+    directory_path = os.path.expanduser("~/update")
+
+    # Check if the directory already exists
+    if not os.path.exists(directory_path):
+    # Create the directory if it does not exist
+        os.makedirs(directory_path)
+        #print(f"Directory '{directory_path}' created successfully.")
+
+def release_pins():
+    for line in lines:
+        try:
+            line.request(config)
+        except OSError:
+            print(f"Error: pin {line.offset()} could not be set to output")
 
 def turn_on():
     # if os.environ.get("EN_PIN_HIGH") == "0":
@@ -834,7 +862,8 @@ def send_data():
             #     arduino.write(str.encode(_input))
             
 def main():
-
+    global data_thread
+    global send_data_thread
     
     parse_command_line()
 
@@ -873,7 +902,60 @@ def menu():
     print("test --> Mueve el motor 10 veces de purge a home y muestra el valor de los sensores")
     print("calibration --> Acceder a la funcion de la siguiente manera:  calibration,peso conocido,peso medido \n \t Ejemplo: calibration,100,90")
     
+def startUpdate():
+    global data_thread
+    global send_data_thread
+    global stopESPcomm
+    global arduino
 
+    stopESPcomm = True
+
+    path = "./update/updtPckg.tar.gz"
+
+    #extract the directory of the update 
+    command = f'sudo tar -xzf {path} -C ./update'
+    subprocess.run(command, shell=True,cwd=user_path)
+
+    #delete the compressed file
+    command = f'sudo rm {path}'
+    subprocess.run(command, shell=True,cwd=user_path)
+
+    #Logging
+    add_to_buffer("File package extracted")
+    add_to_buffer("Turning ESP off")
+
+    #turns the ESP off
+    turn_off()
+
+    #stop frontend (not now)
+    # command = 'pm2 stop frontend -s'
+    # subprocess.run(command, shell=True)
+    
+    #stops the task that comunicates with the ESP
+    if data_thread != None:
+        data_thread.join()
+
+    if(arduino != None): arduino.close()
+    #free's the GPIO
+    release_pins()
+
+    #Logging
+    add_to_buffer("GPIO released")
+    add_to_buffer("Update protocol is starting")
+    #call the update script (will use the script as a module)
+    command = f'python {autoupdate_path}/update_protocol.py'
+    update_success = subprocess.run(command, shell=True, capture_output=True, text=True,cwd=user_path).stdout
+
+    print(update_success)
+    add_to_buffer("Update completed\nTo see the update log please go to: ~/history/u_logs")
+
+    add_to_buffer("Stopping backend")
+    PID = subprocess.run("systemctl status back.service | grep -oP 'Main PID: \K\d+'",shell=True,capture_output=True,text=True,cwd=user_path).stdout
+
+    #y lo matamos alv _(~o _ o~)_/\_(0 _ 0)_
+
+    subprocess.run(f'sudo kill -9 {PID}',shell=True,cwd=user_path)
+    
 if __name__ == "__main__":
 
     # Call the function to get the port
