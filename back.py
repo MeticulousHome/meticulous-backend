@@ -161,9 +161,10 @@ def createUpdateDir():
 def release_pins():
     for line in lines:
         try:
-            line.request(config)
+            line.release()
         except OSError:
-            print(f"Error: pin {line.offset()} could not be set to output")
+            print(f"Error: pin {line.offset()} could not be released")
+            add_to_buffer(f"Error: pin {line.offset()} could not be released")
 
 def turn_on():
     # if os.environ.get("EN_PIN_HIGH") == "0":
@@ -955,7 +956,7 @@ def startUpdate():
     #y lo matamos alv _(~o _ o~)_/\_(0 _ 0)_
 
     subprocess.run(f'sudo kill -9 {PID}',shell=True,cwd=user_path)
-    
+
 if __name__ == "__main__":
 
     # Call the function to get the port
