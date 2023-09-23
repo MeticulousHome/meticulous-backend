@@ -46,7 +46,7 @@ def get_spring(stage,start_node, end_node):
     _CURVE_1_ID = curve_id_generator.get_next()
     _CURVE_2_ID = curve_id_generator.get_next()
 
-    MAX_PISTON_POSITION = 60
+    MAX_PISTON_POSITION = 78
 
     template = {
         "name": "spring",
