@@ -15,7 +15,11 @@ def get_retracting_2_stage(parameters: json,start_node: int, end_node: int):
                {
                  "kind": "time_reference",
                  "id": 17
-               }
+               },
+               {
+                  "kind": "position_reference",
+                  "id": 7100
+                }
              ],
              "triggers": [
                {
@@ -50,7 +54,7 @@ def get_retracting_2_stage(parameters: json,start_node: int, end_node: int):
              "triggers": [
                {
                  "kind": "piston_position_trigger",
-                 "position_reference_id": 1,
+                 "position_reference_id": 7100,
                  "operator": "<=",
                  "value": -4.0,
                  "next_node_id": 15,
