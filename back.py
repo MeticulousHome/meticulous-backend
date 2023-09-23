@@ -173,10 +173,10 @@ def gatherVersionInfo():
     # lcd_ui_name = auxFile.read().split('\n')[2].split()[1]
 
     # #OBTENEMOS SU VERSION USANDO LOS COMANDOS DPKG y GREP
-    # command = f'dpkg --list | grep meticulous-ui'
-    # result = subprocess.run(command, shell=True, capture_output=True, text=True)
-    # lcd_version = result.stdout.split()[2]
-    lcd_version = 1.0 #HARDCODED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    command = f'dpkg --list | grep meticulous-ui'
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    lcd_version = result.stdout.split()[2]
+    # lcd_version = 1.0 #HARDCODED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ##############################################Provisionalmente y al no haber una version de la LCD, se asigna la version 1.0
     infoSolicited = True
 
