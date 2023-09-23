@@ -81,7 +81,7 @@ def get_spring_stage(parameters: json,start_node: int, end_node: int):
               "kind": "piston_position_trigger",
               "position_reference_id": 7,
               "operator": ">=",
-              "value": 60,
+              "value": 78,
               "next_node_id": end_node,
               "source": "Piston Position Raw"
             },
@@ -142,7 +142,7 @@ def get_spring_stage(parameters: json,start_node: int, end_node: int):
               "kind": "piston_position_trigger",
               "position_reference_id": 7,
               "operator": ">=",
-              "value": 60,
+              "value": 78,
               "next_node_id": end_node,
               "source": "Piston Position Raw"
             },

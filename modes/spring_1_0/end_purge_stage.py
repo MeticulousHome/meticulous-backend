@@ -32,7 +32,7 @@ def get_end_purge_stage(parameters: json, start_node: int, end_node: int):
           "position_reference_id": 0,
           "source": "Piston Position Raw",
           "operator": ">=",
-          "value": 60,
+          "value": 78,
           "next_node_id": end_node
          },
          {
@@ -68,7 +68,7 @@ def get_end_purge_stage(parameters: json, start_node: int, end_node: int):
           "position_reference_id": 0,
           "source": "Piston Position Raw",
           "operator": ">=",
-          "value": 60,
+          "value": 78,
           "next_node_id": end_node
          },
          {

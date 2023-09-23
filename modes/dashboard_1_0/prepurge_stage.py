@@ -13,7 +13,7 @@ def get_prepurge_stage(parameters: json,start_node: int, end_node: int):
                         "kind": "piston_position_trigger",
                         "position_reference_id": 0,
                         "operator": ">=",
-                        "value": 60,
+                        "value": 78,
                         "next_node_id": 5,
                         "source": "Piston Position Raw"
                     },
@@ -21,7 +21,7 @@ def get_prepurge_stage(parameters: json,start_node: int, end_node: int):
                         "kind": "piston_position_trigger",
                         "position_reference_id": 0,
                         "operator": "<",
-                        "value": 60,
+                        "value": 78,
                         "next_node_id": 2,
                         "source": "Piston Position Raw"
                     },
@@ -60,7 +60,7 @@ def get_prepurge_stage(parameters: json,start_node: int, end_node: int):
                         "position_reference_id": 0,
                         "source": "Piston Position Raw",
                         "operator": ">=",
-                        "value": 60,
+                        "value": 78,
                         "next_node_id": 5
                     },
                     {
@@ -96,7 +96,7 @@ def get_prepurge_stage(parameters: json,start_node: int, end_node: int):
                         "position_reference_id": 0,
                         "source": "Piston Position Raw",
                         "operator": ">=",
-                        "value": 60,
+                        "value": 78,
                         "next_node_id": 5
                     },
                     {

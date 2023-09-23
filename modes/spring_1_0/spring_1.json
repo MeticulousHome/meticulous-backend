@@ -12,7 +12,7 @@
               "kind": "piston_position_trigger",
               "position_reference_id": 0,
               "operator": ">=",
-              "value": 60,
+              "value": 78,
               "next_node_id": 5,
               "source": "Piston Position Raw"
             },
@@ -20,7 +20,7 @@
               "kind": "piston_position_trigger",
               "position_reference_id": 0,
               "operator": "<",
-              "value": 60,
+              "value": 78,
               "next_node_id": 2,
               "source": "Piston Position Raw"
             },
@@ -59,7 +59,7 @@
               "position_reference_id": 0,
               "source": "Piston Position Raw",
               "operator": ">=",
-              "value": 60,
+              "value": 78,
               "next_node_id": 5
             },
             {
@@ -98,7 +98,7 @@
               "position_reference_id": 0,
               "source": "Piston Position Raw",
               "operator": ">=",
-              "value": 60,
+              "value": 78,
               "next_node_id": 5
             },
             {
@@ -540,7 +540,7 @@
               "kind": "piston_position_trigger",
               "position_reference_id": 7,
               "operator": ">=",
-              "value": 60,
+              "value": 78,
               "next_node_id": 34,
               "source": "Piston Position Raw"
             },
@@ -601,7 +601,7 @@
               "kind": "piston_position_trigger",
               "position_reference_id": 7,
               "operator": ">=",
-              "value": 60,
+              "value": 78,
               "next_node_id": 34,
               "source": "Piston Position Raw"
             },
