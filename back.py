@@ -58,12 +58,13 @@ class ReadLine:
         self.s = s
     
     def readline(self):
+        global stopESPcomm
         i = self.buf.find(b"\n")
         if i >= 0:
             r = self.buf[:i+1]
             self.buf = self.buf[i+1:]
             return r
-        while True:
+        while not stopESPcomm:
             i = max(1, min(2048, self.s.in_waiting))
             data = self.s.read(i)
             i = data.find(b"\n")
@@ -73,6 +74,7 @@ class ReadLine:
                 return r
             else:
                 self.buf.extend(data)
+        return self.buf
 
 class UploadHandler(tornado.web.RequestHandler):
     def set_default_headers(self):
@@ -101,10 +103,12 @@ class UploadHandler(tornado.web.RequestHandler):
             add_to_buffer("File received erroneusly")
         
     def options(self):
+        global stopESPcomm
         # no body
         createUpdateDir()
         self.set_status(204)
         self.finish()
+        stopESPcomm = True
 #load_dotenv()####################!!!!No libreria en som#
 
 
@@ -601,6 +605,7 @@ def log():
 
 def read_arduino():
     global infoReady
+    global stopESPcomm
 
     #Variables to save data
     idle_in_data = False
@@ -616,7 +621,7 @@ def read_arduino():
 
     old_status = ""
     time_flag = False
-    while True:
+    while not stopESPcomm:
         data = uart.readline()
         if len(data) > 0:
             # data_bit = bytes(data)
