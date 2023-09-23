@@ -20,7 +20,6 @@ from operator import itemgetter
 import hashlib
 import version as backend
 import subprocess
-import hashlib
 import base64
 
 comando = './clean_logs.sh' #Changue to use reduced path.
@@ -38,6 +37,8 @@ sendInfoToFront = False
 infoReady = False
 
 lastJSON_source = "LCD"
+
+reboot_flag = False
 
 #VERSION INFORMATION
 
@@ -57,12 +58,13 @@ class ReadLine:
         self.s = s
     
     def readline(self):
+        global stopESPcomm
         i = self.buf.find(b"\n")
         if i >= 0:
             r = self.buf[:i+1]
             self.buf = self.buf[i+1:]
             return r
-        while True:
+        while not stopESPcomm:
             i = max(1, min(2048, self.s.in_waiting))
             data = self.s.read(i)
             i = data.find(b"\n")
@@ -72,6 +74,7 @@ class ReadLine:
                 return r
             else:
                 self.buf.extend(data)
+        return self.buf
 
 class UploadHandler(tornado.web.RequestHandler):
     def set_default_headers(self):
@@ -100,10 +103,12 @@ class UploadHandler(tornado.web.RequestHandler):
             add_to_buffer("File received erroneusly")
         
     def options(self):
+        global stopESPcomm
         # no body
         createUpdateDir()
         self.set_status(204)
         self.finish()
+        stopESPcomm = True
 #load_dotenv()####################!!!!No libreria en som#
 
 
@@ -168,10 +173,10 @@ def gatherVersionInfo():
     # lcd_ui_name = auxFile.read().split('\n')[2].split()[1]
 
     # #OBTENEMOS SU VERSION USANDO LOS COMANDOS DPKG y GREP
-    # command = f'dpkg --list | grep meticulous-ui'
-    # result = subprocess.run(command, shell=True, capture_output=True, text=True)
-    # lcd_version = result.stdout.split()[2]
-    lcd_version = 1.0 #HARDCODED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    command = f'dpkg --list | grep meticulous-ui'
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    lcd_version = result.stdout.split()[2]
+    # lcd_version = 1.0 #HARDCODED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ##############################################Provisionalmente y al no haber una version de la LCD, se asigna la version 1.0
     infoSolicited = True
 
@@ -600,6 +605,7 @@ def log():
 
 def read_arduino():
     global infoReady
+    global stopESPcomm
 
     #Variables to save data
     idle_in_data = False
@@ -615,7 +621,7 @@ def read_arduino():
 
     old_status = ""
     time_flag = False
-    while True:
+    while not stopESPcomm:
         data = uart.readline()
         if len(data) > 0:
             # data_bit = bytes(data)
@@ -792,7 +798,9 @@ async def live():
         if infoSolicited and (elapsed_time > 2 and not infoReady):
             _time = time.time()
             _solicitud = "action,info\x03"
-            if(arduino != None): arduino.write(str.encode(_solicitud))
+            if(arduino != None and not  stopESPcomm): arduino.write(str.encode(_solicitud))
+
+        if (reboot_flag): await sio.emit("MANUAL-REBOOT")
 
         await sio.emit("status", {
             "name": data_sensors["status"],
@@ -959,6 +967,7 @@ def startUpdate():
     global send_data_thread
     global stopESPcomm
     global arduino
+    global reboot_flag
 
     stopESPcomm = True
 
@@ -1000,8 +1009,10 @@ def startUpdate():
 
     print(update_success)
     add_to_buffer("Update completed\nTo see the update log please go to: ~/history/u_logs")
-
     add_to_buffer("Stopping backend")
+
+    reboot_flag = True
+    time.sleep(2)
     PID = subprocess.run("systemctl status back.service | grep -oP 'Main PID: \K\d+'",shell=True,capture_output=True,text=True,cwd=user_path).stdout
 
     #y lo matamos alv _(~o _ o~)_/\_(0 _ 0)_
