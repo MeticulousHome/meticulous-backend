@@ -38,6 +38,8 @@ infoReady = False
 
 lastJSON_source = "LCD"
 
+reboot_flag = False
+
 #VERSION INFORMATION
 
 borrarFormato = "\033[0m"
@@ -793,6 +795,8 @@ async def live():
             _solicitud = "action,info\x03"
             if(arduino != None and not  stopESPcomm): arduino.write(str.encode(_solicitud))
 
+        if (reboot_flag): await sio.emit("MANUAL-REBOOT")
+
         await sio.emit("status", {
             "name": data_sensors["status"],
             # "name" : "idle",
@@ -958,6 +962,7 @@ def startUpdate():
     global send_data_thread
     global stopESPcomm
     global arduino
+    global reboot_flag
 
     stopESPcomm = True
 
@@ -999,8 +1004,10 @@ def startUpdate():
 
     print(update_success)
     add_to_buffer("Update completed\nTo see the update log please go to: ~/history/u_logs")
-
     add_to_buffer("Stopping backend")
+
+    reboot_flag = True
+    time.sleep(2)
     PID = subprocess.run("systemctl status back.service | grep -oP 'Main PID: \K\d+'",shell=True,capture_output=True,text=True,cwd=user_path).stdout
 
     #y lo matamos alv _(~o _ o~)_/\_(0 _ 0)_
