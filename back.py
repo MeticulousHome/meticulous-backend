@@ -20,7 +20,6 @@ from operator import itemgetter
 import hashlib
 import version as backend
 import subprocess
-import hashlib
 import base64
 
 comando = './clean_logs.sh' #Changue to use reduced path.
@@ -792,7 +791,7 @@ async def live():
         if infoSolicited and (elapsed_time > 2 and not infoReady):
             _time = time.time()
             _solicitud = "action,info\x03"
-            if(arduino != None): arduino.write(str.encode(_solicitud))
+            if(arduino != None and not  stopESPcomm): arduino.write(str.encode(_solicitud))
 
         await sio.emit("status", {
             "name": data_sensors["status"],
