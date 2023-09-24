@@ -40,6 +40,12 @@ lastJSON_source = "LCD"
 
 reboot_flag = False
 
+IPC_path = f'{user_path}/ipc'                              # directory for the InterProcess Communication pipes
+pipe1 = None
+pipe2 = None
+pipe2_path = f'{IPC_path}/pipe2'
+pipe1_path = f'{IPC_path}/pipe1'
+IPC_message = bytes()
 #VERSION INFORMATION
 
 borrarFormato = "\033[0m"
@@ -76,39 +82,6 @@ class ReadLine:
                 self.buf.extend(data)
         return self.buf
 
-class UploadHandler(tornado.web.RequestHandler):
-    def set_default_headers(self):
-        self.set_header("Access-Control-Allow-Origin", "http://192.168.50.10:3000")
-        self.set_header("Access-Control-Allow-Headers", "x-requested-with, Content-MD5, Content-Length")
-        self.set_header('Access-Control-Allow-Methods', 'OPTIONS, PUT')
-
-    def put(self):
-        received_file = self.request.body
-        received_sha = self.request.headers.get('Content-MD5')
-
-        computed_sha = hashlib.sha256(received_file).hexdigest()
-
-        if computed_sha == received_sha:
-            self.set_status(200)
-            self.write("File received and verified successfully!")
-            add_to_buffer("Update File received")
-            with open(os.path.expanduser("~/update/updtPckg.tar.gz"), 'wb') as file:
-                file.write(received_file)
-            add_to_buffer("File saved, starting update process")
-            tr = threading.Thread(target=startUpdate)
-            tr.start()
-        else:
-            self.set_status(400)
-            self.write("sha checksum mismatch!")
-            add_to_buffer("File received erroneusly")
-        
-    def options(self):
-        global stopESPcomm
-        # no body
-        createUpdateDir()
-        self.set_status(204)
-        self.finish()
-        stopESPcomm = True
 #load_dotenv()####################!!!!No libreria en som#
 
 
@@ -141,6 +114,9 @@ chip3 = gpiod.chip('gpiochip3')
 data_thread = None
 send_data_thread = None
 stopESPcomm = False
+
+ping_thread = None
+watcher_listen_thread = None
 
 #serial variables
 arduino = None
@@ -775,7 +751,6 @@ def data_treatment():
 
 async def live():
 
-    global coffee_status
     global sendInfoToFront
     global infoReady
     global infoSolicited
@@ -938,11 +913,16 @@ def main():
 
     log_thread=threading.Thread(target=log)
     log_thread.start()
+
+    ping_thread = threading.Thread(target=live_ping)
+    ping_thread.start()
+
+    watcher_listen_thread = threading.Thread(target=listen_watcher)
+    watcher_listen_thread.start()
     
     app = tornado.web.Application(
         [
             (r"/socket.io/", socketio.get_tornado_handler(sio)),
-            (r"/update", UploadHandler)
         ],
         debug=options.debug,
     )
@@ -961,37 +941,30 @@ def menu():
     print("hide --> Deja de mostrar datos recibidos de la esp32 exceptuando los mensajes del estado")
     print("test --> Mueve el motor 10 veces de purge a home y muestra el valor de los sensores")
     print("calibration --> Acceder a la funcion de la siguiente manera:  calibration,peso conocido,peso medido \n \t Ejemplo: calibration,100,90")
-    
+
+def listen_watcher():
+    global pipe1
+    try:
+        pipe1 = os.open(pipe1_path, os.O_RDONLY | os.O_NONBLOCK)
+    except OSError as e:
+        print(f'an error occurred oppening pipe2: {e}')
+        pipe1 = None
+
+    while True:
+        if pipe1 != None:
+            IPC_message = os.read(pipe1, 1024)
+            if IPC_message:
+                if IPC_message.decode() == "FREE":
+                    startUpdate()
+
 def startUpdate():
     global data_thread
-    global send_data_thread
     global stopESPcomm
     global arduino
-    global reboot_flag
+
 
     stopESPcomm = True
 
-    path = "./update/updtPckg.tar.gz"
-
-    #extract the directory of the update 
-    command = f'sudo tar -xzf {path} -C ./update'
-    subprocess.run(command, shell=True,cwd=user_path)
-
-    #delete the compressed file
-    command = f'sudo rm {path}'
-    subprocess.run(command, shell=True,cwd=user_path)
-
-    #Logging
-    add_to_buffer("File package extracted")
-    add_to_buffer("Turning ESP off")
-
-    #turns the ESP off
-    # turn_off()
-
-    #stop frontend (not now)
-    # command = 'pm2 stop frontend -s'
-    # subprocess.run(command, shell=True)
-    
     #stops the task that comunicates with the ESP
     if data_thread != None:
         data_thread.join()
@@ -999,25 +972,18 @@ def startUpdate():
     if(arduino != None): arduino.close()
     #free's the GPIO
     release_pins()
+    time.sleep(1)
 
-    #Logging
-    add_to_buffer("GPIO released")
-    add_to_buffer("Update protocol is starting")
-    #call the update script (will use the script as a module)
-    command = f'python {autoupdate_path}/update_protocol.py'
-    update_success = subprocess.run(command, shell=True, capture_output=True, text=True,cwd=user_path).stdout
+    # TELL WATCHER RESOURCES ARE FREE
+    with open(pipe2_path, 'w') as pipe:
+        pipe.write("released")
 
-    print(update_success)
-    add_to_buffer("Update completed\nTo see the update log please go to: ~/history/u_logs")
-    add_to_buffer("Stopping backend")
-
-    reboot_flag = True
-    time.sleep(2)
-    PID = subprocess.run("systemctl status back.service | grep -oP 'Main PID: \K\d+'",shell=True,capture_output=True,text=True,cwd=user_path).stdout
-
-    #y lo matamos alv _(~o _ o~)_/\_(0 _ 0)_
-
-    subprocess.run(f'sudo kill -9 {PID}',shell=True,cwd=user_path)
+#this function will ping the watcher that the back is live
+def live_ping():
+    while True:
+        with open(pipe2_path, 'w') as watcher:
+            watcher.write("a")
+        time.sleep(1)
 
 if __name__ == "__main__":
 
