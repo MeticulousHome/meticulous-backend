@@ -954,7 +954,9 @@ def listen_watcher():
         if pipe1 != None:
             IPC_message = os.read(pipe1, 1024)
             if IPC_message:
+                print("message receive from watcher:")
                 if IPC_message.decode() == "FREE":
+                    print("free resources")
                     startUpdate()
 
 def startUpdate():
@@ -981,8 +983,13 @@ def startUpdate():
 #this function will ping the watcher that the back is live
 def live_ping():
     while True:
+        print("pinging watcher")
         with open(pipe2_path, 'w') as watcher:
-            watcher.write("a")
+            try:
+                watcher.write("a")
+                print("watcher_pinged")
+            except e:
+                print(f'watcher not pinged: {e}')
         time.sleep(1)
 
 if __name__ == "__main__":
