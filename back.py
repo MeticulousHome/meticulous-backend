@@ -952,7 +952,10 @@ def listen_watcher():
 
     while True:
         if pipe1 != None:
-            IPC_message = os.read(pipe1, 1024)
+            try:
+                IPC_message = os.read(pipe1, 1024)
+            except OSError as e:
+                print(f'error reading pipe1: {e}')
             if IPC_message:
                 print("message receive from watcher:")
                 if IPC_message.decode() == "FREE":
@@ -978,11 +981,14 @@ def startUpdate():
 
     # TELL WATCHER RESOURCES ARE FREE
     with open(pipe2_path, 'w') as pipe:
-        pipe.write("released")
+        try:
+            pipe.write("released")
+        except:
+            print("error writing to watcher")
 
 #this function will ping the watcher that the back is live
 def live_ping():
-    while True:
+    while not stopESPcomm:
         print("pinging watcher")
         with open(pipe2_path, 'w') as watcher:
             try:
