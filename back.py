@@ -994,7 +994,7 @@ def live_ping():
             try:
                 watcher.write("a")
                 print("watcher_pinged")
-            except e:
+            except Exception as e:
                 print(f'watcher not pinged: {e}')
         time.sleep(1)
 
