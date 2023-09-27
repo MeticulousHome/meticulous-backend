@@ -1,3 +1,11 @@
 venv/
 logs/
 .env
+stages/italian_1_0/__pycache__/
+__pycache__/version.cpython-311.pyc
+.vscode/tasks.json
+fika.json
+dashboard.json
+fika.json
+modes/dashboard_1_0/parameters.json
+__pycache__/version.cpython-39.pyc

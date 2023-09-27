@@ -1,8 +1,8 @@
 {
-  "name": "Breville",
+  "name": "SPRING",
   "stages": [
     {
-      "name": "heating",
+      "name": "purge",
       "nodes": [
         {
           "id": -1,
@@ -23,6 +23,12 @@
               "value": 78,
               "next_node_id": 2,
               "source": "Piston Position Raw"
+            },
+            {
+              "kind": "button_trigger",
+              "source": "Encoder Button",
+              "gesture": "Single Tap",
+              "next_node_id": 5
             }
           ]
         },
@@ -55,6 +61,12 @@
               "operator": ">=",
               "value": 78,
               "next_node_id": 5
+            },
+            {
+              "kind": "button_trigger",
+              "source": "Encoder Button",
+              "gesture": "Single Tap",
+              "next_node_id": 5
             }
           ]
         },
@@ -67,8 +79,16 @@
               "curve": {
                 "id": 13,
                 "interpolation_kind": "linear_interpolation",
-                "points": [[0, 6]],
-                "time_reference_id": 30
+                "points": [
+                  [
+                    0,
+                    6
+                  ]
+                ],
+                "reference": {
+                  "kind": "time",
+                  "id": 30
+                }
               }
             }
           ],
@@ -80,6 +100,12 @@
               "operator": ">=",
               "value": 78,
               "next_node_id": 5
+            },
+            {
+              "kind": "button_trigger",
+              "source": "Encoder Button",
+              "gesture": "Single Tap",
+              "next_node_id": 5
             }
           ]
         },
@@ -89,6 +115,12 @@
             {
               "kind": "time_reference",
               "id": 2
+            },
+            {
+              "kind": "move_piston_controller",
+              "algorithm": "Piston Ease-In",
+              "direction": "DOWN",
+              "speed": 0
             }
           ],
           "triggers": [
@@ -128,7 +160,12 @@
               "next_node_id": -2
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "name": "heating",
+      "nodes": [
         {
           "id": 7,
           "controllers": [
@@ -138,9 +175,25 @@
               "curve": {
                 "id": 0,
                 "interpolation_kind": "linear_interpolation",
-                "points": [[0, 150]],
-                "time_reference_id": 2
+                "points": [
+                  [
+                    0,
+                    180
+                  ]
+                ],
+                "reference": {
+                  "kind": "time",
+                  "id": 2
+                }
               }
+            },
+            {
+              "kind": "position_reference",
+              "id": 5
+            },
+            {
+              "kind": "time_reference",
+              "id": 20
             }
           ],
           "triggers": [
@@ -148,8 +201,8 @@
               "kind": "temperature_value_trigger",
               "source": "Tube Temperature",
               "operator": ">=",
-              "value": 85,
-              "next_node_id": 8
+              "value": 83,
+              "next_node_id": 33
             },
             {
               "kind": "timer_trigger",
@@ -157,22 +210,23 @@
               "operator": ">=",
               "value": 900,
               "next_node_id": -2
+            },
+            {
+              "kind": "button_trigger",
+              "source": "Encoder Button",
+              "gesture": "Single Tap",
+              "next_node_id": 33
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "name": "retracting",
+      "nodes": [
         {
-          "id": 8,
+          "id": 33,
           "controllers": [
-            {
-              "kind": "temperature_controller",
-              "algorithm": "Cylinder Temperature PID v1.0",
-              "curve": {
-                "id": 1,
-                "interpolation_kind": "linear_interpolation",
-                "points": [[0, 25]],
-                "time_reference_id": 2
-              }
-            },
             {
               "kind": "move_piston_controller",
               "algorithm": "Piston Ease-In",
@@ -183,9 +237,9 @@
           "triggers": [
             {
               "kind": "piston_position_trigger",
-              "position_reference_id": 0,
+              "position_reference_id": 5,
               "operator": "<=",
-              "value": 55,
+              "value": -2,
               "next_node_id": 9,
               "source": "Piston Position Raw"
             }
@@ -241,7 +295,7 @@
               "kind": "timer_trigger",
               "timer_reference_id": 10,
               "operator": ">=",
-              "value": 10,
+              "value": 2,
               "next_node_id": 21
             }
           ]
@@ -249,7 +303,7 @@
       ]
     },
     {
-      "name": "preinfusion",
+      "name": "closing valve",
       "nodes": [
         {
           "id": 21,
@@ -271,6 +325,26 @@
               "source": "Pressure Raw",
               "operator": ">=",
               "value": 0.2,
+              "next_node_id": 43
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "preinfusion",
+      "nodes": [
+        {
+          "id": 43,
+          "controllers": [
+            {
+              "kind": "time_reference",
+              "id": 5
+            }
+          ],
+          "triggers": [
+            {
+              "kind": "exit",
               "next_node_id": 10
             }
           ]
@@ -284,8 +358,16 @@
               "curve": {
                 "id": 3,
                 "interpolation_kind": "linear_interpolation",
-                "points": [[0, 25]],
-                "time_reference_id": 2
+                "points": [
+                  [
+                    0,
+                    25
+                  ]
+                ],
+                "reference": {
+                  "kind": "time",
+                  "id": 2
+                }
               }
             },
             {
@@ -294,18 +376,30 @@
               "curve": {
                 "id": 4,
                 "interpolation_kind": "catmull_interpolation",
-                "points": [[0, 4]],
-                "time_reference_id": 3
+                "points": [
+                  [
+                    0,
+                    4
+                  ]
+                ],
+                "reference": {
+                  "kind": "time",
+                  "id": 5
+                }
               }
+            },
+            {
+              "kind": "position_reference",
+              "id": 1
             }
           ],
           "triggers": [
             {
               "kind": "timer_trigger",
-              "timer_reference_id": 3,
+              "timer_reference_id": 5,
               "operator": ">=",
-              "value": 1,
-              "next_node_id": 12
+              "value": 50,
+              "next_node_id": 38
             },
             {
               "kind": "pressure_value_trigger",
@@ -319,8 +413,14 @@
               "source": "Weight Raw",
               "weight_reference_id": 1,
               "operator": ">=",
-              "value": 0,
-              "next_node_id": 12
+              "value": 1,
+              "next_node_id": 38
+            },
+            {
+              "kind": "button_trigger",
+              "source": "Encoder Button",
+              "gesture": "Single Tap",
+              "next_node_id": 38
             }
           ]
         },
@@ -333,18 +433,30 @@
               "curve": {
                 "id": 6,
                 "interpolation_kind": "catmull_interpolation",
-                "points": [[0, 6]],
-                "time_reference_id": 3
+                "points": [
+                  [
+                    0,
+                    6
+                  ]
+                ],
+                "reference": {
+                  "kind": "time",
+                  "id": 5
+                }
               }
+            },
+            {
+              "kind": "position_reference",
+              "id": 1
             }
           ],
           "triggers": [
             {
               "kind": "timer_trigger",
-              "timer_reference_id": 3,
+              "timer_reference_id": 5,
               "operator": ">=",
-              "value": 1,
-              "next_node_id": 12
+              "value": 50,
+              "next_node_id": 38
             },
             {
               "kind": "flow_curve_trigger",
@@ -358,166 +470,211 @@
               "source": "Weight Raw",
               "weight_reference_id": 1,
               "operator": ">=",
-              "value": 0,
-              "next_node_id": 12
+              "value": 1,
+              "next_node_id": 38
+            },
+            {
+              "kind": "button_trigger",
+              "source": "Encoder Button",
+              "gesture": "Single Tap",
+              "next_node_id": 38
             }
           ]
         }
       ]
     },
     {
-      "name": "infusion",
+      "name": "spring",
       "nodes": [
         {
-          "id": 12,
+          "id": 38,
           "controllers": [
             {
+              "kind": "position_reference",
+              "id": 8
+            },
+            {
               "kind": "time_reference",
-              "id": 4
+              "id": 31
+            },
+            {
+              "kind": "weight_reference",
+              "id": 3
             }
           ],
           "triggers": [
             {
               "kind": "exit",
-              "next_node_id": 13
+              "next_node_id": 39
             }
           ]
         },
         {
-          "id": 13,
+          "id": 39,
           "controllers": [
             {
-              "kind": "temperature_controller",
-              "algorithm": "Cylinder Temperature PID v1.0",
+              "kind": "piston_power_controller",
+              "algorithm": "Spring v1.0",
               "curve": {
-                "id": 12,
-                "interpolation_kind": "linear_interpolation",
-                "points": [[0, 25]],
-                "time_reference_id": 4
+                "id": 16,
+                "interpolation_kind": "catmull_interpolation",
+                "points": [
+                  [
+                    0,
+                    50
+                  ],
+                  [
+                    60,
+                    90
+                  ]
+                ],
+                "reference": {
+                  "kind": "position",
+                  "id": 8
+                }
               }
+            }
+          ],
+          "triggers": [
+            {
+              "kind": "piston_position_trigger",
+              "position_reference_id": 7,
+              "operator": ">=",
+              "value": 78,
+              "next_node_id": 34,
+              "source": "Piston Position Raw"
             },
+            {
+              "kind": "pressure_value_trigger",
+              "source": "Pressure Predictive",
+              "operator": ">=",
+              "value": 11,
+              "next_node_id": 41
+            },
+            {
+              "kind": "weight_value_trigger",
+              "source": "Weight Raw",
+              "weight_reference_id": 1,
+              "operator": ">=",
+              "value": 45,
+              "next_node_id": 34
+            },
+            {
+              "kind": "button_trigger",
+              "source": "Encoder Button",
+              "gesture": "Single Tap",
+              "next_node_id": 34
+            }
+          ]
+        },
+        {
+          "id": 41,
+          "controllers": [
             {
               "kind": "pressure_controller",
               "algorithm": "Pressure PID v1.0",
               "curve": {
-                "id": 7,
-                "interpolation_kind": "catmull_interpolation",
-                "points": [[0, 8]],
-                "time_reference_id": 4
+                "id": 18,
+                "interpolation_kind": "linear_interpolation",
+                "points": [
+                  [
+                    0,
+                    11
+                  ]
+                ],
+                "reference": {
+                  "kind": "time",
+                  "id": 31
+                }
               }
-            },
-            {
-              "kind": "position_reference",
-              "id": 1
             }
           ],
           "triggers": [
             {
-              "kind": "timer_trigger",
-              "timer_reference_id": 4,
+              "kind": "piston_power_curve_trigger",
+              "source": "Raw Piston Power",
               "operator": ">=",
-              "value": 40,
-              "next_node_id": 14
+              "curve_id": 16,
+              "next_node_id": 39
             },
-            {
-              "kind": "weight_value_trigger",
-              "source": "Weight Raw",
-              "weight_reference_id": 1,
-              "operator": ">=",
-              "value": 50,
-              "next_node_id": 14
-            },
-            {
-              "kind": "flow_value_trigger",
-              "source": "Flow Raw",
-              "operator": ">=",
-              "value": 8,
-              "next_node_id": 20
-            }
-          ]
-        },
-        {
-          "id": 20,
-          "controllers": [
-            {
-              "kind": "flow_controller",
-              "algorithm": "Flow PID v1.0",
-              "curve": {
-                "id": 9,
-                "interpolation_kind": "catmull_interpolation",
-                "points": [[0, 8]],
-                "time_reference_id": 3
-              }
-            },
-            {
-              "kind": "position_reference",
-              "id": 1
-            }
-          ],
-          "triggers": [
-            {
-              "kind": "timer_trigger",
-              "timer_reference_id": 4,
-              "operator": ">=",
-              "value": 40,
-              "next_node_id": 14
-            },
-            {
-              "kind": "weight_value_trigger",
-              "source": "Weight Raw",
-              "weight_reference_id": 1,
-              "operator": ">=",
-              "value": 50,
-              "next_node_id": 14
-            },
-            {
-              "kind": "pressure_curve_trigger",
-              "source": "Pressure Raw",
-              "operator": ">=",
-              "curve_id": 7,
-              "next_node_id": 13
-            }
-          ]
-        },
-        {
-          "id": 14,
-          "controllers": [
-            {
-              "kind": "move_piston_controller",
-              "algorithm": "Piston Fast",
-              "direction": "UP",
-              "speed": 6
-            }
-          ],
-          "triggers": [
             {
               "kind": "piston_position_trigger",
-              "position_reference_id": 1,
-              "operator": "<=",
-              "value": -4,
-              "next_node_id": 15,
+              "position_reference_id": 7,
+              "operator": ">=",
+              "value": 78,
+              "next_node_id": 34,
               "source": "Piston Position Raw"
+            },
+            {
+              "kind": "weight_value_trigger",
+              "source": "Weight Raw",
+              "weight_reference_id": 1,
+              "operator": ">=",
+              "value": 45,
+              "next_node_id": 34
+            },
+            {
+              "kind": "button_trigger",
+              "source": "Encoder Button",
+              "gesture": "Single Tap",
+              "next_node_id": 34
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "name": "idle",
+      "nodes": [
         {
-          "id": 15,
+          "id": 34,
           "controllers": [
             {
-              "kind": "move_piston_controller",
-              "algorithm": "Piston Fast",
-              "direction": "UP",
-              "speed": 2
+              "kind": "time_reference",
+              "id": 25
             }
           ],
           "triggers": [
             {
-              "kind": "piston_position_trigger",
-              "position_reference_id": 1,
-              "operator": "<=",
-              "value": -15,
-              "source": "Piston Position Raw",
-              "next_node_id": -2
+              "kind": "exit",
+              "next_node_id": 35
+            }
+          ]
+        },
+        {
+          "id": 35,
+          "controllers": [],
+          "triggers": [
+            {
+              "kind": "timer_trigger",
+              "timer_reference_id": 25,
+              "operator": ">=",
+              "value": 0.2,
+              "next_node_id": 31
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "retracting",
+      "nodes": [
+        {
+          "id": 31,
+          "controllers": [
+            {
+              "kind": "weight_reference",
+              "id": 2
+            },
+            {
+              "kind": "time_reference",
+              "id": 17
+            }
+          ],
+          "triggers": [
+            {
+              "kind": "exit",
+              "next_node_id": 14
             }
           ]
         },
@@ -529,6 +686,70 @@
             }
           ],
           "triggers": []
+        },
+        {
+          "id": 14,
+          "controllers": [
+            {
+              "kind": "move_piston_controller",
+              "algorithm": "Piston Fast",
+              "direction": "UP",
+              "speed": 4
+            },
+            {
+              "kind": "time_reference",
+              "id": 18
+            }
+          ],
+          "triggers": [
+            {
+              "kind": "piston_position_trigger",
+              "position_reference_id": 1,
+              "operator": "<=",
+              "value": -4,
+              "next_node_id": 15,
+              "source": "Piston Position Raw"
+            },
+            {
+              "kind": "timer_trigger",
+              "timer_reference_id": 17,
+              "operator": ">=",
+              "value": 5,
+              "next_node_id": 15
+            }
+          ]
+        },
+        {
+          "id": 15,
+          "controllers": [
+            {
+              "kind": "move_piston_controller",
+              "algorithm": "Piston Fast",
+              "direction": "UP",
+              "speed": 6
+            }
+          ],
+          "triggers": [
+            {
+              "kind": "timer_trigger",
+              "timer_reference_id": 18,
+              "operator": ">=",
+              "value": 3,
+              "next_node_id": 32
+            }
+          ]
+        },
+        {
+          "id": 32,
+          "controllers": [],
+          "triggers": [
+            {
+              "kind": "piston_speed_trigger",
+              "operator": "==",
+              "value": 0,
+              "next_node_id": -2
+            }
+          ]
         }
       ]
     }

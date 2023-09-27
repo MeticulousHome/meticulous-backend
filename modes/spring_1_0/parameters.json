@@ -1,0 +1,16 @@
+{
+    "name": "Spring v1.0",
+    "kind": "spring_1_0",
+    "source": "lcd",
+    "temperature": 80,
+    "preheat": false,
+    "automatic_purge": false,
+    "preinfusion": false,
+    "parameters": {
+      "max_power": 80,
+      "min_power": 70,
+      "max_pressure": 8,
+      "weight_trigger": 36
+    },
+    "action": "to_play"
+  }

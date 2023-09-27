@@ -1,8 +1,8 @@
 #!/bin/bash
 # Comprobar si la carpeta existe
-if [ ! -d "/home/meticulous/meticulous-raspberry-setup/backend_for_esp32/logs" ]; then
+if [ ! -d "./logs" ]; then
   # Crear carpeta si no existe
-  mkdir /home/meticulous/meticulous-raspberry-setup/backend_for_esp32/logs
+  mkdir logs
 fi
 
 # # Obtener el número de archivos en la carpeta
