@@ -21,6 +21,7 @@ import version as backend
 import subprocess
 import base64
 
+from esp_serial.connection.usb_serial_connection import USBSerialConnection
 from esp_serial.connection.fika_serial_connection import FikaSerialConnection
 
 from log import MeticulousLogger
@@ -785,7 +786,13 @@ def live_ping():
 
 if __name__ == "__main__":
 
-    connection = FikaSerialConnection('/dev/ttymxc0')
+    USE_USB=os.getenv("USE_USB", 'False').lower() in ('true', '1', 'y')
+
+    if USE_USB:
+        connection = USBSerialConnection('/dev/ttyUSB0')
+    else:
+        # Default case in prod
+        connection = FikaSerialConnection('/dev/ttymxc0')
 
     menu()
     connection.reset()
