@@ -27,7 +27,6 @@ from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
 
-autoupdate_path = "./meticulous-raspberry-setup/meticulous-autoupdate"
 user_path=os.path.expanduser("~/")
 
 usaFormatoDeColores = True
@@ -104,16 +103,6 @@ def gatherVersionInfo():
     software_info["firmwareV"] = 0.0
 
     #SOLICITAMOS LA VERSION DE FIRMWARE A LA ESP
-
-def createUpdateDir():
-    # Specify the directory path you want to create
-    directory_path = os.path.expanduser("~/update")
-
-    # Check if the directory already exists
-    if not os.path.exists(directory_path):
-    # Create the directory if it does not exist
-        os.makedirs(directory_path)
-        #logger.info(f"Directory '{directory_path}' created successfully.")
 
 keyboard = Controller()
 
@@ -266,7 +255,10 @@ def msg(sid, data):
         data = "action,"+data+"\x03"
         logger.info(data)
         if(connection.port != None): connection.port.write(data.encode("utf-8"))
+
+@sio.on('askForInfo')
 def setSendInfo(sid):
+    global sendInfoToFront
     sendInfoToFront = True
 
 @sio.on('stopInfo')
@@ -691,6 +683,8 @@ def send_data():
              _input = "action,"+_input+"\x03"
              if(connection.port != None): connection.port.write(str.encode(_input))
 
+        elif _input.startswith("update"):
+            startUpdate()
         else:
             pass
             # if _input[0] == "j" :
@@ -769,23 +763,13 @@ def startUpdate():
     global stopESPcomm
     global connection
 
-
     stopESPcomm = True
 
     #stops the task that comunicates with the ESP
     if data_thread != None:
         data_thread.join()
 
-    if(connection.port != None): connection.port.close()
-
-    time.sleep(1)
-
-    # TELL WATCHER RESOURCES ARE FREE
-    with open(pipe2_path, 'w') as pipe:
-        try:
-            pipe.write("released")
-        except:
-            logger.error("error writing to watcher")
+    connection.sendUpdate()
 
 #this function will ping the watcher that the back is live
 def live_ping():
