@@ -635,15 +635,15 @@ if __name__ == "__main__":
 
     USE_USB=os.getenv("USE_USB", 'False').lower() in ('true', '1', 'y')
 
-    if USE_USB:
-        connection = USBSerialConnection('/dev/ttyUSB0')
-    else:
-        # Default case in prod
-        connection = FikaSerialConnection('/dev/ttymxc0')
-
-    menu()
-    connection.reset()
     try:
+        if USE_USB:
+            connection = USBSerialConnection('/dev/ttyUSB0')
+        else:
+            # Default case on the fika board
+            connection = FikaSerialConnection('/dev/ttymxc0')
+
+        menu()
         main()
     except Exception as e:
         logger.exception("main() failed", exc_info=e, stack_info=True)
+        exit(1)
