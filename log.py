@@ -4,6 +4,8 @@ import logging.handlers
 import os
 import shutil
 
+logging.basicConfig()
+
 class MeticulousLogger:
     _path = "./logs"
     _rh = None

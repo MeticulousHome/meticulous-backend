@@ -1,3 +1,4 @@
+from ..esp_tool_wrapper import ESPToolWrapper
 import serial, serial.tools.list_ports
 
 from log import MeticulousLogger
@@ -16,6 +17,7 @@ class SerialConnection():
     CONNECT_TIMEOUT = 2
 
     def __init__(self, device) -> None:
+        self.flasher = ESPToolWrapper()
         self.device = None
         self.port = None
         self.connected = False
@@ -60,3 +62,16 @@ class SerialConnection():
 
     def reset(**args):
         raise NotImplementedError()
+
+    def sendUpdate(self):
+        if self.port is None or not self.available():
+            raise serial.PortNotOpenError("Cannot update firmare!")
+
+        self.reset(bootloader=True)
+        self.flasher.flash(self.port, reset=False)
+
+        # esptool cannot reset the fika board so we alwys reset manually
+        self.reset()
+
+        # Just to be sure
+        self.port.baudrate = SerialConnection.BAUDRATE
