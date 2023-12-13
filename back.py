@@ -22,11 +22,10 @@ import version as backend
 import subprocess
 import base64
 
-comando = './clean_logs.sh' #Changue to use reduced path.
-lock = threading.Lock()    
-file_path = './logs/'       #Change to use reduced path.
-buffer=""
-contador= 'contador.txt'
+from log import MeticulousLogger
+
+logger = MeticulousLogger.getLogger(__name__)
+
 autoupdate_path = "./meticulous-raspberry-setup/meticulous-autoupdate"
 user_path=os.path.expanduser("~/")
 
@@ -47,16 +46,6 @@ pipe2_path = f'{IPC_path}/pipe2'
 pipe1_path = f'{IPC_path}/pipe1'
 IPC_message = bytes()
 #VERSION INFORMATION
-
-borrarFormato = "\033[0m"
-colores = [
-    "\033[1;31m", # Rojo
-    "\033[1;32m", # Verde
-    "\033[1;33m", # Amarillo
-    "\033[1;34m", # Azul
-    "\033[1;35m", # Morado
-    "\033[1;36m", # Cian
-]
 
 class ReadLine:
     def __init__(self, s):
@@ -91,15 +80,15 @@ class ReadLine:
 # if os.environ.get("PINES_VERSION") == "V3":
 #     en = 27
 #     io0 = 17
-#     print("Set pines to V3") 
+#     logger.info("Set pines to V3")
 # elif os.environ.get("PINES_VERSION") == "V3.1":
 #     en = 24
 #     io0 = 23
-#     print("Set pines to V3.1") 
+#     logger.info("Set pines to V3.1")
 # else:
 #     en = 24
 #     io0 = 23
-#     print("Set pines to V3.1") 
+#     logger.info("Set pines to V3.1")
     
 # GPIO.setmode(GPIO.BCM)
 # GPIO.setup(en, GPIO.OUT)
@@ -137,7 +126,7 @@ for line in lines:
     try:
         line.request(config)
     except OSError:
-        print(f"Error: pin {line.offset()} could not be set to output")
+        logger.error(f"pin {line.offset()} could not be set to output")
 
 def gatherVersionInfo():
     global infoSolicited
@@ -170,52 +159,51 @@ def createUpdateDir():
     if not os.path.exists(directory_path):
     # Create the directory if it does not exist
         os.makedirs(directory_path)
-        #print(f"Directory '{directory_path}' created successfully.")
+        #logger.info(f"Directory '{directory_path}' created successfully.")
 
 def release_pins():
     for line in lines:
         try:
             line.release()
         except OSError:
-            print(f"Error: pin {line.offset()} could not be released")
-            add_to_buffer(f"Error: pin {line.offset()} could not be released")
+            logger.error(f"pin {line.offset()} could not be released")
 
 def turn_on():
     # if os.environ.get("EN_PIN_HIGH") == "0":
     #     GPIO.output(esp_en, 0)
     #     GPIO.output(lcd_en, 0)
-    #     print("EN_PIN_HIGH = 0")
+    #     logger.info("EN_PIN_HIGH = 0")
     # elif os.environ.get("EN_PIN_HIGH") == "1":
     #     GPIO.output(esp_en, 1)
     #     GPIO.output(lcd_en, 1)
-    #     print("EN_PIN_HIGH = 1")
+    #     logger.info("EN_PIN_HIGH = 1")
     # else:
     #     GPIO.output(esp_en, 0)
     #     GPIO.output(lcd_en, 0)
-    #     print("EN_PIN_HIGH = 0 por default")########Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
+    #     logger.info("EN_PIN_HIGH = 0 por default")########Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
     esp_en.set_value(0) ##############################
     buffer_pin.set_value(0)
     # lcd_en.set_value(0)
-    print("EN_PIN_HIGH = 0 por default")
+    logger.info("EN_PIN_HIGH = 0 por default")
 
 
 def turn_off():
     # if os.environ.get("EN_PIN_HIGH") == "0":
     #     GPIO.output(esp_en, 1)
     #     GPIO.output(lcd_en, 1)
-    #     print("EN_PIN_HIGH = 0")
+    #     logger.info("EN_PIN_HIGH = 0")
     # elif os.environ.get("EN_PIN_HIGH") == "1":
     #     GPIO.output(esp_en, 0)
     #     GPIO.output(lcd_en, 0)
-    #     print("EN_PIN_HIGH = 1")
+    #     logger.info("EN_PIN_HIGH = 1")
     # else:
     #     GPIO.output(esp_en, 1)
     #     GPIO.output(lcd_en, 1)
-    #     print("EN_PIN_HIGH = 0 por default")########Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
+    #     logger.info("EN_PIN_HIGH = 0 por default")########Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
     esp_en.set_value(1)##############################
     buffer_pin.set_value(1)
     # lcd_en.set_value(1)
-    print("EN_PIN_HIGH = 0 por default")    
+    logger.info("EN_PIN_HIGH = 0 por default")
 
 turn_on()
 #os.system('killall coffee-ui-demo')
@@ -292,27 +280,27 @@ def enable_pcb():
 def cw_function():
     keyboard.press(Key.right)
     keyboard.release(Key.right)
-    print("RIGHT!")
+    logger.info("RIGHT!")
 
 def ccw_function():
     keyboard.press(Key.left)
     keyboard.release(Key.left)
-    print("LEFT!")
+    logger.info("LEFT!")
 
 def tare_double_function():
     keyboard.press('d')
     keyboard.release('d')
-    print("DOUBLE TARE!")
+    logger.info("DOUBLE TARE!")
 
 def tare_long_function():
     keyboard.press('s')
     keyboard.release('s')
-    print("LONG TARE!")
+    logger.info("LONG TARE!")
 
 def encoder_push_function():
     keyboard.press(Key.space)
     keyboard.release(Key.space)
-    print("PUSH ENCODER!")
+    logger.info("PUSH ENCODER!")
 
 def encoder_double_function():
     keyboard.press('x')
@@ -320,16 +308,16 @@ def encoder_double_function():
     if (data_sensors["status"] != "idle"):
         _input = "action,"+"stop"+"\x03"
         if(arduino != None): arduino.write(str.encode(_input))
-    print("DOUBLE ENCODER!")
+    logger.info("DOUBLE ENCODER!")
 
 def encoder_long_function():
     start_function()
-    print("LONG ENCODER!")
+    logger.info("LONG ENCODER!")
 
 def start_function():
     keyboard.press(Key.enter)
     keyboard.release(Key.enter)
-    print("START!")
+    logger.info("START!")
 
 def reboot_esp():
     # GPIO.output(en, 0)
@@ -351,13 +339,12 @@ def send_json_hash(json_obj):
     json_string = json.dumps(json_obj)
     json_data = "json\n" + json_string + "\x03"
     #proof = detect_source(json_string,json_data)
-    #print(proof)
-    add_to_buffer(json_data)
-    # print(json_data)
+    #logger.info(proof)
+    logger.debug(json_data)
+    # logger.info(json_data)
     json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
-    add_to_buffer("hash_enviado: " + json_hash + "\n")
-    print("hash: ",end="")
-    print(json_hash)
+    logger.debug("hash_enviado: " + json_hash + "\n")
+    logger.info(f"hash: {json_hash}")
     if(arduino != None): arduino.write("hash ".encode("utf-8"))
     if(arduino != None): arduino.write(json_hash.encode("utf-8"))
     if(arduino != None): arduino.write("\x03".encode("utf-8"))
@@ -375,11 +362,11 @@ def detect_source(json_data):
 
 @sio.event
 def connect(sid, environ):
-    print('connect ', sid)
+    logger.info('connect %s', sid)
 
 @sio.event
 def disconnect(sid):
-    print('disconnect ', sid)
+    logger.info('disconnect %s', sid)
     
 #sendInfoToFront
 
@@ -388,12 +375,12 @@ def msg(sid, data):
     if data == "start":
         time.sleep(0.5)
         data = "action,"+data+"\x03"
-        print(data)
+        logger.info(data)
         if(arduino != None): arduino.write(data.encode("utf-8"))
     else:
         time.sleep(0.05)
         data = "action,"+data+"\x03"
-        print(data)
+        logger.info(data)
         if(arduino != None): arduino.write(data.encode("utf-8"))
 
 @sio.on('askForInfo')
@@ -410,10 +397,10 @@ def StopInfo(sid):
 def toggleFans(sid, data):
     _solicitud = ""
     if data:
-        print("fans on")
+        logger.info("fans on")
         _solicitud ="action,fans-on\x03"
     else:
-        print("fans off")
+        logger.info("fans off")
         _solicitud = "action,fans-off\x03"
     if(arduino != None): arduino.write(str.encode(_solicitud))
     software_info["fanStatus"] = 'on' if data else 'off'
@@ -423,11 +410,11 @@ def msg(sid, data):
     global lastJSON_source
     send_json_hash(data)
     lastJSON_source = detect_source(data)
-    print(lastJSON_source)
+    logger.info(lastJSON_source)
 
 @sio.on('send_profile')
 async def forwardJSON(sid,data):
-    print(json.dumps(data, indent=1, sort_keys=False))
+    logger.info(json.dumps(data, indent=1, sort_keys=False))
     await sio.emit('save_profile', data)
 
 @sio.on('preset')
@@ -453,7 +440,7 @@ def msg(sid, data):
         preset="rocket.json"
 
     else:
-        print("Preset not valid")
+        logger.info("Preset not valid")
         return 0
 
     try:
@@ -465,7 +452,7 @@ def msg(sid, data):
             _input = "action,"+"start"+"\x03"
             if(arduino != None): arduino.write(str.encode(_input))
     except:
-        print("Preset not found")
+        logger.info("Preset not found")
         return 0
 
 
@@ -483,16 +470,16 @@ def msg(sid, data=True):
 
 @sio.on('feed_profile')
 async def feed_profile(sid, data):
-    print("Received JSON:", data)  # Print the received JSON data
+    logger.info("Received JSON:", data)  # Print the received JSON data
     # Deserialize the JSON
     obj = json.loads(data)
     # Extract and print the value of "kind"
     kind_value = obj.get('kind', None)
     if kind_value:
         if kind_value =="italian_1_0":
-            print("Is Italian 1.0")
+            logger.info("Is Italian 1.0")
             json_result = generate_italian_1_0(obj) #<class 'str'>
-            print(json_result)
+            logger.info(json_result)
             obj_json = json.loads(json_result) #<class 'dict'>
             send_json_hash(obj_json)
             time.sleep(5)
@@ -500,28 +487,28 @@ async def feed_profile(sid, data):
             arduino.write(str.encode(_input))
             
         if kind_value =="dashboard_1_0":
-            print("Is Dashboard 1.0")
+            logger.info("Is Dashboard 1.0")
             action_value = obj.get('action', None)
             if action_value == "to_play":
                 json_result = generate_dashboard_1_0(obj)  #<class 'str'>
-                print(json_result)
+                logger.info(json_result)
                 obj_json = json.loads(json_result) #<class 'dict'>
                 send_json_hash(obj_json)
                 time.sleep(5)
                 _input = "action,"+"start"+"\x03"
                 arduino.write(str.encode(_input))
-                print("Se envio start")
+                logger.info("Se envio start")
             elif action_value == "save_in_dial":
                 # The following remove the property "action" from the json_data
                 obj.pop("action")
                 # emit the event to save the profile using "save_in_dial" event
-                print("Se envio save_in_dial: ",obj)
+                logger.info("Se envio save_in_dial: ",obj)
                 await sio.emit("save_in_dial",json.dumps(obj))
         
         if kind_value =="spring_1_0":
-            print("Spring 1.0")
+            logger.info("Spring 1.0")
     else:
-        print("The 'kind' key is not present in the received JSON.")
+        logger.info("The 'kind' key is not present in the received JSON.")
     
 
 
@@ -542,46 +529,15 @@ def detect_arduino_port():
             # If there was incoming data, return the serial port
             if incoming_data:
                 return port
-        except (OSError, serial.SerialException):
-            print("Serial Exception raised")
+        except (OSError, serial.SerialException) as e:
+            logger.error("Serial Exception raised", e, exc_info=True)
     # If no Arduino was detected, return None
     return None
-
-def add_to_buffer(message_to_save):
-    global buffer
-    global lock
-    current_date_time = datetime.now().strftime("%Y_%m_%d %H:%M:%S.%f, ")
-    with lock:
-        buffer = buffer + current_date_time + message_to_save
-
-def save_log():
-    global file_name
-    global file_path
-    global lock
-    global buffer
-    #start_time = time.time()
-    with lock:
-        with open(file_path + file_name, 'a+', newline='') as file:
-            # current_date_time = datetime.now().strftime("%Y_%m_%d %H:%M:%S.%f, ")
-            # file.write(current_date_time)
-            file.write(buffer)
-    #end_time = time.time()
-    #elapsed_time = end_time - start_time
-    #print("El tiempo de escritura fue de {} segundos".format(elapsed_time))  
-
-def log():
-    global buffer
-    while True:
-        if buffer!="":
-            save_log()
-            buffer=""
-        else:
-            pass
-        time.sleep(5)
 
 def read_arduino():
     global infoReady
     global stopESPcomm
+    global sensor_status
 
     #Variables to save data
     idle_in_data = False
@@ -604,29 +560,12 @@ def read_arduino():
             try:
                 data_str = data.decode('utf-8')
             except:
-                print("decoding fails, message: ", end=' ')
-                print(data)
+                logger.info(f"decoding fails, message: {data}")
                 continue
 
-            if 'Data' in data_str:
-                if 'idle' in data_str:
-                    idle_in_data = True
-                    save_str = False
-                else:
-                    idle_in_data = False
-                    save_str = True
-            elif 'Sensors' in data_str:
-                if idle_in_data:
-                    save_str = False
-                else:
-                    save_str = True  
-            else:
-                save_str = True
-
-            if save_str:
-                # pass
-                add_to_buffer(data_str)
             data_str_sensors = data_str.split(',')
+            if sensor_status:
+                logger.debug(data_str_sensors)
 
             if data_str_sensors[0] == 'Data':
                 data_sensors["pressure"] = data_str_sensors[1]
@@ -647,15 +586,15 @@ def read_arduino():
                 c2 = data_sensors["status"] == "preinfusion"
                 c3 = data_sensors["status"] == "infusion"
                 c4 = data_sensors["status"] == "spring"
-                # print(c1, end = "")
-                # print(c2, end = "")
-                # print(len(data_sensors["status"]), end = "")
+                # logger.info(c1, end = "")
+                # logger.info(c2, end = "")
+                # logger.info(len(data_sensors["status"]), end = "")
 
                 # time = time.time() - start_time
                 if ((c1 and c2) or (c1 and c3) or (c1 and c4)):
                     time_flag = True
                     start_time = time.time()
-                    print("start_time: {:.1f}".format(start_time))
+                    logger.info("start_time: {:.1f}".format(start_time))
                 if (data_sensors["status"] == "idle"):
                     time_flag = False
 
@@ -665,7 +604,7 @@ def read_arduino():
                     data_sensors["time"] = 0
 
                 old_status = data_sensors["status"]
-                # print(data_sensors["status"])
+                # logger.info(data_sensors["status"])
 
                 #else:
                 #    para cuando no usa formato de colores
@@ -711,9 +650,7 @@ def read_arduino():
                         data_sensor_comunication["adc_3"] = sensor_values[18].split('\n')[0]
                     except:
                         # pass
-                        add_to_buffer("(E): ESP did not send sensor values correctly")
-                    if sensor_status:
-                        print(data_str, end="")
+                        logger.error("ESP did not send sensor values correctly")
 
             elif data_str_sensors[0] == 'ESPInfo':
                 info_not_valid = False
@@ -722,29 +659,25 @@ def read_arduino():
                     software_info["firmwareV"] = data_str_sensors[1]
                 except:
                     software_info["firmwareV"]  = "not found"
-                    add_to_buffer("(E): ESP did not send firmware version correctly\n")
+                    logger.error("ESP did not send firmware version correctly\n")
                     info_not_valid = True
                 
                 try:
                     software_info["fanStatus"] = data_str_sensors[2]
                 except:
-                    add_to_buffer("(E): ESP did not send fanStatus correctly")
+                    logger.error("ESP did not send fanStatus correctly")
                     info_not_valid = True
 
                 try:
                     hardware_info["mainVoltage"] = data_str_sensors[3].strip('\r\n')
                 except:
-                    add_to_buffer("(E): ESP did not send main voltage value correctly")
+                    logger.error("ESP did not send main voltage value correctly")
                     info_not_valid = True
                 
                 infoReady = not info_not_valid      #if the info received is valid, then fla info ready, else dont flag it
 
-            elif print_status:
-                    print(data_str)
-            
-
-# print(data_str_sensors[0])
-# print(data_str)
+# logger.info(data_str_sensors[0])
+# logger.info(data_str)
     
 def data_treatment():
     if(arduino != None): read_arduino()
@@ -856,7 +789,7 @@ def send_data():
             with open('fika.json','r') as openfile:
                 json_file = json.load(openfile)
             # json_data = json.dumps(json_file, indent=1, sort_keys=False)
-            # print(json_data)
+            # logger.info(json_data)
             send_json_hash(json_file)
             lastJSON_source = detect_source(json_file)
             json_data=""
@@ -873,13 +806,13 @@ def send_data():
                 _input = "action,"+"purge"+"\x03"
                 if(arduino != None): arduino.write(str.encode(_input))
                 time.sleep(15)
-                print(_input)
+                logger.info(_input)
                 _input = "action,"+"home"+"\x03"
                 if(arduino != None): arduino.write(str.encode(_input))
                 time.sleep(15)
                 contador = "Numero de prueba: "+str(i+1)
-                print(_input)
-                print(contador)
+                logger.info(_input)
+                logger.info(contador)
             sensor_status=False
 
         elif _input[:11] == "calibration":
@@ -911,9 +844,6 @@ def main():
     # send_data_thread.daemon = True
     send_data_thread.start()
 
-    log_thread=threading.Thread(target=log)
-    log_thread.start()
-
     ping_thread = threading.Thread(target=live_ping)
     ping_thread.start()
 
@@ -933,21 +863,21 @@ def main():
     tornado.ioloop.IOLoop.current().start()
 
 def menu():    
-    print("Saludos, selecciona la opcion que deseas: ")
-    print("reset --> Al introducir esta opcion se reiniciara la esp32")
-    print("Acciones: tare, stop, start, purge, home   -----------> Haran las acciones correspondientes en la esp32")
-    print("json --> Al introducir esta opcion enviara el Json de nombre XXXXXX.XXXX contenido en la carpeta que contenga en codigo ")
-    print("show --> Muestra datos recibidos de la esp32")
-    print("hide --> Deja de mostrar datos recibidos de la esp32 exceptuando los mensajes del estado")
-    print("test --> Mueve el motor 10 veces de purge a home y muestra el valor de los sensores")
-    print("calibration --> Acceder a la funcion de la siguiente manera:  calibration,peso conocido,peso medido \n \t Ejemplo: calibration,100,90")
+    logger.info("Saludos, selecciona la opcion que deseas: ")
+    logger.info("reset --> Al introducir esta opcion se reiniciara la esp32")
+    logger.info("Acciones: tare, stop, start, purge, home   -----------> Haran las acciones correspondientes en la esp32")
+    logger.info("json --> Al introducir esta opcion enviara el Json de nombre XXXXXX.XXXX contenido en la carpeta que contenga en codigo ")
+    logger.info("show --> Muestra datos recibidos de la esp32")
+    logger.info("hide --> Deja de mostrar datos recibidos de la esp32 exceptuando los mensajes del estado")
+    logger.info("test --> Mueve el motor 10 veces de purge a home y muestra el valor de los sensores")
+    logger.info("calibration --> Acceder a la funcion de la siguiente manera:  calibration,peso conocido,peso medido \n \t Ejemplo: calibration,100,90")
 
 def listen_watcher():
     global pipe1
     try:
         pipe1 = os.open(pipe1_path, os.O_RDONLY | os.O_NONBLOCK)
     except OSError as e:
-        print(f'an error occurred oppening pipe2: {e}')
+        logger.error(f'an error occurred oppening pipe1: {e}')
         pipe1 = None
 
     while True:
@@ -955,11 +885,11 @@ def listen_watcher():
             try:
                 IPC_message = os.read(pipe1, 1024)
             except OSError as e:
-                print(f'error reading pipe1: {e}')
+                logger.error(f'error reading pipe1: {e}')
             if IPC_message:
-                print("message receive from watcher:")
+                logger.debug("message receive from watcher:")
                 if IPC_message.decode() == "FREE":
-                    print("free resources")
+                    logger.debug("free resources")
                     startUpdate()
 
 def startUpdate():
@@ -984,18 +914,18 @@ def startUpdate():
         try:
             pipe.write("released")
         except:
-            print("error writing to watcher")
+            logger.error("error writing to watcher")
 
 #this function will ping the watcher that the back is live
 def live_ping():
     while not stopESPcomm:
-        print("pinging watcher")
+        logger.info("pinging watcher")
         with open(pipe2_path, 'w') as watcher:
             try:
                 watcher.write("a")
-                print("watcher_pinged")
+                logger.info("watcher_pinged")
             except Exception as e:
-                print(f'watcher not pinged: {e}')
+                logger.info(f'watcher not pinged: {e}')
         time.sleep(1)
 
 if __name__ == "__main__":
@@ -1006,56 +936,20 @@ if __name__ == "__main__":
     # Open the serial connection if an Arduino was detected
     # if arduino_port == '/dev/ttyS0':
     #     arduino = serial.Serial('/dev/ttyS0',115200)
-    #     print("Serial connection opened on port ttyS0") ####Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
+    #     logger.info("Serial connection opened on port ttyS0") ####Se debera determinar el entorno (raspberry o VAR-SOM-MX8M-NANO)
     if arduino_port == '/dev/ttymxc0':########################
         arduino = serial.Serial('/dev/ttymxc0',115200)
-        print("Serial connection opened on port ttymxc0")
+        logger.info("Serial connection opened on port ttymxc0")
     elif arduino_port == '/dev/ttyUSB0':
         arduino = serial.Serial('/dev/ttyUSB0',115200)
-        print("Serial connection opened on port ttyUSB0")
+        logger.info("Serial connection opened on port ttyUSB0")
     else:
-        print("No ESP32 available")
+        logger.info("No ESP32 available")
     # arduino = serial.Serial('/dev/ttyUSB0', 115200)
-    os.system(comando) #Crea la carpeta donde se guardaran los datos 
-    date = datetime.now().strftime("%Y_%m_%d") #Fecha actual
 
-    try: #procesp para obtener el numero de sesion 9999 si no se puede obtener el numero de sesion
-        with open(file_path + contador, 'a', newline='') as file: #Crea el archivo donde se guardara el numero de sesion si no existe
-            pass
-
-        with open(file_path + contador, 'r', newline='') as file: #Abre el archivo donde se guardara el numero de sesion
-            first_line = file.readline() #Lee la primera linea del archivo
-        if first_line == '': #Si el archivo esta vacio se crea el archivo con el numero de sesion 1
-            session_number = 1 #asigna el numero de sesion 1 pues creo el archivo
-            with open(file_path + contador, 'w', newline='') as file:
-                file.write(str(1)) #Escribe el numero de sesion 1 en el archivo
-        else: #Si el archivo no esta vacio se lee el numero de sesion y se le suma 1
-            try: #procesp para obtener el numero de sesion 9999 si no se puede obtener el numero de sesion
-                value = int(first_line)  
-                value = value + 1 
-                session_number = value
-                with open(file_path + contador, 'w', newline='') as file:
-                    file.write(str(value)) #Escribe el numero de sesion en el archivo
-            except ValueError:
-                print("Error, el contenido del archivo no es un número válido")
-                session_number = 999 
-                with open(file_path + contador, 'w', newline='') as file:
-                    file.write(str(999))
-            except:
-                print("Error desconocido")
-                session_number = 999
-                with open(file_path + contador, 'w', newline='') as file:
-                    file.write(str(999))    
-    except:
-        print("Error al abrir el archivo")
-        session_number = 9999
-    
-    file_name = 'Fika_' + date +'_'+ str(session_number) + '.txt' 
     menu()
     reboot_esp()
     try:
         main()
-        
-    except:
-        traceback.print_exc()
-        # GPIO.cleanup() #Verificar si tiene metodo la som e implemetar if para ver el entorno (raspberry o VAR-SOM-MX8M-NANO)
+    except Exception as e:
+        logger.exception("main() failed", exc_info=e, stack_info=True)
