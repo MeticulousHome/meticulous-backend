@@ -23,6 +23,7 @@ import base64
 
 from esp_serial.connection.usb_serial_connection import USBSerialConnection
 from esp_serial.connection.fika_serial_connection import FikaSerialConnection
+from ble_gatt import GATTServer
 
 from log import MeticulousLogger
 
@@ -41,6 +42,7 @@ lastJSON_source = "LCD"
 reboot_flag = False
 
 connection = None
+ble_gatt_server: GATTServer = None
 
 IPC_path = f'{user_path}/ipc'                              # directory for the InterProcess Communication pipes
 pipe1 = None
@@ -635,7 +637,8 @@ def send_data():
     global sensor_status
     sensor_status=False
     global lastJSON_source
-    
+    global ble_gatt_server
+
     while (True):
         _input = input()
 
@@ -686,7 +689,15 @@ def send_data():
 
         elif _input.startswith("update"):
             startUpdate()
-        else:
+
+        elif _input.startswith("wifi"):
+            if ble_gatt_server.is_running():
+                ble_gatt_server.stop()
+            else:
+                ble_gatt_server.start()
+
+        elif _input != "":
+            logger.info(f"Unknown command: \"{_input}\"")
             pass
             # if _input[0] == "j" :
             #     _input = "json\n"+ _input +"\x03"s
@@ -698,10 +709,13 @@ def send_data():
 def main():
     global data_thread
     global send_data_thread
-    
+    global ble_gatt_server
+
     parse_command_line()
 
     gatherVersionInfo()
+
+    ble_gatt_server = GATTServer.getServer()
 
     data_thread = threading.Thread(target=data_treatment)
     # data_thread.daemon = True
