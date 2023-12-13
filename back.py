@@ -434,12 +434,6 @@ async def live():
     global infoSolicited
     global lastJSON_source
 
-    # RotaryEncoder(down_switch,up_switch,menu_switch, lambda event: asyncio.run(tuner_event(event)))
-
-#     with open('./json/profile.json') as json_file:
-#         json_object = json.load(json_file)
-#         json_file.close()
-
     process_started = False
     SAMPLE_TIME = 0.1
     elapsed_time = 0
@@ -478,6 +472,7 @@ def send_data():
     global ble_gatt_server
 
     while (True):
+        print("> ", end="")
         _input = input()
 
         if _input == "reset":
@@ -494,12 +489,12 @@ def send_data():
         elif _input== "json":
             with open('fika.json','r') as openfile:
                 json_file = json.load(openfile)
-            # json_data = json.dumps(json_file, indent=1, sort_keys=False)
-            # logger.info(json_data)
-            send_json_hash(json_file)
-            lastJSON_source = detect_source(json_file)
-            json_data=""
-            json_file=""
+                # json_data = json.dumps(json_file, indent=1, sort_keys=False)
+                # logger.info(json_data)
+                send_json_hash(json_file)
+                lastJSON_source = detect_source(json_file)
+                json_data=""
+                json_file=""
             
 
         elif _input=="tare" or _input=="stop" or _input=="purge" or _input=="home" or _input=="start" :
@@ -582,14 +577,14 @@ def main():
     tornado.ioloop.IOLoop.current().start()
 
 def menu():    
-    logger.info("Saludos, selecciona la opcion que deseas: ")
-    logger.info("reset --> Al introducir esta opcion se reiniciara la esp32")
-    logger.info("Acciones: tare, stop, start, purge, home   -----------> Haran las acciones correspondientes en la esp32")
-    logger.info("json --> Al introducir esta opcion enviara el Json de nombre XXXXXX.XXXX contenido en la carpeta que contenga en codigo ")
-    logger.info("show --> Muestra datos recibidos de la esp32")
-    logger.info("hide --> Deja de mostrar datos recibidos de la esp32 exceptuando los mensajes del estado")
-    logger.info("test --> Mueve el motor 10 veces de purge a home y muestra el valor de los sensores")
-    logger.info("calibration --> Acceder a la funcion de la siguiente manera:  calibration,peso conocido,peso medido \n \t Ejemplo: calibration,100,90")
+    logger.info("Hi, please select the option you want: ")
+    logger.info("reset --> reset the esp32")
+    logger.info("[tare, stop, start, purge, home] --> Send the corresponding command on the esp32")
+    logger.info("json --> Send the latest fika.json from local storage to the ESP32")
+    logger.info("show --> Show data received from the esp32")
+    logger.info("hide --> Stop showing data received from esp32 except for status messages")
+    logger.info("test --> Moves the engine 10 times from purge to home and displays the value of the sensors")
+    logger.info("calibration,<known_weight>,<measured_weight> --> Calibrate the weight")
 
 def listen_watcher():
     global pipe1
