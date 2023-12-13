@@ -1,6 +1,8 @@
 bidict==0.22.1
 esptool==4.6.2
 gpiod==1.5.4
+netaddr==0.9.0
+nmcli
 pynput==1.7.6
 pyserial==3.5
 python-engineio==4.6.1
