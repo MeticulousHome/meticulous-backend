@@ -8,7 +8,6 @@ import traceback
 import threading
 import time
 import json
-from pynput.keyboard import Key, Controller
 # import RPi.GPIO as GPIO          ################# Debera haber un if que confirme en el entorno (raspberry o VAR-SOM-MX8M-NANO)
 import gpiod                       ################# En base a ello instalara la libreria correspondiente (RPi.GPIO o gpiod)
 #from dotenv import load_dotenv #################!!!!!!!!!!!NO hay librerias en som
@@ -110,8 +109,6 @@ def gatherVersionInfo():
 
     #SOLICITAMOS LA VERSION DE FIRMWARE A LA ESP
 
-keyboard = Controller()
-
 define("port", default=8080, help="run on the given port", type=int)
 define("debug", default=False, help="run in debug mode")
 
@@ -127,53 +124,12 @@ software_info = {
 }
 
 
-# "d" -> double click tare
-# "s" -> long tare
-# "x" -> double click encoder
-# "e" -> long click encoder
-# "enter" -> click boton principal
-
-def cw_function():
-    keyboard.press(Key.right)
-    keyboard.release(Key.right)
-    logger.info("RIGHT!")
-
-def ccw_function():
-    keyboard.press(Key.left)
-    keyboard.release(Key.left)
-    logger.info("LEFT!")
-
-def tare_double_function():
-    keyboard.press('d')
-    keyboard.release('d')
-    logger.info("DOUBLE TARE!")
-
-def tare_long_function():
-    keyboard.press('s')
-    keyboard.release('s')
-    logger.info("LONG TARE!")
-
-def encoder_push_function():
-    keyboard.press(Key.space)
-    keyboard.release(Key.space)
-    logger.info("PUSH ENCODER!")
-
-def encoder_double_function():
-    keyboard.press('x')
-    keyboard.release('x')
+def return_to_idle():
     if (data_sensors.status != "idle"):
         _input = "action,"+"stop"+"\x03"
         if(connection.port != None): connection.port.write(str.encode(_input))
-    logger.info("DOUBLE ENCODER!")
+    logger.info("DOUBLE ENCODER, Returning to idle")
 
-def encoder_long_function():
-    start_function()
-    logger.info("LONG ENCODER!")
-
-def start_function():
-    keyboard.press(Key.enter)
-    keyboard.release(Key.enter)
-    logger.info("START!")
 
 def send_json_hash(json_obj):
     json_string = json.dumps(json_obj)
@@ -459,24 +415,8 @@ async def read_arduino():
                 await sio.emit("button", button_event.to_sio())
 
             # FIXME this should be callback to the frontends in the future
-            if button_event is not None:
-                match (button_event.event):
-                    case ButtonEventEnum.ENCODER_CLOCKWISE:
-                        cw_function()
-                    case ButtonEventEnum.ENCODER_COUNTERCLOCKWISE:
-                        ccw_function()
-                    case ButtonEventEnum.ENCODER_PUSH:
-                        encoder_push_function()
-                    case ButtonEventEnum.ENCODER_DOUBLE:
-                        encoder_double_function()
-                    case ButtonEventEnum.ENCODER_LONG:
-                        encoder_long_function()
-                    case ButtonEventEnum.TARE_DUBLE:
-                        tare_double_function()
-                    case ButtonEventEnum.TARE_LONG:
-                        tare_long_function()
-                    case ButtonEventEnum.START:
-                        start_function()
+            if button_event is not None and button_event.event is ButtonEventEnum.ENCODER_DOUBLE:
+                return_to_idle()
     
 def data_treatment():
     global connection
