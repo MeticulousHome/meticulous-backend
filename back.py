@@ -563,9 +563,25 @@ def read_arduino():
                 logger.info(f"decoding fails, message: {data}")
                 continue
 
+            if 'Data' in data_str:
+                if 'idle' in data_str:
+                    idle_in_data = True
+                    save_str = False
+                else:
+                    idle_in_data = False
+                    save_str = True
+            elif 'Sensors' in data_str:
+                if idle_in_data:
+                    save_str = False
+                else:
+                    save_str = True
+            else:
+                save_str = True
+
+            if save_str or sensor_status:
+                logger.info(data_str.strip("\r\n"))
+
             data_str_sensors = data_str.split(',')
-            if sensor_status:
-                logger.debug(data_str_sensors)
 
             if data_str_sensors[0] == 'Data':
                 data_sensors["pressure"] = data_str_sensors[1]
