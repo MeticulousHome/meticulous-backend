@@ -1,4 +1,8 @@
 
+### [v0.1.7] - 2023-12-15
+The recently added log modules is not working relyable across different python versions when the loglevel is set.
+
+
 ### [v0.1.6] - 2023-12-14
 The existing logging logic manually rotates the logs on application start. The old logs are appended and the new logs go into a new file. The maximum amount of logs was 99999 files.
 
