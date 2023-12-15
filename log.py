@@ -13,8 +13,6 @@ class MeticulousLogger:
     LOGLEVEL=os.getenv('LOGLEVEL', 'DEBUG').upper()
     FORCE_STDOUT_LOG=os.getenv("FORCE_STDOUT_LOG", 'False').lower() in ('true', '1', 'y')
 
-    logging.basicConfig(level=LOGLEVEL)
-
     def setLogPath(path):
         MeticulousLogger._path = path
         MeticulousLogger._createHandler();
@@ -61,5 +59,5 @@ class MeticulousLogger:
         # This will lead to double logging on some systems, so it is disabled by default
         if MeticulousLogger.FORCE_STDOUT_LOG and MeticulousLogger._sh not in logger.handlers:
             logger.addHandler(MeticulousLogger._sh)
-
+        logger.setLevel(MeticulousLogger.LOGLEVEL)
         return logger
