@@ -1,4 +1,8 @@
 
+### [v0.1.8] - 2023-12-15
+While we might have fixed the loglevel for the main thread, creating a basic configuration can lead to problematic side- effects on certain setups.
+
+
 ### [v0.1.7] - 2023-12-15
 The recently added log modules is not working relyable across different python versions when the loglevel is set.
 
