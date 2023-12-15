@@ -13,6 +13,8 @@ class MeticulousLogger:
     LOGLEVEL=os.getenv('LOGLEVEL', 'DEBUG').upper()
     FORCE_STDOUT_LOG=os.getenv("FORCE_STDOUT_LOG", 'False').lower() in ('true', '1', 'y')
 
+    logging.basicConfig(level=LOGLEVEL)
+
     def setLogPath(path):
         MeticulousLogger._path = path
         MeticulousLogger._createHandler();
@@ -21,9 +23,6 @@ class MeticulousLogger:
         if MeticulousLogger._rh is None:
             MeticulousLogger._createHandler()
         MeticulousLogger._rh.setLevel(level)
-
-    def setLogLevel(level):
-        logging.getLogger().setLevel(level)
 
     # Callback when a new log is created
     def cb_logname(name):
@@ -51,7 +50,6 @@ class MeticulousLogger:
         MeticulousLogger._rh.setFormatter(MeticulousLogger._f)
         MeticulousLogger._rh.doRollover()
         MeticulousLogger._sh = logging.StreamHandler()
-        MeticulousLogger.setLogLevel(MeticulousLogger.LOGLEVEL)
 
     def getLogger(name):
         if MeticulousLogger._rh is None:
