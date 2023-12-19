@@ -20,6 +20,7 @@ import hashlib
 import version as backend
 import subprocess
 import base64
+import asyncio
 
 from esp_serial.connection.usb_serial_connection import USBSerialConnection
 from esp_serial.connection.fika_serial_connection import FikaSerialConnection
@@ -349,7 +350,7 @@ async def feed_profile(sid, data):
     else:
         print("The 'kind' key is not present in the received JSON.")
 
-def read_arduino():
+async def read_arduino():
     global infoReady
     global stopESPcomm
     global sensor_status
@@ -453,6 +454,10 @@ def read_arduino():
                 esp_info = info
                 infoReady = True
 
+            if button_event is not None:
+                logger.debug(f"Sending button event = {button_event.to_sio()}")
+                await sio.emit("button", button_event.to_sio())
+
             # FIXME this should be callback to the frontends in the future
             if button_event is not None:
                 match (button_event.event):
@@ -475,7 +480,12 @@ def read_arduino():
     
 def data_treatment():
     global connection
-    if(connection.port != None): read_arduino()
+    if(connection.port != None):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        loop.run_until_complete(read_arduino())
+        loop.close()
 
 async def live():
 
