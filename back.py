@@ -315,7 +315,6 @@ async def read_arduino():
     global esp_info
 
     #Variables to save data
-    idle_in_data = False
     save_str = False
     
     shot_start_time = time.time()
@@ -337,22 +336,7 @@ async def read_arduino():
                 logger.info(f"decoding fails, message: {data}")
                 continue
 
-            if 'Data' in data_str:
-                if 'idle' in data_str:
-                    idle_in_data = True
-                    save_str = False
-                else:
-                    idle_in_data = False
-                    save_str = True
-            elif 'Sensors' in data_str:
-                if idle_in_data:
-                    save_str = False
-                else:
-                    save_str = True
-            else:
-                save_str = True
-
-            if save_str or sensor_status:
+            if (old_status != MachineStatusEnum.IDLE and data_str.startswith("Sensor")) or sensor_status:
                 logger.info(data_str.strip("\r\n"))
 
             data_str_sensors = data_str.strip("\r\n").split(',')
