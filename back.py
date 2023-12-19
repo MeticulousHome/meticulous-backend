@@ -46,12 +46,6 @@ reboot_flag = False
 connection = None
 ble_gatt_server: GATTServer = None
 
-IPC_path = f'{user_path}/ipc'                              # directory for the InterProcess Communication pipes
-pipe1 = None
-pipe2 = None
-pipe2_path = f'{IPC_path}/pipe2'
-pipe1_path = f'{IPC_path}/pipe1'
-IPC_message = bytes()
 #VERSION INFORMATION
 
 class ReadLine:
@@ -82,9 +76,6 @@ class ReadLine:
 data_thread = None
 send_data_thread = None
 stopESPcomm = False
-
-ping_thread = None
-watcher_listen_thread = None
 
 def gatherVersionInfo():
     global infoSolicited
@@ -326,7 +317,11 @@ async def read_arduino():
 
     old_status = MachineStatusEnum.IDLE
     time_flag = False
-    while not stopESPcomm:
+    while True:
+        if stopESPcomm:
+            time.sleep(0.1)
+            continue
+
         data = uart.readline()
         if len(data) > 0:
             # data_bit = bytes(data)
@@ -542,12 +537,6 @@ def main():
     # send_data_thread.daemon = True
     send_data_thread.start()
 
-    ping_thread = threading.Thread(target=live_ping)
-    ping_thread.start()
-
-    watcher_listen_thread = threading.Thread(target=listen_watcher)
-    watcher_listen_thread.start()
-    
     app = tornado.web.Application(
         [
             (r"/socket.io/", socketio.get_tornado_handler(sio)),
@@ -570,50 +559,15 @@ def menu():
     logger.info("test --> Moves the engine 10 times from purge to home and displays the value of the sensors")
     logger.info("calibration,<known_weight>,<measured_weight> --> Calibrate the weight")
 
-def listen_watcher():
-    global pipe1
-    try:
-        pipe1 = os.open(pipe1_path, os.O_RDONLY | os.O_NONBLOCK)
-    except OSError as e:
-        logger.error(f'an error occurred oppening pipe1: {e}')
-        pipe1 = None
-
-    while True:
-        if pipe1 != None:
-            try:
-                IPC_message = os.read(pipe1, 1024)
-            except OSError as e:
-                logger.error(f'error reading pipe1: {e}')
-            if IPC_message:
-                logger.debug("message receive from watcher:")
-                if IPC_message.decode() == "FREE":
-                    logger.debug("free resources")
-                    startUpdate()
-
 def startUpdate():
     global data_thread
     global stopESPcomm
     global connection
 
     stopESPcomm = True
-
-    #stops the task that comunicates with the ESP
-    if data_thread != None:
-        data_thread.join()
-
     connection.sendUpdate()
+    stopESPcomm = False
 
-#this function will ping the watcher that the back is live
-def live_ping():
-    while not stopESPcomm:
-        logger.info("pinging watcher")
-        with open(pipe2_path, 'w') as watcher:
-            try:
-                watcher.write("a")
-                logger.info("watcher_pinged")
-            except Exception as e:
-                logger.info(f'watcher not pinged: {e}')
-        time.sleep(1)
 
 if __name__ == "__main__":
 
