@@ -16,6 +16,8 @@ import asyncio
 
 from esp_serial.connection.usb_serial_connection import USBSerialConnection
 from esp_serial.connection.fika_serial_connection import FikaSerialConnection
+from esp_serial.connection.emulator_serial_connection import EmulatorSerialConnection
+
 from esp_serial.data import *
 
 from ble_gatt import GATTServer
@@ -435,7 +437,8 @@ def send_data():
             logger.info(f"Unknown command: \"{_input}\"")
             pass
 
-USE_USB=os.getenv("USE_USB", 'False').lower() in ('true', '1', 'y')
+# can be from [FIKA, USB, EMULATOR / EMULATION]
+BACKEND=os.getenv("BACKEND", 'FIKA').upper()
 
 def main():
     global data_thread
@@ -447,11 +450,14 @@ def main():
 
     gatherVersionInfo()
 
-    if USE_USB:
-        connection = USBSerialConnection('/dev/ttyUSB0')
-    else:
-        # Default case on the fika board
-        connection = FikaSerialConnection('/dev/ttymxc0')
+    match(BACKEND):
+        case "USB":
+            connection = USBSerialConnection('/dev/ttyUSB0')
+        case "EMULATOR" | "EMULATION":
+            connection = EmulatorSerialConnection()
+        # Everything else is proper fika connection
+        case "FIKA" | _ :
+            connection = FikaSerialConnection('/dev/ttymxc0')
 
     ble_gatt_server = GATTServer.getServer()
 
@@ -489,7 +495,6 @@ def startUpdate():
     stopESPcomm = True
     connection.sendUpdate()
     stopESPcomm = False
-
 
 if __name__ == "__main__":
     try:
