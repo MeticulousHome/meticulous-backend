@@ -4,21 +4,14 @@ from tornado.options import define, options, parse_command_line
 import socketio
 import tornado.web
 import tornado.ioloop
-import traceback
 import threading
 import time
 import json
-# import RPi.GPIO as GPIO          ################# Debera haber un if que confirme en el entorno (raspberry o VAR-SOM-MX8M-NANO)
-import gpiod                       ################# En base a ello instalara la libreria correspondiente (RPi.GPIO o gpiod)
-#from dotenv import load_dotenv #################!!!!!!!!!!!NO hay librerias en som
-from datetime import datetime
 import os
 import os.path
-from operator import itemgetter
 import hashlib
 import version as backend
 import subprocess
-import base64
 import asyncio
 
 from esp_serial.connection.usb_serial_connection import USBSerialConnection
@@ -33,20 +26,12 @@ logger = MeticulousLogger.getLogger(__name__)
 
 user_path=os.path.expanduser("~/")
 
-usaFormatoDeColores = True
-
 sendInfoToFront = False
-
 infoReady = False
-
 lastJSON_source = "LCD"
-
-reboot_flag = False
 
 connection = None
 ble_gatt_server: GATTServer = None
-
-#VERSION INFORMATION
 
 class ReadLine:
     def __init__(self, s):
@@ -82,23 +67,13 @@ def gatherVersionInfo():
     software_info["name"] = "Meticulous Espresso"
     software_info["backendV"] = backend.VERSION
 
-    # #OBTENEMOS EL NOMBRE DE LA APLICACION DE LA LCD
-    # auxFile = open(os.path.expanduser("~/.xsession"))
-    # lcd_ui_name = auxFile.read().split('\n')[2].split()[1]
-
     # #OBTENEMOS SU VERSION USANDO LOS COMANDOS DPKG y GREP
     command = f'dpkg --list | grep meticulous-ui'
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
     lcd_version = result.stdout.split()[2]
-    # lcd_version = 1.0 #HARDCODED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ##############################################Provisionalmente y al no haber una version de la LCD, se asigna la version 1.0
     infoSolicited = True
 
     software_info["lcdV"] = lcd_version
-    software_info["dashboardV"] = 1.0
-    software_info["firmwareV"] = 0.0
-
-    #SOLICITAMOS LA VERSION DE FIRMWARE A LA ESP
 
 define("port", default=8080, help="run on the given port", type=int)
 define("debug", default=False, help="run in debug mode")
@@ -154,8 +129,6 @@ def connect(sid, environ):
 @sio.event
 def disconnect(sid):
     logger.info('disconnect %s', sid)
-    
-#sendInfoToFront
 
 @sio.on('action')
 def msg(sid, data):
@@ -242,11 +215,6 @@ def msg(sid, data):
         logger.info("Preset not found")
         return 0
 
-
-
-#@sio.on('parameters') #To hardcode using send config
-
-#data seems to not be used but is kept as optional to ease implementation if needed
 @sio.on('calibrate') #Use when calibration it is implemented
 def msg(sid, data=True):
     know_weight = "100.0"
@@ -305,11 +273,7 @@ async def read_arduino():
     global sensor_sensors
     global esp_info
 
-    #Variables to save data
-    save_str = False
-    
     shot_start_time = time.time()
-    # global start_time
 
     connection.port.reset_input_buffer()
     connection.port.write(b'32\n')
@@ -426,8 +390,6 @@ async def live():
             _solicitud = "action,info\x03"
             if(connection.port != None and not  stopESPcomm): connection.port.write(str.encode(_solicitud))
 
-        if (reboot_flag): await sio.emit("MANUAL-REBOOT")
-
         await sio.emit("status", {**data_sensors.to_sio(), "source": lastJSON_source,})
 
         if sendInfoToFront:
@@ -511,30 +473,31 @@ def send_data():
         elif _input != "":
             logger.info(f"Unknown command: \"{_input}\"")
             pass
-            # if _input[0] == "j" :
-            #     _input = "json\n"+ _input +"\x03"s
-            #     connection.port.write(str.encode(_input))
-            # else:
-            #     _input = "action,"+_input+"\x03"
-            #     connection.port.write(str.encode(_input))
-            
+
+USE_USB=os.getenv("USE_USB", 'False').lower() in ('true', '1', 'y')
+
 def main():
     global data_thread
     global send_data_thread
+    global connection
     global ble_gatt_server
 
     parse_command_line()
 
     gatherVersionInfo()
 
+    if USE_USB:
+        connection = USBSerialConnection('/dev/ttyUSB0')
+    else:
+        # Default case on the fika board
+        connection = FikaSerialConnection('/dev/ttymxc0')
+
     ble_gatt_server = GATTServer.getServer()
 
     data_thread = threading.Thread(target=data_treatment)
-    # data_thread.daemon = True
     data_thread.start()
 
     send_data_thread = threading.Thread(target=send_data) 
-    # send_data_thread.daemon = True
     send_data_thread.start()
 
     app = tornado.web.Application(
@@ -560,9 +523,7 @@ def menu():
     logger.info("calibration,<known_weight>,<measured_weight> --> Calibrate the weight")
 
 def startUpdate():
-    global data_thread
     global stopESPcomm
-    global connection
 
     stopESPcomm = True
     connection.sendUpdate()
@@ -570,16 +531,7 @@ def startUpdate():
 
 
 if __name__ == "__main__":
-
-    USE_USB=os.getenv("USE_USB", 'False').lower() in ('true', '1', 'y')
-
     try:
-        if USE_USB:
-            connection = USBSerialConnection('/dev/ttyUSB0')
-        else:
-            # Default case on the fika board
-            connection = FikaSerialConnection('/dev/ttymxc0')
-
         menu()
         main()
     except Exception as e:
