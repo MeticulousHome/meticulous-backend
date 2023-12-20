@@ -223,6 +223,7 @@ async def read_arduino():
     global sensor_sensors
     global esp_info
 
+    reset_count = 0
     shot_start_time = time.time()
 
     connection.port.reset_input_buffer()
@@ -231,6 +232,7 @@ async def read_arduino():
 
     old_status = MachineStatusEnum.IDLE
     time_flag = False
+
     while True:
         if stopESPcomm:
             time.sleep(0.1)
@@ -255,6 +257,14 @@ async def read_arduino():
             sensor = None
             data = None
             info = None
+
+            if data_str.startswith("rst:0x") and "boot:0x16 (SPI_FAST_FLASH_BOOT)" in data_str:
+                reset_count+=1
+
+            if reset_count >= 3:
+                logger.warning("The ESP seems to be resetting, sending update now")
+                startUpdate()
+                reset_count = 0
 
             match(data_str_sensors):
                 # FIXME: This should be replace in the firmware with an "Event," prefix for cleanliness
@@ -296,11 +306,13 @@ async def read_arduino():
                 infoReady = True
 
             if sensor is not None:
-                sensor_sensors = sensor
+                sensor_sensors = sensor#
+                reset_count = 0
                 infoReady = True
 
             if info is not None:
                 esp_info = info
+                reset_count = 0
                 infoReady = True
 
             if button_event is not None:
