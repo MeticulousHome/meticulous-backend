@@ -72,7 +72,11 @@ def gatherVersionInfo():
     # #OBTENEMOS SU VERSION USANDO LOS COMANDOS DPKG y GREP
     command = f'dpkg --list | grep meticulous-ui'
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
-    lcd_version = result.stdout.split()[2]
+    try:
+        lcd_version = result.stdout.split()[2]
+    except IndexError:
+        logger.warning("LCD DialApp is not installed")
+        lcd_version = "0.0.0"
     infoSolicited = True
 
     software_info["lcdV"] = lcd_version
@@ -377,7 +381,11 @@ def send_data():
 
     while (True):
         print("> ", end="")
-        _input = input()
+        try:
+            _input = input()
+        except EOFError:
+            logger.warning("no STDIN attached, not listening to commands!")
+            break
 
         if _input == "reset":
             connection.reset()
