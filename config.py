@@ -8,10 +8,21 @@ from mergedeep import merge
 from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
 
+# Config Compontents
+CONFIG_GATT = "gatt"
+
+## GATT configuration
+GATT_DEFAULT_NAME = "MeticulousEspresso"
+GATT_NAME = "name"
+
 DefaultConfiguration_V1 = {
     # Only needs to be incremented in case of incompatible restructurings
     "version": 1,
+    CONFIG_GATT : {
+        GATT_NAME : GATT_DEFAULT_NAME
+    },
 }
+
 
 class MeticulousConfigDict(dict):
     """
