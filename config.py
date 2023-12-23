@@ -9,7 +9,19 @@ from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
 
 # Config Compontents
+CONFIG_WIFI = "wifi"
 CONFIG_GATT = "gatt"
+
+## Wifi Config items
+WIFI_MODE = "mode"
+WIFI_MODE_AP = "AP"
+WIFI_MODE_CLIENT = "CLIENT"
+
+# Wifi access point configuration
+WIFI_AP_NAME = "APName"
+WIFI_DEFAULT_AP_NAME = "MeticulousEspresso"
+WIFI_AP_PASSWORD = "APPassword"
+WIFI_DEFAULT_AP_PASSWORD = "meticulous"
 
 ## GATT configuration
 GATT_DEFAULT_NAME = "MeticulousEspresso"
@@ -18,6 +30,11 @@ GATT_NAME = "name"
 DefaultConfiguration_V1 = {
     # Only needs to be incremented in case of incompatible restructurings
     "version": 1,
+    CONFIG_WIFI: {
+        WIFI_MODE: WIFI_MODE_AP,
+        WIFI_AP_NAME: WIFI_DEFAULT_AP_NAME,
+        WIFI_AP_PASSWORD: WIFI_DEFAULT_AP_PASSWORD
+    },
     CONFIG_GATT : {
         GATT_NAME : GATT_DEFAULT_NAME
     },

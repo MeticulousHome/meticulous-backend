@@ -1,3 +1,4 @@
+from config import *
 from netaddr import IPAddress, IPNetwork
 from typing import List
 from dataclasses import dataclass
@@ -21,8 +22,32 @@ class WifiSystemConfig():
     dns: List[IPAddress]
     mac: str
 
+
 class WifiManager():
     _known_wifis = []
+    # Internal name used by network manager to refer to the AP configuration
+    _conname = "meticulousLocalAP"
+
+    def init():
+        # start AP if needed
+        if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP:
+            WifiManager.startHotspot()
+        else:
+            WifiManager.stopHotspot()
+
+    def startHotspot():
+        logger.info("Starting hotspot")
+        return nmcli.device.wifi_hotspot(
+            con_name=WifiManager._conname,
+            ssid=MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME],
+            password=MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
+        )
+
+    def stopHotspot():
+        for dev in nmcli.device():
+            if dev.device_type == 'wifi' and dev.connection == WifiManager._conname:
+                logger.info(f"Stopping Hotspot")
+                return nmcli.connection.down(WifiManager._conname)
 
     def scanForNetworks(timeout: int = 10, target_network_ssid: str = None):
         if target_network_ssid == "":

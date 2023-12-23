@@ -21,6 +21,7 @@ from esp_serial.connection.emulator_serial_connection import EmulatorSerialConne
 from esp_serial.data import *
 
 from ble_gatt import GATTServer
+from wifi import WifiManager
 
 from log import MeticulousLogger
 
@@ -474,6 +475,8 @@ def main():
 
     send_data_thread = threading.Thread(target=send_data) 
     send_data_thread.start()
+
+    WifiManager.init()
 
     app = tornado.web.Application(
         [
