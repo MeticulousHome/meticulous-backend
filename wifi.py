@@ -2,6 +2,7 @@ from config import *
 from netaddr import IPAddress, IPNetwork
 from typing import List
 from dataclasses import dataclass
+from api.zeroconf_announcement import ZeroConfAnnouncement
 
 import nmcli
 import time
@@ -23,6 +24,7 @@ class WifiSystemConfig():
     ips: List[IPNetwork]
     dns: List[IPAddress]
     mac: str
+    hostname: str
 
 
 class WifiManager():
@@ -30,6 +32,7 @@ class WifiManager():
     # Internal name used by network manager to refer to the AP configuration
     _conname = "meticulousLocalAP"
     _networking_available = True
+    _zeroconf = None
 
     def init():
         try:
@@ -43,8 +46,10 @@ class WifiManager():
         # Only update the hostname if it is a new system or if the hostname has been
         # set before. Do so in case the lookup table ever changed or the hostname is only
         # saved transient
-        if config.hostname == "imx8mn-var-som" or "meticulous-" in config.hostname:
+        if config.mac != "" and config.hostname == "imx8mn-var-som" or "meticulous-" in config.hostname:
             HostnameManager.checkAndUpdateHostname(config.mac)
+
+        WifiManager._zeroconf = ZeroConfAnnouncement(config_function = WifiManager.getCurrentConfig)
 
         # start AP if needed
         if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP:
@@ -52,16 +57,19 @@ class WifiManager():
         else:
             WifiManager.stopHotspot()
 
+        WifiManager._zeroconf.start()
+
     def startHotspot():
         if not WifiManager._networking_available:
             return
         
         logger.info("Starting hotspot")
-        return nmcli.device.wifi_hotspot(
+        nmcli.device.wifi_hotspot(
             con_name=WifiManager._conname,
             ssid=MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME],
             password=MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
         )
+        WifiManager._zeroconf.restart()
 
     def stopHotspot():
         if not WifiManager._networking_available:
@@ -70,7 +78,9 @@ class WifiManager():
         for dev in nmcli.device():
             if dev.device_type == 'wifi' and dev.connection == WifiManager._conname:
                 logger.info(f"Stopping Hotspot")
-                return nmcli.connection.down(WifiManager._conname)
+                nmcli.connection.down(WifiManager._conname)
+                WifiManager._zeroconf.restart()
+                return
 
     def scanForNetworks(timeout: int = 10, target_network_ssid: str = None):
         if not WifiManager._networking_available:
@@ -119,6 +129,7 @@ class WifiManager():
 
             if len([x for x in networks if x.in_use]) > 0:
                 logger.info("Successfully connected")
+                WifiManager._zeroconf.restart()
                 return True
         return False
 
@@ -131,7 +142,7 @@ class WifiManager():
         ips: list[IPNetwork] = []
         dns: list[IPAddress] = []
         mac: str = ""
-
+        hostname:str = nmcli.general.get_hostname()
         if not WifiManager._networking_available:
             return WifiSystemConfig(connected, connection_name, gateway, routes, ips, dns, mac, hostname)
 
@@ -142,18 +153,22 @@ class WifiManager():
                 for k, v in config.items():
                     match k:
                         case str(k) if "IP4.ADDRESS" in k or "IP6.ADDRESS" in k:
-                            ip = IPNetwork(v)
-                            ips.append(ip)
+                            if v is not None:
+                                ip = IPNetwork(v)
+                                ips.append(ip)
                         case str(k) if "IP4.ROUTE" in k or "IP6.ROUTE" in k:
-                            routes.append(v)
+                            if v is not None:
+                                routes.append(v)
                         case str(k) if "IP4.DNS" in k or "IP6.DNS" in k:
-                            ip = IPAddress(v)
-                            dns.append(ip)
+                            if v is not None:
+                                ip = IPAddress(v)
+                                dns.append(ip)
                         case "GENERAL.HWADDR":
                             mac = v
                         case "GENERAL.CONNECTION":
                             connection_name = v
                         case "IP4.GATEWAY":
-                            gateway = IPAddress(v)
+                            if v is not None:
+                                gateway = IPAddress(v)
 
-        return WifiSystemConfig(connected, connection_name, gateway, routes, ips, dns, mac)
+        return WifiSystemConfig(connected, connection_name, gateway, routes, ips, dns, mac, hostname)
