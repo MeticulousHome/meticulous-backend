@@ -13,6 +13,7 @@ from bless import (  # type: ignore
 )
 
 from wifi import WifiManager
+from config import *
 
 from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
@@ -21,9 +22,45 @@ logger = MeticulousLogger.getLogger(__name__)
 if sys.platform in ["darwin", "win32"]:
     raise ValueError("Cannot run on non-linux platforms")
 
-
 class GATTServer():
-    GATT_NAME = os.getenv('GATT_NAME', 'MeticulousEspresso')
+    """
+    A class representing a BLE (Bluetooth Low Energy) GATT (Generic Attribute Profile) Server
+    for Wi-Fi provisioning purposes. This server allows a BLE client to interact with the server
+    to perform tasks like scanning for Wi-Fi networks and connecting to them.
+
+    Attributes:
+        GATT_NAME (str): The name of the GATT server. It defaults to 'MeticulousEspresso' or
+                         can be set via the GATT_NAME environment variable.
+
+    Methods:
+        getServer() -> GATTServer:
+            Static method to get the singleton instance of the GATTServer.
+
+        allow_wifi_provisioning():
+            Authorizes the server for Wi-Fi provisioning if it is awaiting authorization.
+
+        is_running() -> bool:
+            Checks if the server's loop thread is alive and running.
+
+        start():
+            Starts the BLE GATT Server. Initializes and runs the server loop in a separate thread.
+
+        stop():
+            Stops the BLE GATT Server. Signals the server loop to exit.
+
+        wifi_connect(ssid: str, passwd: str) -> Optional[list[str]]:
+            Static method to initiate connection to a Wi-Fi network with the given SSID and password.
+            Returns a list of URLs/IPs for the local server if successful.
+
+        get_wifi_networks() -> Optional[list[str]]:
+            Static method to scan for available Wi-Fi networks and return their SSIDs.
+
+        read_request(characteristic: BlessGATTCharacteristic, **kwargs) -> bytearray:
+            Handles read requests from a BLE client for a given characteristic.
+
+        write_request(characteristic: BlessGATTCharacteristic, value: bytearray, **kwargs):
+            Handles write requests from a BLE client for a given characteristic.
+    """
 
     _singletonServer = None
 
@@ -43,8 +80,9 @@ class GATTServer():
             wifi_networks_callback=GATTServer.get_wifi_networks,
             max_response_bytes=250
         )
+        gatt_name = MeticulousConfig[CONFIG_GATT][GATT_NAME]
         self.bless_gatt_server = BlessServer(
-            name=GATTServer.GATT_NAME, loop=self.loop)
+            name=gatt_name, loop=self.loop)
         self.bless_gatt_server.read_request_func = GATTServer.read_request
         self.bless_gatt_server.write_request_func = GATTServer.write_request
         self.loopThread = None
