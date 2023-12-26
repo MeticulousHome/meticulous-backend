@@ -263,8 +263,6 @@ class ButtonEventData:
             except ValueError:
                 pass
 
-            logger.warning(f"EncoderEventData: {args[0]}")
-
             event = ButtonEventData(ButtonEventEnum.from_str(
                 args[0]), time_since_last_event)
         except Exception as e:
