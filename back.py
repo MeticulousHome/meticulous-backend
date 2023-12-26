@@ -153,18 +153,6 @@ def StopInfo(sid):
     global sendInfoToFront
     sendInfoToFront = False
 
-@sio.on('toggle-fans')
-def toggleFans(sid, data):
-    _solicitud = ""
-    if data:
-        logger.info("fans on")
-        _solicitud ="action,fans-on\x03"
-    else:
-        logger.info("fans off")
-        _solicitud = "action,fans-off\x03"
-    if(connection.port != None): connection.port.write(str.encode(_solicitud))
-    software_info["fanStatus"] = 'on' if data else 'off'
-
 @sio.on('parameters')
 def msg(sid, data):
     global lastJSON_source
@@ -176,44 +164,6 @@ def msg(sid, data):
 async def forwardJSON(sid,data):
     logger.info(json.dumps(data, indent=1, sort_keys=False))
     await sio.emit('save_profile', data)
-
-@sio.on('preset')
-def msg(sid, data):
-    global lastJSON_source
-    # data = data + "hola mundo"
-    if (data == "breville"):
-        preset="breville.json"
-    
-    elif (data == "cube"):
-        preset="cube.json"
-
-    elif (data == "diletta"):
-        preset="diletta.json"
-
-    elif (data == "flair"):
-        preset="flair.json"
-
-    elif (data == "la-pavoni"):
-        preset="la-pavoni.json"
-
-    elif (data == "rocket"):
-        preset="rocket.json"
-
-    else:
-        logger.info("Preset not valid")
-        return 0
-
-    try:
-        with open('./presets/'+ preset ,'r',encoding="utf-8") as file:
-            json_data = json.load(file)
-            send_json_hash(json_data)
-            lastJSON_source = detect_source(json_data)
-            #send the instruccion to start the selected choice
-            _input = "action,"+"start"+"\x03"
-            if(connection.port != None): connection.port.write(str.encode(_input))
-    except:
-        logger.info("Preset not found")
-        return 0
 
 @sio.on('calibrate') #Use when calibration it is implemented
 def msg(sid, data=True):
@@ -354,10 +304,9 @@ async def read_arduino():
                 infoReady = True
 
             if button_event is not None:
-                logger.debug(f"Sending button event = {button_event.to_sio()}")
                 await sio.emit("button", button_event.to_sio())
 
-            # FIXME this should be callback to the frontends in the future
+            # FIXME this should be a callback to the frontends in the future
             if button_event is not None and button_event.event is ButtonEventEnum.ENCODER_DOUBLE:
                 return_to_idle()
     
@@ -400,7 +349,7 @@ async def live():
                 await sio.emit("actuators", sensor_sensors.to_sio_actuators())
             if esp_info is not None:
                 # FIXME change to lowercase info for consistency
-                await sio.emit("INFO", {**software_info, **esp_info.to_sio()})
+                await sio.emit("info", {**software_info, **esp_info.to_sio()})
         await sio.sleep(SAMPLE_TIME)
         i = i + 1
 
