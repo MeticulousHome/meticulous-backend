@@ -1,4 +1,8 @@
 
+### [v0.1.10] - 2023-12-26
+To provision the machines wifi we need a way to get the configuration
+
+
 ### [v0.1.9] - 2023-12-26
 So far the ESP32's connection-handling lived inside the back.py main file.
 
