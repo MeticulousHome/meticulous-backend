@@ -1,4 +1,8 @@
 
+### [v0.1.9] - 2023-12-26
+So far the ESP32's connection-handling lived inside the back.py main file.
+
+
 ### [v0.1.8] - 2023-12-15
 While we might have fixed the loglevel for the main thread, creating a basic configuration can lead to problematic side- effects on certain setups.
 
