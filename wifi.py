@@ -27,8 +27,16 @@ class WifiManager():
     _known_wifis = []
     # Internal name used by network manager to refer to the AP configuration
     _conname = "meticulousLocalAP"
+    _networking_available = True
 
     def init():
+        try:
+            nmcli.device.show_all()
+        except Exception as e:
+            logger.warning("Networking unavailable!")
+            WifiManager._networking_available = False
+            return
+
         # start AP if needed
         if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP:
             WifiManager.startHotspot()
@@ -36,6 +44,9 @@ class WifiManager():
             WifiManager.stopHotspot()
 
     def startHotspot():
+        if not WifiManager._networking_available:
+            return
+        
         logger.info("Starting hotspot")
         return nmcli.device.wifi_hotspot(
             con_name=WifiManager._conname,
@@ -44,12 +55,18 @@ class WifiManager():
         )
 
     def stopHotspot():
+        if not WifiManager._networking_available:
+            return
+
         for dev in nmcli.device():
             if dev.device_type == 'wifi' and dev.connection == WifiManager._conname:
                 logger.info(f"Stopping Hotspot")
                 return nmcli.connection.down(WifiManager._conname)
 
     def scanForNetworks(timeout: int = 10, target_network_ssid: str = None):
+        if not WifiManager._networking_available:
+            return []
+
         if target_network_ssid == "":
             target_network_ssid = None
 
@@ -75,6 +92,9 @@ class WifiManager():
         return wifis
 
     def connectToWifi(ssid: str, password: str):
+        if not WifiManager._networking_available:
+            return False
+
         logger.info(f"Connecting to wifi: {ssid}")
 
         networks = WifiManager.scanForNetworks(
@@ -102,6 +122,9 @@ class WifiManager():
         ips: list[IPNetwork] = []
         dns: list[IPAddress] = []
         mac: str = ""
+
+        if not WifiManager._networking_available:
+            return WifiSystemConfig(connected, connection_name, gateway, routes, ips, dns, mac, hostname)
 
         for dev in nmcli.device():
             if dev.device_type == 'wifi' and dev.state == "connected":
