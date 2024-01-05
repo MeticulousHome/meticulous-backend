@@ -1,4 +1,8 @@
 
+### [v0.1.15] - 2024-01-05
+    So far the backend is not persisting any data. Instead it is running completely
+
+
 ### [v0.1.14] - 2024-01-05
 To allow the frontend team to develop against the backend without the neeed for a real machine we are building a standalone backend running in a docker container so that the websocket connection can be used with this dummy data. As a first draft the container is running in host networking mode to allow for easy connection to localhost.
 
