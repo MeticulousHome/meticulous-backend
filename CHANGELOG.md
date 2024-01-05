@@ -1,4 +1,8 @@
 
+### [v0.1.12] - 2024-01-05
+null
+
+
 ### [v0.1.11] - 2024-01-05
 We are currently parsing all communication from the ESP32 in back.py and are reconstructing SIO response data from it again later. Move this logic into its own read-only data-classes to ensure proper transport and clean up the parsing code
 
