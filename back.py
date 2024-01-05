@@ -27,6 +27,7 @@ from config import *
 from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
+esp32_logger = MeticulousLogger.getLogger("esp32")
 
 user_path=os.path.expanduser("~/")
 
@@ -251,11 +252,11 @@ async def read_arduino():
             try:
                 data_str = data.decode('utf-8')
             except:
-                logger.info(f"decoding fails, message: {data}")
+                esp32_logger.info(f"decoding fails, message: {data}")
                 continue
 
             if (old_status != MachineStatusEnum.IDLE and data_str.startswith("Sensor")) or MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES]:
-                logger.info(data_str.strip("\r\n"))
+                esp32_logger.info(data_str.strip("\r\n"))
 
             data_str_sensors = data_str.strip("\r\n").split(',')
 
@@ -288,7 +289,7 @@ async def read_arduino():
                 case ["ESPInfo", *infoArgs]:
                     info = ESPInfo.from_args(infoArgs)
                 case [*_]:
-                    logger.info(data_str.strip("\r\n"))
+                    esp32_logger.info(data_str.strip("\r\n"))
 
             if data is not None:
                 is_idle = data.status == MachineStatusEnum.IDLE
@@ -300,7 +301,7 @@ async def read_arduino():
                 if (was_preparing and (is_preinfusion or is_infusion or is_spring)):
                     time_flag = True
                     shot_start_time = time.time()
-                    logger.info("start_time: {:.1f}".format(shot_start_time))
+                    logger.info("shot start_time: {:.1f}".format(shot_start_time))
 
                 if (is_idle):
                     time_flag = False
