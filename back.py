@@ -22,6 +22,7 @@ from esp_serial.data import *
 
 from ble_gatt import GATTServer
 from wifi import WifiManager
+from config import *
 
 from log import MeticulousLogger
 
@@ -225,7 +226,6 @@ async def feed_profile(sid, data):
 async def read_arduino():
     global infoReady
     global stopESPcomm
-    global sensor_status
     global data_sensors
     global sensor_sensors
     global esp_info
@@ -254,7 +254,7 @@ async def read_arduino():
                 logger.info(f"decoding fails, message: {data}")
                 continue
 
-            if (old_status != MachineStatusEnum.IDLE and data_str.startswith("Sensor")) or sensor_status:
+            if (old_status != MachineStatusEnum.IDLE and data_str.startswith("Sensor")) or MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES]:
                 logger.info(data_str.strip("\r\n"))
 
             data_str_sensors = data_str.strip("\r\n").split(',')
@@ -373,10 +373,6 @@ async def live():
         i = i + 1
 
 def send_data():
-    global print_status
-    print_status=True
-    global sensor_status
-    sensor_status=False
     global lastJSON_source
     global ble_gatt_server
 
@@ -392,12 +388,12 @@ def send_data():
             connection.reset()
 
         elif _input == "show":
-            print_status=True
-            sensor_status=True
+            MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES] = True
+            MeticulousConfig.save()
         
         elif _input == "hide":
-            print_status=True
-            sensor_status=False
+            MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES] = False
+            MeticulousConfig.save()
 
         elif _input== "json":
             with open('fika.json','r') as openfile:
@@ -415,7 +411,8 @@ def send_data():
             if(connection.port != None): connection.port.write(str.encode(_input))
             
         elif _input == "test":
-            sensor_status=True
+            previous_sensor_status = MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES]
+            MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES] = True
             for i in range(0,10):
                 _input = "action,"+"purge"+"\x03"
                 if(connection.port != None): connection.port.write(str.encode(_input))
@@ -427,7 +424,7 @@ def send_data():
                 contador = "Numero de prueba: "+str(i+1)
                 logger.info(_input)
                 logger.info(contador)
-            sensor_status=False
+            MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES] = previous_sensor_status
 
         elif _input[:11] == "calibration":
              _input = "action,"+_input+"\x03"
