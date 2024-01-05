@@ -1,4 +1,8 @@
 
+### [v0.1.13] - 2024-01-05
+The ESP32 connection requires some sensors to be connected to be usefull.
+
+
 ### [v0.1.12] - 2024-01-05
 null
 
