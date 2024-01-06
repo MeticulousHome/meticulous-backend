@@ -23,8 +23,10 @@ from esp_serial.data import *
 from ble_gatt import GATTServer
 from wifi import WifiManager
 from notifications import Notification, NotificationManager, NotificationResponse
+from profile import ProfileManager
 from config import *
 
+from api.profiles import PROFILE_HANDLER
 from api.notifications import NOTIFICATIONS_HANDLER
 
 from log import MeticulousLogger
@@ -485,11 +487,13 @@ def main():
 
     WifiManager.init()
     NotificationManager.init(sio)
+    ProfileManager.init()
 
     handlers = [
             (r"/socket.io/", socketio.get_tornado_handler(sio)),
         ]
 
+    handlers.extend(PROFILE_HANDLER)
     handlers.extend(NOTIFICATIONS_HANDLER)
 
     app = tornado.web.Application(
