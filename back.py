@@ -28,6 +28,8 @@ from config import *
 
 from api.profiles import PROFILE_HANDLER
 from api.notifications import NOTIFICATIONS_HANDLER
+from api.wifi import WIFI_HANDLER
+from api.emulation import EMULATED_WIFI_HANDLER
 
 from log import MeticulousLogger
 
@@ -464,6 +466,8 @@ def main():
     global connection
     global ble_gatt_server
 
+    emulation = False
+
     parse_command_line()
 
     gatherVersionInfo()
@@ -473,6 +477,7 @@ def main():
             connection = USBSerialConnection('/dev/ttyUSB0')
         case "EMULATOR" | "EMULATION":
             connection = EmulatorSerialConnection()
+            emulation = True
         # Everything else is proper fika connection
         case "FIKA" | _ :
             connection = FikaSerialConnection('/dev/ttymxc0')
@@ -495,6 +500,11 @@ def main():
 
     handlers.extend(PROFILE_HANDLER)
     handlers.extend(NOTIFICATIONS_HANDLER)
+
+    if emulation:
+        handlers.extend(EMULATED_WIFI_HANDLER)
+    else:
+        handlers.extend(WIFI_HANDLER)
 
     app = tornado.web.Application(
         handlers,
