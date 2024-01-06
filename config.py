@@ -20,6 +20,10 @@ CONFIG_SYSTEM = "system"
 GATT_DEFAULT_NAME = "MeticulousEspresso"
 GATT_NAME = "gatt_device_name"
 
+## Notification Logic
+NOTIFICATION_KEEPALIVE = "notifications_ttl"
+NOTIFICATION_DEFAULT_KEEPALIVE = 3600
+
 #
 # LOGGING config
 #
@@ -49,7 +53,8 @@ DefaultConfiguration_V1 = {
         LOGGING_SENSOR_MESSAGES: LOGGING_DEFAULT_SENSOR_MESSAGES
     },
     CONFIG_SYSTEM : {
-        GATT_NAME : GATT_DEFAULT_NAME
+        GATT_NAME : GATT_DEFAULT_NAME,
+        NOTIFICATION_KEEPALIVE: NOTIFICATION_DEFAULT_KEEPALIVE,
     },
     CONFIG_WIFI: {
         WIFI_MODE: WIFI_MODE_AP,

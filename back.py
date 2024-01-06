@@ -22,7 +22,10 @@ from esp_serial.data import *
 
 from ble_gatt import GATTServer
 from wifi import WifiManager
+from notifications import Notification, NotificationManager, NotificationResponse
 from config import *
+
+from api.notifications import NOTIFICATIONS_HANDLER
 
 from log import MeticulousLogger
 
@@ -440,6 +443,11 @@ def send_data():
             else:
                 ble_gatt_server.start()
 
+        elif _input.startswith("notification"):
+            notification = _input[12:]
+            NotificationManager.add_notification(Notification(notification, [NotificationResponse.OK]))
+
+
         elif _input != "":
             logger.info(f"Unknown command: \"{_input}\"")
             pass
@@ -475,11 +483,16 @@ def main():
     send_data_thread.start()
 
     WifiManager.init()
+    NotificationManager.init(sio)
+
+    handlers = [
+            (r"/socket.io/", socketio.get_tornado_handler(sio)),
+        ]
+
+    handlers.extend(NOTIFICATIONS_HANDLER)
 
     app = tornado.web.Application(
-        [
-            (r"/socket.io/", socketio.get_tornado_handler(sio)),
-        ],
+        handlers,
         debug=options.debug,
     )
 
