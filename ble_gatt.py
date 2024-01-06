@@ -97,6 +97,10 @@ class GATTServer():
         if server.state == ImprovState.AWAITING_AUTHORIZATION:
             server.state = ImprovState.AUTHORIZED
 
+    def is_provisioning():
+        server = GATTServer.getServer().improv_server
+        return server.state.value >= ImprovState.AUTHORIZED.value
+
     def is_running(self):
         if self.loopThread is None:
             return False
