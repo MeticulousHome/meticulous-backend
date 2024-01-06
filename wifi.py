@@ -30,6 +30,17 @@ class WifiSystemConfig():
     mac: str
     hostname: str
 
+    def to_json(self):
+        return {
+            "connected": self.connected,
+            "connection_name": self.connection_name,
+            "gateway": self.gateway.format(),
+            "routes": self.routes,
+            "ips": [ip.ip.format() for ip in self.ips],
+            "dns": [dns.format() for dns in self.dns],
+            "mac": self.mac,
+            "hostname": self.hostname
+        }
 
 class WifiManager():
     _known_wifis = []
