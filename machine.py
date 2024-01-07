@@ -181,9 +181,9 @@ class Machine:
 
     def startUpdate():
 
-        Machine.stopESPcomm = True
+        Machine._stopESPcomm = True
         Machine._connection.sendUpdate()
-        Machine.stopESPcomm = False
+        Machine._stopESPcomm = False
 
     def return_to_idle():
         if (Machine.data_sensors.status != "idle"):
