@@ -30,6 +30,7 @@ from api.profiles import PROFILE_HANDLER
 from api.notifications import NOTIFICATIONS_HANDLER
 from api.wifi import WIFI_HANDLER
 from api.emulation import EMULATED_WIFI_HANDLER
+from api.update import UPDATE_HANDLER
 
 from log import MeticulousLogger
 
@@ -498,6 +499,7 @@ def main():
 
     handlers.extend(PROFILE_HANDLER)
     handlers.extend(NOTIFICATIONS_HANDLER)
+    handlers.extend(UPDATE_HANDLER)
 
     if emulation:
         handlers.extend(EMULATED_WIFI_HANDLER)
