@@ -6,6 +6,8 @@ from dataclasses import dataclass
 import nmcli
 import time
 
+from hostname import HostnameManager
+
 from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -36,6 +38,13 @@ class WifiManager():
             logger.warning("Networking unavailable!")
             WifiManager._networking_available = False
             return
+
+        config = WifiManager.getCurrentConfig()
+        # Only update the hostname if it is a new system or if the hostname has been
+        # set before. Do so in case the lookup table ever changed or the hostname is only
+        # saved transient
+        if config.hostname == "imx8mn-var-som" or "meticulous-" in config.hostname:
+            HostnameManager.checkAndUpdateHostname(config.mac)
 
         # start AP if needed
         if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP:
