@@ -2,12 +2,12 @@ import tornado.ioloop
 import tornado.web
 import json
 from profile import ProfileManager
+from .base_handler import BaseHandler
 
 from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
 
-
-class ProfileHandler(tornado.web.RequestHandler):
+class ProfileHandler(BaseHandler):
     def get(self, profile_id):
         data = ProfileManager.load_profile(profile_id)
         if data:
@@ -27,7 +27,7 @@ class ProfileHandler(tornado.web.RequestHandler):
             logger.warning("Failed to save profile:", exc_info=e, stack_info=True)
 
 
-class ListHandler(tornado.web.RequestHandler):
+class ListHandler(BaseHandler):
     def get(self):
         profiles = ProfileManager.list_profiles()
         self.write(json.dumps(profiles))

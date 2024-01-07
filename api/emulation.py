@@ -2,14 +2,14 @@ import tornado.ioloop
 import tornado.web
 import json
 from config import *
-from wifi import WifiManager
 from .wifi import WiFiConfig
 from ble_gatt import GATTServer
+from .base_handler import BaseHandler
 
 from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
 
-class WiFiConfigHandler(tornado.web.RequestHandler):
+class WiFiConfigHandler(BaseHandler):
     def get(self):
         provisioning = GATTServer.is_provisioning()
         mode = MeticulousConfig[CONFIG_WIFI][WIFI_MODE]
@@ -58,7 +58,7 @@ class WiFiConfigHandler(tornado.web.RequestHandler):
             self.set_status(400)
             self.write(f"Error: {str(e)}")
 
-class WiFiListHandler(tornado.web.RequestHandler):
+class WiFiListHandler(BaseHandler):
     def get(self):
         networks = [
                 {
@@ -89,7 +89,7 @@ class WiFiListHandler(tornado.web.RequestHandler):
 
         self.write(json.dumps(networks))
 
-class WiFiConnectHandler(tornado.web.RequestHandler):
+class WiFiConnectHandler(BaseHandler):
     def post(self):
         try:
             data = json.loads(self.request.body)

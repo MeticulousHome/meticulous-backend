@@ -2,12 +2,12 @@ import tornado.ioloop
 import tornado.web
 import json
 from notifications import NotificationManager
+from .base_handler import BaseHandler
 
 from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
 
-
-class GetNotificationsHandler(tornado.web.RequestHandler):
+class GetNotificationsHandler(BaseHandler):
 
     def get(self):
         unacknowledged_only = self.get_argument("acknowledged", "false").lower() == "true"
@@ -24,7 +24,7 @@ class GetNotificationsHandler(tornado.web.RequestHandler):
                 {"id": n.id, "message": n.message, "image": n.image, "timestamp": n.timestamp.isoformat()} for n in notifications
             ]))
 
-class AcknowledgeNotificationHandler(tornado.web.RequestHandler):
+class AcknowledgeNotificationHandler(BaseHandler):
 
     def post(self):
         data = json.loads(self.request.body)
