@@ -123,37 +123,17 @@ class ESPInfo:
             "mainVoltage": self.mainVoltage,
         }
 
-
-@unique
-class MachineStatusEnum(Enum):
+class MachineStatus():
     # Enum representing the events from the machine
-    CLOSING_VALE = auto()
-    HEATING = auto()
-    IDLE = auto()
-    INFUSION = auto()
-    PREINFUSION = auto()
-    PURGE = auto()
-    RETRACTING = auto()
-    SPRING = auto()
+    IDLE = "idle"
+    HEATING = "heating"
+    INFUSION = "infusion"
+    PREINFUSION = "preinfusion"
+    PURGE = "purge"
+    RETRACTING = "retracting"
+    CLOSING_VALVE = "closing valve"
+    SPRING = "spring"
 
-    # Failure type
-    UNKNOWN = auto()
-
-    @classmethod
-    def _missing_(cls, value):
-        raise "Unknown machine state"
-        return cls.UNKNOWN
-
-    @classmethod
-    def from_str(cls, type_str):
-        event_lookup = {
-            "closing valve": "CLOSING_VALE",
-            # All others are just 1:1 mapped to their names
-        }
-
-        if event_lookup.get(type_str) is not None:
-            type_str = event_lookup.get(type_str)
-        return cls[type_str.upper()]
 
 @dataclass
 class ShotData:
@@ -163,7 +143,7 @@ class ShotData:
     flow: float = 0.0
     weight: float = 0.0
     temperature: float = 20.0
-    status: "MachineStatusEnum" = MachineStatusEnum.UNKNOWN
+    status: str = ""
     profile: str = ""
     time: int = 0
 
@@ -173,10 +153,9 @@ class ShotData:
     def from_args(args):
         try:
             s = args[4].strip("\r\n")
-            status = MachineStatusEnum.from_str(s)
+            status = s
         except:
-            logger.warning("Could not get Machine Status enum")
-            status = MachineStatusEnum.UNKNOWN
+            status = None
 
         try:
             profile = args[5].strip("\r\n")
@@ -197,7 +176,7 @@ class ShotData:
 
     def to_sio(self):
         return {
-            "name": self.status.name.lower(),
+            "name": self.status,
             "sensors": {
                 "p": self.pressure,
                 "f": self.flow,

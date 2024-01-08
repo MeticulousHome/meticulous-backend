@@ -238,7 +238,7 @@ async def read_arduino():
     connection.port.write(b'32\n')
     uart = ReadLine(connection.port)
 
-    old_status = MachineStatusEnum.IDLE
+    old_status = MachineStatus.IDLE
     time_flag = False
 
     while True:
@@ -255,7 +255,7 @@ async def read_arduino():
                 esp32_logger.info(f"decoding fails, message: {data}")
                 continue
 
-            if (old_status != MachineStatusEnum.IDLE and data_str.startswith("Sensor")) or MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES]:
+            if (old_status != MachineStatus.IDLE and data_str.startswith("Sensor")) or MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES]:
                 esp32_logger.info(data_str.strip("\r\n"))
 
             data_str_sensors = data_str.strip("\r\n").split(',')
@@ -292,11 +292,11 @@ async def read_arduino():
                     esp32_logger.info(data_str.strip("\r\n"))
 
             if data is not None:
-                is_idle = data.status == MachineStatusEnum.IDLE
-                is_infusion = data.status == MachineStatusEnum.INFUSION
-                is_preinfusion = data.status == MachineStatusEnum.PREINFUSION
-                is_spring = data.status == MachineStatusEnum.SPRING
-                was_preparing = old_status == MachineStatusEnum.CLOSING_VALE
+                is_idle = data.status == MachineStatus.IDLE
+                is_infusion = data.status == MachineStatus.INFUSION
+                is_preinfusion = data.status == MachineStatus.PREINFUSION
+                is_spring = data.status == MachineStatus.SPRING
+                was_preparing = old_status == MachineStatus.CLOSING_VALVE
 
                 if (was_preparing and (is_preinfusion or is_infusion or is_spring)):
                     time_flag = True
