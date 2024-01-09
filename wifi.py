@@ -13,6 +13,7 @@ from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
 
 nmcli.disable_use_sudo()
+nmcli.set_lang("C.UTF-8")
 
 @dataclass
 class WifiSystemConfig():
