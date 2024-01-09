@@ -1,4 +1,8 @@
 
+### [v0.1.16] - 2024-01-09
+Some small cleanups to make our life easier
+
+
 ### [v0.1.15] - 2024-01-05
     So far the backend is not persisting any data. Instead it is running completely
 
