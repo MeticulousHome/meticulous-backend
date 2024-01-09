@@ -9,14 +9,16 @@ from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
 
 # Config Compontents
-CONFIG_GATT = "gatt"
 CONFIG_LOGGING = "logging"
 CONFIG_WIFI = "wifi"
+CONFIG_SYSTEM = "system"
 
-
+#
+# SYSTEM config
+#
 ## GATT configuration
 GATT_DEFAULT_NAME = "MeticulousEspresso"
-GATT_NAME = "name"
+GATT_NAME = "gatt_device_name"
 
 #
 # LOGGING config
@@ -25,7 +27,9 @@ GATT_NAME = "name"
 LOGGING_SENSOR_MESSAGES = "log_all_sensor_messages"
 LOGGING_DEFAULT_SENSOR_MESSAGES = False
 
+#
 # WIFI related config items
+#
 ## Wifi Config items
 WIFI_MODE = "mode"
 WIFI_MODE_AP = "AP"
@@ -44,13 +48,13 @@ DefaultConfiguration_V1 = {
     CONFIG_LOGGING: {
         LOGGING_SENSOR_MESSAGES: LOGGING_DEFAULT_SENSOR_MESSAGES
     },
+    CONFIG_SYSTEM : {
+        GATT_NAME : GATT_DEFAULT_NAME
+    },
     CONFIG_WIFI: {
         WIFI_MODE: WIFI_MODE_AP,
         WIFI_AP_NAME: WIFI_DEFAULT_AP_NAME,
         WIFI_AP_PASSWORD: WIFI_DEFAULT_AP_PASSWORD
-    },
-    CONFIG_GATT : {
-        GATT_NAME : GATT_DEFAULT_NAME
     },
 }
 

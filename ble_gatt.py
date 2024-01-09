@@ -80,7 +80,7 @@ class GATTServer():
             wifi_networks_callback=GATTServer.get_wifi_networks,
             max_response_bytes=250
         )
-        gatt_name = MeticulousConfig[CONFIG_GATT][GATT_NAME]
+        gatt_name = MeticulousConfig[CONFIG_SYSTEM][GATT_NAME]
         self.bless_gatt_server = BlessServer(
             name=gatt_name, loop=self.loop)
         self.bless_gatt_server.read_request_func = GATTServer.read_request
