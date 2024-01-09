@@ -1,0 +1,10 @@
+<h1 class="test-i2c-3v3">I2C 3.3V test</h1>
+<h2 class="test-1-i2c-3v3">
+    <input type="checkbox" id="test1-i2c3v3-checkbox" name="test1-i2c3v3" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test1-i2c3v3-checkbox"></label>
+    Test 1: I2C 3v3 Device
+</h2>
+<ol class="i2c-device-operations">
+  <li class="connect-i2c-device">Connect an I2C device to the i2c_3v3 connector and then disconnect it.</li>
+  <li class="verify-known-address">Confirm that the I2C device's known address appears and then disappears in the "ALL I2C addresses" section, indicating a successful connection and recognition of the device.</li>
+</ol>

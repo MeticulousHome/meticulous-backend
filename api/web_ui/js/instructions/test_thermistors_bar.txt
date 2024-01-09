@@ -1,0 +1,12 @@
+<h1 class="test-1-i2c">I2C Device connection test</h1>
+
+<h2>
+    <input type="checkbox" id="test1-i2c-checkbox" name="test1-i2c" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test1-i2c-checkbox"></label>
+    Test 1: I2C Device Connection Test
+</h2>
+
+<ol class="i2c-operations">
+  <li class="connect-i2c-device">Connect an I2C device to the thermistor bar connector and then disconnect it.</li>
+  <li class="verify-known-address">Ensure that the known address of the I2C device appears and then disappears in the "ALL I2C addresses" section, confirming the successful connection and disconnection of the device.</li>
+</ol>

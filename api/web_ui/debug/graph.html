@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Gráficos Tester</title>
+    <link href="css/global.css" rel="stylesheet" />
+    <link href="css/graphs.css" rel="stylesheet" />
+    <link href="css/monserat.css" rel="stylesheet">
+    <script src="js/deps/chart.js"></script>
+    <script src="js/deps/socket.io.min.js"></script>
+    <script src="js/deps/hammer.js"></script>
+    <script src="js/deps/chartjs-plugin-zoom.js"></script>
+</head>
+<body style="background-color: #1F2029;">
+    <div id="buttons">
+        <button id="togglePlotting">Start Plotting</button>
+        <button id="resetZoom">Reset Zoom</button>
+    </div>
+    <div class="grid-container">
+        <div class="graph-container">
+            <h2>Thermistor Data</h2>
+            <canvas id="thermistorGraph"></canvas>
+        </div>
+        <div class="graph-container">
+            <h2>Actuator Data</h2>
+            <canvas id="actuatorGraph"></canvas>
+        </div>
+        <div class="graph-container">
+            <h2>ADC and Pressure Sensor Rates</h2>
+            <canvas id="adcGraph"></canvas>
+        </div>
+        <div class="graph-container">
+            <h2>Miscellaneous Data</h2>
+            <canvas id="miscGraph"></canvas>
+        </div>
+    </div>
+    <script src="js/graphHandler.js"></script>
+</body>
+</html>

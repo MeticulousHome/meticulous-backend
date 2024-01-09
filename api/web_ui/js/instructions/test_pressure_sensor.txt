@@ -1,0 +1,14 @@
+<h1 class="test-1-pressure-sensor">Pressure sensor test</h1>
+
+<h2>
+    <input type="checkbox" id="test1-pressure-sensor-checkbox" name="test1-pressure-sensor" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test1-pressure-sensor-checkbox"></label>
+    Test 1: Pressure Sensor Test
+</h2>
+
+<ol class="pressure-sensor-operations">
+  <li class="connect-spi-pressure-sensor">Connect the SPI pressure sensor.</li>
+  <li class="apply-known-pressure">Apply a known pressure.</li>
+  <li class="verify-matching-data">Verify that the displayed data matches the known pressure.</li>
+</ol>
+<p class="test-1-pressure-sensor">&nbsp;</p>

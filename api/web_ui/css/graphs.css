@@ -1,0 +1,36 @@
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-gap: 20px;
+    width: 90%;
+    margin: 20px auto;
+}
+.graph-container {
+    width: 100%;
+}
+
+#buttons {
+    margin: auto;
+    padding-top: 1em;
+}
+
+button
+{
+ border: 0;
+ background: var(--color-goldenrod);
+ color: 1F2029;
+ box-shadow: none;
+ border-radius: 3px;
+ padding: 12px;
+ margin: 5px;
+}
+
+canvas {
+    width: 100%;
+    height: auto;
+}
+.graph-container h2 {
+    color: var(--color-light); 
+    font-family: var(--font-montserrat), sans-serif; 
+    font-weight: 600; 
+}

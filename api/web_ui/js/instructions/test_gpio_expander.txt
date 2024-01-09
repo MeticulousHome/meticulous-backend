@@ -1,0 +1,11 @@
+<h1 class="test-buttons">GPIO expander test</h1>
+<h2 class="test-buttons">
+    <input type="checkbox" id="test1-buttons-checkbox" name="test1-buttons" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test1-buttons-checkbox"></label>
+    Test 1: Buttons
+</h2>
+<ol class="button-operations">
+  <li class="connect-start-button">Connect the start button.</li>
+  <li class="verify-state-change">Verify that pressing the button changes the indicator state.</li>
+  <li class="repeat-steps-1-2">Repeat steps 1 and 2 with the tare button, spare button 1, and spare button 2.</li>
+</ol>
