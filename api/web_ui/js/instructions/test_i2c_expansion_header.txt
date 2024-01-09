@@ -1,0 +1,20 @@
+<h1 class="test-1-pcb-expansion">PCB expansion test</h1>
+<h2 class="test-1-pcb-expansion">
+    <input type="checkbox" id="test1-pcb-expansion-checkbox" name="test1-pcb-expansion" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test1-pcb-expansion-checkbox"></label>
+    Test 1: PCB Expansion Connectivity
+</h2>
+<ol class="pcb-expansion-operations">
+  <li class="connect-pcb-expansion">Verify that the PCB expansion module is connected.</li>
+  <li class="check-available-indicator">Check if the word "available" is displayed.</li>
+</ol>
+
+<h2 class="test-2-reset-button">
+    <input type="checkbox" id="test2-reset-button-checkbox" name="test2-reset-button" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test2-reset-button-checkbox"></label>
+    Test 2: Reset Button
+</h2>
+<ol class="reset-button-operations">
+  <li class="press-reset-button">Press the reset button.</li>
+  <li class="check-indicator-change">Ensure the indicator changes state upon pressing the button.</li>
+</ol>

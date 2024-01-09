@@ -1,0 +1,15 @@
+<h1 class="title">ADC1 test</h1>
+
+<h2>
+    <input type="checkbox" id="test1-adc1-checkbox" name="test1-adc1" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test1-adc1-checkbox"></label>
+    Test 1: ADC1 Voltage Verification
+</h2>
+
+<p class="adc-voltage-info">The ADC1 Voltages should match as follows:</p>
+<ol class="adc-voltage-list">
+  <li class="voltage-item">V_AIN0 : 2.5V ±0.1V</li>
+  <li class="voltage-item">V_AIN1 : Verified in External Thermistor test</li>
+  <li class="voltage-item">V_AIN2 : Verified in External Thermistor test</li>
+  <li class="voltage-item">V_AIN3 : 1.65V ±0.1V</li>
+</ol>

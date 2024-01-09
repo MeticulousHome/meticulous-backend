@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Tester</title>
+    <link href="css/global.css" rel="stylesheet" />
+    <link href="css/index.css" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Istok Web:wght@700&amp;display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script src="js/main.js" type="module"></script>
+  </head>
+  <body>
+    <div class="component-1-parent">
+      <div class="group-load-cell">
+        <div class="boxload-cell">
+          <div class="component-1-child"></div>
+          <div class="load-cel">Load cell</div>
+        </div>
+        <div class="weight">Weight:</div>
+        <div class="data-weight" id="weight">--</div>
+        <div class="info info_load_cell" id="info_load_cell">
+          <div class="info-child1"></div>
+          <b class="b"> ? </b>
+        </div>
+      </div>
+      <div class="group-motor-encoder">
+        <div class="boxmotor-encoder">
+          <div class="component-1-child"></div>
+          <div class="load-cel">Motor encoder</div>
+        </div>
+        <div class="counter">Counter:</div>
+        <div class="data-encodercounter" id="encoder_position">--</div>
+        <div class="info info_motor_encoder" id="info_motor_encoder">
+          <div class="info-child1"></div>
+          <b class="b"> ? </b>
+        </div>
+      </div>
+      <div class="group-pressure-sensor">
+        <div class="boxpressure-sensor">
+          <div class="component-1-child"></div>
+          <div class="load-cel">Pressure sensor</div>
+        </div>
+        <div class="pressure">Pressure:</div>
+        <div class="data-pressure" id="pressure">--</div>
+        <div class="info info_pressure_sensor" id="info_pressure_sensor">
+          <div class="info-child1"></div>
+          <b class="b"> ? </b>
+        </div>
+      </div>
+      <div class="group-ad-converters">
+        <div class="boxad-converters">
+          <div class="component-1-child"></div>
+          <div class="load-cel">External Thermistors</div>
+        </div>
+        <div class="external-thermistor-1">Ext. Therm. 1:</div>
+        <div class="external-thermistor-11">Ext. Therm. 2:</div>
+        <div class="data-ohms-1" id="adc1_chanel1">--</div>
+        <div class="data-ohms-2" id="adc1_chanel2">--</div>
+        <div class="info info_ad_converters" id="info_ad_converters">
+          <div class="info-child1"></div>
+          <b class="b"> ? </b>
+        </div>
+      </div>
+      <div class="group-thermistor-bar">
+        <div class="boxthernistor-bar">
+          <div class="component-1-child"></div>
+          <div class="load-cel">Thermistors bar</div>
+        </div>
+        <div class="info info_thermistors_bar" id="info_thermistors_bar">
+          <div class="info-child1"></div>
+          <b class="b4"> ? </b>
+        </div>
+      </div>
+      <div class="group-band-heater">
+        <div class="boxband-heater">
+          <div class="component-1-child"></div>
+          <div class="load-cel">Band Heater</div>
+        </div>
+        <div class="inlet-frequency">Inlet frequency:</div>
+        <div class="inlet-voltage">Inlet voltage:</div>
+        <div class="heater-current">Heater current:</div>
+        <div class="data-inlet-power-frequency" id="frequency">--</div>
+        <div class="data-inlet-power-voltage" id="inlet_voltage">--</div>
+        <div class="data-heater-current" id="heater_driver_current">--</div>
+        <div class="info info_band_heater" id="info_band_heater">
+          <div class="info-child1"></div>
+          <b class="b"> ? </b>
+        </div>
+      </div>
+      <div class="group-i2c-expansion-header">
+        <div class="boxi2c-expander">
+          <div class="component-1-child"></div>
+          <div class="load-cel">I2C expansion header</div>
+        </div>
+        <div class="i2c-2-expansion">I2C 2 expansion:</div>
+        <div class="i2c-2-hard-reset-button">Hard reset button:</div>
+        <div class="i2c-2-status" id="i2c_expander_available">--</div>
+        <div class="som-hard-reset" id="som-reset-button">--</div>
+        <div
+          class="info info_i2c_expansion_header"
+          id="info_i2c_expansion_header"
+        >
+          <div class="info-child1"></div>
+          <b class="b"> ? </b>
+        </div>
+      </div>
+      <div class="group-lcd-rotatory-encoder">
+        <div class="boxlcd-rotatory-encoder">
+          <div class="component-1-child"></div>
+          <div class="load-cel">LCD Rotatory encoder</div>
+        </div>
+        <div class="counter1">Counter:</div>
+        <div class="push-button">Push button:</div>
+        <div class="data-knob-counter" id="knob_position">--</div>
+        <div class="data-knob-push" id="knob_button">--</div>
+        <div
+          class="info info_lcd_rotatory_encoder"
+          id="info_lcd_rotatory_encoder"
+        >
+          <div class="info-child1"></div>
+          <b class="b4"> ? </b>
+        </div>
+      </div>
+      <div class="group-linear-actuator">
+        <div class="boxlinear-actuator">
+          <div class="component-1-child"></div>
+          <div class="load-cel">Linear actuator</div>
+        </div>
+        <div class="speed">Speed:</div>
+        <div class="current">Current:</div>
+        <div class="data-motor-speed" id="motor_speed">--</div>
+        <div class="data-motor-current" id="motor_current">--</div>
+        <div class="info info_linear_actuator" id="info_linear_actuator">
+          <div class="info-child1"></div>
+          <b class="b4"> ? </b>
+        </div>
+      </div>
+      <div class="group-gpio-expander">
+        <div class="boxgpio-expander">
+          <div class="component-1-child"></div>
+          <div class="load-cel">GPIO expander</div>
+        </div>
+        <div class="start-button">Start button:</div>
+        <div class="tare-button">Tare button:</div>
+        <div class="spare-button-1">Spare button 1:</div>
+        <div class="spare-button-2">Spare button 2:</div>
+        <div class="status-buttons-start" id="buttons_start">--</div>
+        <div class="status-buttons-tare" id="buttons_tare">--</div>
+        <div class="status-buttons-spare-1" id="buttons_spare_1">--</div>
+        <div class="status-buttons-spare-2" id="buttons_spare_2">--</div>
+        <div class="info info_gpio_expander" id="info_gpio_expander">
+          <div class="info-child6"></div>
+          <b class="b9"> ? </b>
+        </div>
+      </div>
+      <div class="group-test-execution-guide">
+        <div class="boxtest-execution-guide">
+          <div class="component-1-child"></div>
+          <div class="load-cel">Test execution guide</div>
+        </div>
+        <div class="instructions"></div>
+      </div>
+      <div class="group-actuators-control-menu" style="opacity: 0.5">
+        <div class="power_heater">Power</div>
+        <div class="boxactuators-control-menu">
+          <div class="component-1-child"></div>
+          <div class="load-cel">Heater Controls</div>
+        </div>
+        <div class="variable-group-heater-control">
+          <div class="power-slider">
+            <img
+              alt=""
+              class="power-slider-child"
+              id="sliderBarHeater"
+              src="img/rectangle-2.svg"
+            />
+            <div class="power-slider-item" id="sliderThumbHeater"></div>
+          </div>
+          <div class="current-power" id="currentPowerHeater">0%</div>
+          <div class="power-switch" id="powerSwitch">
+            <div class="enable-switch" id="enableSwitchHeater">
+              <div class="switch" id="toggleSliderHeater"></div>
+            </div>
+            <div class="text-wrapper">Enable</div>
+          </div>
+        </div>
+      </div>
+      <div class="group-actuators-control-menu-motor">
+        <div class="power_motor">Power</div>
+        <div class="boxactuators-control-menu">
+          <div class="component-1-child"></div>
+          <div class="load-cel">Motor Controls</div>
+        </div>
+        <div class="variable-group-heater-control">
+          <div class="power-slider">
+            <img
+              alt=""
+              class="power-slider-child"
+              id="sliderBarMotor"
+              src="img/rectangle-2.svg"
+            />
+            <div class="power-slider-item" id="sliderThumbMotor"></div>
+          </div>
+          <div class="current-power" id="currentPowerMotor">0%</div>
+          <div class="power-switch" id="powerSwitch">
+            <div class="enable-switch" id="enableSwitchMotor">
+              <div class="switch" id="toggleSliderMotor"></div>
+            </div>
+            <div class="text-wrapper">Enable</div>
+          </div>
+        </div>
+        <button
+          aria-label="Backward"
+          class="backward-button-icon"
+          id="backwardButton"
+        >
+          <img alt="Backward" src="img/backward-button.svg" />
+        </button>
+        <button
+          aria-label="Forward"
+          class="forward-button-icon"
+          id="forwardButton"
+        >
+          <img alt="Forward" src="img/forward-button.svg" />
+        </button>
+        <div class="motor-buttons-name">
+          <div class="backward">Backward</div>
+          <div class="forward">Forward</div>
+        </div>
+      </div>
+      <div class="var-menu">
+        <div class="component-1-child"></div>
+        <div class="var-som-mx8m-nano-interactive">
+          VAR-SOM-MX8M-NANO Interactive Testing Interface
+        </div>
+        <div class="set-the-date">Set the date and time:</div>
+        <div class="currrent-date-and">Currrent date and time:</div>
+        <div class="show-day">22</div>
+        <div class="div">/</div>
+        <div class="div1">/</div>
+        <div class="show-month">11</div>
+        <div class="show-hour">11</div>
+        <div class="show-minute">41</div>
+        <div class="show-seconds">35</div>
+        <div class="colon-minutes">:</div>
+        <div class="colon-seconds">:</div>
+        <div class="show-year">2023</div>
+        <input class="set-day" type="number" value="22" />
+        <div class="div2">/</div>
+        <div class="div3">/</div>
+        <input class="set-month" type="number" value="11" />
+        <input class="set-hour" type="number" value="11" />
+        <input class="set-minute" type="number" value="41" />
+        <input class="set-seconds" type="number" value="35" />
+        <div class="colon-minutes1">:</div>
+        <div class="colon-seconds1">:</div>
+        <input class="set-year" type="number" value="2023" />
+        <img
+          alt=""
+          class="button-speaker-icon"
+          src="img/button_speaker.svg"
+        />
+        <img
+          alt=""
+          class="button-esp32-icon"
+          src="img/button_esp32.svg"
+        />
+        <div class="press-the-icon">Press the icon to reproduce audio</div>
+        <div class="press-the-icon1">Press the icon to program the ESP32</div>
+        <div class="set-button">
+          <img
+            alt=""
+            class="set-button-child"
+            src="img/rectangle_372.svg"
+          />
+          <div class="set">Set</div>
+        </div>
+        <div
+          class="info info_var_som_interactive"
+          id="info_var_som_interactive"
+        >
+          <div class="info-load-cell-child"></div>
+          <b class="b"> ? </b>
+        </div>
+      </div>
+      <div class="group-all-i2c-addresses">
+        <div class="title-addresses">All I2C addresses</div>
+        <div class="component-1-child"></div>
+        <div class="print-addresses"></div>
+        <div class="info info_all_i2c" id="info_all_i2c">
+          <div class="info-load-cell-child"></div>
+          <b class="b"> ? </b>
+        </div>
+      </div>
+      <div class="adc1">
+        <div class="boxad-converters1">
+          <div class="component-1-child"></div>
+          <div class="load-cel">ADC1</div>
+        </div>
+        <div class="v-ain0-">V_AIN0</div>
+        <div class="voltage-adc1-0" id="id_voltage-adc1-0">--</div>
+        <div class="v-ain1-1">V_AIN1</div>
+        <div class="voltage-adc1-1" id="id_voltage-adc1-1">--</div>
+        <div class="v-ain2-1">V_AIN2</div>
+        <div class="voltage-adc1-2" id="id_voltage-adc1-2">--</div>
+        <div class="v-ain3-1">V_AIN3</div>
+        <div class="voltage-adc1-3" id="id_voltage-adc1-3">--</div>
+        <div class="info info_adc2" id="info_adc1">
+          <div class="info-load-cell-child"></div>
+          <b class="b"> ? </b>
+        </div>
+      </div>
+      <div class="adc2">
+        <div class="boxad-converters1">
+          <div class="component-1-child"></div>
+          <div class="load-cel">ADC2</div>
+        </div>
+        <div class="v-ain0-">V_AIN0</div>
+        <div class="voltage-adc1-0" id="voltage-adc2-0">--</div>
+        <div class="v-ain1-1">V_AIN1</div>
+        <div class="voltage-adc1-1" id="voltage-adc2-1">--</div>
+        <div class="v-ain2-1">V_AIN2</div>
+        <div class="voltage-adc1-2" id="voltage-adc2-2">--</div>
+        <div class="v-ain3-1">V_AIN3</div>
+        <div class="voltage-adc1-3" id="voltage-adc2-3">--</div>
+        <div class="info info_adc2" id="info_adc2">
+          <div class="info-load-cell-child"></div>
+          <b class="b"> ? </b>
+        </div>
+      </div>
+      <div class="group-var-som-messages">
+        <div class="boxtest-var-som">
+          <div class="rectangle-var-som"></div>
+          <div class="var-som-messages">PORT C</div>
+        </div>
+        <div class="messages">
+          <p class="usb_title">Messages from VAR-SOM: <br></p>
+          <p class="usb"></p>
+        </div>
+        <div class="info info-var-som-messages" id="info_var_som_messages">
+          <div class="info-load-cell-child"></div>
+          <b class="b"> ? </b>
+        </div>
+      </div>
+      <div class="group-reset-test">
+        <div class="boxlinear-actuator1">
+          <div class="component-1-child"></div>
+          <div class="load-cel">SOM RESET</div>
+        </div>
+        <div class="info info_som_reset" id="info_som_reset">
+          <div class="ellipse-div"></div>
+          <b class="b4"> ? </b>
+        </div>
+      </div>
+      <div class="group-i2c-3v3">
+        <div class="boxthernistor-bar">
+          <div class="component-1-child"></div>
+          <div class="load-cel">I2C 3v3</div>
+        </div>
+        <div class="info info_3v3" id=" info_3v3">
+          <div class="info-child1"></div>
+          <b class="b"> ? </b>
+        </div>
+      </div>
+    </div>
+    <footer>
+    <p id="version">Page Version: 2.013</p>
+    <p id="Updated">Last Updated: December 16, 2023</p>
+    </footer>
+  </body>
+</html>

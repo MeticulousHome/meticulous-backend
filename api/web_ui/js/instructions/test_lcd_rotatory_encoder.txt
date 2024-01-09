@@ -1,0 +1,20 @@
+<h1 class="test-1-rotary-encoder">Rotary encoder test</h1>
+<h2 class="test-1-rotary">
+    <input type="checkbox" id="test1-rotary-checkbox" name="test1-rotary" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test1-rotary-checkbox"></label>
+    Test 1: Rotary Encoder
+</h2>
+<ol class="rotary-encoder-operations">
+  <li class="rotate-encoder">Rotate the encoder.</li>
+  <li class="check-counter">The counter should increment in one direction and decrement in the opposite direction.</li>
+</ol>
+
+<h2 class="test-2-button">
+    <input type="checkbox" id="test2-button-checkbox" name="test2-button" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test2-button-checkbox"></label>
+    Test 2: Button
+</h2>
+<ol class="button-operations">
+  <li class="press-button">Press the button.</li>
+  <li class="check-indicator">Verify that pressing the button changes the indicator state.</li>
+</ol>

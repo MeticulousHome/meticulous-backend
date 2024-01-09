@@ -31,6 +31,7 @@ from api.notifications import NOTIFICATIONS_HANDLER
 from api.wifi import WIFI_HANDLER
 from api.emulation import EMULATED_WIFI_HANDLER
 from api.update import UPDATE_HANDLER
+from api.web_ui import WEB_UI_HANDLER
 
 from log import MeticulousLogger
 
@@ -39,7 +40,7 @@ esp32_logger = MeticulousLogger.getLogger("esp32")
 
 user_path=os.path.expanduser("~/")
 
-sendInfoToFront = False
+sendInfoToFront = True
 infoReady = False
 lastJSON_source = "LCD"
 
@@ -370,7 +371,6 @@ async def live():
         await sio.emit("status", {**data_sensors.to_sio(), "source": lastJSON_source,})
 
         if sendInfoToFront:
-            logger.info("Sending info to front")
             if sensor_sensors is not None:
                 await sio.emit("sensors", sensor_sensors.to_sio_temperatures())
                 await sio.emit("comunication", sensor_sensors.to_sio_communication())
@@ -500,6 +500,7 @@ def main():
     handlers.extend(PROFILE_HANDLER)
     handlers.extend(NOTIFICATIONS_HANDLER)
     handlers.extend(UPDATE_HANDLER)
+    handlers.extend(WEB_UI_HANDLER)
 
     if emulation:
         handlers.extend(EMULATED_WIFI_HANDLER)

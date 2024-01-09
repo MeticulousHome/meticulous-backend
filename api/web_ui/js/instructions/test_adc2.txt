@@ -1,0 +1,15 @@
+<h1 class="title">ADC2 test</h1>
+
+<h2>
+    <input type="checkbox" id="test1-adc2-checkbox" name="test1-adc2" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test1-adc2-checkbox"></label>
+    Test 1: ADC2 Voltage Verification
+</h2>
+
+<p class="adc-voltage-info">The ADC2 Voltages should match as follows:</p>
+<ol class="adc-voltage-list">
+  <li class="voltage-item">V_AIN0 : 1.65V ±0.1V for LC_VDD at 3.3V, or 2.5V ±0.1V for LC_VDD at 5.0V</li>
+  <li class="voltage-item">V_AIN1 : Verified with current motor in Linear actuator test</li>
+  <li class="voltage-item">V_AIN2 : Verified with current motor in Linear actuator test</li>
+  <li class="voltage-item">V_AIN3 : 1.09V ±0.1V</li>
+</ol>

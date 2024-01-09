@@ -1,0 +1,12 @@
+<h1>SOM Reset Test</h1>
+
+<h2>
+    <input type="checkbox" id="test1-reset-button-checkbox" name="test1-reset-button" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test1-reset-button-checkbox"></label>
+    Test 1: Reset Button
+</h2>
+<ol>
+  <li>Press the button labeled 'SOM RESET'.</li>
+  <li>This action will reset the entire board. Expect to see the board LEDs flashing, the LCD image resetting, and a temporary loss of communication with the UI.</li>
+  <li>If these indicators do not occur, the test is considered failed.</li>
+</ol>

@@ -1,0 +1,70 @@
+<h1 class="test-1-motor-LR">Linear Actuator Test</h1>
+
+<h2 class="test-1-motor-LR">
+    <input type="checkbox" id="test1-motor-LR-checkbox" name="test1-motor-LR" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test1-motor-LR-checkbox"></label>
+    Test 1: Motor Movement
+</h2>
+<ol class="motor-LR-steps">
+  <li>Verify that the motor with encoder is properly connected.</li>
+  <li>In the 'Motor Controls' section, activate the 'Enable' toggle switch to enable the motor.</li>
+  <li>Set the power level using the slider bar in 'Motor Controls'.</li>
+  <li>Press and hold the 'Backward' or 'Forward' button to move the motor; release the button to stop the motor.</li>
+  <li>Verify that the motor moves in both directions.</li>
+  <li>Return the piston of the motor to its fully retracted position after testing.</li>
+</ol>
+
+<h2 class="test-2-enable">
+    <input type="checkbox" id="test2-enable-checkbox" name="test2-enable" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test2-enable-checkbox"></label>
+    Test 2: Enable
+</h2>
+<ol class="enable-steps">
+  <li>Repeat Test 1 with the 'Enable' feature disabled (omit the enabling step).</li>
+  <li>Confirm that the motor does not move in any direction.</li>
+</ol>
+
+<h2 class="test-3-max-current">
+    <input type="checkbox" id="test3-max-current-checkbox" name="test3-max-current" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test3-max-current-checkbox"></label>
+    Test 3: Max Current
+</h2>
+<ol class="max-current-steps">
+  <li>Verify that the motor is properly connected.</li>
+  <li>Stall the motor.</li>
+  <li>Activate the 'Enable' toggle switch in 'Motor Controls'.</li>
+  <li>Set the power to 100% using the slider bar in 'Motor Controls'.</li>
+  <li>Move the piston outward.</li>
+  <li>Check that the current rises to approximately 13 to 15 A.</li>
+  <li>Maintain this state for 20 seconds.</li>
+  <li>Stop the motor and remove the stall.</li>
+  <li>Conduct Test 1 again to ensure the driver is still operational.</li>
+  <li>Ensure the piston is returned to its fully retracted position after testing.</li>
+</ol>
+
+<h2 class="test-4-pwm">
+    <input type="checkbox" id="test4-pwm-checkbox" name="test4-pwm" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test4-pwm-checkbox"></label>
+    Test 4: PWM
+</h2>
+<ol class="pwm-steps">
+  <li>Verify that the motor with encoder is properly connected.</li>
+  <li>Activate the 'Enable' toggle switch in 'Motor Controls'.</li>
+  <li>Set the power to 100% using the slider bar in 'Motor Controls'.</li>
+  <li>Operate the motor until a stable speed is reached. Release the button to stop the motor.</li>
+  <li>Record the speed reading.</li>
+  <li>Repeat the speed measurement with 50% and 25% power settings.</li>
+  <li>Confirm that you can modulate the motor speed by varying the power settings. Note that actual speeds may vary based on the motor used.</li>
+  <li>Return the piston to its fully retracted position after testing.</li>
+</ol>
+
+<h2 class="test-5-current-direction">
+    <input type="checkbox" id="test5-current-direction-checkbox" name="test5-current-direction" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test5-current-direction-checkbox"></label>
+    Test 5: Current Polarity
+</h2>
+<ol class="current-direction-steps">
+  <li>Perform Test 1 again.</li>
+  <li>Verify that the current is positive in one direction and negative in the other.</li>
+  <li>Return the piston to its fully retracted position after testing.</li>
+</ol>

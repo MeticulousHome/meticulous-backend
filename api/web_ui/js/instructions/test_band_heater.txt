@@ -1,0 +1,54 @@
+<h1 class="title">Band heater test</h1>
+<p class="important-note" style="font-weight: bold; font-size: larger;">
+    Important: Access to the Heater Controls options will only be granted after successfully completing Test 0.
+</p>
+
+<h2 class="test-0-inlet-voltage">
+    <input type="checkbox" id="test0-checkbox" name="test0" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test0-checkbox"></label>
+    Test 0: Inlet Voltage
+</h2>
+
+<ol class="inlet-voltage-test">
+  <li>Verify that the detected voltage matches your actual power supply voltage. Note that while standard voltages are typically 120V or 240V, residential supplies can sometimes vary (e.g., around 130V for 120V settings and 270V for 240V settings).</li>
+  <li>Conduct this test with two different voltage levels, usually 120V and 240V, but adjust according to your actual supply voltages.</li>
+  <li>Only mark the checkbox if the test is successful with both voltage levels.</li>
+</ol>
+
+<h2 class="test-1-pwm">
+    <input type="checkbox" id="test1-checkbox" name="test1" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test1-checkbox"></label>
+    Test 1: PWM
+</h2>
+<ol class="heater-test">
+  <li>Verify that the AC power is connected to the PCB.</li>
+  <li>Verify that the heater is properly connected.</li>
+  <li>Set the power to 100% using the slider bar in the 'Heater Controls' section.</li>
+  <li>Activate the heater by enabling the toggle switch. Note: The toggle will automatically disable after 2 seconds for safety.</li>
+  <li>Record the measured current immediately.</li>
+  <li>Repeat steps 3 and 4 with power settings of 10%, 25%, and 50%.</li>
+  <li>Confirm that you can modulate the heater's power by adjusting the power settings. For instance, if the heater draws around 4 A at 100% power, it should draw approximately half that amount (about 2 A) at 50% power, a quarter (around 1 A) at 25% power, and 0.4 A at 10% power. Keep in mind that actual current values may vary based on the heater used.</li>
+</ol>
+
+<h2 class="test-2-pzc">
+    <input type="checkbox" id="test2-checkbox" name="test2" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test2-checkbox"></label>
+    Test 2: PZC
+</h2>
+<ol class="pzc-test">
+  <li>Verify that the AC power is connected to the PCB.</li>
+  <li>Measure and record the frequency of the AC power.</li>
+</ol>
+
+<h2 class="test-3-band-heater-enabler">
+    <input type="checkbox" id="test3-checkbox" name="test3" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test3-checkbox"></label>
+    Test 3: Band Heater Enabler
+</h2>
+<ol class="band-heater-test">
+  <li>Turn on the driver in the 'Heater Controls' section.</li>
+  <li>Check that the red LED indicator is on.</li>
+  <li>Deactivate the driver using the toggle switch.</li>
+  <li>Ensure that the red LED indicator turns off.</li>
+</ol>
+<p class="test-1-pwm">&nbsp;</p>

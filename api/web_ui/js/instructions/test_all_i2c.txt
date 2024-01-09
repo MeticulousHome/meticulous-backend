@@ -1,0 +1,27 @@
+<h1>I2C Addresses Test</h1>
+
+<h2>
+    <input type="checkbox" id="test_bus1_i2c_checkbox" name="bus1-i2c" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test_bus1_i2c_checkbox"></label>
+    Bus 1 I2C Addresses:
+</h2>
+<p>In the 'ALL I2C addresses' section, you will find the addresses for I2C devices connected to Bus 1. Note that these addresses only appear if the respective devices are actively connected:</p>
+<ul>
+    <li>ADC1: 0x49</li>
+    <li>ADC2: 0x4B</li>
+    <li>I2C 3v3 Connector: 0x48</li>
+    <li>Thermistor Bar Connector: 0x4A</li>
+    <li>Band Heater: 0x60 <em>(Note: If the Band Heater appears as 0x61, please report this to Andy, Gabo, or Oscar.)</em></li>
+    <li>I2C GPIO Expander: 0x20</li>
+    <li>Plunger: 0x48</li>
+</ul>
+
+<h2>
+    <input type="checkbox" id="test_bus2_i2c_checkbox" name="bus2-i2c" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test_bus2_i2c_checkbox"></label>
+    Bus 2 I2C Addresses:
+</h2>
+<p>In the 'ALL I2C addresses' section, the address of any I2C expansion device connected to Bus 2 is displayed. This address is visible only when the device is connected:</p>
+<ul>
+    <li>Address of the connected I2C expansion device.</li>
+</ul>
