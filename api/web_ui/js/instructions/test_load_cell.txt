@@ -1,0 +1,17 @@
+<h1 class="test-1-load-cell">Load cell test</h1>
+
+<h2>
+    <input type="checkbox" id="test1-load-cell-checkbox" name="test1-load-cell" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test1-load-cell-checkbox"></label>
+    Test 1: Load Cell Test
+</h2>
+
+<ol class="load-cell-operations">
+  <li class="record-initial-weight">Record the weight of the load cell with nothing on top.</li>
+  <li class="place-weight">Place a weight on the load cell.</li>
+  <li class="record-weight-data">Record the data.</li>
+  <li class="remove-weight">Remove the weight.</li>
+  <li class="verify-initial-weight">Verify that the weight is the same as the initial weight.</li>
+  <li class="replace-weight">Place the weight again and verify that it matches the value recorded in step 3.</li>
+</ol>
+<p class="test-1-load-cell">&nbsp;</p>

@@ -1,0 +1,16 @@
+<h1 class="test-1-motor-encoder">Motor encoder operation test</h1>
+
+<h2>
+    <input type="checkbox" id="test1-motor-encoder-checkbox" name="test1-motor-encoder" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test1-motor-encoder-checkbox"></label>
+    Test 1: Motor Encoder Operation Test
+</h2>
+
+<ol class="connect-the-motor-encoder">
+  <li class="verify-encoder-connection">Verify that the motor's encoder is properly connected.</li>
+  <li class="enable-motor">In the 'Motor Controls' section, enable the motor using the 'Enable' toggle switch.</li>
+  <li class="set-power">Set the desired power level using the slider bar in the 'Motor Controls' section.</li>
+  <li class="move-the-motor">Operate the motor by pressing and holding the 'Forward' or 'Backward' button in the 'Motor Controls' section. The motor moves in the direction of the pressed button and stops when released.</li>
+  <li class="check-the-counter">The counter should increment in one direction and decrement in the opposite direction.</li>
+  <li>Return the piston to its fully retracted position after testing.</li>
+</ol>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Meticulous Home Coffee Machines</title>
+    <link href="css/global.css" rel="stylesheet" />
+    <link href="css/index.css" rel="stylesheet" />
+    <link href="css/fonts/monserat.css" rel="stylesheet">
+    <link href="css/fonts/inter.css" rel="stylesheet">
+
+    <script src="js/deps/chart.js"></script>
+    <script src="js/deps/socket.io.min.js"></script>
+    <script src="js/deps/hammer.js"></script>
+    <script src="js/deps/chartjs-plugin-zoom.js"></script>
+    <script src="js/index.js"></script>
+
+</head>
+
+<body style="background-color: #1F2029;">
+    <div class="content">
+        <div class="container">
+            <img src="/img/logo-meticulous.png" alt="Meticulous Home Logo" class="logo">
+            <div class="row">
+
+                <div class="column" data-xl-width="6">
+                    <h1 class="meticulous-heading">
+                        <span class="inter_bold">Meticulous Espresso.</span>
+                    </h1>
+                    
+                </div>
+            </div>
+            <div>
+                <p class="meticulous-description">
+                    <span class="white-text">Meticulous combines the richness in flavor&nbsp;that&nbsp; 
+                        makes lever&nbsp;machines&nbsp;special with the precise&nbsp
+                        control and consistency of robotics.</span>
+                </p>                
+            </div>
+            <div>
+                <p class="meticulous-description">
+                    <span class="intro white-text">Discover the art of perfect espresso by downloading our app for the ultimate
+                        user experience.</span>
+                </p>
+            </div>
+    </div>
+    <div id="buttons">
+        <button id="togglePlotting">Start Plotting</button>
+        <button id="resetZoom">Reset Zoom</button>
+    </div>
+    <div class="grid-container">
+        <div class="graph-container">
+            <h2>Miscellaneous Data</h2>
+            <canvas id="graph"></canvas>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -29,6 +29,7 @@ from api.wifi import WIFI_HANDLER
 from api.emulation import EMULATED_WIFI_HANDLER
 from api.settings import SETTINGS_HANDLER
 from api.update import UPDATE_HANDLER
+from api.web_ui import WEB_UI_HANDLER
 
 from log import MeticulousLogger
 
@@ -340,6 +341,8 @@ def main():
         handlers.extend(EMULATED_WIFI_HANDLER)
     else:
         handlers.extend(WIFI_HANDLER)
+
+    handlers.extend(WEB_UI_HANDLER)
 
     app = tornado.web.Application(
         handlers,

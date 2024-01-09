@@ -1,0 +1,28 @@
+<h1 class="port-c-test-header">PORT C Test</h1>
+
+<h2 class="test-1-usb">
+    <input type="checkbox" id="test1-usb-test-checkbox" name="usb-test" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="usb-test-checkbox">Test 1: USB Device Connection Test</label>
+</h2>
+<ol class="usb-test-steps">
+  <li>Connect a USB Hub to the C port on the PCB.</li>
+  <li>Monitor the messages in the PORT C section of the interface.</li>
+  <li>Look for a series of messages in the PORT C section.</li>
+  <li>Confirm that the final message matches this format: <br>
+      <code>Dec 15 21:25:43 imx8mn-var-som kernel: [ 215.286259] hub 1-1:1.0: <strong>4 ports detected</strong></code>
+  </li>
+  <li>The message <strong>"4 ports detected"</strong> indicates successful communication via the C port.</li>
+  <li>If this message is not displayed, please report the issue to Andy.</li>
+</ol>
+
+<h2 class="test-2-device-charging">
+    <input type="checkbox" id="test2-device-charging-test-checkbox" name="device-charging-test" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="device-charging-test-checkbox">Test 2: Device Charging</label>
+</h2>
+<ol class="device-charging-steps">
+  <li>Connect a mobile device to the C port.</li>
+  <li>Note the initial charging percentage of the device.</li>
+  <li>Allow it to charge for 10 minutes.</li>
+  <li>Ensure that the device's charge percentage has increased.</li>
+  <li>If there's no increase in charge, report the issue to Andy.</li>
+</ol>

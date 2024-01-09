@@ -1,0 +1,35 @@
+<h1>Test: VAR-SOM-MX8M-NANO features</h1>
+
+<h2>
+    <input type="checkbox" id="test1-rtc-checkbox" name="test1-rtc" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test1-rtc-checkbox"></label>
+    Test 1: RTC (Real Time Clock)
+</h2>
+<ol>
+  <li>Ensure a battery is providing power to the RTC.</li>
+  <li>In the VAR-SOM-MX8M-NANO Interactive Testing Interface, go to the 'Set the date and time' section. Fill in the time input fields, then click the "Set" button to update the time on the VAR-SOM. The time you set will appear in the 'Current date and time' section.</li>
+  <li>Disconnect the PCB power and wait at least 2 minutes.</li>
+  <li>Reconnect the power to the PCB.</li>
+  <li>Check that the time is maintained correctly. For instance, if you powered off the PCB at 16:02 for 5 minutes, it should show 16:07 in the 'Current date and time' section when powered back on.</li>
+</ol>
+
+<h2>
+    <input type="checkbox" id="test2-speaker-checkbox" name="test2-speaker" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test2-speaker-checkbox"></label>
+    Test 2: Speaker Functionality
+</h2>
+<ol>
+  <li>Confirm that a speaker is connected to the PCB.</li>
+  <li>Press the button with the speaker icon in the corresponding section to test sound.</li>
+  <li>When pressed, the button should emit a sound. Click it again to stop the sound.</li>
+</ol>
+
+<h2>
+    <input type="checkbox" id="test3-esp32-checkbox" name="test3-esp32" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test3-esp32-checkbox"></label>
+    Test 3: Programming the ESP32
+</h2>
+<ol>
+  <li>Press the button marked with a chip icon in the designated section to start programming the ESP32.</li>
+  <li>The text will change from "Press the icon to program the ESP32" to "Programming the ESP32" in the respective section. A successful programming will display "Successful", otherwise, an "An error occurred" message will appear.</li>
+</ol>

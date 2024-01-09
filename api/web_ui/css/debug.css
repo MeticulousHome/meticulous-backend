@@ -1,0 +1,1662 @@
+.component-1-child {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: var(--br-xl);
+  border: 6px solid var(--color-goldenrod);
+  box-sizing: border-box;
+}
+
+.component-1 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 18.44rem;
+  height: 74.38rem;
+  font-size: var(--font-size-29xl);
+}
+
+.load-cel {
+  position: absolute;
+  height: 4.95%;
+  width: 88.47%;
+  top: 1.8%;
+  left: 6.44%;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.boxload-cell {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 25.94rem;
+  height: 5.06rem;
+}
+
+.data-weight,
+.weight {
+  position: absolute;
+  top: 2.5rem;
+  left: 0.69rem;
+  font-weight: 600;
+  display: inline-block;
+  width: 6.25rem;
+  height: 1.94rem;
+}
+
+.data-weight {
+  top: 2.38rem;
+  left: 11.25rem;
+  width: 1.5rem;
+  height: 1.44rem;
+}
+
+.info_load_cell-child {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  background-color: var(--color-gainsboro);
+  border: 3px solid var(--color-white);
+  box-sizing: border-box;
+  width: 2.81rem;
+  height: 2.81rem;
+}
+
+.b {
+  position: absolute;
+  top: 0.44rem;
+  left: 1rem;
+  display: inline-block;
+  width: 0.81rem;
+  height: 0.75rem;
+}
+
+.info_load_cell {
+  cursor: pointer;
+  position: absolute;
+  top: 1.56rem;
+  left: 22.5rem;
+  width: 2.81rem;
+  height: 2.81rem;
+  text-align: left;
+  font-family: var(--font-istok-web);
+}
+
+.group-load-cell {
+  position: absolute;
+  top: 9.69rem;
+  left: 0rem;
+  width: 25.94rem;
+  height: 5.06rem;
+}
+
+.boxmotor-encoder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 25.94rem;
+  height: 7rem;
+}
+
+.counter,
+.data-encodercounter {
+  position: absolute;
+  top: 3.5rem;
+  left: 0.69rem;
+  font-weight: 600;
+  display: inline-block;
+  width: 6.63rem;
+  height: 2.5rem;
+}
+
+.data-encodercounter {
+  left: 8.81rem;
+  width: 6.32rem;
+  height: 1.94rem;
+}
+
+.info_motor_encoder {
+  cursor: pointer;
+  position: absolute;
+  top: 3.5rem;
+  left: 22.5rem;
+  width: 2.81rem;
+  height: 2.81rem;
+  text-align: left;
+  font-family: var(--font-istok-web);
+}
+
+.group-motor-encoder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 25.94rem;
+  height: 7rem;
+}
+
+.boxpressure-sensor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 25.81rem;
+  height: 6.75rem;
+}
+
+.data-pressure,
+.pressure {
+  position: absolute;
+  top: 3.69rem;
+  left: 0.72rem;
+  font-weight: 600;
+  display: inline-block;
+  width: 10.09rem;
+  height: 1.75rem;
+}
+
+.data-pressure {
+  left: 10.57rem;
+  width: 2.8rem;
+  height: 1.13rem;
+}
+
+.info_pressure_sensor {
+  cursor: pointer;
+  position: absolute;
+  top: 3.31rem;
+  left: 22.38rem;
+  width: 2.81rem;
+  height: 2.81rem;
+  text-align: left;
+  font-family: var(--font-istok-web);
+}
+
+.group-pressure-sensor {
+  position: absolute;
+  top: 17.44rem;
+  left: 0;
+  width: 25.81rem;
+  height: 6.75rem;
+}
+
+.boxad-converters {
+  position: absolute;
+  top: 0;
+  left: 0.19rem;
+  width: 25.63rem;
+  height: 11.13rem;
+}
+
+.current-motor,
+.external-thermistor-1,
+.external-thermistor-11 {
+  position: absolute;
+  font-weight: 600;
+  display: inline-block;
+  height: 1.5rem;
+}
+
+.current-motor {
+  top: 3rem;
+  left: 0.19rem;
+  width: 12.25rem;
+}
+
+.external-thermistor-1,
+.external-thermistor-11 {
+  top: 5.56rem;
+  left: 0;
+  width: 17.56rem;
+}
+
+.external-thermistor-11 {
+  top: 8.13rem;
+}
+
+.data-current,
+.data-ohms-1,
+.data-ohms-2 {
+  position: absolute;
+  top: 3rem;
+  left: 11.56rem;
+  font-weight: 600;
+  display: inline-block;
+  width: 3.56rem;
+  height: 1.25rem;
+}
+
+.data-ohms-1,
+.data-ohms-2 {
+  top: 5.56rem;
+  left: 15rem;
+}
+
+.data-ohms-2 {
+  top: 8.13rem;
+  left: 15rem;
+}
+
+.info_ad_converters {
+  cursor: pointer;
+  position: absolute;
+  top: 7.44rem;
+  left: 22.38rem;
+  width: 2.81rem;
+  height: 2.81rem;
+  text-align: left;
+  font-family: var(--font-istok-web);
+}
+
+.group-ad-converters {
+  position: absolute;
+  top: 27rem;
+  left: 0;
+  width: 25.81rem;
+  height: 11.13rem;
+}
+
+.group-i2c-3v3,
+.boxthernistor-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 25.63rem;
+  height: 5.88rem;
+}
+
+.address,
+.i2c-main-address {
+  position: absolute;
+  top: 3.44rem;
+  left: 0.87rem;
+  font-weight: 600;
+  display: inline-block;
+  width: 7.69rem;
+  height: 3.19rem;
+}
+
+.i2c-main-address {
+  top: 3.56rem;
+  left: 8.56rem;
+  width: 5.89rem;
+  height: 1.69rem;
+}
+
+.info-child1 {
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  background-color: var(--color-gainsboro);
+  border: 3px solid var(--color-white);
+  box-sizing: border-box;
+  width: 3.01rem;
+  height: 2.81rem;
+}
+
+.b4,
+.info-child1,
+.info_thermistors_bar {
+  position: absolute;
+}
+
+.b4 {
+  top: 0.44rem;
+  left: 1.07rem;
+  display: inline-block;
+  width: 0.87rem;
+  height: 0.75rem;
+}
+
+.info_thermistors_bar {
+  cursor: pointer;
+  top: 2.31rem;
+  left: 21.68rem;
+  width: 3.01rem;
+  height: 2.81rem;
+  text-align: left;
+  font-family: var(--font-istok-web);
+}
+
+.group-thermistor-bar {
+  position: absolute;
+  top: 27.69rem;
+  left: 29.25rem;
+  width: 25.63rem;
+  height: 5.88rem;
+}
+
+.boxband-heater {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 25.63rem;
+  height: 10.88rem;
+}
+
+.heater-current,
+.inlet-frequency,
+.inlet-voltage {
+  position: absolute;
+  top: 3.38rem;
+  left: 0.61rem;
+  font-weight: 600;
+  display: inline-block;
+  width: 13.62rem;
+  height: 2.31rem;
+}
+
+.heater-current,
+.inlet-voltage {
+  top: 5.5rem;
+  left: 0.27rem;
+  width: 12rem;
+}
+
+.heater-current {
+  top: 7.81rem;
+  left: 0.61rem;
+  width: 13.15rem;
+}
+
+.data-heater-current,
+.data-inlet-power-frequency,
+.data-inlet-power-voltage {
+  position: absolute;
+  top: 3.56rem;
+  left: 14.76rem;
+  font-weight: 600;
+  display: inline-block;
+  width: 2.49rem;
+  height: 1.25rem;
+}
+
+.data-heater-current,
+.data-inlet-power-voltage {
+  top: 5.69rem;
+}
+
+.data-heater-current {
+  top: 8rem;
+}
+
+.info_band_heater {
+  cursor: pointer;
+  position: absolute;
+  top: 7.31rem;
+  left: 22.19rem;
+  width: 2.81rem;
+  height: 2.81rem;
+  text-align: left;
+  font-family: var(--font-istok-web);
+}
+
+.group-band-heater {
+  position: absolute;
+  top: 40.06rem;
+  left: 0;
+  width: 25.63rem;
+  height: 10.88rem;
+}
+
+.boxi2c-expander {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 25.63rem;
+  height: 8.38rem;
+}
+
+.i2c-2-hard-reset-button,
+.som-hard-reset,
+.i2c-2-expansion,
+.i2c-2-status,
+.i2c-3v3,
+.i2c-3v3-address {
+  position: absolute;
+  top: 3.31rem;
+  left: 0.44rem;
+  font-weight: 600;
+  display: inline-block;
+  width: 13.75rem;
+  height: 1.69rem;
+}
+
+.i2c-2-hard-reset-button,
+.i2c-2-status,
+.som-hard-reset,
+.i2c-3v3,
+.i2c-3v3-address {
+  top: 5.5rem;
+  left: 0.81rem;
+  width: 6.69rem;
+}
+
+.i2c-2-hard-reset-button,
+.i2c-2-status,
+.som-hard-reset,
+.i2c-3v3-address {
+  top: 3.38rem;
+  left: 13.75rem;
+  width: 7.94rem;
+  height: 0.81rem;
+}
+
+.som-hard-reset {
+  top: 5.5rem;
+  left: 13.75rem;
+  width: 7.94rem;
+  height: 0.81rem;
+}
+
+.i2c-3v3-address {
+  top: 5.5rem;
+  left: 7.13rem;
+}
+
+.i2c-2-hard-reset-button {
+  top: 5.5rem;
+  left: 0.81rem;
+  width: 14.69rem;
+}
+
+.info_i2c_expansion_header {
+  cursor: pointer;
+  position: absolute;
+  top: 4.85rem;
+  left: 22.06rem;
+  width: 2.81rem;
+  height: 2.81rem;
+  text-align: left;
+  font-family: var(--font-istok-web);
+}
+
+.group-i2c-expansion-header {
+  position: absolute;
+  top: 15.63rem;
+  left: 29.25rem;
+  width: 25.63rem;
+  height: 8.38rem;
+}
+
+.boxlcd-rotatory-encoder {
+  position: absolute;
+  top: 0;
+  left: 0.33rem;
+  width: 25.6rem;
+  height: 7.56rem;
+}
+
+.counter1,
+.data-knob-counter,
+.data-knob-push,
+.push-button {
+  position: absolute;
+  font-weight: 600;
+  display: inline-block;
+  height: 2rem;
+}
+
+.counter1 {
+  top: 2.81rem;
+  left: 0;
+  width: 9.49rem;
+}
+
+.data-knob-counter,
+.data-knob-push,
+.push-button {
+  top: 4.81rem;
+  left: 0.4rem;
+  width: 12.23rem;
+}
+
+.data-knob-counter,
+.data-knob-push {
+  top: 2.81rem;
+  left: 7.62rem;
+  width: 4.61rem;
+  height: 1.44rem;
+}
+
+.data-knob-push {
+  top: 4.81rem;
+  left: 12.97rem;
+  width: 3.68rem;
+  height: 1rem;
+}
+
+.info_lcd_rotatory_encoder {
+  cursor: pointer;
+  position: absolute;
+  top: 4rem;
+  left: 22.13rem;
+  width: 3.01rem;
+  height: 2.81rem;
+  text-align: left;
+  font-family: var(--font-istok-web);
+}
+
+.group-lcd-rotatory-encoder {
+  position: absolute;
+  top: 66.88rem;
+  left: 0;
+  width: 25.94rem;
+  height: 7.56rem;
+}
+
+.boxlinear-actuator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 25.63rem;
+  height: 11.56rem;
+}
+
+.current,
+.data-motor-current,
+.data-motor-speed,
+.speed {
+  position: absolute;
+  font-weight: 600;
+  display: inline-block;
+  width: 6.89rem;
+  height: 2.06rem;
+}
+
+.speed {
+  top: 4.19rem;
+  left: 0;
+}
+
+.current,
+.data-motor-current,
+.data-motor-speed {
+  top: 6.56rem;
+  left: 0.54rem;
+}
+
+.data-motor-current,
+.data-motor-speed {
+  top: 4.19rem;
+  left: 7.63rem;
+  width: 5.22rem;
+  height: 1.56rem;
+}
+
+.data-motor-current {
+  top: 6.56rem;
+}
+
+.info_linear_actuator {
+  cursor: pointer;
+  position: absolute;
+  top: 8rem;
+  left: 21.68rem;
+  width: 3.01rem;
+  height: 2.81rem;
+  text-align: left;
+  font-family: var(--font-istok-web);
+}
+
+.group-linear-actuator {
+  position: absolute;
+  top: 0;
+  left: 29.25rem;
+  width: 25.63rem;
+  height: 11.56rem;
+}
+
+.boxgpio-expander {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 25.81rem;
+  height: 11.56rem;
+}
+
+.spare-button-1,
+.spare-button-2,
+.start-button,
+.tare-button {
+  position: absolute;
+  top: 2.69rem;
+  left: 1.62rem;
+  font-weight: 600;
+  display: inline-block;
+  width: 11.32rem;
+  height: 2.5rem;
+}
+
+.spare-button-1,
+.spare-button-2,
+.tare-button {
+  top: 4.69rem;
+  left: 1.28rem;
+}
+
+.spare-button-1,
+.spare-button-2 {
+  top: 6.69rem;
+  left: 1.69rem;
+  width: 12.6rem;
+}
+
+.spare-button-2 {
+  top: 8.69rem;
+  left: 1.48rem;
+  width: 13.34rem;
+}
+
+.status-buttons-spare-1,
+.status-buttons-spare-2,
+.status-buttons-start,
+.status-buttons-tare {
+  position: absolute;
+  top: 2.88rem;
+  left: 16.31rem;
+  font-weight: 600;
+  display: inline-block;
+  width: 2.9rem;
+  height: 1.63rem;
+}
+
+.status-buttons-spare-1,
+.status-buttons-spare-2,
+.status-buttons-tare {
+  top: 4.81rem;
+}
+
+.status-buttons-spare-1,
+.status-buttons-spare-2 {
+  top: 6.69rem;
+}
+
+.status-buttons-spare-2 {
+  top: 8.5rem;
+  left: 16.31rem;
+}
+
+.info-child6 {
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  background-color: var(--color-gainsboro);
+  border: 3px solid var(--color-white);
+  box-sizing: border-box;
+  width: 3.03rem;
+  height: 2.81rem;
+}
+
+.b9,
+.info-child6,
+.info_gpio_expander {
+  position: absolute;
+}
+
+.b9 {
+  top: 0.44rem;
+  left: 1.08rem;
+  display: inline-block;
+  width: 0.88rem;
+  height: 0.75rem;
+}
+
+.info_gpio_expander {
+  cursor: pointer;
+  top: 8.13rem;
+  left: 22.17rem;
+  width: 3.03rem;
+  height: 2.81rem;
+  text-align: left;
+  font-family: var(--font-istok-web);
+}
+
+.group-gpio-expander {
+  position: absolute;
+  top: 54.25rem;
+  left: 0;
+  width: 25.81rem;
+  height: 11.56rem;
+}
+
+.boxtest-execution-guide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 48.69rem;
+  height: 51.13rem;
+}
+
+.test-1-pwm {
+  margin: 0;
+}
+
+.connect-the-ac {
+  margin-bottom: false;
+}
+
+.connect-the-ac-power-to-the-pc {
+  margin: 0;
+  padding-left: var(--padding-13xl);
+}
+
+.instructions {
+  position: absolute;
+  top: 5.25rem;
+  left: 2.75rem;
+  font-size: var(--font-inherit);
+  font-weight: 600;
+  font-family: var(--font-inherit);
+  text-align: left;
+  display: inline-block;
+  width: 45.18rem;
+  height: 44.31rem;
+  overflow: auto;
+  height: calc(100% - 100px);
+}
+.instructions::-webkit-scrollbar {
+  width: 20px;
+}
+
+.instructions::-webkit-scrollbar-track {
+  background-color: #6D6D6B;
+  border-radius: 100px;
+}
+
+.instructions::-webkit-scrollbar-thumb {
+  border-radius: 100px;
+  border: 5px solid transparent;
+  background-clip: content-box;
+  background-color: #ffffff;
+}
+.group-test-execution-guide {
+  position: absolute;
+  top: 0;
+  left: 59.2rem;
+  width: 48.69rem;
+  height: 51.13rem;
+  font-size: var(--font-inherit);
+}
+
+.boxactuators-control-menu {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 48.69rem;
+  height: 20.19rem;
+}
+
+.power-slider-child {
+  position: absolute;
+  height: 30.43%;
+  width: 100%;
+  top: 34.78%;
+  right: 0%;
+  bottom: 34.78%;
+  left: 0%;
+  border-radius: 18.5px;
+  max-width: 100%;
+  overflow: hidden;
+  max-height: 100%;
+}
+
+.power-slider-item {
+  position: absolute;
+  height: 2.88rem;
+  /* Altura fija igual a la del contenedor */
+  width: 2.88rem;
+  /* Anchura fija igual a la altura */
+  left: 0%;
+  /* Inicia el thumb en el extremo izquierdo de la barra */
+  border-radius: 50%;
+  background-color: var(--color-white);
+}
+
+.current-power,
+.div {
+  position: absolute;
+  height: 52.17%;
+  width: 7.33%;
+  top: 23.91%;
+  left: 0;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.current-power {
+  width: 10.21%;
+  top: 13.04%;
+  left: 89.79%;
+}
+
+.power-slider {
+  position: absolute;
+  top: 3.13rem;
+  left: 50%;
+  /* Establece el punto de referencia en el centro horizontal del contenedor */
+  width: 625.05px;
+  height: 2.88rem;
+  margin-left: -312.525px;
+  /* La mitad del ancho para centrar */
+  margin-right: -312.525px;
+  /* La mitad del ancho para centrar */
+}
+
+.variable-group-heater-control {
+  position: absolute;
+  top: 4.88rem;
+  left: 0.5rem;
+  width: 47.75rem;
+  height: 6rem;
+  font-size: var(--font-size-5xl);
+}
+
+.group-actuators-control-menu {
+  position: absolute;
+  top: 0rem;
+  left: 111.2rem;
+  width: 48.69rem;
+  height: 20.19rem;
+  font-size: var(--font-size-29xl);
+}
+
+.component-1-parent {
+  flex: 1;
+  position: relative;
+  width: 188.7rem;
+  height: 74.44rem;
+  text-align: center;
+  font-size: var(--font-size-5xl);
+  color: var(--color-white);
+  font-family: var(--font-montserrat);
+}
+
+#sliderThumbHeater {
+  position: absolute;
+  cursor: pointer;
+  /* Esto permite que se vea como seleccionable */
+  /* ... otros estilos ... */
+}
+
+.power-switch {
+  position: relative;
+  width: 201px;
+  height: 28px;
+}
+
+.power-switch .enable-switch {
+  position: absolute;
+  width: 48px;
+  height: 24px;
+  top: 4px;
+  left: 153px;
+  background-color: #fdc352;
+  border-radius: 100px;
+  transform: rotate(-180deg);
+}
+
+/* Asegúrate de agregar la clase "switch" en tu HTML si es necesario */
+.power-switch .switch {
+  cursor: pointer;
+  position: relative;
+  width: 22px;
+  height: 22px;
+  top: 1px;
+  left: 1px;
+  background-color: #ffffff;
+  border-radius: 11.25px;
+}
+
+.power-switch .text-wrapper {
+  position: absolute;
+  width: 134px;
+  top: -1px;
+  left: 0;
+  font-family: "Montserrat-SemiBold", Helvetica;
+  font-weight: 600;
+  color: #ffffff;
+  font-size: 24px;
+  letter-spacing: 0;
+  line-height: normal;
+  white-space: nowrap;
+}
+
+.backward-button-icon,
+.forward-button-icon {
+  cursor: pointer;
+  position: absolute;
+  top: 14.14rem;
+  left: 41.0rem;
+  width: 3.5rem;
+  height: 4.35rem;
+}
+
+.backward-button-icon {
+  left: 3.6rem;
+}
+
+#backwardButton,
+#forwardButton {
+  top: 12rem;
+  background-color: transparent;
+  border-radius: 0;
+  border-color: transparent;
+}
+
+.group-actuators-control-menu-motor {
+  position: absolute;
+  top: 23rem;
+  left: 111.2rem;
+  width: 48.69rem;
+  height: 20.19rem;
+  font-size: var(--font-size-29xl);
+}
+
+#sliderThumbMotor {
+  position: absolute;
+  cursor: pointer;
+}
+
+.var-som-mx8m-nano-interactive {
+  position: absolute;
+  height: 25.39%;
+  width: 89.92%;
+  top: 4.95%;
+  left: 5.34%;
+  font-size: 2rem;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.currrent-date-and,
+.div,
+.div1,
+.set-the-date,
+.show-day,
+.show-month {
+  position: absolute;
+  top: 7.19rem;
+  left: 1.38rem;
+  font-weight: 600;
+  display: inline-block;
+  width: 14.88rem;
+  height: 1.44rem;
+}
+
+.currrent-date-and,
+.div,
+.div1,
+.show-day,
+.show-month {
+  top: 9.38rem;
+  left: 1.31rem;
+  width: 15.81rem;
+}
+
+.div,
+.div1,
+.show-day,
+.show-month {
+  top: 9.38rem;
+  left: 17rem;
+  width: 1.56rem;
+  height: 1.5rem;
+}
+
+.div,
+.div1,
+.show-month {
+  left: 18.44rem;
+  width: 0.75rem;
+}
+
+.div1,
+.show-month {
+  left: 21.2rem;
+}
+
+.show-month {
+  left: 19.4rem;
+  width: 1.56rem;
+}
+
+.colon-minutes,
+.colon-seconds,
+.div2,
+.div3,
+.set-day,
+.show-hour,
+.show-minute,
+.show-seconds,
+.show-year {
+  position: absolute;
+  top: 9.38rem;
+  left: 26.0rem;
+  font-weight: 600;
+  display: inline-block;
+  width: 1.56rem;
+  height: 1.5rem;
+}
+
+.colon-minutes,
+.colon-seconds,
+.div2,
+.div3,
+.set-day,
+.show-minute,
+.show-seconds,
+.show-year {
+  left: 28.3rem;
+}
+
+.colon-minutes,
+.colon-seconds,
+.div2,
+.div3,
+.set-day,
+.show-seconds,
+.show-year {
+  left: 30.6rem;
+}
+
+.colon-minutes,
+.colon-seconds,
+.div2,
+.div3,
+.set-day,
+.show-year {
+  left: 27.69rem;
+  width: 0.75rem;
+}
+
+.colon-seconds,
+.div2,
+.div3,
+.set-day,
+.show-year {
+  left: 30.0rem;
+}
+
+.div2,
+.div3,
+.set-day,
+.show-year {
+  left: 21.7rem;
+  width: 3.56rem;
+}
+
+.div2,
+.div3 {
+  top: 7.2rem;
+  left: 18rem;
+  width: 1.4rem;
+}
+
+.set-day {
+  top: 6.9rem;
+  left: 17rem;
+  width: 1.2rem;
+}
+
+.div2,
+.div3 {
+  left: 18.7rem;
+  width: 0.75rem;
+}
+
+.div3 {
+  left: 21.2rem;
+}
+
+.set-hour,
+.set-minute,
+.set-month,
+.set-seconds,
+.set-year {
+  position: absolute;
+  top: 6.9rem;
+  left: 19.4rem;
+  font-weight: 600;
+  display: inline-block;
+  width: 1.3rem;
+  height: 1.5rem;
+}
+
+.colon-minutes1,
+.colon-seconds1,
+.set-hour,
+.set-minute,
+.set-seconds,
+.set-year {
+  left: 26rem;
+}
+
+.colon-minutes1,
+.colon-seconds1,
+.set-minute,
+.set-seconds,
+.set-year {
+  left: 28.3rem;
+}
+
+.colon-minutes1,
+.colon-seconds1,
+.set-seconds,
+.set-year {
+  left: 30.6rem;
+}
+
+.colon-minutes1,
+.colon-seconds1,
+.set-year {
+  left: 25.69rem;
+  width: 0.75rem;
+}
+
+.colon-seconds1,
+.set-year {
+  left: 27.31rem;
+}
+
+.set-year {
+  left: 22rem;
+  width: 2.4rem;
+}
+
+.button-esp32-icon,
+.button-speaker-icon {
+  cursor: pointer;
+  position: absolute;
+  top: 12.44rem;
+  left: 8rem;
+  width: 5rem;
+  height: 4.63rem;
+}
+
+.button-esp32-icon {
+  left: 27.94rem;
+}
+
+.press-the-icon,
+.press-the-icon1 {
+  position: absolute;
+  top: 17.69rem;
+  left: 0.88rem;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  display: inline-block;
+  width: 19.25rem;
+  height: 1.19rem;
+}
+
+.press-the-icon1 {
+  left: 20.81rem;
+  height: 1.5rem;
+}
+
+.set-button-child {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 23px;
+  width: 7.31rem;
+  height: 1.88rem;
+}
+
+.set {
+  position: absolute;
+  top: 0.25rem;
+  left: 2.5rem;
+  font-weight: 600;
+  display: inline-block;
+  width: 2.38rem;
+  height: 1.38rem;
+}
+
+.set-button {
+  cursor: pointer;
+  position: absolute;
+  top: 7rem;
+  left: 33.38rem;
+  width: 7.31rem;
+  height: 1.88rem;
+}
+
+.var-menu {
+  position: absolute;
+  height: 20rem;
+  width: 48.69rem;
+  top: 54.4rem;
+  right: 0;
+  bottom: 0;
+  left: 111.2rem;
+  font-size: var(--font-size-xl);
+}
+
+input[type="number"] {
+  background-color: transparent;
+  border-color: transparent;
+  color: var(--color-white);
+  font-family: var(--font-montserrat);
+  font-size: var(--font-size-base);
+  position: absolute;
+  font-weight: 600;
+  display: inline-block;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.colon-seconds1 {
+  position: absolute;
+  top: 7.2rem;
+  /* Establece el valor específico de top */
+  left: 29.7rem;
+  font-weight: 600;
+  display: inline-block;
+  width: 1.3rem;
+  height: 1.5rem;
+}
+
+.colon-minutes1 {
+  position: absolute;
+  top: 7.2rem;
+  /* Establece el valor específico de top */
+  left: 27.4rem;
+  font-weight: 600;
+  display: inline-block;
+  width: 1.3rem;
+  height: 1.5rem;
+}
+
+.print-addresses,
+.title-addresses {
+  position: absolute;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.title-addresses {
+  height: 11.76%;
+  width: 48.85%;
+  top: 4.95%;
+  left: 25.65%;
+}
+
+.print-addresses {
+  top: 3.63rem;
+  left: 2.31rem;
+  font-size: var(--font-size-xl);
+  text-align: left;
+  width: 46.94rem;
+  height: 15.56rem;
+}
+
+.group-all-i2c-addresses {
+  position: absolute;
+  height: 20rem;
+  width: 48.69rem;
+  top: 54.4rem;
+  right: 26.26%;
+  bottom: 0;
+  left: 59.2rem;
+  font-size: var(--font-size-13xl);
+}
+
+.backward-button-icon:active,
+.forward-button-icon:active,
+.set-button:active,
+.button-speaker-icon:active,
+.button-esp32-icon:active {
+  transform: scale(0.95);
+  opacity: 0.7;
+}
+.backward {
+  top: 0;
+  left: 14px;
+  font-weight: 600;
+  display: inline-block;
+  width: 4.5rem;
+}
+.backward,
+.forward,
+.motor-buttons-name {
+  position: absolute;
+  height: 1.19rem;
+}
+.forward {
+  top: 0;
+  left: 39.8rem;
+  font-weight: 600;
+  display: inline-block;
+  width: 4.5rem;
+}
+
+.motor-buttons-name {
+  top: 17.63rem;
+  left: 1.63rem;
+  width: 38.56rem;
+  font-size: var(--font-size-xs);
+}
+.boxad-converters1 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 25.63rem;
+  height: 12.31rem;
+}
+
+.voltage-adc1-0 {
+  position: absolute;
+  top: 3rem;
+  left: 9.88rem;
+  font-weight: 600;
+  display: inline-block;
+  width: 3.88rem;
+  height: 1.5rem;
+}
+
+.v-ain1-1,
+.voltage-adc1-0 {
+  position: absolute;
+  top: 3rem;
+  left: 9.88rem;
+  font-weight: 600;
+  display: inline-block;
+  width: 3.88rem;
+  height: 1.5rem;
+}
+
+.v-ain1-1 {
+  top: 5.06rem;
+  left: 2.25rem;
+  width: 6.06rem;
+  height: 1.94rem;
+}
+
+.v-ain2-1,
+.v-ain3-1,
+.voltage-adc1-1,
+.voltage-adc1-2,
+.voltage-adc1-3 {
+  position: absolute;
+  top: 5.25rem;
+  left: 9.88rem;
+  font-weight: 600;
+  display: inline-block;
+  width: 3.88rem;
+  height: 1.5rem;
+}
+
+.v-ain2-1,
+.v-ain3-1,
+.voltage-adc1-2,
+.voltage-adc1-3 {
+  top: 7.13rem;
+  left: 2.25rem;
+  width: 6.06rem;
+  height: 1.94rem;
+}
+
+.v-ain3-1,
+.voltage-adc1-2,
+.voltage-adc1-3 {
+  top: 7.38rem;
+  left: 9.88rem;
+  width: 3.88rem;
+  height: 1.5rem;
+}
+
+.v-ain3-1,
+.voltage-adc1-3 {
+  top: 9.19rem;
+  left: 2.25rem;
+  width: 6.06rem;
+  height: 1.94rem;
+}
+
+.voltage-adc1-3 {
+  top: 9.31rem;
+  left: 9.88rem;
+  width: 3.88rem;
+  height: 1.5rem;
+}
+
+.adc1 {
+  top: 46.25rem;
+  left: 29.25rem;
+  width: 25.63rem;
+  height: 12.31rem;
+}
+
+.adc1,
+.adc2,
+.v-ain0- {
+  position: absolute;
+}
+
+.v-ain0- {
+  top: 3rem;
+  left: 2.25rem;
+  font-weight: 600;
+  display: inline-block;
+  width: 6.06rem;
+  height: 1.94rem;
+}
+
+.adc2 {
+  top: 62.13rem;
+  left: 29.25rem;
+  width: 25.63rem;
+  height: 12.31rem;
+}
+
+.info_var_som_interactive,
+.info_all_i2c {
+  cursor: pointer;
+  position: absolute;
+  top: 16.69rem;
+  left: 45.44rem;
+  width: 2.81rem;
+  height: 2.81rem;
+  font-size: var(--font-size-5xl);
+  font-family: var(--font-istok-web);
+}
+
+.info-load-cell-child {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  background-color: var(--color-gainsboro);
+  border: 3px solid var(--color-white);
+  box-sizing: border-box;
+  width: 2.81rem;
+  height: 2.81rem;
+}
+
+.info_adc1 {
+  cursor: pointer;
+  position: absolute;
+  top: 8.81rem;
+  left: 22.06rem;
+  width: 2.81rem;
+  height: 2.81rem;
+  text-align: left;
+  font-family: var(--font-istok-web);
+}
+
+.info_adc2 {
+  cursor: pointer;
+  position: absolute;
+  top: 8.81rem;
+  left: 22.06rem;
+  width: 2.81rem;
+  height: 2.81rem;
+  text-align: left;
+  font-family: var(--font-istok-web);
+}
+
+.rectangle-var-som {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: var(--br-xl);
+  border: 6px solid var(--color-goldenrod);
+  box-sizing: border-box;
+}
+.var-som-messages {
+  position: absolute;
+  height: 4.95%;
+  width: 88.47%;
+  top: 1.8%;
+  left: 6.44%;
+  font-weight: 600;
+  display: inline-block;
+}
+.boxtest-var-som {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 30.06rem;
+  height: 74.5rem;
+}
+.usb {
+  margin: 0;
+}
+.messages {
+  position: absolute;
+  top: 7.67rem;
+  left: 1.7rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  text-align: left;
+  display: inline-block;
+  width: 26.66rem;
+  height: 64.74rem;
+}
+.group-var-som-messages {
+  position: relative;
+  left: 162rem;
+  width: 30rem;
+  height: 74.69rem;
+  text-align: center;
+  font-size: 2.5rem;
+  color: var(--color-white);
+  font-family: var(--font-montserrat);
+}
+
+.addresses-container {
+  display: flex;
+  justify-content: space-around;
+}
+
+.address-column {
+  flex: 1;
+  padding: 10px;
+}
+
+.info-var-som-messages {
+  cursor: pointer;
+  position: absolute;
+  top: 71.13rem;
+  left: 26.44rem;
+  width: 3.01rem;
+  height: 2.81rem;
+  font-size: 1.5rem;
+  font-family: var(--font-istok-web);
+}
+
+footer {
+  color: var(--color-white);
+  padding: var(--padding-8xl);
+  text-align: center;
+  font-family: var(--font-montserrat);
+  width: 100%; /* Ancho igual al 100% del elemento padre (.component-1-parent) */
+}
+
+.group-reset-test {
+  position: absolute;
+  top: 45.4rem;
+  left: 111.2rem;
+  width: 41.19rem;
+  height: 5.74rem;
+}
+.boxlinear-actuator1 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 48.69rem;
+  height: 5.74rem;
+}
+.info_som_reset{
+  cursor: pointer;
+  position: absolute;
+  top: 2.23rem;
+  left: 45.3rem;
+  width: 3.01rem;
+  height: 2.84rem;
+  text-align: left;
+  font-family: var(--font-istok-web);
+}
+.ellipse-div {
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  background-color: var(--color-gainsboro);
+  border: 3px solid var(--color-white);
+  box-sizing: border-box;
+  width: 3.01rem;
+  height: 2.84rem;
+}
+.group-i2c-3v3 {
+  top: 37.25rem;
+  left: 29.25rem;
+}
+.info_3v3 {
+  cursor: pointer;
+  position: absolute;
+  top: 2.38rem;
+  left: 22.06rem;
+  width: 3.01rem;
+  height: 2.84rem;
+  text-align: left;
+  font-family: var(--font-istok-web);
+}
+.info-som-reset-child {
+  position: absolute;
+  width: 3.01rem;
+  height: 2.84rem;
+}
+.info-som-reset-child {
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  background-color: var(--color-gainsboro);
+  border: 3px solid var(--color-white);
+  box-sizing: border-box;
+}
+.power_motor {
+  position: absolute;
+  top: 8.8rem;
+  left: 1rem;
+  font-size: var(--font-size-xs);
+}
+.power_heater {
+  position: absolute;
+  top: 8.8rem;
+  left: 1rem;
+  font-size: var(--font-size-xs);
+}

@@ -1,0 +1,12 @@
+<h1 class="test-1-potentiometer">External thermistors test</h1>
+<h2 class="test-1-potentiometer">
+    <input type="checkbox" id="test1-potentiometer-checkbox" name="test1-potentiometer" style="transform: scale(1.5); margin-left: 10px;">
+    <label for="test1-potentiometer-checkbox"></label>
+    Test 1: Potentiometers
+</h2>
+<ol class="potentiometer-operations">
+  <li class="verify-potentiometer">Verify that a 20 kΩ potentiometer is connected to External Thermistor Connector 1.</li>
+  <li class="rotate-potentiometer">Rotate the potentiometer knob to its full range and check for resistance values near both 0 Ω and 20 kΩ.</li>
+  <li class="smooth-transition">Ensure a smooth transition of resistance across the range (e.g., 1 kΩ, 5 kΩ, 10 kΩ, 15 kΩ, up to 20 kΩ).</li>
+  <li class="verify-potentiometer">Repeat the above steps for External Thermistor Connector 2.</li>
+</ol>
