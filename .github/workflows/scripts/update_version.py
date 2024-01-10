@@ -1,13 +1,15 @@
 import sys
 import re
 from datetime import datetime
-import json
+
 
 def main(ref, pr_comments, version_bump_type):
     with open("version.py", "r") as f:
         version_file = f.read()
 
-    current_version = re.search(r'VERSION\s*=\s*[\'"]([^\'"]*)[\'"]', version_file).group(1)
+    current_version = re.search(
+        r'VERSION\s*=\s*[\'"]([^\'"]*)[\'"]', version_file
+    ).group(1)
     major, minor, patch = map(int, current_version.split("."))
 
     if version_bump_type == "major":
