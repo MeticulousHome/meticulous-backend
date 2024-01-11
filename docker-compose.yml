@@ -13,3 +13,7 @@ services:
       - BACKEND=emulation
       - EMULATION_SPEED=100
       - ZEROCONF_OVERWRITE=192.168.2.11/24,Mimoja-Datenschleuder
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+      - ./profiles:/app/profiles
