@@ -69,7 +69,7 @@ class MeticulousConfigDict(dict):
         __configError (bool): Flag to indicate if there's an error in the configuration.
 
     Args:
-        path (str, optional): The path to the YAML configuration file. Defaults to "./config.yml".
+        path (str, optional): The path to the YAML configuration file. Defaults to "./config/config.yml".
 
     Raises:
         ValueError: If the provided file extension is not .yml or .yaml.
@@ -140,4 +140,4 @@ class MeticulousConfigDict(dict):
             yaml.dump(
                 self.copy(), f, default_flow_style=False, allow_unicode=True)
 
-MeticulousConfig = MeticulousConfigDict("./config.yml", DefaultConfiguration_V1)
+MeticulousConfig = MeticulousConfigDict("./config/config.yml", DefaultConfiguration_V1)
