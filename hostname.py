@@ -27,6 +27,7 @@ class HostnameManager():
 
     def checkAndUpdateHostname(mac_address: str):
         hostname = HostnameManager.generateHostname(mac_address)
+        logger.info(f"Changing hostname new = {hostname}")
         HostnameManager.setHostname(hostname)
 
     ADJECTIVES = [

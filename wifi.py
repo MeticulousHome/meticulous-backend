@@ -6,6 +6,7 @@ from api.zeroconf_announcement import ZeroConfAnnouncement
 
 import nmcli
 import time
+import socket
 
 from hostname import HostnameManager
 
@@ -15,6 +16,8 @@ logger = MeticulousLogger.getLogger(__name__)
 nmcli.disable_use_sudo()
 nmcli.set_lang("C.UTF-8")
 
+# Should be something like "192.168.2.123/24,MyHostname"
+ZEROCONF_OVERWRITE=os.getenv("ZEROCONF_OVERWRITE", '')
 @dataclass
 class WifiSystemConfig():
     """Class Representing the current network configuration"""
@@ -36,27 +39,37 @@ class WifiManager():
     _zeroconf = None
 
     def init():
+        if ZEROCONF_OVERWRITE is not '':
+            logger.info(f"Overwriting network configuration due to ZEROCONF_OVERWRITE={ZEROCONF_OVERWRITE}")
+
         try:
             nmcli.device.show_all()
         except Exception as e:
             logger.warning("Networking unavailable!")
             WifiManager._networking_available = False
-            return
 
         config = WifiManager.getCurrentConfig()
         # Only update the hostname if it is a new system or if the hostname has been
         # set before. Do so in case the lookup table ever changed or the hostname is only
         # saved transient
-        if config.mac != "" and config.hostname == "imx8mn-var-som" or "meticulous-" in config.hostname:
-            HostnameManager.checkAndUpdateHostname(config.mac)
+        if config.mac != "":
+            logger.info(f"Current hostname is '{config.hostname}'")
+
+            # Check if we are on a deployed machine, a container or if we are running elsewhere
+            # In the later case we dont want to set the hostname
+            MACHINE_HOSTNAMES = ("imx8mn-var-som", "meticulous-")
+            if config.hostname.startswith(MACHINE_HOSTNAMES):
+                HostnameManager.checkAndUpdateHostname(config.mac)
 
         WifiManager._zeroconf = ZeroConfAnnouncement(config_function = WifiManager.getCurrentConfig)
 
-        # start AP if needed
-        if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP:
-            WifiManager.startHotspot()
-        else:
-            WifiManager.stopHotspot()
+        # Without networking we have no chance starting the wifi or getting the creads
+        if WifiManager._networking_available:
+            # start AP if needed
+            if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP:
+                WifiManager.startHotspot()
+            else:
+                WifiManager.stopHotspot()
 
         WifiManager._zeroconf.start()
 
@@ -134,7 +147,26 @@ class WifiManager():
                 return True
         return False
 
+    # Reads the IP from ZEROCONF_OVERWRITE and announces that instead
+    def mockCurrentConfig():
+        connected: bool = True
+        connection_name: str = "MeticulousMockConnection"
+
+        overwrite = ZEROCONF_OVERWRITE.split(",")
+        mockIP = IPNetwork(overwrite[0])
+        hostname : str = overwrite[1]
+
+        gateway: IPAddress = mockIP.first
+        routes: list[str] = []
+        ips: list[IPNetwork] = [mockIP]
+        dns: list[IPAddress] = [IPAddress("8.8.8.8")]
+        mac: str = "AA:BB:CC:FF:FF:FF"
+        return WifiSystemConfig(connected, connection_name, gateway, routes, ips, dns, mac, hostname)
+
     def getCurrentConfig() -> WifiSystemConfig:
+
+        if ZEROCONF_OVERWRITE is not '':
+            return WifiManager.mockCurrentConfig()
 
         connected: bool = False
         connection_name: str = None
@@ -143,7 +175,8 @@ class WifiManager():
         ips: list[IPNetwork] = []
         dns: list[IPAddress] = []
         mac: str = ""
-        hostname:str = nmcli.general.get_hostname()
+        hostname: str = socket.gethostname()
+
         if not WifiManager._networking_available:
             return WifiSystemConfig(connected, connection_name, gateway, routes, ips, dns, mac, hostname)
 
