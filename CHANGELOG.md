@@ -1,4 +1,8 @@
 
+### [v0.1.18] - 2024-01-11
+    The Zeroconf service announcement is designed to announce the current
+
+
 ### [v0.1.17] - 2024-01-11
     The meticulous machine is currently only reachable if the use
 
