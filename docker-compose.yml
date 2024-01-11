@@ -12,3 +12,4 @@ services:
     environment:
       - BACKEND=emulation
       - EMULATION_SPEED=100
+      - ZEROCONF_OVERWRITE=192.168.2.11/24,Mimoja-Datenschleuder

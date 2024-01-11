@@ -16,6 +16,7 @@ class ZeroConfAnnouncement:
     def _createServiceConfig(self):
         self.network_config = self.config_function()
         if not self.network_config.connected:
+            logger.info("Not connected to a network, not starting zeroconf")
             return
 
         ips = list(map(lambda ip: str(ip.ip), self.network_config.ips))
@@ -27,7 +28,10 @@ class ZeroConfAnnouncement:
             f"{self.service_name}.{self.service_type}",
             addresses=ips,
             port=self.port,
-            properties={'server_name': self.network_config.hostname},
+            # We can announce arbitrary information here (e.g. version numbers or features or state)
+            properties={
+                'server_name': self.network_config.hostname,
+                'machine_name': self.service_name},
             server=f"{self.network_config.hostname}."
         )
 
