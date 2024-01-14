@@ -39,7 +39,7 @@ class WifiManager():
     _zeroconf = None
 
     def init():
-        if ZEROCONF_OVERWRITE is not '':
+        if ZEROCONF_OVERWRITE != '':
             logger.info(f"Overwriting network configuration due to ZEROCONF_OVERWRITE={ZEROCONF_OVERWRITE}")
 
         try:
@@ -165,7 +165,7 @@ class WifiManager():
 
     def getCurrentConfig() -> WifiSystemConfig:
 
-        if ZEROCONF_OVERWRITE is not '':
+        if ZEROCONF_OVERWRITE  != '' :
             return WifiManager.mockCurrentConfig()
 
         connected: bool = False
