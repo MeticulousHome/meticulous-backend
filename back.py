@@ -307,7 +307,8 @@ async def read_arduino():
                     time_flag = False
 
                 if (time_flag):
-                    data_sensors = data.clone_with_time(time.time() - shot_start_time)
+                    time_passed = int((time.time() - shot_start_time) * 1000.0)
+                    data_sensors = data.clone_with_time(time_passed)
                 else:
                     data_sensors = data
                 old_status = data_sensors.status

@@ -175,7 +175,7 @@ class ShotData:
         return data
 
     def to_sio(self):
-        return {
+        data = {
             "name": self.status,
             "sensors": {
                 "p": self.pressure,
@@ -183,9 +183,10 @@ class ShotData:
                 "w": self.weight,
                 "t": self.temperature,
             },
-            "time": str(self.time),
+            "time": self.time,
             "profile": self.profile,
         }
+        return data
 
 
 @unique
