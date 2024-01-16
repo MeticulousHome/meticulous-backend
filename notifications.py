@@ -71,18 +71,13 @@ class NotificationManager:
                 return True
         return False
 
-    def add_notification(notification):
+    async def add_notification(notification):
         NotificationManager._notifications.append(notification)
-        
-        # Define an asynchronous function to send the notification
-        async def send_notification():
-            # Emit the notification over socketIO as json
-            await NotificationManager._sio.emit("notification", notification.to_json())
 
-        # Get the current asyncio event loop
-        loop = asyncio.get_event_loop()
-        # Run the asynchronous send_notification function in the event loop
-        loop.run_until_complete(send_notification())
+        # Emit the notification over socketIO as json
+        await NotificationManager._sio.emit("notification", notification.to_json())
+
+
 
     def get_unacknowledged_notifications():
         NotificationManager.delete_old_acknowledged()
