@@ -217,7 +217,14 @@ async def live():
         await sio.sleep(SAMPLE_TIME)
         i = i + 1
 
-def send_data():
+def send_data_loop():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    loop.run_until_complete(send_data())
+    loop.close()
+
+async def send_data():
     global lastJSON_source
     global ble_gatt_server
 
@@ -286,8 +293,13 @@ def send_data():
 
         elif _input.startswith("notification"):
             notification = _input[12:]
-            NotificationManager.add_notification(Notification(notification, [NotificationResponse.OK]))
-
+            await NotificationManager.add_notification(Notification(notification, [NotificationResponse.OK]))
+        elif _input == "l":
+            await sio.emit("button", ButtonEventData.from_args(["CCW"]).to_sio())
+        elif _input == "r":
+            await sio.emit("button", ButtonEventData.from_args(["CW"]).to_sio())
+        elif _input == "e":
+            await sio.emit("button", ButtonEventData.from_args(["push"]).to_sio())
 
         elif _input != "":
             logger.info(f"Unknown command: \"{_input}\"")
@@ -306,7 +318,7 @@ def main():
 
     Machine.init(sio)
 
-    send_data_thread = threading.Thread(target=send_data) 
+    send_data_thread = threading.Thread(target=send_data_loop)
     send_data_thread.start()
 
     ble_gatt_server = GATTServer.getServer()
