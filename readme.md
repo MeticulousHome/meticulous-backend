@@ -1,5 +1,5 @@
 # Backend for rasp in esp
-
+## Introduction
 This repo is to run the backend of meticulous. 
 
 For the correct functioning, you must create a ".env" file type and copy the following
@@ -11,18 +11,21 @@ For the correct functioning, you must create a ".env" file type and copy the fol
 
 The sign **#** is for comments. The "V3" value refers to the FIKA PCB with two ADS and the V3.1 value refers to the FIKA PCB withs three ADS. 
 
-# Read Serial
+## Files
+`read_serial.py`
 
 The *read_serial.py* file is to read de data from the ESP. The file has 3 functions and one class. 
 
-## Read Line class
+**Read Line Class**
 
 This class is to optimize the serial communication with a serial device. The class use a **bytearray** object and a **readline function**.
 
 The bytearray object is used to create an array of bytes. 
 The readline function reads a line and stores the information in the bytearray object. 
 
-## read_arduino function
+**==== Functions ====**
+
+- _Function ::_ **read_arduino**
 
 This function is used to read a serial device. The first steps are to enable the ESP, reset the serial device buffer and create a ReadLine object with the serial device as argument. 
 
@@ -30,32 +33,32 @@ The second step is reset the esp32.
 
 The third step is to start the collecting data in an infinite loop.
 
-## send_data function 
+- _Function ::_ **send_data**
 
 This function is used to send data to the serial device. It is designed to interact with the test software. 
 
 There is a thread to reset the rasp if the user enters the word "reset"
 
-## reset_rasp function
+- _Function ::_ **reset_rasp**
 
 This function is used to reset the rasp
 
-## main function
+- _Function ::_ **main**
 
 There are two threads running in the main function. One is for sending data (executing the send data function) and the other is to read the serial device (executing the read arduino function).
 
-# Backend
+`back.py`
 
 The *back.py* file is to run the backend. 
 
-## Read Line class
+**Read Line Class**
 
 This class is to optimize the serial communication with a serial device. The class use a **bytearray** object and a **readline function**.
 
 The bytearray object is used to create an array of bytes. 
 The readline function reads a line and stores the information in the bytearray object. 
 
-## Set pins mode
+> Set pins mode
 
 From line 59 to line 66 is to setup the pins mode. There are 7 Pins:
 
@@ -67,16 +70,18 @@ From line 59 to line 66 is to setup the pins mode. There are 7 Pins:
 6. Lcd flt pin = 7
 7. Esp flt pin = 12
 
-## Turn on/off functions
+**Functions**
+
+- _Function ::_ **Turn on/off**
 
 Turn on function is used to enable the esp and the lcd switches 
 Turn off function is used to disable the lcd and the esp switches
 
-## Kill the ui demo 
+> Kill the ui demo
 
 From line 76 to line 78 is to kill the LCD UI process. But this only works if the backend is not running automatically. 
 
-## Libraries initialization
+> Libraries initialization
 
 **keyboard = Controller()** is used to initialize a *Controller* object from the **pynput.keyboard library** which can be used to simulate keyboard input.
 
@@ -85,7 +90,7 @@ We define some command line options. The first is **"port"** and has a default v
 The second is **"debug"** and has a default value of FALSE. It specifies whether the server should run in debug mode
 
 Finally, the code initializes a **Socket.IO server** using the **AsyncServer class** from the **socketio library**. The server is configured to **allow cross-origin** resource sharing (CORS) from any origin (*), and to use the **tornado library's asynchronous mode**.
-## Data sensors 
+> Data sensors 
 
 From line 88 to 95 is used to create a dictionary and save the data from the serial device. This data are:
 1. Pressure
@@ -95,19 +100,19 @@ From line 88 to 95 is used to create a dictionary and save the data from the ser
 5. Status
 6. Time
 
-## read_flt_pins function 
+- _Function ::_ **read_flt_pins**
 
 This function is used to read the pins flt from the switches. 
 
-## enable_pcb function
+- _Function ::_ **enable_pcb**
 
 This function is used to turn on the PCB by activating the switches. 
 
-## read_on_off_bt()
+- _Function ::_ **read_on_off_bt()**
 
 This function is used to read the state of the on / off button. 
 
-## Encoder functions
+> Encoder functions
 
 There are three functions for controlling the encoder and interacting with the LCD screen.
 
@@ -115,17 +120,17 @@ There are three functions for controlling the encoder and interacting with the L
 **ccw_function** is used to identify when the user turns the encoder to the left
 **single_push** is used to identify when the user push the encoder
 
-## reboot_esp function
+- _Function ::_ **reboot_esp**
 
 This function is used to reboot the esp. 
 
-## Connecting functions
+> Connecting functions
 
 There are functions to detect an event with the **@sio.event** decorator. The events are:
 1. **connect:** This function detects when an application is connected. 
 2. **disconnect:** This function detects when an application is disconnected.
 
-## Event Handler functions
+> Event Handler functions
 
 There are functions to detect an event with the **@sio.on** decorator. The events are:
 
@@ -139,7 +144,7 @@ There are functions to detect an event with the **@sio.on** decorator. The event
     5. la-pavoni
     6. rocket
 
-## read_arduino function
+- _Function ::_ **read_arduino**
 
 This function is used to read a serial device. The first step are reset the serial device buffer and create a ReadLine object with the serial device as argument. 
 
@@ -153,11 +158,11 @@ If the **time_flag** is **True**, the code updates the value of the "time" key i
 
 If the **incoming data** does not start with "Data", the code checks if it contains the strings "CCW", "CW", or "push", and calls the corresponding functions. If none of these strings are found, the code checks the value of the print_status and sensor_status variables and the first character of the incoming data. If certain conditions are met, it prints the incoming data to the console.
 
-## async def live function
+- _Function ::_ **async def live**
 
 This function update the status and sensors values ot the ESP to the client over the Socket.IO server
 
-## send_data function
+- _Function ::_ **send_data**
 
 This function sends actions to the esp. This actions are:
 1. **reset**: Reset the esp
@@ -169,7 +174,7 @@ This function sends actions to the esp. This actions are:
 7. **purge**: Purge the coffee machine
 8. **home**: 
 
-## main function
+- _Function ::_ **main**
 
 The line **parse_command_line()** decode the JSON
 
@@ -183,3 +188,22 @@ This package uses `version.py` to track its version, which is an auto-generated 
 This package follows semantic versioning, which means that version numbers are in the format `MAJOR.MINOR.PATCH`. For more information about semantic versioning and how to determine which part of the version number to increment, please refer to https://semver.org/.
 
 During development, we should keep the major version number at 0, such as `0.x.x`. Once the package is ready for production use, we will update the major version number to 1, such as `1.x.x`.
+
+## Backend: For development
+
+To allow developers to run backend without a physical coffee machine, we implement docker file. Just make the following:
+
+```bash
+# Branch
+git fetch origin
+git switch mimoja_dev
+
+# Docker compose
+docker compose run --build -p 8080:8080 backend
+```
+
+if you are on linux, just start the backend directly:
+
+```bash
+BACKEND=emulator python3 back.py
+```
