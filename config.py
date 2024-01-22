@@ -11,6 +11,7 @@ logger = MeticulousLogger.getLogger(__name__)
 # Config Compontents
 CONFIG_LOGGING = "logging"
 CONFIG_SYSTEM = "system"
+CONFIG_USER = "user"
 CONFIG_WIFI = "wifi"
 
 #
@@ -30,6 +31,13 @@ HTTP_DEFAULT_ALLOWED_NETWORKS = []
 ## Notification Logic
 NOTIFICATION_KEEPALIVE = "notifications_ttl"
 NOTIFICATION_DEFAULT_KEEPALIVE = 3600
+
+#
+# USER config
+#
+## SOUND configuration
+SOUNDS_ENABLED = "enable_sounds"
+SOUNDS_DEFAULT_ENABLED = True
 
 #
 # LOGGING config
@@ -65,6 +73,9 @@ DefaultConfiguration_V1 = {
         HTTP_AUTH_KEY: HTTP_DEFAULT_AUTH_KEY,
         HTTP_ALLOWED_NETWORKS: HTTP_DEFAULT_ALLOWED_NETWORKS,
         NOTIFICATION_KEEPALIVE: NOTIFICATION_DEFAULT_KEEPALIVE,
+    },
+    CONFIG_USER:{
+        SOUNDS_ENABLED: SOUNDS_DEFAULT_ENABLED,
     },
     CONFIG_WIFI: {
         WIFI_MODE: WIFI_MODE_AP,
