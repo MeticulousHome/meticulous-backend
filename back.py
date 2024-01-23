@@ -14,10 +14,6 @@ import version as backend
 import subprocess
 import asyncio
 
-from esp_serial.connection.usb_serial_connection import USBSerialConnection
-from esp_serial.connection.fika_serial_connection import FikaSerialConnection
-from esp_serial.connection.emulator_serial_connection import EmulatorSerialConnection
-
 from esp_serial.data import *
 
 from ble_gatt import GATTServer
@@ -25,6 +21,7 @@ from wifi import WifiManager
 from notifications import Notification, NotificationManager, NotificationResponse
 from profile import ProfileManager
 from config import *
+from machine import Machine
 
 from api.profiles import PROFILE_HANDLER
 from api.notifications import NOTIFICATIONS_HANDLER
@@ -34,45 +31,13 @@ from api.emulation import EMULATED_WIFI_HANDLER
 from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
-esp32_logger = MeticulousLogger.getLogger("esp32")
 
 user_path=os.path.expanduser("~/")
 
-sendInfoToFront = False
-infoReady = False
+sendInfoToFront = True
 lastJSON_source = "LCD"
 
-connection = None
 ble_gatt_server: GATTServer = None
-
-class ReadLine:
-    def __init__(self, s):
-        self.buf = bytearray()
-        self.s = s
-    
-    def readline(self):
-        global stopESPcomm
-        i = self.buf.find(b"\n")
-        if i >= 0:
-            r = self.buf[:i+1]
-            self.buf = self.buf[i+1:]
-            return r
-        while not stopESPcomm:
-            i = max(1, min(2048, self.s.in_waiting))
-            data = self.s.read(i)
-            i = data.find(b"\n")
-            if i >= 0:
-                r = self.buf + data[:i+1]
-                self.buf[0:] = data[i+1:]
-                return r
-            else:
-                self.buf.extend(data)
-        return self.buf
-
-#thread variables
-data_thread = None
-send_data_thread = None
-stopESPcomm = False
 
 def gatherVersionInfo():
     global infoSolicited
@@ -96,22 +61,10 @@ define("debug", default=False, help="run in debug mode")
 
 sio = socketio.AsyncServer(cors_allowed_origins='*', async_mode='tornado')
 
-data_sensors = ShotData()
-sensor_sensors = None
-esp_info = None
-
 software_info = {
     "name": "Meticulous Espresso",
     "lcdV": 3,
 }
-
-
-def return_to_idle():
-    if (data_sensors.status != "idle"):
-        _input = "action,"+"stop"+"\x03"
-        if(connection.port != None): connection.port.write(str.encode(_input))
-    logger.info("DOUBLE ENCODER, Returning to idle")
-
 
 def send_json_hash(json_obj):
     json_string = json.dumps(json_obj)
@@ -231,127 +184,11 @@ async def feed_profile(sid, data):
     else:
         print("The 'kind' key is not present in the received JSON.")
 
-async def read_arduino():
-    global infoReady
-    global stopESPcomm
-    global data_sensors
-    global sensor_sensors
-    global esp_info
-
-    reset_count = 0
-    shot_start_time = time.time()
-
-    connection.port.reset_input_buffer()
-    connection.port.write(b'32\n')
-    uart = ReadLine(connection.port)
-
-    old_status = MachineStatus.IDLE
-    time_flag = False
-
-    while True:
-        if stopESPcomm:
-            time.sleep(0.1)
-            continue
-
-        data = uart.readline()
-        if len(data) > 0:
-            # data_bit = bytes(data)
-            try:
-                data_str = data.decode('utf-8')
-            except:
-                esp32_logger.info(f"decoding fails, message: {data}")
-                continue
-
-            if (old_status != MachineStatus.IDLE and data_str.startswith("Sensor")) or MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES]:
-                esp32_logger.info(data_str.strip("\r\n"))
-
-            data_str_sensors = data_str.strip("\r\n").split(',')
-
-            # potential message types
-            button_event = None
-            sensor = None
-            data = None
-            info = None
-
-            if data_str.startswith("rst:0x") and "boot:0x16 (SPI_FAST_FLASH_BOOT)" in data_str:
-                reset_count+=1
-
-            if reset_count >= 3:
-                logger.warning("The ESP seems to be resetting, sending update now")
-                startUpdate()
-                reset_count = 0
-
-            match(data_str_sensors):
-                # FIXME: This should be replace in the firmware with an "Event," prefix for cleanliness
-                case ["CCW" | "CW" | "push" | "pu_d" | "elng" | "ta_d" | "ta_l" | "strt"] as ev:
-                    button_event = ButtonEventData.from_args(ev)
-                case ["Event", *eventData]:
-                    button_event = ButtonEventData.from_args(eventData)
-                case ["Data", *dataArgs]:
-                    data = ShotData.from_args(dataArgs)
-                case ["Sensors", colorCodedString]:
-                    sensor = SensorData.from_color_coded_args(colorCodedString)
-                case ["Sensors", *sensorArgs]:
-                    sensor = SensorData.from_args(sensorArgs)
-                case ["ESPInfo", *infoArgs]:
-                    info = ESPInfo.from_args(infoArgs)
-                case [*_]:
-                    esp32_logger.info(data_str.strip("\r\n"))
-
-            if data is not None:
-                is_idle = data.status == MachineStatus.IDLE
-                is_infusion = data.status == MachineStatus.INFUSION
-                is_preinfusion = data.status == MachineStatus.PREINFUSION
-                is_spring = data.status == MachineStatus.SPRING
-                was_preparing = old_status == MachineStatus.CLOSING_VALVE
-
-                if (was_preparing and (is_preinfusion or is_infusion or is_spring)):
-                    time_flag = True
-                    shot_start_time = time.time()
-                    logger.info("shot start_time: {:.1f}".format(shot_start_time))
-
-                if (is_idle):
-                    time_flag = False
-
-                if (time_flag):
-                    time_passed = int((time.time() - shot_start_time) * 1000.0)
-                    data_sensors = data.clone_with_time(time_passed)
-                else:
-                    data_sensors = data
-                old_status = data_sensors.status
-                infoReady = True
-
-            if sensor is not None:
-                sensor_sensors = sensor#
-                reset_count = 0
-                infoReady = True
-
-            if info is not None:
-                esp_info = info
-                reset_count = 0
-                infoReady = True
-
-            if button_event is not None:
-                await sio.emit("button", button_event.to_sio())
-
-            # FIXME this should be a callback to the frontends in the future
-            if button_event is not None and button_event.event is ButtonEventEnum.ENCODER_DOUBLE:
-                return_to_idle()
-    
-def data_treatment():
-    global connection
-    if(connection.port != None):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-        loop.run_until_complete(read_arduino())
-        loop.close()
+send_data_thread = None
 
 async def live():
 
     global sendInfoToFront
-    global infoReady
-    global infoSolicited
     global lastJSON_source
 
     process_started = False
@@ -362,22 +199,19 @@ async def live():
     while True:
 
         elapsed_time = time.time() - _time
-        if infoSolicited and (elapsed_time > 2 and not infoReady):
+        if (elapsed_time > 2 and not Machine.infoReady):
             _time = time.time()
-            _solicitud = "action,info\x03"
-            if(connection.port != None and not  stopESPcomm): connection.port.write(str.encode(_solicitud))
+            Machine.action("info")
 
-        await sio.emit("status", {**data_sensors.to_sio(), "source": lastJSON_source,})
+        await sio.emit("status", {**Machine.data_sensors.to_sio(), "source": lastJSON_source,})
 
         if sendInfoToFront:
-            logger.info("Sending info to front")
-            if sensor_sensors is not None:
-                await sio.emit("sensors", sensor_sensors.to_sio_temperatures())
-                await sio.emit("comunication", sensor_sensors.to_sio_communication())
-                await sio.emit("actuators", sensor_sensors.to_sio_actuators())
-            if esp_info is not None:
-                # FIXME change to lowercase info for consistency
-                await sio.emit("info", {**software_info, **esp_info.to_sio()})
+            if Machine.sensor_sensors is not None:
+                await sio.emit("sensors", Machine.sensors.to_sio_temperatures())
+                await sio.emit("comunication", Machine.sensors.to_sio_communication())
+                await sio.emit("actuators", Machine.sensors.to_sio_actuators())
+            if Machine.esp_info is not None:
+                await sio.emit("info", {**software_info, **Machine.esp_info.to_sio()})
         await sio.sleep(SAMPLE_TIME)
         i = i + 1
 
@@ -440,7 +274,7 @@ def send_data():
              if(connection.port != None): connection.port.write(str.encode(_input))
 
         elif _input.startswith("update"):
-            startUpdate()
+            Machine.startUpdate()
 
         elif _input.startswith("wifi"):
             if ble_gatt_server.is_running():
@@ -457,8 +291,6 @@ def send_data():
             logger.info(f"Unknown command: \"{_input}\"")
             pass
 
-# can be from [FIKA, USB, EMULATOR / EMULATION]
-BACKEND=os.getenv("BACKEND", 'FIKA').upper()
 
 def main():
     global data_thread
@@ -466,29 +298,16 @@ def main():
     global connection
     global ble_gatt_server
 
-    emulation = False
-
     parse_command_line()
 
     gatherVersionInfo()
 
-    match(BACKEND):
-        case "USB":
-            connection = USBSerialConnection('/dev/ttyUSB0')
-        case "EMULATOR" | "EMULATION":
-            connection = EmulatorSerialConnection()
-            emulation = True
-        # Everything else is proper fika connection
-        case "FIKA" | _ :
-            connection = FikaSerialConnection('/dev/ttymxc0')
-
-    ble_gatt_server = GATTServer.getServer()
-
-    data_thread = threading.Thread(target=data_treatment)
-    data_thread.start()
+    Machine.init(sio)
 
     send_data_thread = threading.Thread(target=send_data) 
     send_data_thread.start()
+
+    ble_gatt_server = GATTServer.getServer()
 
     WifiManager.init()
     NotificationManager.init(sio)
@@ -501,7 +320,7 @@ def main():
     handlers.extend(PROFILE_HANDLER)
     handlers.extend(NOTIFICATIONS_HANDLER)
 
-    if emulation:
+    if Machine.emulated:
         handlers.extend(EMULATED_WIFI_HANDLER)
     else:
         handlers.extend(WIFI_HANDLER)
@@ -525,13 +344,6 @@ def menu():
     logger.info("hide --> Stop showing data received from esp32 except for status messages")
     logger.info("test --> Moves the engine 10 times from purge to home and displays the value of the sensors")
     logger.info("calibration,<known_weight>,<measured_weight> --> Calibrate the weight")
-
-def startUpdate():
-    global stopESPcomm
-
-    stopESPcomm = True
-    connection.sendUpdate()
-    stopESPcomm = False
 
 if __name__ == "__main__":
     try:
