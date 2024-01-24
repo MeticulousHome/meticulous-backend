@@ -167,7 +167,7 @@ class WifiManager():
         mockIP = IPNetwork(overwrite[0])
         hostname : str = overwrite[1]
 
-        gateway: IPAddress = mockIP.first
+        gateway: IPAddress = IPAddress(mockIP.first)
         routes: list[str] = []
         ips: list[IPNetwork] = [mockIP]
         dns: list[IPAddress] = [IPAddress("8.8.8.8")]
