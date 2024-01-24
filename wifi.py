@@ -31,10 +31,13 @@ class WifiSystemConfig():
     hostname: str
 
     def to_json(self):
+        gateway = ""
+        if self.gateway is not None:
+            self.gateway.format()
         return {
             "connected": self.connected,
             "connection_name": self.connection_name,
-            "gateway": self.gateway.format(),
+            "gateway": gateway,
             "routes": self.routes,
             "ips": [ip.ip.format() for ip in self.ips],
             "dns": [dns.format() for dns in self.dns],
