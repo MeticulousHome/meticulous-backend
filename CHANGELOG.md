@@ -1,4 +1,8 @@
 
+### [v0.1.19] - 2024-01-26
+Contains three misc commits in preparation of the API merge:
+
+
 ### [v0.1.18] - 2024-01-11
     The Zeroconf service announcement is designed to announce the current
 
