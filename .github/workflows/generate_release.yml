@@ -23,16 +23,9 @@ jobs:
       with: 
         token: ${{ secrets.GH_VERSIONING }}
 
-    - name: Cache library
-      uses: actions/cache@v2
-      with:
-        path: requirements.txt
-        key: ${{ runner.os }}-library-${{ hashFiles('requirements.txt') }}
-        restore-keys: ${{ runner.os }}-library-
-
     - uses: actions/setup-python@v4
       with:
-        python-version: '3.9'
+        python-version: '3.12'
 
     - name: Get PR description
       id: get_pr_description
@@ -64,40 +57,20 @@ jobs:
 
     - name: Create folder to copy the files
       run: |
-        mkdir -p meticulous/library 
-        mkdir -p meticulous/backend_for_esp32 
+        mkdir -p meticulous-backend
 
-    - name: Copy files, excep the folder meticulous using exclude 
+    - name: Copy files, excep the unneeded folders using exclude 
       run: |
-        rsync -avq --exclude='meticulous' ./ meticulous/backend_for_esp32/
-
-    - name: Create folder to save library
-      run: |
-        mkdir -p library
-
-    - name: Create virtual environment, download dependencies and copy them to the library folder of meticulous
-      run: |
-        python3 -m venv venv && source venv/bin/activate
-        cd library
-        pip download -r ../requirements.txt --platform manylinux_2_28_aarch64 --platform manylinux_2_17_aarch64 --python-version 3.9 --implementation cp --abi cp39 --no-deps
-        deactivate
-        cp -rf . ../meticulous/library/
-        cd
-
-    - name: upload files
-      uses: actions/upload-artifact@v2
-      with:
-        name: Update_files_backend
-        path: meticulous
+        rsync -avq --exclude='meticulous-backend' --exclude='dist' --exclude='.github' --exclude='.git' ./ meticulous-backend
 
     - uses: montudor/action-zip@v1
       name: Preparing ZIP
       with:
-        args: zip -qq -r update_back.zip meticulous/
+        args: zip -qq -r meticulous-backend.zip meticulous-backend
 
     - name: Release
       env:
         GITHUB_TOKEN: "${{ secrets.G_CLONE_TOKEN }}"
       run: |
-        gh release create backend_for_esp32-${{ env.BUILD_VERSION }} update_back.zip -R https://github.com/FFFuego/Meticulous-Releases
+        gh release create backend_for_esp32-${{ env.BUILD_VERSION }} meticulous-backend.zip -R https://github.com/FFFuego/Meticulous-Releases
         echo "Release created, And version updated to ${{ env.BUILD_VERSION }}"
