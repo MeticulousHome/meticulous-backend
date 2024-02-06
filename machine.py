@@ -10,6 +10,8 @@ from esp_serial.connection.usb_serial_connection import USBSerialConnection
 from esp_serial.connection.fika_serial_connection import FikaSerialConnection
 from esp_serial.connection.emulator_serial_connection import EmulatorSerialConnection
 
+from shot_manager import ShotManager
+
 from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -143,28 +145,34 @@ class Machine:
                     is_infusion = data.status == MachineStatus.INFUSION
                     is_preinfusion = data.status == MachineStatus.PREINFUSION
                     is_spring = data.status == MachineStatus.SPRING
+                    is_purge = data.status == MachineStatus.PURGE
                     was_preparing = old_status == MachineStatus.CLOSING_VALVE
 
                     if (was_preparing and (is_preinfusion or is_infusion or is_spring)):
                         time_flag = True
                         shot_start_time = time.time()
                         logger.info("shot start_time: {:.1f}".format(shot_start_time))
+                        ShotManager.start()
 
-                    if (is_idle):
+                    if (is_idle or is_purge):
                         time_flag = False
+                        ShotManager.stop()
 
                     if (time_flag):
                         time_passed = int((time.time() - shot_start_time) * 1000.0)
                         Machine.data_sensors = data.clone_with_time(time_passed)
+                        ShotManager.handleShotData(Machine.data_sensors)
                     else:
                         Machine.data_sensors = data
                     old_status = Machine.data_sensors.status
                     Machine.infoReady = True
 
                 if sensor is not None:
-                    Machine.sensors = sensor#
+                    Machine.sensors = sensor
                     Machine.reset_count = 0
                     Machine.actioninfoReady = True
+                    if (time_flag):
+                        ShotManager.handleSensorData(Machine.sensors, time_passed)
 
                 if info is not None:
                     Machine.esp_info = info
