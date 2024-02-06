@@ -40,8 +40,6 @@ user_path=os.path.expanduser("~/")
 sendInfoToFront = True
 lastJSON_source = "LCD"
 
-ble_gatt_server: GATTServer = None
-
 def gatherVersionInfo():
     global infoSolicited
     software_info["name"] = "Meticulous Espresso"
@@ -227,7 +225,6 @@ def send_data_loop():
 
 async def send_data():
     global lastJSON_source
-    global ble_gatt_server
 
     while (True):
         print("> ", end="")
@@ -286,12 +283,6 @@ async def send_data():
         elif _input.startswith("update"):
             Machine.startUpdate()
 
-        elif _input.startswith("wifi"):
-            if ble_gatt_server.is_running():
-                ble_gatt_server.stop()
-            else:
-                ble_gatt_server.start()
-
         elif _input.startswith("notification"):
             notification = _input[12:]
             await NotificationManager.add_notification(Notification(notification, [NotificationResponse.OK]))
@@ -310,8 +301,6 @@ async def send_data():
 def main():
     global data_thread
     global send_data_thread
-    global ble_gatt_server
-
     parse_command_line()
 
     gatherVersionInfo()
@@ -321,7 +310,7 @@ def main():
     send_data_thread = threading.Thread(target=send_data_loop)
     send_data_thread.start()
 
-    ble_gatt_server = GATTServer.getServer()
+    GATTServer.getServer().start()
 
     WifiManager.init()
     NotificationManager.init(sio)
