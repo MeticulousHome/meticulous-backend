@@ -1,7 +1,8 @@
-from typing import Any, Dict, Union, Optional
+from typing import Dict, Optional
 import sys
 import asyncio
-import os
+import psutil
+import time
 from threading import Thread
 
 from improv import *
@@ -62,6 +63,8 @@ class GATTServer():
             Handles write requests from a BLE client for a given characteristic.
     """
 
+    MIN_BOOT_TIME = 60
+
     _singletonServer = None
 
     def __init__(self):
@@ -80,11 +83,8 @@ class GATTServer():
             wifi_networks_callback=GATTServer.get_wifi_networks,
             max_response_bytes=250
         )
-        gatt_name = MeticulousConfig[CONFIG_SYSTEM][GATT_NAME]
-        self.bless_gatt_server = BlessServer(
-            name=gatt_name, loop=self.loop)
-        self.bless_gatt_server.read_request_func = GATTServer.read_request
-        self.bless_gatt_server.write_request_func = GATTServer.write_request
+        self.gatt_name = MeticulousConfig[CONFIG_SYSTEM][GATT_NAME]
+        self.bless_gatt_server = None
         self.loopThread = None
 
     def getServer():
@@ -128,6 +128,23 @@ class GATTServer():
         self.loop.call_soon_threadsafe(self.trigger.set)
 
     async def _ble_gatt_server_loop(self):
+        # FIXME remove once migrated away from the variscite-wifi.service towards
+        # proper sdio power sequencing
+        # After boot we need to was 10 or so seconds for the variscite wifi service
+        # to enable bluetooth again
+        uptime_missing = round(
+            GATTServer.MIN_BOOT_TIME - (time.time() - psutil.boot_time())
+        )
+        if uptime_missing > 0:
+            logger.info(
+                f"GattServer started to fast after system boot. Waiting {uptime_missing} seconds"
+            )
+            time.sleep(uptime_missing)
+
+        if self.bless_gatt_server is None:
+            self.bless_gatt_server = BlessServer(name=self.gatt_name, loop=self.loop)
+            self.bless_gatt_server.read_request_func = GATTServer.read_request
+            self.bless_gatt_server.write_request_func = GATTServer.write_request
 
         # Power on the hci device if it is powered off
         await self.bless_gatt_server.setup_task
