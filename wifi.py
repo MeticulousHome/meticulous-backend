@@ -154,11 +154,13 @@ class WifiManager():
             except Exception as e:
                 logger.info(f"Failed to connect to wifi: {e}")
                 return False
-
+            logger.info("Connection should be established, checking if a network is marked in-use")
+            networks = WifiManager.scanForNetworks(timeout=10, target_network_ssid=ssid)
             if len([x for x in networks if x.in_use]) > 0:
                 logger.info("Successfully connected")
                 WifiManager._zeroconf.restart()
                 return True
+        logger.info("Target network was not found, no connection established")
         return False
 
     # Reads the IP from ZEROCONF_OVERWRITE and announces that instead
