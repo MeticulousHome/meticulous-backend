@@ -7,7 +7,7 @@ class ZeroConfAnnouncement:
         self.service_type = "_http._tcp.local."
         self.zeroconf = zeroconf.Zeroconf()
         self.port = 8080
-        self.service_name = None
+        self.service_name = "_meticulous"
         self.service_handle = None
         self.service_info = None
         self.network_config = None
@@ -20,7 +20,6 @@ class ZeroConfAnnouncement:
             return
 
         ips = list(map(lambda ip: str(ip.ip), self.network_config.ips))
-        self.service_name = HostnameManager.generateHostname(self.network_config.mac)
 
         # Create the service information
         self.service_info = zeroconf.ServiceInfo(
@@ -31,8 +30,9 @@ class ZeroConfAnnouncement:
             # We can announce arbitrary information here (e.g. version numbers or features or state)
             properties={
                 'server_name': self.network_config.hostname,
-                'machine_name': self.service_name},
-            server=f"{self.network_config.hostname}."
+                'machine_name': HostnameManager.generateHostname(self.network_config.mac)
+            },
+            server=f"{self.network_config.hostname}.local"
         )
 
     def start(self):
