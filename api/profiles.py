@@ -31,9 +31,9 @@ class SaveProfileHandler(BaseHandler):
 
 class LoadProfileHandler(BaseHandler):
     def get(self, profile_id):
-        data = ProfileManager.get_profile(int(profile_id))
+        data = ProfileManager.get_profile(profile_id)
         if data:
-            profile = ProfileManager.load_profile(int(profile_id))
+            profile = ProfileManager.load_profile(profile_id)
             self.write({"name": profile["name"], "id": profile["id"]})
         else:
             self.set_status(404)
