@@ -39,8 +39,11 @@ class ProfileManager:
     def load_profile(id):
         profile = ProfileManager._known_profiles.get(id)
         if profile is not None:
-            ProfileManager.send_profile_to_esp32()
+            ProfileManager.send_profile_to_esp32(profile)
         return profile
+
+    def load_profile_from_data(data):
+        return data
 
     def send_profile_to_esp32(data):
         logger.warning("FIXME: send profile to ESP32")
