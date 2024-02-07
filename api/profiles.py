@@ -19,10 +19,10 @@ class ListHandler(BaseHandler):
         self.write(json.dumps(response))
 
 class SaveProfileHandler(BaseHandler):
-    def post(self, save_id):
+    def post(self):
         try:
             data = json.loads(self.request.body)
-            (name, profile_id) = ProfileManager.save_profile(save_id, data)
+            (name, profile_id) = ProfileManager.save_profile(data)
             self.write({"name": name, "id": profile_id})
         except Exception as e:
             self.set_status(400)
@@ -31,15 +31,15 @@ class SaveProfileHandler(BaseHandler):
 
 class LoadProfileHandler(BaseHandler):
     def get(self, profile_id):
-        data = ProfileManager.get_profile(profile_id)
+        data = ProfileManager.get_profile(int(profile_id))
         if data:
-            profile = ProfileManager.load_profile(data)
+            profile = ProfileManager.load_profile(int(profile_id))
             self.write({"name": profile["name"], "id": profile["id"]})
         else:
             self.set_status(404)
             self.write(f"No profile found with id: {profile_id}")
     
-    def post(self, data):
+    def post(self):
         try:
             data = json.loads(self.request.body)
             profile = ProfileManager.load_profile_from_data(data)
@@ -64,6 +64,7 @@ PROFILE_HANDLER= [
         (r"/profile/list", ListHandler),
         (r"/profile/save", SaveProfileHandler),
         (r"/profile/load", LoadProfileHandler),
+        (r"/profile/load/(?P<profile_id>\w+)", LoadProfileHandler),
         (r"/profile/get/([0-9a-fA-F-]+)", GetProfileHandler),
 ]
 
