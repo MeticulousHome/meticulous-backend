@@ -7,7 +7,13 @@ class BaseHandler(tornado.web.RequestHandler):
     def set_default_headers(self):
         #FIXME: I know this is not great, you know this isn't great. What shall we do about this?
         self.set_header("Access-Control-Allow-Origin", "*")
-
+        self.set_header('Content-type', 'application/json')
+        self.set_header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+        self.set_header('Access-Control-Allow-Headers', 'content-type')
+    
+    def options(self):
+        pass
+    
     def prepare(self):
 
         return
