@@ -1,0 +1,118 @@
+{
+    "name": "E61 with dropping pressure",
+    "id": "4cdc0015-07cd-4738-b198-c7d8742acd2b",
+    "author": "Carlos",
+    "author_id": "d9123a0a-d3d7-40fd-a548-b81376e43f23",
+    "previous_authors": [
+        {
+            "name": "mimoja",
+            "author_id": "d9123a0a-d3d7-40fd-a548-b81376e43f23",
+            "profile_id": "0cdf18ca-d72e-4776-8e25-7b3279907dce"
+        },
+        {
+            "name": "Alu",
+            "author_id": "ee86a777-fdd6-46d6-8cf7-099a9fb609a1",
+            "profile_id": "58036fd5-7d5b-4647-9ab6-2832014bb9be"
+        }
+    ],
+    "temperature": 80,
+    "stages": [
+        {
+            "name": "stage 1",
+            "type": "power",
+            "dynamics": {
+                "points": [
+                    [
+                        0,
+                        99.5
+                     ],
+                     [
+                        12,
+                        50.5
+                     ],
+                     [
+                        19,
+                        100
+                     ],
+                     [
+                        40,
+                        100
+                     ]
+                ],
+                "over": "piston_position",
+                "interpolation": "linear"
+            },
+            "exit_triggers": [
+                {
+                    "type": "weight",
+                    "value": 5,
+                    "relative": false
+                },
+                {
+                    "type": "position",
+                    "value": 40,
+                    "relative": true
+                }
+            ],
+            "limits": [
+                {
+                    "type": "flow",
+                    "value": 8
+                },
+                {
+                    "type": "pressure",
+                    "value": 6
+                }
+            ]
+
+        },
+        {
+            "name": "stage 2",
+            "type": "flow",
+            "dynamics": {
+                "points": [
+                    [
+                        0,
+                        2
+                     ],
+                     [
+                        17,
+                        6
+                     ],
+                     [
+                        50,
+                        6
+                     ]
+                ],
+                "over": "time",
+                "interpolation": "catmull"
+            },
+            "exit_triggers": [
+                {
+                    "type": "weight",
+                    "value": 35,
+                    "relative": false
+                },
+                {
+                    "type": "speed",
+                    "value": 15
+                },
+                {
+                    "type": "time",
+                    "value": 50,
+                    "relative": true
+                }
+            ],
+            "limits": [
+                {
+                    "type": "pressure",
+                    "value": 12
+                },
+                {
+                    "type": "power",
+                    "value": 80
+                }
+            ]
+        }
+    ]
+}
