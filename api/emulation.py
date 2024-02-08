@@ -12,7 +12,7 @@ logger = MeticulousLogger.getLogger(__name__)
 
 class WiFiConfigHandler(BaseHandler):
     def get(self):
-        provisioning = GATTServer.is_provisioning()
+        provisioning = GATTServer().is_provisioning()
         mode = MeticulousConfig[CONFIG_WIFI][WIFI_MODE]
         apName = MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME]
         apPassword = MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
@@ -63,27 +63,27 @@ class WiFiListHandler(BaseHandler):
     def get(self):
         networks = [
                 {
-                    "ssid:": "MeticulousWifi",
-                    "signal:": 75,
-                    "rate:": 195,
+                    "ssid": "MeticulousWifi",
+                    "signal": 75,
+                    "rate": 195,
                     "in_use": True
                 },
                 {
-                    "ssid:": "StarGate Legacy",
-                    "signal:": 59,
-                    "rate:": 195,
+                    "ssid": "StarGate Legacy",
+                    "signal": 59,
+                    "rate": 195,
                     "in_use": True
                 },
                 {
-                    "ssid:": "StarGate Enterprise",
-                    "signal:": 57,
-                    "rate:": 405,
+                    "ssid": "StarGate Enterprise",
+                    "signal": 57,
+                    "rate": 405,
                     "in_use": True
                 },
                 {
-                    "ssid:": "StarGate Picard",
-                    "signal:": 57,
-                    "rate:": 405,
+                    "ssid": "StarGate Picard",
+                    "signal": 57,
+                    "rate": 405,
                     "in_use": True
                 },
             ]

@@ -38,7 +38,7 @@ class WiFiConfig:
 
 class WiFiConfigHandler(BaseHandler):
     def get(self):
-        provisioning = GATTServer.is_provisioning()
+        provisioning = GATTServer().is_provisioning()
         mode = MeticulousConfig[CONFIG_WIFI][WIFI_MODE]
         apName = MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME]
         apPassword = MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
