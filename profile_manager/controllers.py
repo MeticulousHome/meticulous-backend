@@ -1,75 +1,104 @@
 import json 
-
+from dictionaries import controllers_type, algorithms_type, reference_type, curve_interpolation
+from dictionaries import ReferenceType, Pressure_Algorithm_Type, Temperature_Algorithm_Type, Speed_Algorithm_Type
 class Controllers:
     def __init__(self):
         self.data = {}
-        self.controllers_type = {
-            "power": "piston_power_controller",
-            "flow" : "flow_controller",
-            "pressure" : "pressure_controller",
-            "weight" : "weight_controller",
-            "speed" : "move_piston_controller",
-            "temperature" : "temperature_controller",
-            "tare" : "tare_controller",
-            "message" : "log_controller",
-            "end" : "end_profile",
-            "weight" : "weight_controller",
-            "end" : "end_profile"
-        }
         
-        self.algorithms_type = {
-            "pressure" : {
-                "pid v1" : "Pressure PID v1.0",
-                "pid v2" : "Pressure PID v2.0",
-            },
-            "power" : "Spring v1.0",
-            "temperature" : {
-                "water" : "Water Temperature PID v1.0",
-                "cylinder" : "Cylinder Temperature PID v1.0",
-                "tube" : "Tube Temperature PID v1.0",
-                "plunger" : "Plunger Temperature PID v1.0",
-                "stable" : "Stable Temperature"
-            },
-            "flow" : "Flow PID v1.0",
-            "weight" : "Weight PID v1.0",
-            "speed" : {
-                "ease-in" : "Piston Ease-In",
-                "fast" : "Piston Fast",
-            }
-        } 
-        
-        self.reference_type = {
-            "kind" : {
-                "time" : "time",
-                "position" : "position",
-                "weight" : "weight"
-            },
-            "reference" : {
-                "time" : "time_reference",
-                "position" : "position_reference",
-                "weight" : "weight_reference"
+    def get_controller(self):
+        return self.data
+
+class CurveControllers(Controllers):
+    def __init__(self):
+        self.data = {
+            "kind": "",
+            "algorithm": "",
+            "curve" : {
+                "id" : 0,
+                "interpolation_kind": "",
+                "points" : [],
+                "reference" :{
+                    "kind" : "",
+                    "id" : 0
+                }
             }
         }
+        self.algorithm_dictionary = []
+        self.reference_diccionary = []
+    
+    def set_curve_id(self, id: int):
+        self.data["curve"]["id"] = id
+
+    def set_interpolation_kind(self, interpolation_kind: str):
+        if interpolation_kind not in curve_interpolation:
+            raise ValueError("Invalid interpolation kind")
         
-        self.curve_interpolation = {
-            "linear" : "linear_interpolation",
-            "catmull" : "catmull_interpolation"
-        }
+        self.data["curve"]["interpolation_kind"] = curve_interpolation[interpolation_kind]
+    
+    def set_points(self, points: list):
+        self.data["curve"]["points"] = points
         
-        self.messages = {
-            "no water" : "No Water",
-            "remove cup" : "Remove Cup",
-            "purge" : "Purge",
-            "start click" : "Click to start",
-            "purge click" : "Click to purge"
-        }
+    def set_reference_type(self, reference_kind: ReferenceType):
+        if reference_kind not in reference_type["curve"]:
+            raise ValueError("Invalid reference kind")
+        self.data["curve"]["reference"]["kind"] = reference_type["curve"][reference_kind]
         
-        self.direction = {
-            "forward" : "DOWN",
-            "backward" : "UP"
-        }
+    def set_reference_id(self, reference_id: int):
+        self.data["curve"]["reference"]["id"] = reference_id
+
+class pressure_controller(CurveControllers):
+    def __init__(self):
+        self.data["kind"] = controllers_type["pressure"]
+        self.data["algorithm"] = algorithms_type["pressure"]["pid v1"]
+        self.data["curve"]["id"] = 0
+        self.data["curve"]["interpolation_kind"] = curve_interpolation["linear"]
+        self.data["curve"]["points"] = [0,6]
+        self.data["curve"]["reference"]["kind"] = reference_type["curve"][ReferenceType.TIME]
+        self.data["curve"]["reference"]["id"] = 0
+        
+    
+    def set_algorithm(self, algorithm: Pressure_Algorithm_Type):
+    # only accept valid algorithms
+        if algorithm not in algorithms_type["pressure"]:
+            raise ValueError("Invalid algorithm")
+
+        self.data["algorithm"] = algorithms_type["pressure"][algorithm]
 
 
+class flow_controller(CurveControllers):
+    def __init__(self):
+        self.data["kind"] = controllers_type["flow"]
+        self.data["algorithm"] = algorithms_type["flow"]
+        
+class temperature_controller(CurveControllers):
+    def __init__(self):
+        self.data["kind"] = controllers_type["temperature"]
+        self.data["algorithm"] = algorithms_type["temperature"]["water"]
+        
+    def set_algorithm(self, algorithm: Temperature_Algorithm_Type):
+        if algorithm not in algorithms_type["temperature"]:
+            raise ValueError("Invalid algorithm")
+        
+        self.data["algorithm"] = algorithms_type["temperature"][algorithm]
+        
+class speed_controller(Controllers):
+    def __init__(self):
+        self.data = {
+            "kind": controllers_type["speed"],
+            "algorithm": algorithms_type["speed"][Speed_Algorithm_Type.EASE_IN],
+            "speed" : 0,
+            "direction" : ""
+        }
+        
+    def set_algorithm(self, algorithm: Speed_Algorithm_Type):
+        if algorithm not in algorithms_type["speed"]:
+            raise ValueError("Invalid algorithm")
+        
+        self.data["algorithm"] = algorithms_type["speed"][algorithm]
+        
+    
+    
+    
     def pressure_controller(self, curve_id: int, interpolation_kind: str, points: list, reference_kind: str, reference_id: int):
         self.data = {
             "kind": self.controllers_type["pressure"],
