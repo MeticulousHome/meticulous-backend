@@ -1,5 +1,6 @@
 from enum import Enum
 
+# Enumerations for the different types of controllers for easy access, validation and maintenance
 class ReferenceType(Enum):
     TIME = "time"
     POSITION = "position"
@@ -19,6 +20,21 @@ class Temperature_Algorithm_Type(Enum):
 class Speed_Algorithm_Type(Enum):
     EASE_IN = "ease-in"
     FAST = "fast"
+
+class CurveInterpolationType(Enum):
+    LINEAR = "linear"
+    CATMULL = "catmull"
+    
+class Message_Type(Enum):
+    NO_WATER = "no water"
+    REMOVE_CUP = "remove cup"
+    PURGE = "purge"
+    START_CLICK = "start click"
+    PURGE_CLICK = "purge click"
+    
+class Direction_Type(Enum):
+    FORWARD = "forward"
+    BACKWARD = "backward"
 
 controllers_type = {
     "power": "piston_power_controller",
@@ -69,20 +85,20 @@ reference_type = {
 }
 
 curve_interpolation = {
-    "linear" : "linear_interpolation",
-    "catmull" : "catmull_interpolation"
+    CurveInterpolationType.LINEAR: "linear_interpolation",
+    CurveInterpolationType.CATMULL : "catmull_interpolation"
 }
         
 messages = {
-    "no water" : "No Water",
-    "remove cup" : "Remove Cup",
-    "purge" : "Purge",
-    "start click" : "Click to start",
-    "purge click" : "Click to purge"
+    Message_Type.NO_WATER : "No Water",
+    Message_Type.REMOVE_CUP : "Remove Cup",
+    Message_Type.PURGE : "Purge",
+    Message_Type.START_CLICK : "Click to start",
+    Message_Type.PURGE_CLICK : "Click to purge"
 }
 
-direction = {
-    "forward" : "DOWN",
-    "backward" : "UP"
+directions = {
+    Direction_Type.FORWARD : "DOWN",
+    Direction_Type.BACKWARD : "UP"
 }
   
