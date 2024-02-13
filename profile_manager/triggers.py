@@ -1,270 +1,308 @@
 import json
+from dictionaries import trigger_type, source_type , operator_type
+from dictionaries import TriggerType, SourceType, ButtonSourceType, ButtonGestureSourceType, TemperatureSourceType, TriggerOperatorType
 
 #This class is used to create the triggers for the complex JSON
 class Triggers:
         
-        def __init__(self):
-            self.data = {}
-            # A dictionary to store the correspondence between the trigger type from the JSON simplified and the trigger type for the complex JSON
-            self.triggers_type = {
-                "flow": {
-                    "value": "flow_value_trigger",
-                    "curve": "flow_curve_trigger"
-                },
-                "piston_position": "piston_position_trigger",
-                "power": {
-                    "value": "piston_power_value_trigger",
-                    "curve": "piston_power_curve_trigger"    
-                },
-                "pressure": {
-                    "value": "pressure_value_trigger",
-                    "curve": "pressure_curve_trigger"
-                },
-                "speed": "piston_speed_trigger",
-                "temperature":{
-                    "value": "temperature_value_trigger",
-                    "curve": "temperature_curve_trigger"
-                },
-                "time": "timer_trigger",
-                "water_detection" : "water_detection_trigger",
-                "weight": "weight_value_trigger",
-                "button" : "button_trigger",
-                "exit" : "exit"
-            }
-            # A dictionary to store the correspondence between the source from the JSON simplified and the source for the complex JSON
-            self.sources_type = {
-                "flow": {
-                    "raw": "Flow Raw",
-                    "predictive": "Flow Predictive",
-                    "average": "Flow Average"
-                },
-                "pressure":{
-                    "raw": "Pressure Raw",
-                    "predictive": "Pressure Predictive",
-                    "average": "Pressure Average"
-                },
-                "power": {
-                    "raw": "Piston Power Raw",
-                    "predictive": "Piston Power Predictive",
-                    "average": "Piston Power Average"
-                },
-                "weight": {
-                    "raw": "Weight Raw",
-                    "predictive": "Weight Predictive",
-                    "average": "Weight Average"  
-                },
-                "temperature": {
-                    "tube":"Tube Temperature", 
-                    "cylinder":"Cylinder Temperature", 
-                    "plunger":"Plunger Temperature", 
-                    "water":"Water Temperature", 
-                    "cylinder Average": "Cylinder Temperature Average"
-                },
-                "button" : {
-                    "start" : "Start Button",
-                    "tare" : "Tare Button",
-                    "encoder" : "Encoder",
-                    "encoder Button" : "Encoder Button"
-                    },
-                "button_gesture" :{ 
-                    "single": "Single Tap",
-                    "double": "Double Tap",
-                    "right": "Right",
-                    "left": "Left",
-                    "pressed": "Pressed",
-                    "released": "Released",
-                    "long": "Long Press"  
-                },
-            }
+    def __init__(self):
+        self.data = {}
+
+    def set_next_node_id(self, node_id: int):
+        self.data["next_node_id"] = node_id
+        
+    def get_trigger(self):
+        return self.data    
+               
+class OperatorTriggers(Triggers):
+    
+    def __init__(self):
+        self.data = {
+            "kind": "",
+            "operator": "",
+            "value": 0,
+        }            
+    
+    def set_kind(self, kind: TriggerType):
+        if kind not in trigger_type:
+            raise ValueError("Invalid trigger type")
+        self.data["kind"] = trigger_type[kind]  
+        
+    def set_operator(self, operator: TriggerOperatorType):
+        if operator not in operator_type:
+            raise ValueError("Invalid trigger operator")
+        self.data["operator"] = operator_type[operator]   
+        
+    def set_value(self, value: float):
+        self.data["value"] = value   
+ 
+class ValueTriggers(OperatorTriggers):
+    def __init__(self):
+        self.data = {
+            "kind": "",
+            "source": "",
+            "operator": "",
+            "value": 0,
+        } 
+    
+    def set_source(self, source_kind: SourceType, source_type: SourceType):
+        if source_kind not in source_type:
+            raise ValueError("Invalid source kind")
+        if source_type not in source_type[source_kind]:
+            raise ValueError("Invalid source type")
+        self.data["source"] = source_type[source_kind][source_type] 
+        
+class FlowValueTrigger(ValueTriggers):
+    def __init__(self):
+        super().__init__()
+        self.data["kind"] = trigger_type["value"][TriggerType.FLOW]
+        self.data["source"] = source_type[SourceType.RAW][SourceType.FLOW] 
+        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["value"] = 0
+        self.data["next_node_id"] = 0
+
+class PressureValueTrigger(ValueTriggers):
+    def __init__(self):
+        super().__init__()
+        self.data["kind"] = trigger_type["value"][TriggerType.PRESSURE]
+        self.data["source"] = source_type[SourceType.RAW][SourceType.PRESSURE] 
+        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["value"] = 0
+        self.data["next_node_id"] = 0
+
+class PowerValueTrigger(ValueTriggers):
+    def __init__(self):
+        super().__init__()
+        self.data["kind"] = trigger_type["value"][TriggerType.POWER]
+        self.data["source"] = source_type[SourceType.RAW][SourceType.POWER] 
+        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["value"] = 0
+        self.data["next_node_id"] = 0
             
-        def flow_value_trigger(self, flow_value: float, node_id: int):
-            self.data = {
-                "kind": self.triggers_type["flow"]["value"],
-                "source": self.sources_type["flow"]["raw"],
-                "operator": ">=",
-                "value": flow_value,
-                "next_node_id": node_id
-            }
-            return self.data
+class TemperatureValueTrigger(ValueTriggers):
+    def __init__(self):
+        super().__init__()
+        self.data["kind"] = trigger_type["value"][TriggerType.TEMPERATURE]
+        self.data["source"] = source_type[SourceType.TEMPERATURE][TemperatureSourceType.TUBE] 
+        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["value"] = 0
+        self.data["next_node_id"] = 0
+        
+class PistonPositionTrigger(ValueTriggers):
+    def __init__(self):
+        super().__init__()
+        self.data["kind"] = trigger_type["piston_position"]
+        self.data["source"] = "Piston Position Raw"
+        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["value"] = 0
+        self.data["position_reference_id"] = 0
+        self.data["next_node_id"] = 0
+        
+    def set_position_reference_id(self, position_reference: int):
+        self.data["position_reference_id"] = position_reference
+
+class WeightTrigger(ValueTriggers):
+    def __init__(self):
+        super().__init__()
+        self.data["kind"] = trigger_type["weight"]
+        self.data["source"] = source_type[SourceType.RAW][SourceType.WEIGHT] 
+        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["value"] = 0
+        self.data["weight_reference_id"] = 0
+        
+    def set_weight_reference_id(self, weight_reference: int):
+        self.data["weight_reference_id"] = weight_reference
+class TimerTrigger(OperatorTriggers):
+    def __init__(self):
+        super().__init__()
+        self.data["kind"] = trigger_type["time"]
+        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["value"] = 0
+        self.data["timer_reference_id"] = 0
+        
+    def set_timer_reference_id(self, time_reference: int):
+        self.data["timer_reference_id"] = time_reference
+        
+class CurveTriggers(OperatorTriggers):
+    def __init__(self):
+        super().__init__()
+        self.data = {
+            "kind": "",
+            "source": "",
+            "operator": "",
+            "curve_id": 0,
+            "next_node_id": 0
+        }
+        
+    def set_source(self, source_kind: SourceType, source_type: SourceType):
+        if source_kind not in source_type:
+            raise ValueError("Invalid source kind")
+        if source_type not in source_type[source_kind]:
+            raise ValueError("Invalid source type")
+        self.data["source"] = source_type[source_kind][source_type]
+    
+    def set_curve_id(self, curve_id: int):
+        self.data["curve_id"] = curve_id
+
+class FlowCurveTrigger(CurveTriggers):
+    def __init__(self):
+        super().__init__()
+        self.data["kind"] = trigger_type["curve"][TriggerType.FLOW]
+        self.data["source"] = source_type[SourceType.RAW][SourceType.FLOW] 
+        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["curve_id"] = 0
+        self.data["next_node_id"] = 0
+        
+class PressureCurveTrigger(CurveTriggers):
+    def __init__(self):
+        super().__init__()
+        self.data["kind"] = trigger_type["curve"][TriggerType.PRESSURE]
+        self.data["source"] = source_type[SourceType.RAW][SourceType.PRESSURE] 
+        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["curve_id"] = 0
+        self.data["next_node_id"] = 0
+
+class PowerCurveTrigger(CurveTriggers):
+    def __init__(self):
+        super().__init__()
+        self.data["kind"] = trigger_type["curve"][TriggerType.POWER]
+        self.data["source"] = source_type[SourceType.RAW][SourceType.POWER] 
+        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["curve_id"] = 0
+        self.data["next_node_id"] = 0
             
-        def flow_curve_trigger(self, curve_id: int, node_id: int):
-            self.data = {
-                "kind": self.triggers_type["flow"]["curve"],
-                "source": self.sources_type["flow"]["raw"],
-                "operator": ">=",
-                "curve_id": curve_id,
-                "next_node_id": node_id
-            }
-            return self.data
+class TemperatureCurveTrigger(CurveTriggers):
+    def __init__(self):
+        super().__init__()
+        self.data["kind"] = trigger_type["curve"][TriggerType.TEMPERATURE]
+        self.data["source"] = source_type[SourceType.TEMPERATURE][TemperatureSourceType.TUBE] 
+        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["curve_id"] = 0
+        self.data["next_node_id"] = 0       
+    
+    
+
+class ButtonTrigger(Triggers):
+    def __init__(self):
+        super().__init__()
+        self.data["kind"] = trigger_type["button"]
+        self.data["source"] = source_type[SourceType.BUTTON][ButtonSourceType.START]
+        self.data["gesture"] = source_type[SourceType.GESTURE][ButtonGestureSourceType.SINGLE]
+        self.data["next_node_id"] = 0
+          
+    def set_source(self, source: ButtonSourceType):
+        if source not in source_type[SourceType.BUTTON]:
+            raise ValueError("Invalid button source")
+        self.data["source"] = source_type[SourceType.BUTTON][source]
+    
+    def set_gesture(self, gesture: ButtonGestureSourceType):
+        if gesture not in source_type[SourceType.GESTURE]:
+            raise ValueError("Invalid button gesture")
+        self.data["gesture"] = source_type[SourceType.GESTURE][gesture]
+
+class SpeedTrigger(OperatorTriggers):
+    def __init__(self):
+        super().__init__()
+        self.data["kind"] = trigger_type["speed"]
+        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["value"] = 0
+        self.data["next_node_id"] = 0
+    
+class ExitTrigger(Triggers):
+    def __init__(self):
+        super().__init__()
+        self.data["kind"] = trigger_type["exit"]
+        self.data["next_node_id"] = 0
         
-        def piston_position_trigger(self, position_value: float, node_id: int, position_reference: int):
-            self.data = {
-                "kind": self.triggers_type["piston_position"],
-                "source": "Piston Position Raw",
-                "operator": ">=",
-                "value": position_value,
-                "position_reference_id": position_reference,
-                "next_node_id": node_id
-            }
-            return self.data
+class WaterDetectionTrigger(Triggers):
+    def __init__(self):
+        super().__init__()
+        self.data["kind"] = trigger_type["water_detection"]
+        self.data["value"] = False
+        self.data["next_node_id"] = 0
         
-        def piston_power_value_trigger(self, power_value: float, node_id: int):
-            self.data = {
-                "kind": self.triggers_type["power"]["value"],
-                "source": self.sources_type["power"]["raw"],
-                "operator": ">=",
-                "value": power_value,
-                "next_node_id": node_id
-            }
-            return self.data
-        
-        def piston_power_curve_trigger(self, curve_id: int, node_id: int):
-            self.data = {
-                "kind": self.triggers_type["power"]["curve"],
-                "source": self.sources_type["power"]["raw"],
-                "operator": ">=",
-                "curve_id": curve_id,
-                "next_node_id": node_id
-            }
-            return self.data
-        
-        def pressure_value_trigger(self, pressure_value: float, node_id: int):
-            self.data = {
-                "kind": self.triggers_type["pressure"]["value"],
-                "source": self.sources_type["pressure"]["raw"],
-                "operator": ">=",
-                "value": pressure_value,
-                "next_node_id": node_id
-            }
-            return self.data
-        
-        def pressure_curve_trigger(self, curve_id: int, node_id: int):
-            self.data = {
-                "kind": self.triggers_type["pressure"]["curve"],
-                "source": self.sources_type["pressure"]["raw"],
-                "operator": ">=",
-                "curve_id": curve_id,
-                "next_node_id": node_id
-            }
-            return self.data
-        
-        def piston_speed_trigger(self, speed_value: float, node_id: int):
-            self.data = {
-                "kind": self.triggers_type["speed"],
-                "operator": ">=",
-                "value": speed_value,
-                "next_node_id": node_id
-            }
-            return self.data
-        
-        def temperature_value_trigger(self, temperature_value: float, node_id: int, source: str):
-            self.data = {
-                "kind": self.triggers_type["temperature"]["value"],
-                "source": self.sources_type["temperature"][source],
-                "operator": ">=",
-                "value": temperature_value,
-                "next_node_id": node_id
-            }
-            return self.data
-            
-        def temperature_curve_trigger(self, curve_id: int, node_id: int, source: str):
-            self.data = {
-                "kind": self.triggers_type["temperature"]["curve"],
-                "source": source,
-                "operator": ">=",
-                "curve_id": curve_id,
-                "next_node_id": node_id
-            }
-            return self.data
-            
-        def timer_trigger(self, time_value: float, node_id: int, time_reference: int):
-            self.data = {
-                "kind": self.triggers_type["time"],
-                "operator": ">=",
-                "value": time_value,
-                "timer_reference_id": time_reference,
-                "next_node_id": node_id
-            }
-            return self.data
-        
-        def water_detection_trigger(self, node_id: int, value: bool):
-            self.data = {
-                "kind": self.triggers_type["water_detection"],
-                "value": value,
-                "next_node_id": node_id
-            }
-            return self.data
-            
-        def weight_value_trigger(self, weight_value: float, node_id: int, weight_reference: int):
-            self.data = {
-                "kind": self.triggers_type["weight"],
-                "source": self.sources_type["weight"]["raw"],
-                "operator": ">=",
-                "value": weight_value,
-                "weight_reference_id": weight_reference,
-                "next_node_id": node_id
-            }
-            return self.data
-            
-        def button_trigger(self, node_id: int, gesture: str, source: str):
-            self.data = {
-                "kind": self.triggers_type["button"],
-                "source": self.sources_type["button"][source],
-                "gesture": self.sources_type["button_gesture"][gesture],
-                "next_node_id": node_id
-            }
-            return self.data
-        
-        def exit(self, node_id: int):
-            self.data = {
-                "kind": self.triggers_type["exit"],
-                "next_node_id": node_id
-            }
-            return self.data
-            
+    def set_value(self, value: bool):
+        self.data["value"] = value
+
             
 if __name__ == "__main__":
     
-    """
-    Example usage of the Triggers class.
-
-    This class allows setting up triggers for monitoring various metrics such as flow, power, 
-    pressure, and temperature. There are two main types of triggers: "value" and "curve".
-
-    - "value" Trigger: Compares a metric against a specific numeric value. Useful for setting 
-      thresholds or specific target values.
-    - "curve" Trigger: Allows comparison against a predefined graph.
-
-    Data Sources:
+    flow_value_trigger = FlowValueTrigger()
+    flow_value_trigger.set_value(10)
+    flow_value_trigger.set_next_node_id(1)
+    print(json.dumps(flow_value_trigger.get_trigger(), indent=4))
     
-    We have multiple sources:
+    pressure_value_trigger = PressureValueTrigger()
+    pressure_value_trigger.set_value(10)
+    pressure_value_trigger.set_next_node_id(1)
+    print(json.dumps(pressure_value_trigger.get_trigger(), indent=4))
     
-    - Flow, Pressure, Power, and Weight: Can be derived from "raw", "predictive", or "average" data.
-    - Temperature: Supported sources include "tube", "cylinder", "plunger", "water", and "cylinder average".
-    - Button Inputs: Recognizes inputs from "start", "tare", "encoder", and "encoder button".
+    power_value_trigger = PowerValueTrigger()
+    power_value_trigger.set_value(10)
+    power_value_trigger.set_next_node_id(1)
+    print(json.dumps(power_value_trigger.get_trigger(), indent=4))
     
-    * Note: The encoder only supports "right" and "left" gestures and the encoder button supports the remaining gestures.
-
-    User Interactions:
+    temperature_value_trigger = TemperatureValueTrigger()
+    temperature_value_trigger.set_value(10)
+    temperature_value_trigger.set_next_node_id(1)
+    print(json.dumps(temperature_value_trigger.get_trigger(), indent=4))
     
-    The class also supports various gestures for button interaction:
+    piston_position_trigger = PistonPositionTrigger()
+    piston_position_trigger.set_value(10)
+    piston_position_trigger.set_position_reference_id(1)
+    piston_position_trigger.set_next_node_id(1)
+    print(json.dumps(piston_position_trigger.get_trigger(), indent=4))
     
-    - Gestures include "single" tap, "double" tap, swipe "right", swipe "left", "pressed", "released", and "long" press.
-    """
-    Triggers_example = Triggers()
+    timer_trigger = TimerTrigger()
+    timer_trigger.set_value(10)
+    timer_trigger.set_timer_reference_id(1)
+    timer_trigger.set_next_node_id(1)
+    print(json.dumps(timer_trigger.get_trigger(), indent=4))
     
-    print(json.dumps(Triggers_example.flow_value_trigger(1, 2), indent=4))
-    print(json.dumps(Triggers_example.flow_curve_trigger(1, 2), indent=4))
-    print(json.dumps(Triggers_example.piston_position_trigger(1, 2, 3), indent=4))
-    print(json.dumps(Triggers_example.piston_power_value_trigger(1, 2), indent=4))
-    print(json.dumps(Triggers_example.piston_power_curve_trigger(1, 2), indent=4))
-    print(json.dumps(Triggers_example.pressure_value_trigger(1, 2), indent=4))
-    print(json.dumps(Triggers_example.pressure_curve_trigger(1, 2), indent=4))
-    print(json.dumps(Triggers_example.piston_speed_trigger(1, 2), indent=4))
-    print(json.dumps(Triggers_example.temperature_value_trigger(1, 2, "water"), indent=4))
-    print(json.dumps(Triggers_example.temperature_curve_trigger(1, 2, "tube"), indent=4))
-    print(json.dumps(Triggers_example.timer_trigger(1, 2, 3), indent=4))
-    print(json.dumps(Triggers_example.water_detection_trigger(1, True), indent=4))
-    print(json.dumps(Triggers_example.weight_value_trigger(1, 2, 3), indent=4))
-    print(json.dumps(Triggers_example.button_trigger(1, "single", "start"), indent=4))
-    print(json.dumps(Triggers_example.exit(1), indent=4))
+    weight_trigger = WeightTrigger()
+    weight_trigger.set_value(10)
+    weight_trigger.set_weight_reference_id(1)
+    weight_trigger.set_next_node_id(1)
+    print(json.dumps(weight_trigger.get_trigger(), indent=4))
+    
+    flow_curve_trigger = FlowCurveTrigger()
+    flow_curve_trigger.set_curve_id(1)
+    flow_curve_trigger.set_next_node_id(1)
+    print(json.dumps(flow_curve_trigger.get_trigger(), indent=4))
+    
+    pressure_curve_trigger = PressureCurveTrigger()
+    pressure_curve_trigger.set_curve_id(1)
+    pressure_curve_trigger.set_next_node_id(1)
+    print(json.dumps(pressure_curve_trigger.get_trigger(), indent=4))
+    
+    power_curve_trigger = PowerCurveTrigger()
+    power_curve_trigger.set_curve_id(1)
+    power_curve_trigger.set_next_node_id(1)
+    print(json.dumps(power_curve_trigger.get_trigger(), indent=4))
+    
+    temperature_curve_trigger = TemperatureCurveTrigger()
+    temperature_curve_trigger.set_curve_id(1)
+    temperature_curve_trigger.set_next_node_id(1)
+    print(json.dumps(temperature_curve_trigger.get_trigger(), indent=4))
+    
+    button_trigger = ButtonTrigger()
+    button_trigger.set_source(ButtonSourceType.START)
+    button_trigger.set_gesture(ButtonGestureSourceType.SINGLE)
+    button_trigger.set_next_node_id(1)
+    print(json.dumps(button_trigger.get_trigger(), indent=4))
+    
+    exit_trigger = ExitTrigger()
+    exit_trigger.set_next_node_id(1)
+    print(json.dumps(exit_trigger.get_trigger(), indent=4))
+    
+    water_detection_trigger = WaterDetectionTrigger()
+    water_detection_trigger.set_value(True)
+    water_detection_trigger.set_next_node_id(1)
+    print(json.dumps(water_detection_trigger.get_trigger(), indent=4))
+    
+    speed_trigger = SpeedTrigger()
+    speed_trigger.set_value(10)
+    speed_trigger.set_next_node_id(1)
+    print(json.dumps(speed_trigger.get_trigger(), indent=4))
+    
+    
