@@ -102,3 +102,125 @@ directions = {
     Direction_Type.BACKWARD : "UP"
 }
   
+#! Triggers type dictionaries.
+
+class TriggerType(Enum):
+    FLOW = "flow"
+    PRESSURE = "pressure"
+    TEMPERATURE = "temperature"
+    POWER = "power"
+    
+class SourceType(Enum):
+    FLOW = "flow"
+    PRESSURE = "pressure"
+    WEIGHT = "weight"
+    POWER = "power"
+    RAW = "raw"
+    AVERAGE = "average"
+    PREDICTIVE = "predictive"
+    TEMPERATURE = "temperature"
+    BUTTON = "button"
+    GESTURE = "button_gesture"
+    
+class ButtonSourceType(Enum):
+    START = "start"
+    TARE = "tare"
+    ENCODER = "encoder"
+    ENCODER_BUTTON = "encoder button"
+
+class ButtonGestureSourceType(Enum):
+    SINGLE = "single"
+    DOUBLE = "double"
+    RIGHT = "right"
+    LEFT = "left"
+    PRESSED = "pressed"
+    RELEASED = "released"
+    LONG = "long"
+    
+class TemperatureSourceType(Enum):
+    TUBE = "tube"
+    CYLINDER = "cylinder"
+    PLUNGER = "plunger"
+    WATER = "water"
+    CYLINDER_AVERAGE = "cylinder average"
+    
+class TriggerOperatorType(Enum):
+    GREATER_THAN = "greater_than"
+    LESS_THAN = "less_than"
+    EQUAL = "equal"
+    GREATER_THAN_OR_EQUAL = "greater_than_or_equal"
+    LESS_THAN_OR_EQUAL = "less_than_or_equal"
+
+trigger_type = {
+    "piston_position" : "piston_position_trigger",
+    "speed" : "speed_trigger",
+    "time" : "time_trigger",
+    "weight" : "weight_trigger",
+    "button" : "button_trigger",
+    "water_detection" : "water_detection_trigger",
+    "curve":{
+        TriggerType.FLOW : "flow_curve_trigger",
+        TriggerType.PRESSURE : "pressure_curve_trigger",
+        TriggerType.TEMPERATURE : "temperature_curve_trigger",
+        TriggerType.POWER : "power_curve_trigger",
+    },
+    "value" :{
+        TriggerType.FLOW :"flow_value_trigger",
+        TriggerType.PRESSURE : "pressure_value_trigger",
+        TriggerType.TEMPERATURE: "temperature_value_trigger",
+        TriggerType.POWER :  "power_value_trigger",
+    },
+    "exit" : "exit"
+}
+
+source_type = {
+    SourceType.RAW : {
+        SourceType.FLOW : "Flow Raw",
+        SourceType.PRESSURE : "Pressure Raw",
+        SourceType.WEIGHT : "Weight Raw",
+        SourceType.POWER : "Piston Power Raw"
+    },
+    SourceType.AVERAGE : {
+        SourceType.FLOW : "Flow Average",
+        SourceType.PRESSURE : "Pressure Average",
+        SourceType.WEIGHT : "Weight Average",
+        SourceType.POWER : "Piston Power Average"
+    },
+    SourceType.PREDICTIVE : {
+        SourceType.FLOW : "Flow Predictive",
+        SourceType.PRESSURE : "Pressure Predictive",
+        SourceType.WEIGHT  : "Weight Predictive",
+        SourceType.POWER : "Piston Power Predictive"
+    },
+    SourceType.TEMPERATURE: {
+        TemperatureSourceType.TUBE:"Tube Temperature", 
+        TemperatureSourceType.CYLINDER:"Cylinder Temperature", 
+        TemperatureSourceType.PLUNGER:"Plunger Temperature", 
+        TemperatureSourceType.WATER:"Water Temperature", 
+        TemperatureSourceType.CYLINDER_AVERAGE: "Cylinder Temperature Average"
+    },
+    SourceType.BUTTON: {
+        ButtonSourceType.START : "Start Button",
+        ButtonSourceType.TARE : "Tare Button",
+        ButtonSourceType.ENCODER : "Encoder",
+        ButtonSourceType.ENCODER_BUTTON : "Encoder Button"
+        },
+    
+    SourceType.GESTURE:{ 
+        ButtonGestureSourceType.SINGLE: "Single Tap",
+        ButtonGestureSourceType.DOUBLE: "Double Tap",
+        ButtonGestureSourceType.RIGHT: "Right",
+        ButtonGestureSourceType.LEFT: "Left",
+        ButtonGestureSourceType.PRESSED: "Pressed",
+        ButtonGestureSourceType.RELEASED: "Released",
+        ButtonGestureSourceType.LONG: "Long Press"  
+    }
+}
+
+operator_type = {
+    TriggerOperatorType.GREATER_THAN : ">",
+    TriggerOperatorType.LESS_THAN: "<",
+    TriggerOperatorType.EQUAL : "==",
+    TriggerOperatorType.GREATER_THAN_OR_EQUAL: ">=",
+    TriggerOperatorType.LESS_THAN_OR_EQUAL: "<="
+}
