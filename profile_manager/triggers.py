@@ -1,7 +1,6 @@
 import json
 from dictionaries import trigger_type, source_type , operator_type
-from dictionaries import TriggerType, SourceType, ButtonSourceType, ButtonGestureSourceType, TemperatureSourceType, TriggerOperatorType
-
+import dictionaries as dic
 #This class is used to create the triggers for the complex JSON
 class Triggers:
         
@@ -23,12 +22,12 @@ class OperatorTriggers(Triggers):
             "value": 0,
         }            
     
-    def set_kind(self, kind: TriggerType):
+    def set_kind(self, kind: dic.enums.TriggerType):
         if kind not in trigger_type:
             raise ValueError("Invalid trigger type")
         self.data["kind"] = trigger_type[kind]  
         
-    def set_operator(self, operator: TriggerOperatorType):
+    def set_operator(self, operator: dic.enums.TriggerOperatorType):
         if operator not in operator_type:
             raise ValueError("Invalid trigger operator")
         self.data["operator"] = operator_type[operator]   
@@ -45,7 +44,7 @@ class ValueTriggers(OperatorTriggers):
             "value": 0,
         } 
     
-    def set_source(self, source_kind: SourceType, source_type: SourceType):
+    def set_source(self, source_kind: dic.enums.SourceType, source_type: dic.enums.SourceType):
         if source_kind not in source_type:
             raise ValueError("Invalid source kind")
         if source_type not in source_type[source_kind]:
@@ -55,45 +54,45 @@ class ValueTriggers(OperatorTriggers):
 class FlowValueTrigger(ValueTriggers):
     def __init__(self):
         super().__init__()
-        self.data["kind"] = trigger_type["value"][TriggerType.FLOW]
-        self.data["source"] = source_type[SourceType.RAW][SourceType.FLOW] 
-        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["kind"] = trigger_type[dic.enums.TriggerType.VALUE][dic.enums.TriggerType.FLOW]
+        self.data["source"] = source_type[dic.enums.SourceType.RAW][dic.enums.SourceType.FLOW] 
+        self.data["operator"] = operator_type[dic.enums.TriggerOperatorType.GREATER_THAN]
         self.data["value"] = 0
         self.data["next_node_id"] = 0
 
 class PressureValueTrigger(ValueTriggers):
     def __init__(self):
         super().__init__()
-        self.data["kind"] = trigger_type["value"][TriggerType.PRESSURE]
-        self.data["source"] = source_type[SourceType.RAW][SourceType.PRESSURE] 
-        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["kind"] = trigger_type[dic.enums.TriggerType.VALUE][dic.enums.TriggerType.PRESSURE]
+        self.data["source"] = source_type[dic.enums.SourceType.RAW][dic.enums.SourceType.PRESSURE] 
+        self.data["operator"] = operator_type[dic.enums.TriggerOperatorType.GREATER_THAN]
         self.data["value"] = 0
         self.data["next_node_id"] = 0
 
 class PowerValueTrigger(ValueTriggers):
     def __init__(self):
         super().__init__()
-        self.data["kind"] = trigger_type["value"][TriggerType.POWER]
-        self.data["source"] = source_type[SourceType.RAW][SourceType.POWER] 
-        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["kind"] = trigger_type[dic.enums.TriggerType.VALUE][dic.enums.TriggerType.POWER]
+        self.data["source"] = source_type[dic.enums.SourceType.RAW][dic.enums.SourceType.POWER] 
+        self.data["operator"] = operator_type[dic.enums.TriggerOperatorType.GREATER_THAN]
         self.data["value"] = 0
         self.data["next_node_id"] = 0
             
 class TemperatureValueTrigger(ValueTriggers):
     def __init__(self):
         super().__init__()
-        self.data["kind"] = trigger_type["value"][TriggerType.TEMPERATURE]
-        self.data["source"] = source_type[SourceType.TEMPERATURE][TemperatureSourceType.TUBE] 
-        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["kind"] = trigger_type[dic.enums.TriggerType.VALUE][dic.enums.TriggerType.TEMPERATURE]
+        self.data["source"] = source_type[dic.enums.SourceType.TEMPERATURE][dic.enums.TemperatureSourceType.TUBE] 
+        self.data["operator"] = operator_type[dic.enums.TriggerOperatorType.GREATER_THAN]
         self.data["value"] = 0
         self.data["next_node_id"] = 0
         
 class PistonPositionTrigger(ValueTriggers):
     def __init__(self):
         super().__init__()
-        self.data["kind"] = trigger_type["piston_position"]
+        self.data["kind"] = trigger_type[dic.enums.TriggerType.PISTON_POSITION]
         self.data["source"] = "Piston Position Raw"
-        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["operator"] = operator_type[dic.enums.TriggerOperatorType.GREATER_THAN]
         self.data["value"] = 0
         self.data["position_reference_id"] = 0
         self.data["next_node_id"] = 0
@@ -104,9 +103,9 @@ class PistonPositionTrigger(ValueTriggers):
 class WeightTrigger(ValueTriggers):
     def __init__(self):
         super().__init__()
-        self.data["kind"] = trigger_type["weight"]
-        self.data["source"] = source_type[SourceType.RAW][SourceType.WEIGHT] 
-        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["kind"] = trigger_type[dic.enums.TriggerType.WEIGHT]
+        self.data["source"] = source_type[dic.enums.SourceType.RAW][dic.enums.SourceType.WEIGHT] 
+        self.data["operator"] = operator_type[dic.enums.TriggerOperatorType.GREATER_THAN]
         self.data["value"] = 0
         self.data["weight_reference_id"] = 0
         
@@ -115,8 +114,8 @@ class WeightTrigger(ValueTriggers):
 class TimerTrigger(OperatorTriggers):
     def __init__(self):
         super().__init__()
-        self.data["kind"] = trigger_type["time"]
-        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["kind"] = trigger_type[dic.enums.TriggerType.TIME]
+        self.data["operator"] = operator_type[dic.enums.TriggerOperatorType.GREATER_THAN]
         self.data["value"] = 0
         self.data["timer_reference_id"] = 0
         
@@ -134,7 +133,7 @@ class CurveTriggers(OperatorTriggers):
             "next_node_id": 0
         }
         
-    def set_source(self, source_kind: SourceType, source_type: SourceType):
+    def set_source(self, source_kind: dic.enums.SourceType, source_type: dic.enums.SourceType):
         if source_kind not in source_type:
             raise ValueError("Invalid source kind")
         if source_type not in source_type[source_kind]:
@@ -147,36 +146,36 @@ class CurveTriggers(OperatorTriggers):
 class FlowCurveTrigger(CurveTriggers):
     def __init__(self):
         super().__init__()
-        self.data["kind"] = trigger_type["curve"][TriggerType.FLOW]
-        self.data["source"] = source_type[SourceType.RAW][SourceType.FLOW] 
-        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["kind"] = trigger_type[dic.enums.TriggerType.CURVE][dic.enums.TriggerType.FLOW]
+        self.data["source"] = source_type[dic.enums.SourceType.RAW][dic.enums.SourceType.FLOW] 
+        self.data["operator"] = operator_type[dic.enums.TriggerOperatorType.GREATER_THAN]
         self.data["curve_id"] = 0
         self.data["next_node_id"] = 0
         
 class PressureCurveTrigger(CurveTriggers):
     def __init__(self):
         super().__init__()
-        self.data["kind"] = trigger_type["curve"][TriggerType.PRESSURE]
-        self.data["source"] = source_type[SourceType.RAW][SourceType.PRESSURE] 
-        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["kind"] = trigger_type[dic.enums.TriggerType.CURVE][dic.enums.TriggerType.PRESSURE]
+        self.data["source"] = source_type[dic.enums.SourceType.RAW][dic.enums.SourceType.PRESSURE] 
+        self.data["operator"] = operator_type[dic.enums.TriggerOperatorType.GREATER_THAN]
         self.data["curve_id"] = 0
         self.data["next_node_id"] = 0
 
 class PowerCurveTrigger(CurveTriggers):
     def __init__(self):
         super().__init__()
-        self.data["kind"] = trigger_type["curve"][TriggerType.POWER]
-        self.data["source"] = source_type[SourceType.RAW][SourceType.POWER] 
-        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["kind"] = trigger_type[dic.enums.TriggerType.CURVE][dic.enums.TriggerType.POWER]
+        self.data["source"] = source_type[dic.enums.SourceType.RAW][dic.enums.SourceType.POWER] 
+        self.data["operator"] = operator_type[dic.enums.TriggerOperatorType.GREATER_THAN]
         self.data["curve_id"] = 0
         self.data["next_node_id"] = 0
             
 class TemperatureCurveTrigger(CurveTriggers):
     def __init__(self):
         super().__init__()
-        self.data["kind"] = trigger_type["curve"][TriggerType.TEMPERATURE]
-        self.data["source"] = source_type[SourceType.TEMPERATURE][TemperatureSourceType.TUBE] 
-        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["kind"] = trigger_type[dic.enums.TriggerType.CURVE][dic.enums.TriggerType.TEMPERATURE]
+        self.data["source"] = source_type[dic.enums.SourceType.TEMPERATURE][dic.enums.TemperatureSourceType.TUBE] 
+        self.data["operator"] = operator_type[dic.enums.TriggerOperatorType.GREATER_THAN]
         self.data["curve_id"] = 0
         self.data["next_node_id"] = 0       
     
@@ -185,39 +184,39 @@ class TemperatureCurveTrigger(CurveTriggers):
 class ButtonTrigger(Triggers):
     def __init__(self):
         super().__init__()
-        self.data["kind"] = trigger_type["button"]
-        self.data["source"] = source_type[SourceType.BUTTON][ButtonSourceType.START]
-        self.data["gesture"] = source_type[SourceType.GESTURE][ButtonGestureSourceType.SINGLE]
+        self.data["kind"] = trigger_type[dic.enums.TriggerType.BUTTON]
+        self.data["source"] = source_type[dic.enums.SourceType.BUTTON][dic.enums.ButtonSourceType.START]
+        self.data["gesture"] = source_type[dic.enums.SourceType.GESTURE][dic.enums.ButtonGestureSourceType.SINGLE]
         self.data["next_node_id"] = 0
           
-    def set_source(self, source: ButtonSourceType):
-        if source not in source_type[SourceType.BUTTON]:
+    def set_source(self, source: dic.enums.ButtonSourceType):
+        if source not in source_type[dic.enums.SourceType.BUTTON]:
             raise ValueError("Invalid button source")
-        self.data["source"] = source_type[SourceType.BUTTON][source]
+        self.data["source"] = source_type[dic.enums.SourceType.BUTTON][source]
     
-    def set_gesture(self, gesture: ButtonGestureSourceType):
-        if gesture not in source_type[SourceType.GESTURE]:
+    def set_gesture(self, gesture: dic.enums.ButtonGestureSourceType):
+        if gesture not in source_type[dic.enums.SourceType.GESTURE]:
             raise ValueError("Invalid button gesture")
-        self.data["gesture"] = source_type[SourceType.GESTURE][gesture]
+        self.data["gesture"] = source_type[dic.enums.SourceType.GESTURE][gesture]
 
 class SpeedTrigger(OperatorTriggers):
     def __init__(self):
         super().__init__()
-        self.data["kind"] = trigger_type["speed"]
-        self.data["operator"] = operator_type[TriggerOperatorType.GREATER_THAN]
+        self.data["kind"] = trigger_type[dic.enums.TriggerType.SPEED]
+        self.data["operator"] = operator_type[dic.enums.TriggerOperatorType.GREATER_THAN]
         self.data["value"] = 0
         self.data["next_node_id"] = 0
     
 class ExitTrigger(Triggers):
     def __init__(self):
         super().__init__()
-        self.data["kind"] = trigger_type["exit"]
+        self.data["kind"] = trigger_type[dic.enums.TriggerType.EXIT]
         self.data["next_node_id"] = 0
         
 class WaterDetectionTrigger(Triggers):
     def __init__(self):
         super().__init__()
-        self.data["kind"] = trigger_type["water_detection"]
+        self.data["kind"] = trigger_type[dic.enums.TriggerType.WATER_DETECTION]
         self.data["value"] = False
         self.data["next_node_id"] = 0
         
@@ -286,8 +285,8 @@ if __name__ == "__main__":
     print(json.dumps(temperature_curve_trigger.get_trigger(), indent=4))
     
     button_trigger = ButtonTrigger()
-    button_trigger.set_source(ButtonSourceType.START)
-    button_trigger.set_gesture(ButtonGestureSourceType.SINGLE)
+    button_trigger.set_source(dic.enums.ButtonSourceType.START)
+    button_trigger.set_gesture(dic.enums.ButtonGestureSourceType.SINGLE)
     button_trigger.set_next_node_id(1)
     print(json.dumps(button_trigger.get_trigger(), indent=4))
     
