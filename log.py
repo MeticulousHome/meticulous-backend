@@ -6,18 +6,15 @@ import shutil
 
 logging.basicConfig()
 
+LOG_PATH = os.getenv("LOG_PATH", '/meticulous-user/logs')
+
 class MeticulousLogger:
-    _path = "./logs"
     _rh = None
     _f = None
     _sh = None
 
     LOGLEVEL=os.getenv('LOGLEVEL', 'DEBUG').upper()
     FORCE_STDOUT_LOG=os.getenv("FORCE_STDOUT_LOG", 'False').lower() in ('true', '1', 'y')
-
-    def setLogPath(path):
-        MeticulousLogger._path = path
-        MeticulousLogger._createHandler();
 
     def setFileLogLevel(level):
         if MeticulousLogger._rh is None:
@@ -38,8 +35,8 @@ class MeticulousLogger:
     def _createHandler():
         MB = 1024 * 1024
         # Create directory for the logfiles if it doesn't exist
-        os.makedirs(MeticulousLogger._path, exist_ok=True)
-        logfilePath = os.path.join(MeticulousLogger._path, 'backend.log')
+        os.makedirs(LOG_PATH, exist_ok=True)
+        logfilePath = os.path.join(LOG_PATH, 'backend.log')
         
         MeticulousLogger._rh = logging.handlers.RotatingFileHandler(
             logfilePath, maxBytes=200*MB, backupCount=10)

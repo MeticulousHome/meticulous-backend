@@ -8,6 +8,8 @@ from mergedeep import merge
 from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
 
+CONFIG_PATH = os.getenv("CONFIG_PATH", '/meticulous-user/config')
+
 # Config Compontents
 CONFIG_LOGGING = "logging"
 CONFIG_SYSTEM = "system"
@@ -165,4 +167,4 @@ class MeticulousConfigDict(dict):
             yaml.dump(
                 self.copy(), f, default_flow_style=False, allow_unicode=True)
 
-MeticulousConfig = MeticulousConfigDict("./config/config.yml", DefaultConfiguration_V1)
+MeticulousConfig = MeticulousConfigDict(os.path.join(CONFIG_PATH, "config.yml"), DefaultConfiguration_V1)
