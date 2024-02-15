@@ -35,6 +35,10 @@ class Machine:
 
     def init(sio):
         Machine._sio = sio
+        if Machine._connection is not None:
+            logger.warning("Machine.init was called twice!")
+            return
+
         match(BACKEND):
             case "USB":
                 Machine._connection = USBSerialConnection('/dev/ttyUSB0')
@@ -87,12 +91,13 @@ class Machine:
 
         old_status = MachineStatus.IDLE
         time_flag = False
-        
-        logger.info("Starting to listen for esp32 messages")
 
+        logger.info("Starting to listen for esp32 messages")
+        startTime = time.time()
         while True:
             if Machine._stopESPcomm:
                 time.sleep(0.1)
+                startTime = time.time()
                 continue
 
             data = uart.readline()
@@ -122,6 +127,15 @@ class Machine:
                     logger.warning("The ESP seems to be resetting, sending update now")
                     Machine.startUpdate()
                     Machine.reset_count = 0
+
+                if time.time() - startTime > 60 and not Machine.infoReady:
+                    if MeticulousConfig[CONFIG_USER][DISALLOW_FIRMWARE_FLASHING]:
+                        logger.warning(
+                            "The ESP never send an info, but user requested no updates!")
+                    else:
+                        logger.warning(
+                            "The ESP never send an info, flashing latest firmware to be sure")
+                        Machine.startUpdate()
 
                 match(data_str_sensors):
                     # FIXME: This should be replace in the firmware with an "Event," prefix for cleanliness
@@ -178,6 +192,7 @@ class Machine:
                     Machine.esp_info = info
                     Machine.reset_count = 0
                     Machine.infoReady = True
+                    Machine.last_esp_info = datetime.now()
 
                 if button_event is not None:
                     await Machine._sio.emit("button", button_event.to_sio())
@@ -208,3 +223,4 @@ class Machine:
 
     def reset():
         Machine._connection.reset()
+        Machine.infoReady = False
