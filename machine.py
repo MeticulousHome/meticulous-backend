@@ -9,6 +9,7 @@ from esp_serial.data import *
 from esp_serial.connection.usb_serial_connection import USBSerialConnection
 from esp_serial.connection.fika_serial_connection import FikaSerialConnection
 from esp_serial.connection.emulator_serial_connection import EmulatorSerialConnection
+from esp_serial.esp_tool_wrapper import ESPToolWrapper
 
 from shot_manager import ShotManager
 
@@ -16,7 +17,8 @@ from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
 
 # can be from [FIKA, USB, EMULATOR / EMULATION]
-BACKEND=os.getenv("BACKEND", 'FIKA').upper()
+BACKEND = os.getenv("BACKEND", 'FIKA').upper()
+
 
 class Machine:
     _connection = None
@@ -32,9 +34,12 @@ class Machine:
     reset_count = 0
     shot_start_time = 0
     emulated = False
+    firmware_available = None
 
     def init(sio):
         Machine._sio = sio
+        Machine.firmware_available = ESPToolWrapper.get_version_from_firmware()
+
         if Machine._connection is not None:
             logger.warning("Machine.init was called twice!")
             return
@@ -46,7 +51,7 @@ class Machine:
                 Machine._connection = EmulatorSerialConnection()
                 Machine.emulated = True
             # Everything else is proper fika Connection
-            case "FIKA" | _ :
+            case "FIKA" | _:
                 Machine._connection = FikaSerialConnection('/dev/ttymxc0')
 
         def startLoop():
@@ -63,7 +68,7 @@ class Machine:
         def __init__(self, s):
             self.buf = bytearray()
             self.s = s
-        
+
         def readline(self):
             i = self.buf.find(b"\n")
             if i >= 0:
@@ -81,7 +86,6 @@ class Machine:
                 else:
                     self.buf.extend(data)
             return self.buf
-
 
     async def _read_data():
         Machine.shot_start_time = time.time()
@@ -121,10 +125,11 @@ class Machine:
                 info = None
 
                 if data_str.startswith("rst:0x") and "boot:0x16 (SPI_FAST_FLASH_BOOT)" in data_str:
-                    Machine.reset_count+=1
+                    Machine.reset_count += 1
 
                 if Machine.reset_count >= 3:
-                    logger.warning("The ESP seems to be resetting, sending update now")
+                    logger.warning(
+                        "The ESP seems to be resetting, sending update now")
                     Machine.startUpdate()
                     Machine.reset_count = 0
 
@@ -146,7 +151,8 @@ class Machine:
                     case ["Data", *dataArgs]:
                         data = ShotData.from_args(dataArgs)
                     case ["Sensors", colorCodedString]:
-                        sensor = SensorData.from_color_coded_args(colorCodedString)
+                        sensor = SensorData.from_color_coded_args(
+                            colorCodedString)
                     case ["Sensors", *sensorArgs]:
                         sensor = SensorData.from_args(sensorArgs)
                     case ["ESPInfo", *infoArgs]:
@@ -165,7 +171,8 @@ class Machine:
                     if (was_preparing and (is_preinfusion or is_infusion or is_spring)):
                         time_flag = True
                         shot_start_time = time.time()
-                        logger.info("shot start_time: {:.1f}".format(shot_start_time))
+                        logger.info(
+                            "shot start_time: {:.1f}".format(shot_start_time))
                         ShotManager.start()
 
                     if (is_idle or is_purge):
@@ -173,8 +180,10 @@ class Machine:
                         ShotManager.stop()
 
                     if (time_flag):
-                        time_passed = int((time.time() - shot_start_time) * 1000.0)
-                        Machine.data_sensors = data.clone_with_time(time_passed)
+                        time_passed = int(
+                            (time.time() - shot_start_time) * 1000.0)
+                        Machine.data_sensors = data.clone_with_time(
+                            time_passed)
                         ShotManager.handleShotData(Machine.data_sensors)
                     else:
                         Machine.data_sensors = data
@@ -186,13 +195,16 @@ class Machine:
                     Machine.reset_count = 0
                     Machine.actioninfoReady = True
                     if (time_flag):
-                        ShotManager.handleSensorData(Machine.sensor_sensors, time_passed)
+                        ShotManager.handleSensorData(
+                            Machine.sensor_sensors, time_passed)
 
                 if info is not None:
                     Machine.esp_info = info
                     Machine.reset_count = 0
                     Machine.infoReady = True
-                    Machine.last_esp_info = datetime.now()
+                    logger.warning(f"ESPInfo found: {info}")
+                    logger.warning(
+                        f"Firmware info: {Machine.firmware_available}")
 
                 if button_event is not None:
                     await Machine._sio.emit("button", button_event.to_sio())
