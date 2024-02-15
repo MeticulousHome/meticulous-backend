@@ -12,6 +12,7 @@ from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
 
+HISTORY_PATH = os.getenv("HISTORY_PATH", '/meticulous-user/history')
 
 class Shot:
     def __init__(self) -> None:
@@ -51,7 +52,6 @@ class Shot:
 
 
 class ShotManager:
-    SHOT_FOLDER = "./shots"
     _current_shot: Shot = None
 
     @staticmethod
@@ -73,7 +73,7 @@ class ShotManager:
         if ShotManager._current_shot is not None:
             # Determine the folder path based on the current date
             folder_name = datetime.now().strftime("%Y-%m-%d")
-            folder_path = os.path.join(ShotManager.SHOT_FOLDER, folder_name)
+            folder_path = os.path.join(HISTORY_PATH, folder_name)
 
             # Create the folder if it does not exist
             os.makedirs(folder_path, exist_ok=True)

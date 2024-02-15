@@ -5,7 +5,7 @@ import sys
 import esptool
 from log import MeticulousLogger
 
-UPDATE_PATH="./firmware"
+UPDATE_PATH = os.getenv("UPDATE_PATH", '/opt/meticulous-firmware')
 
 """
 ESPTool uses print() to log to stdout.
