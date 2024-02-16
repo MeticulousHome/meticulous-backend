@@ -40,6 +40,8 @@ user_path=os.path.expanduser("~/")
 sendInfoToFront = True
 lastJSON_source = "LCD"
 
+PORT = int(os.getenv("PORT", '8080'))
+
 def gatherVersionInfo():
     global infoSolicited
     software_info["name"] = "Meticulous Espresso"
@@ -56,9 +58,6 @@ def gatherVersionInfo():
     infoSolicited = True
 
     software_info["lcdV"] = lcd_version
-
-define("port", default=8080, help="run on the given port", type=int)
-define("debug", default=False, help="run in debug mode")
 
 sio = socketio.AsyncServer(cors_allowed_origins='*', async_mode='tornado')
 
@@ -334,10 +333,10 @@ def main():
 
     app = tornado.web.Application(
         handlers,
-        debug=options.debug,
+        debug=False,
     )
 
-    app.listen(options.port)
+    app.listen(PORT)
     
     sio.start_background_task(live)
     tornado.ioloop.IOLoop.current().start()
