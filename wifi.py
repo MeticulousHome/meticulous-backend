@@ -148,6 +148,11 @@ class WifiManager():
             timeout=30, target_network_ssid=ssid)
         logger.info(networks)
         if len(networks) > 0:
+            if len([x for x in networks if x.in_use]) > 0:
+                logger.info("Already connected")
+                WifiManager._zeroconf.restart()
+                return True
+
             logger.info("Target network online, connecting now")
             try:
                 nmcli.device.wifi_connect(ssid, password)
