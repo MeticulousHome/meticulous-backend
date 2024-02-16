@@ -2,6 +2,7 @@ import os
 import threading
 import asyncio
 import time
+from packaging import version
 
 from config import *
 
@@ -12,6 +13,8 @@ from esp_serial.connection.emulator_serial_connection import EmulatorSerialConne
 from esp_serial.esp_tool_wrapper import ESPToolWrapper
 
 from shot_manager import ShotManager
+
+from notifications import NotificationManager, Notification, NotificationResponse
 
 from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
@@ -25,6 +28,7 @@ class Machine:
     _thread = None
     _stopESPcomm = False
     _sio = None
+    _updateNotification = None
 
     infoReady = False
 
@@ -35,10 +39,13 @@ class Machine:
     shot_start_time = 0
     emulated = False
     firmware_available = None
+    firmware_running = None
+    startTime = None
 
     def init(sio):
         Machine._sio = sio
-        Machine.firmware_available = ESPToolWrapper.get_version_from_firmware()
+        Machine.firmware_available = Machine._parseVersionString(
+            ESPToolWrapper.get_version_from_firmware())
 
         if Machine._connection is not None:
             logger.warning("Machine.init was called twice!")
@@ -53,6 +60,9 @@ class Machine:
             # Everything else is proper fika Connection
             case "FIKA" | _:
                 Machine._connection = FikaSerialConnection('/dev/ttymxc0')
+
+        Machine.writeStr("\x03")
+        Machine.action("info")
 
         def startLoop():
             loop = asyncio.new_event_loop()
@@ -95,13 +105,14 @@ class Machine:
 
         old_status = MachineStatus.IDLE
         time_flag = False
+        info_requested = False
 
         logger.info("Starting to listen for esp32 messages")
-        startTime = time.time()
+        Machine.startTime = time.time()
         while True:
             if Machine._stopESPcomm:
                 time.sleep(0.1)
-                startTime = time.time()
+                Machine.startTime = time.time()
                 continue
 
             data = uart.readline()
@@ -126,6 +137,10 @@ class Machine:
 
                 if data_str.startswith("rst:0x") and "boot:0x16 (SPI_FAST_FLASH_BOOT)" in data_str:
                     Machine.reset_count += 1
+                    Machine.startTime = time.time()
+                    Machine.esp_info = None
+                    info_requested = False
+                    Machine.infoReady = False
 
                 if Machine.reset_count >= 3:
                     logger.warning(
@@ -133,7 +148,12 @@ class Machine:
                     Machine.startUpdate()
                     Machine.reset_count = 0
 
-                if time.time() - startTime > 60 and not Machine.infoReady:
+                if Machine.infoReady and not info_requested and Machine.esp_info is None:
+                    logger.info("Machine has not provided us with a firmware version yet. Requesting now")
+                    Machine.action("info")
+                    info_requested = True
+
+                if time.time() - Machine.startTime > 60 and not Machine.infoReady:
                     if MeticulousConfig[CONFIG_USER][DISALLOW_FIRMWARE_FLASHING]:
                         logger.warning(
                             "The ESP never send an info, but user requested no updates!")
@@ -202,9 +222,30 @@ class Machine:
                     Machine.esp_info = info
                     Machine.reset_count = 0
                     Machine.infoReady = True
-                    logger.warning(f"ESPInfo found: {info}")
-                    logger.warning(
-                        f"Firmware info: {Machine.firmware_available}")
+                    info_requested = False
+                    Machine.firmware_running = Machine._parseVersionString(
+                        info.firmwareV
+                    )
+                    logger.info(
+                        f"ESPInfo running firmware version:   {Machine.firmware_running}")
+                    logger.info(
+                        f"Backend available firmware version: {Machine.firmware_available}")
+                    needs_update = False
+                    if Machine.firmware_available is not None and Machine.firmware_available is not None:
+                        if Machine.firmware_running["Release"] < Machine.firmware_available["Release"]:
+                            needs_update = True
+                        if Machine.firmware_running["Release"] == Machine.firmware_available["Release"]:
+                            if Machine.firmware_running["ExtraCommits"] < Machine.firmware_available["ExtraCommits"]:
+                                needs_update = True
+
+                    if needs_update and not MeticulousConfig[CONFIG_USER][DISALLOW_FIRMWARE_FLASHING]:
+                        info_string = f"Firmware {Machine.firmware_running.get('Release')}-{Machine.firmware_running['ExtraCommits']} is outdated, upgrading"
+                        logger.info(info_string)
+                        Machine._updateNotification = Notification(
+                            info_string, [NotificationResponse.OK])
+                        await NotificationManager.add_notification(
+                            Machine._updateNotification)
+                        Machine.startUpdate()
 
                 if button_event is not None:
                     await Machine._sio.emit("button", button_event.to_sio())
@@ -215,7 +256,6 @@ class Machine:
                     Machine.return_to_idle()
 
     def startUpdate():
-
         Machine._stopESPcomm = True
         Machine._connection.sendUpdate()
         Machine._stopESPcomm = False
@@ -225,9 +265,12 @@ class Machine:
             Machine.action("stop")
 
     def action(action_event):
-        if not Machine._stopESPcomm:
-            _input = "action,"+action_event+"\x03"
-            Machine._connection.port.write(str.encode(_input))
+        logger.info(f"sending action,{action_event}")
+        machine_msg = f"action,{action_event}\x03"
+        Machine.writeStr(machine_msg)
+
+    def writeStr(content):
+        Machine.write(str.encode(content))
 
     def write(content):
         if not Machine._stopESPcomm:
@@ -236,3 +279,27 @@ class Machine:
     def reset():
         Machine._connection.reset()
         Machine.infoReady = False
+        Machine.startTime = time.time()
+
+    def _parseVersionString(version_str: str):
+        release = None
+        ncommits = 0
+        sha = ""
+        modifier = ""
+        if version_str is None or version_str == "":
+            return None
+
+        components = version_str.strip().split('-')
+        try:
+            release = version.Version(components.pop(0))
+            if len(components) > 0:
+                ncommits = components.pop(0)
+            if len(components) > 0:
+                sha = components.pop(0)
+            if len(components) > 0:
+                modifier = components.pop(0)
+            return {"Release": release, "ExtraCommits": ncommits, "SHA": sha, "Local": modifier}
+        except Exception as e:
+            logger.warning("Failed parse firmware version:",
+                           exc_info=e, stack_info=True)
+            return None
