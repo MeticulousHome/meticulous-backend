@@ -285,17 +285,20 @@ async def send_data():
         elif _input.startswith("notification"):
             notification = _input[12:]
             await NotificationManager.add_notification(Notification(notification, [NotificationResponse.OK]))
-        elif _input == "l":
+        elif _input == "l" or _input == "CCW":
             await sio.emit("button", ButtonEventData.from_args(["CCW"]).to_sio())
-        elif _input == "r":
+        elif _input == "r" or _input == "CW":
             await sio.emit("button", ButtonEventData.from_args(["CW"]).to_sio())
-        elif _input == "e":
+        elif _input == "e" or _input == "push":
             await sio.emit("button", ButtonEventData.from_args(["push"]).to_sio())
-
-        elif _input != "":
-            logger.info(f"Unknown command: \"{_input}\"")
-            pass
-
+        elif _input == "d" or _input == "pu_d":
+            await sio.emit("button", ButtonEventData.from_args(["pu_d"]).to_sio())
+        elif _input == "t" or _input == "ta_d":
+            await sio.emit("button", ButtonEventData.from_args(["ta_d"]).to_sio())
+        elif _input == "s" or _input == "ta_l":
+            await sio.emit("button", ButtonEventData.from_args(["ta_l"]).to_sio())
+        elif _input == "ta_sl":
+            await sio.emit("button", ButtonEventData.from_args(["ta_sl"]).to_sio())
 
 def main():
     global data_thread
