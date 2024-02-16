@@ -1,4 +1,8 @@
 
+### [v0.1.20] - 2024-02-16
+The dial app and the mobile app need a REST API to fetch static data. Implement it here.
+
+
 ### [v0.1.19] - 2024-01-26
 Contains three misc commits in preparation of the API merge:
 
