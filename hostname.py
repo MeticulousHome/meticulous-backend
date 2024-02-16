@@ -11,7 +11,7 @@ class HostnameManager():
         except subprocess.CalledProcessError as e:
             logger.warn(f"Failed to set hostname: {e}")
 
-    def generateHostname(mac_address: str) -> str:
+    def generateHostnameComponents(mac_address: str) -> tuple[str, str]:
         # Extract last two bytes and convert them to integers
         bytes_hex = mac_address.split(':')[-2:]
         byte1 = int(bytes_hex[0], 16)
@@ -21,12 +21,17 @@ class HostnameManager():
         adjective = HostnameManager.ADJECTIVES[byte1 % len(
             HostnameManager.ADJECTIVES)]
         noun = HostnameManager.NOUNS[byte2 % len(HostnameManager.NOUNS)]
+        return (adjective, noun)
 
+    def generateHostname(mac_address: str) -> str:
+        (adjective, noun) = HostnameManager.generateHostnameComponents(mac_address)
         # Combine to form a hostname
         return f"meticulous-{adjective}{noun}"
 
-    def checkAndUpdateHostname(mac_address: str):
+    def checkAndUpdateHostname(current_hostname, mac_address: str):
         hostname = HostnameManager.generateHostname(mac_address)
+        if current_hostname == hostname:
+            return
         logger.info(f"Changing hostname new = {hostname}")
         HostnameManager.setHostname(hostname)
 

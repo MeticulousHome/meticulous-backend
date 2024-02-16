@@ -2,11 +2,16 @@ from config import *
 from hostname import HostnameManager
 import zeroconf
 
+from log import MeticulousLogger
+logger = MeticulousLogger.getLogger(__name__)
+
+# FIXME: remove once the tornado server logic moved to its own file
+PORT = int(os.getenv("PORT", '8080'))
+
 class ZeroConfAnnouncement:
     def __init__(self, config_function) -> None:
         self.service_type = "_http._tcp.local."
         self.zeroconf = zeroconf.Zeroconf()
-        self.port = 8080
         self.service_name = "_meticulous"
         self.service_handle = None
         self.service_info = None
@@ -26,7 +31,7 @@ class ZeroConfAnnouncement:
             self.service_type,
             f"{self.service_name}.{self.service_type}",
             addresses=ips,
-            port=self.port,
+            port=PORT,
             # We can announce arbitrary information here (e.g. version numbers or features or state)
             properties={
                 'server_name': self.network_config.hostname,
@@ -45,13 +50,13 @@ class ZeroConfAnnouncement:
             self._createServiceConfig()
             if self.service_info is not None:
                 self.zeroconf.register_service(self.service_info, allow_name_change=True)
-                logger.info(f"Service {self.service_name} started on port {self.port}")
+                logger.info(f"Service {self.service_name} started on port {PORT}")
             else: 
                 logger.warning("Could not fetch machine informations for zeroconf")
             return
         except zeroconf.NonUniqueNameException as e:
             logger.warning(
-                f"Service {self.service_name} failed to start on port {self.port} error='NonUniqueNameException'")
+                f"Service {self.service_name} failed to start on port {PORT} error='NonUniqueNameException'")
 
     def stop(self):
         if self.service_info is None:

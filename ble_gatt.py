@@ -15,6 +15,7 @@ from bless import (  # type: ignore
 
 from wifi import WifiManager
 from config import *
+from hostname import HostnameManager
 
 from log import MeticulousLogger
 
@@ -24,6 +25,8 @@ logger = MeticulousLogger.getLogger(__name__)
 if sys.platform in ["darwin", "win32"]:
     raise ValueError("Cannot run on non-linux platforms")
 
+# FIXME Remove once the tornado server logic is in its own class
+PORT = int(os.getenv("PORT", '8080'))
 
 class GATTServer:
     """
@@ -70,7 +73,6 @@ class GATTServer:
     _singletonServer = None
 
     def __init__(self):
-        logger.info("BLE init called")
         self.trigger = asyncio.Event()
         self.loop = asyncio.new_event_loop()
 
@@ -85,9 +87,20 @@ class GATTServer:
             wifi_networks_callback=GATTServer.get_wifi_networks,
             max_response_bytes=250,
         )
-        self.gatt_name = MeticulousConfig[CONFIG_SYSTEM][GATT_NAME]
+        config = WifiManager.getCurrentConfig()
+        # Only update the hostname if it is a new system or if the hostname has been
+        # set before. Do so in case the lookup table ever changed or the hostname is only
+        # saved transient
+        if config.mac != "":
+            (host_adjective, host_noun) = HostnameManager.generateHostnameComponents(config.mac)
+            self.gatt_name = "Meticulous" + host_adjective.title() + host_noun.title()
+        else:
+            self.gatt_name = "MeticulousEspresso"
+
         self.bless_gatt_server = None
         self.loopThread = None
+        logger.info(f"BLE init called. Name={self.gatt_name}")
+
 
     def getServer():
         if GATTServer._singletonServer is None:
@@ -231,7 +244,13 @@ class GATTServer:
         logger.info(f"Connecting to '{ssid}' with password: '{passwd}'")
         if WifiManager.connectToWifi(ssid, passwd):
             networkConfig = WifiManager.getCurrentConfig()
-            localServer = [f"http://{str(localIP.ip)}" for localIP in networkConfig.ips]
+            localServer = []
+            for localIP in networkConfig.ips:
+                if localIP.ip.version == 6:
+                    localServer.append(f"http://[{str(localIP.ip)}]:{PORT}")
+                else:
+                    localServer.append(f"http://{str(localIP.ip)}:{PORT}")
+
             logger.debug(f"Backend redirect IP/URL: {localServer}")
             return localServer
         return None
@@ -245,7 +264,7 @@ class GATTServer:
     def read_request(characteristic: BlessGATTCharacteristic, **kwargs) -> bytearray:
         try:
             improv_char = ImprovUUID(characteristic.uuid)
-            logger.info(f"Reading {improv_char} : {characteristic}")
+            logger.info(f"Reading {improv_char}")
         except Exception:
             logger.info(f"Reading {characteristic.uuid}")
             pass
