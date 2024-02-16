@@ -6,7 +6,8 @@ from datetime import datetime
 from mergedeep import merge
 
 from log import MeticulousLogger
-logger = MeticulousLogger.getLogger(__name__)
+# We are doing from config import * a lot and this will also import the logger...
+_config_logger = MeticulousLogger.getLogger(__name__)
 
 CONFIG_PATH = os.getenv("CONFIG_PATH", '/meticulous-user/config')
 
@@ -135,31 +136,31 @@ class MeticulousConfigDict(dict):
 
         self.load()
 
-        logger.info("Config initialized")
+        _config_logger.info("Config initialized")
 
         cs = yaml.dump(
             self.copy(),  default_flow_style=False, allow_unicode=True)
         for line in cs.split('\n'):
-            logger.debug(f"CONF: {line}")
+            _config_logger.debug(f"CONF: {line}")
     def hasError(self):
         return self.__configError
 
     def load(self):
         if not Path(self.__path).exists():
             self.save()
-            logger.info("Created new config")
+            _config_logger.info("Created new config")
         else:
             with open(self.__path, "r") as f:
                 try:
                     disk_config = yaml.safe_load(f)
                     disk_version = disk_config.get("version")
                     if disk_version is not None and disk_version > self["version"]:
-                        logger.warning("Config on disk is newer than this software")
+                        _config_logger.warning("Config on disk is newer than this software")
                     merge(self, disk_config)
-                    logger.info("Successfully loaded config from disk")
+                    _config_logger.info("Successfully loaded config from disk")
                     self.__configError = False
                 except Exception as e:
-                    logger.warning(f"Failed to load config: {e}")
+                    _config_logger.warning(f"Failed to load config: {e}")
                     basename, extension = os.path.splitext(self.__path)
                     backup_path = basename + "_broken_" +  datetime.now().strftime("%Y_%m_%d_%H_%M_%S") +extension
                     os.rename(self.__path, backup_path)
