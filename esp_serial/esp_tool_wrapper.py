@@ -5,7 +5,6 @@ import sys
 import esptool
 from log import MeticulousLogger
 
-UPDATE_PATH="./firmware"
 
 """
 ESPTool uses print() to log to stdout.
@@ -103,7 +102,7 @@ class ESPToolWrapper():
             )
 
         args = ESPToolArgs()
-        args.loadFlashMapping(UPDATE_PATH)
+        args.loadFlashMapping("./firmware")
 
         logger.info("Detecting flash")
         esptool.detect_flash_size(esp, args)
