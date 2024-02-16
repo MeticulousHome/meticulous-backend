@@ -2,6 +2,7 @@ from modes.italian_1_0.italian_1_0 import generate_italian_1_0
 from modes.dashboard_1_0.dashboard_1_0 import generate_dashboard_1_0
 from tornado.options import define, options, parse_command_line
 import socketio
+import tornado.log
 import tornado.web
 import tornado.ioloop
 import threading
@@ -35,7 +36,9 @@ from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
 
-user_path=os.path.expanduser("~/")
+tornado.log.access_log = MeticulousLogger.getLogger("tornado.access")
+tornado.log.app_log = MeticulousLogger.getLogger("tornado.application")
+tornado.log.gen_log = MeticulousLogger.getLogger("tornado.general")
 
 sendInfoToFront = True
 lastJSON_source = "LCD"
@@ -196,6 +199,7 @@ async def live():
     elapsed_time = 0
     i = 0
     _time = time.time()
+    logger.info("Starting to emit machine data")
     while True:
 
         elapsed_time = time.time() - _time
