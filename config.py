@@ -10,8 +10,8 @@ logger = MeticulousLogger.getLogger(__name__)
 
 # Config Compontents
 CONFIG_LOGGING = "logging"
-CONFIG_SYSTEM = "system"
 CONFIG_WIFI = "wifi"
+CONFIG_SYSTEM = "system"
 
 #
 # SYSTEM config
@@ -19,13 +19,6 @@ CONFIG_WIFI = "wifi"
 ## GATT configuration
 GATT_DEFAULT_NAME = "MeticulousEspresso"
 GATT_NAME = "gatt_device_name"
-
-## HTTP Authentication configuration
-HTTP_AUTH_KEY = "auth_key"
-HTTP_DEFAULT_AUTH_KEY = "AAAABBBBCCCCDDDEEEFFFFGGGG"
-
-HTTP_ALLOWED_NETWORKS = "always_allowed_networks"
-HTTP_DEFAULT_ALLOWED_NETWORKS = []
 
 #
 # LOGGING config
@@ -49,7 +42,6 @@ WIFI_AP_PASSWORD = "APPassword"
 WIFI_DEFAULT_AP_PASSWORD = "meticulous"
 
 
-
 DefaultConfiguration_V1 = {
     # Only needs to be incremented in case of incompatible restructurings
     "version": 1,
@@ -57,9 +49,7 @@ DefaultConfiguration_V1 = {
         LOGGING_SENSOR_MESSAGES: LOGGING_DEFAULT_SENSOR_MESSAGES
     },
     CONFIG_SYSTEM : {
-        GATT_NAME : GATT_DEFAULT_NAME,
-        HTTP_AUTH_KEY: HTTP_DEFAULT_AUTH_KEY,
-        HTTP_ALLOWED_NETWORKS: HTTP_DEFAULT_ALLOWED_NETWORKS,
+        GATT_NAME : GATT_DEFAULT_NAME
     },
     CONFIG_WIFI: {
         WIFI_MODE: WIFI_MODE_AP,
