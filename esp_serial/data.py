@@ -197,8 +197,10 @@ class ButtonEventEnum(Enum):
     ENCODER_PUSH = auto()
     ENCODER_DOUBLE = auto()
     ENCODER_LONG = auto()
+    TARE = auto()
     TARE_DUBLE = auto()
     TARE_LONG = auto()
+    TARE_SUPER_LONG = auto()
     START = auto()
     # Failure type
     UNKNOWN = auto()
@@ -215,8 +217,10 @@ class ButtonEventEnum(Enum):
             "push": "ENCODER_PUSH",
             "pu_d": "ENCODER_DOUBLE",
             "elng": "ENCODER_LONG",
+            "tare": "TARE",
             "ta_d": "TARE_DUBLE",
             "ta_l": "TARE_LONG",
+            "ta_sl": "TARE_SUPER_LONG",
             "strt": "START"
         }
 
@@ -239,7 +243,10 @@ class ButtonEventData:
 
             try:
                 if len(args) > 1:
-                    time_since_last_event = int(args[1])
+                    if args[1] == "9999+++":
+                        time_since_last_event = 10000
+                    else:
+                        time_since_last_event = int(args[1])
             except ValueError:
                 pass
 
