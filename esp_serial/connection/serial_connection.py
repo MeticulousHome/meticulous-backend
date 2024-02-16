@@ -23,11 +23,9 @@ class SerialConnection():
         self.connected = False
 
         if self.connect(device) is None or not self.connected:
-            raise RuntimeError("Couldn't connect to ESP32");
+            raise RuntimeError("Couldn't connect to ESP32")
 
-        logger.info("An ESP32 is connected, resetting");
-
-        self.reset(bootloader=False)
+        logger.info("An ESP32 is connected")
 
     def available(self):
         return self.port != None and self.connected
