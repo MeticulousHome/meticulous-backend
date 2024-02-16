@@ -1,4 +1,8 @@
 
+### [v0.1.21] - 2024-02-16
+Reverts FFFuego/backend_for_esp32#89
+
+
 ### [v0.1.20] - 2024-02-16
 The dial app and the mobile app need a REST API to fetch static data. Implement it here.
 
