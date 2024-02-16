@@ -1,34 +1,96 @@
-import json
+import json 
+import stages
 
-class HeadProfile:
-    
+class Profile:
     def __init__(self):
-        self.data = {}
+        self.data = {
+            "name": "",
+            "stages": []
+        }
         
-    def click_to_start(self, click: bool):
-        
-        file_path = "head_click_to_start.json" if click else "head_no_click_to_start.json"
-        try:
-            with open(file_path, 'r') as file:
-                self.data = json.load(file)
-        except FileNotFoundError:
-            print(f"File {file_path} not found")
-            return {}
-        
-        
+    def set_name(self, name: str):
+        self.data["name"] = name
+    
+    def add_stages(self, stages: list):
+        for stage in stages:
+            self.data["stages"].append(stage.get_stage())
 
-class TailProfile:
+    def get_data(self):
+        return self.data
     
-    def __init__(self):
-        self.parameters = {}    
-        
 if __name__ == "__main__":
-    # Example usage of the HeadProfile and TailProfile classes.
-    file_path = "head_profile_example.json"
+    profile = Profile()
     
-    head_profile = HeadProfile()
-    head_profile.click_to_start(True)
-    print(json.dumps(head_profile.data, indent=4))
+    profile.set_name("Profile 1")
     
-    # tail_profile = TailProfile()
-    # print(json.dumps(tail_profile.parameters, indent=4))
+    stages_1 = stages.Stages()
+    stages_1.set_name("Stage 1")
+    
+    node = stages.nodes.Nodes()
+    node.set_id(1)
+    points = [[0, 6],[10,8]]
+    
+    controller = stages.nodes.controllers.FlowController()
+    controller.set_curve_id(1)
+    controller.set_interpolation_kind(stages.nodes.dic.enums.CurveInterpolationType.LINEAR)
+    controller.set_points(points)
+    controller.set_reference_type(stages.nodes.dic.enums.ReferenceType.TIME)
+    controller.set_reference_id(1)
+    node.add_controller(controller)
+    
+    controller = stages.nodes.controllers.TimeReferenceController()
+    controller.set_reference_id(2)
+    node.add_controller(controller)
+
+    trigger = stages.nodes.triggers.SpeedTrigger()
+    trigger.set_value(1)
+    trigger.set_next_node_id(1)
+    node.add_trigger(trigger)
+    
+    stages_1.add_node(node)
+    
+    node_1 = stages.nodes.Nodes()
+    node_1.set_id(2)
+    points = [[10, 15],[20,18]]
+    
+    controller = stages.nodes.controllers.PressureController()
+    controller.set_algorithm(stages.nodes.dic.enums.Pressure_Algorithm_Type.PID_V1)
+    controller.set_curve_id(2)
+    controller.set_interpolation_kind(stages.nodes.dic.enums.CurveInterpolationType.LINEAR)
+    controller.set_points(points)
+    controller.set_reference_type(stages.nodes.dic.enums.ReferenceType.POSITION)
+    controller.set_reference_id(2)
+    node_1.add_controller(controller)
+    
+    stages_1.add_node(node_1)
+    
+    stages_2 = stages.Stages()
+    stages_2.set_name("Stage 2")
+    
+    node_2 = stages.nodes.Nodes()
+    node_2.set_id(3)
+    points = [[20, 25],[30,28]]
+    
+    controller = stages.nodes.controllers.PressureController()
+    controller.set_algorithm(stages.nodes.dic.enums.Pressure_Algorithm_Type.PID_V1)
+    controller.set_curve_id(3)
+    controller.set_interpolation_kind(stages.nodes.dic.enums.CurveInterpolationType.LINEAR)
+    controller.set_points(points)
+    controller.set_reference_type(stages.nodes.dic.enums.ReferenceType.POSITION)
+    controller.set_reference_id(3)
+    node_2.add_controller(controller)
+    
+    trigger = stages.nodes.triggers.SpeedTrigger()
+    trigger.set_value(2)
+    trigger.set_next_node_id(3)
+    node_2.add_trigger(trigger)
+    
+    stages_2.add_node(node_2)
+    
+    profile.add_stages([stages_1,stages_2])
+    
+    print(json.dumps(profile.get_data(), indent=4))
+    
+    
+    
+        
