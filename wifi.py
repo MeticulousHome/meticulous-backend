@@ -75,7 +75,8 @@ class WifiManager():
             if config.hostname.startswith(MACHINE_HOSTNAMES):
                 HostnameManager.checkAndUpdateHostname(config.hostname, config.mac)
 
-        WifiManager._zeroconf = ZeroConfAnnouncement(config_function = WifiManager.getCurrentConfig)
+        if WifiManager._zeroconf is None:
+            WifiManager._zeroconf = ZeroConfAnnouncement(config_function = WifiManager.getCurrentConfig)
 
         # Without networking we have no chance starting the wifi or getting the creads
         if WifiManager._networking_available:
@@ -86,6 +87,15 @@ class WifiManager():
                 WifiManager.stopHotspot()
 
         WifiManager._zeroconf.start()
+
+    def resetWifiMode():
+        # Without networking we have no chance starting the wifi or getting the creads
+        if WifiManager._networking_available:
+            # start AP if needed
+            if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP:
+                WifiManager.startHotspot()
+            else:
+                WifiManager.stopHotspot()
 
     def startHotspot():
         if not WifiManager._networking_available:

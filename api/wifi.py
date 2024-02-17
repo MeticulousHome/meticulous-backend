@@ -53,10 +53,23 @@ class WiFiConfigHandler(BaseHandler):
             data = json.loads(self.request.body)
             if "provisioning" in data and data["provisioning"] == True:
                 logger.warning("Enableing GATT provisioning")
-                GATTServer.allow_wifi_provisioning()
+                GATTServer.getServer().allow_wifi_provisioning()
+                del data["provisioning"]
 
-            logger.warning(f"TODO persist wifi config:{data}")
-            self.write("No action taked, needs implementation")
+            if "mode" in data and data["mode"] in [WIFI_MODE_AP, WIFI_MODE_CLIENT]:
+                logger.warning("Changing wifi mode")
+                MeticulousConfig[CONFIG_WIFI][WIFI_MODE] = data["mode"]
+                MeticulousConfig.save()
+                WifiManager.resetWifiMode()
+                del data["mode"]
+
+            logger.info(f"Unused request entries: {data}")
+
+            return self.get()
+        except json.JSONDecodeError as e:
+            self.set_status(400)
+            self.write(f"Invalid JSON")
+            logger.warning(f"Failed to parse passed JSON: {e}", stack_info=False)
 
         except Exception as e:
             self.set_status(400)
