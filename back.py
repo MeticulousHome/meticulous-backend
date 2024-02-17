@@ -140,7 +140,7 @@ async def forwardJSON(sid,data):
 @sio.on('calibrate') #Use when calibration it is implemented
 def msg(sid, data=True):
     know_weight = "100.0"
-    current_weight = data_sensors.weight
+    current_weight = Machine.data_sensors.weight
     data ="calibration"+","+know_weight+","+str(current_weight)
     _input = "action,"+data+"\x03"
     Machine.write(str.encode(_input))

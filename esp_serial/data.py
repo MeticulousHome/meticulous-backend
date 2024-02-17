@@ -1,12 +1,19 @@
 from dataclasses import dataclass, replace
 from enum import Enum, auto, unique
 import re
+import math
 
 from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
 
 colorSensorRegex = None
 
+
+def safeFloat(val):
+    convert = float(val)
+    if math.isnan(convert):
+        return 0
+    return convert
 
 @dataclass
 class SensorData:
@@ -46,24 +53,24 @@ class SensorData:
     def from_args(args):
         try:
             data = SensorData(
-                external_1=float(args[0]),
-                external_2=float(args[1]),
-                bar_up=float(args[2]),
-                bar_mid_up=float(args[3]),
-                bar_mid_down=float(args[4]),
-                bar_down=float(args[5]),
-                tube=float(args[6]),
-                valve=float(args[7]),
-                motor_position=float(args[8]),
-                motor_speed=float(args[9]),
-                motor_power=float(args[10]),
-                motor_current=float(args[11]),
-                bandheater_power=float(args[12]),
-                preassure_sensor=float(args[13]),
-                adc_0=float(args[14]),
-                adc_1=float(args[15]),
-                adc_2=float(args[16]),
-                adc_3=float(args[17]),
+                external_1=safeFloat(args[0]),
+                external_2=safeFloat(args[1]),
+                bar_up=safeFloat(args[2]),
+                bar_mid_up=safeFloat(args[3]),
+                bar_mid_down=safeFloat(args[4]),
+                bar_down=safeFloat(args[5]),
+                tube=safeFloat(args[6]),
+                valve=safeFloat(args[7]),
+                motor_position=safeFloat(args[8]),
+                motor_speed=safeFloat(args[9]),
+                motor_power=safeFloat(args[10]),
+                motor_current=safeFloat(args[11]),
+                bandheater_power=safeFloat(args[12]),
+                preassure_sensor=safeFloat(args[13]),
+                adc_0=safeFloat(args[14]),
+                adc_1=safeFloat(args[15]),
+                adc_2=safeFloat(args[16]),
+                adc_3=safeFloat(args[17]),
             )
         except Exception as e:
             logger.warning(f"Failed to parse SensorData: {args}", exc_info=e)
@@ -79,7 +86,7 @@ class SensorData:
             "t_bar_md": self.bar_mid_down,
             "t_bar_down": self.bar_down,
             "t_tube": self.tube,
-            "t_valv": self.valve,
+            "t_valv": self.valve
         }
 
     def to_sio_communication(self):

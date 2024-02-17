@@ -32,8 +32,8 @@ class Machine:
 
     infoReady = False
 
-    data_sensors = ShotData()
-    sensor_sensors = None
+    data_sensors : ShotData = ShotData()
+    sensor_sensors : SensorData = None
     esp_info = None
     reset_count = 0
     shot_start_time = 0
@@ -211,9 +211,8 @@ class Machine:
                     Machine.infoReady = True
 
                 if sensor is not None:
-                    Machine.sensors = sensor
+                    Machine.sensor_sensors = sensor
                     Machine.reset_count = 0
-                    Machine.actioninfoReady = True
                     if (time_flag):
                         ShotManager.handleSensorData(
                             Machine.sensor_sensors, time_passed)
