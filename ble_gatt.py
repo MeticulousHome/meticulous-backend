@@ -156,9 +156,13 @@ class GATTServer:
             self.bless_gatt_server.read_request_func = GATTServer.read_request
             self.bless_gatt_server.write_request_func = GATTServer.write_request
 
-        # Power on the hci device if it is powered off
-        await self.bless_gatt_server.setup_task
+        try:
+            await self.bless_gatt_server.setup_task
+        except FileNotFoundError as e:
+            logger.warning("Could not initialize the BLE gatt interface. Bailing out!")
+            return
 
+        # Power on the hci device if it is powered off
         interface = self.bless_gatt_server.adapter.get_interface("org.bluez.Adapter1")
         powered = await interface.get_powered()
         if not powered:
