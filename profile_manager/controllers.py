@@ -63,15 +63,15 @@ Child classes of CurveControllers that represent pressure, flow, temperature, po
 These classes have methods to change the controller's algorithm and to change the curve associated with the controller
 '''
 class PressureController(CurveControllers):
-    def __init__(self):
+    def __init__(self, algorithm : Pressure_Algorithm_Type = Pressure_Algorithm_Type.PID_V1, curve_id: int = 0, interpolation_kind : CurveInterpolationType = CurveInterpolationType.LINEAR, points : list = [0,6], reference_kind : ReferenceType = ReferenceType.TIME, reference_id : int = 0):
         super().__init__()
         self.data["kind"] = controllers_type[ControllerType.PRESSURE]
-        self.data["algorithm"] = algorithms_type[AlgorithmType.PRESSURE][Pressure_Algorithm_Type.PID_V1]
-        self.data["curve"]["id"] = 0
-        self.data["curve"]["interpolation_kind"] = curve_interpolation[CurveInterpolationType.LINEAR]
-        self.data["curve"]["points"] = [0,6]
-        self.data["curve"]["reference"]["kind"] = reference_type[ReferenceType.CURVE][ReferenceType.TIME]
-        self.data["curve"]["reference"]["id"] = 0
+        self.data["algorithm"] = algorithms_type[AlgorithmType.PRESSURE][algorithm]
+        self.data["curve"]["id"] = curve_id
+        self.data["curve"]["interpolation_kind"] = curve_interpolation[interpolation_kind]
+        self.data["curve"]["points"] = [points]
+        self.data["curve"]["reference"]["kind"] = reference_type[ReferenceType.CURVE][reference_kind]
+        self.data["curve"]["reference"]["id"] = reference_id
         
     
     def set_algorithm(self, algorithm: Pressure_Algorithm_Type):
@@ -83,10 +83,15 @@ class PressureController(CurveControllers):
 
 
 class FlowController(CurveControllers):
-    def __init__(self):
+    def __init__(self, algorithm : Flow_Algorithm_Type = Flow_Algorithm_Type.PID_V1, curve_id : int = 0, interpolation_kind : CurveInterpolationType = CurveInterpolationType.LINEAR, points : list = [0,8], reference_kind : ReferenceType = ReferenceType.TIME, reference_id : int = 0):
         super().__init__()
         self.data["kind"] = controllers_type[ControllerType.FLOW]
-        self.data["algorithm"] = algorithms_type[AlgorithmType.FLOW][Flow_Algorithm_Type.PID_V1]
+        self.data["algorithm"] = algorithms_type[AlgorithmType.FLOW][algorithm]
+        self.data["curve"]["id"] = curve_id
+        self.data["curve"]["interpolation_kind"] = curve_interpolation[interpolation_kind]
+        self.data["curve"]["points"] = [points]
+        self.data["curve"]["reference"]["kind"] = reference_type[ReferenceType.CURVE][reference_kind]
+        self.data["curve"]["reference"]["id"] = reference_id
         
     def set_algorithm(self, algorithm: Flow_Algorithm_Type):
         if algorithm not in algorithms_type[AlgorithmType.FLOW]:
@@ -95,10 +100,15 @@ class FlowController(CurveControllers):
         self.data["algorithm"] = algorithms_type[AlgorithmType.FLOW][algorithm]
         
 class TemperatureController(CurveControllers):
-    def __init__(self):
+    def __init__(self, algorithm : Temperature_Algorithm_Type = Temperature_Algorithm_Type.WATER, curve_id : int = 0, interpolation_kind : CurveInterpolationType = CurveInterpolationType.LINEAR, points : list = [0,8], reference_kind : ReferenceType = ReferenceType.TIME, reference_id : int = 0):
         super().__init__()
         self.data["kind"] = controllers_type[ControllerType.TEMPERATURE]
-        self.data["algorithm"] = algorithms_type[AlgorithmType.TEMPERATURE][Temperature_Algorithm_Type.WATER]
+        self.data["algorithm"] = algorithms_type[AlgorithmType.TEMPERATURE][algorithm]
+        self.data["curve"]["id"] = curve_id
+        self.data["curve"]["interpolation_kind"] = curve_interpolation[interpolation_kind]
+        self.data["curve"]["points"] = [points]
+        self.data["curve"]["reference"]["kind"] = reference_type[ReferenceType.CURVE][reference_kind]
+        self.data["curve"]["reference"]["id"] = reference_id
         
     def set_algorithm(self, algorithm: Temperature_Algorithm_Type):
         if algorithm not in algorithms_type[AlgorithmType.TEMPERATURE]:
@@ -107,13 +117,13 @@ class TemperatureController(CurveControllers):
         self.data["algorithm"] = algorithms_type[AlgorithmType.TEMPERATURE][algorithm]
         
 class SpeedController(Controllers):
-    def __init__(self):
+    def __init__(self, algorithm : Speed_Algorithm_Type = Speed_Algorithm_Type.EASE_IN, speed : int = 0, direction : Direction_Type = Direction_Type.FORWARD):
         super().__init__()
         self.data = {
             "kind": controllers_type[ControllerType.SPEED],
-            "algorithm": algorithms_type[AlgorithmType.SPEED][Speed_Algorithm_Type.EASE_IN],
-            "speed" : 0,
-            "direction" : ""
+            "algorithm": algorithms_type[AlgorithmType.SPEED][algorithm],
+            "speed" : speed,
+            "direction" : directions[direction]
         }
         
     def set_algorithm(self, algorithm: Speed_Algorithm_Type):
@@ -132,10 +142,15 @@ class SpeedController(Controllers):
         self.data["direction"] = directions[direction]
         
 class PowerController(CurveControllers):
-    def __init__(self):
+    def __init__(self, algorithm : Power_Algorithm_Type = Power_Algorithm_Type.SPRING, curve_id :int = 0, interpolation_kind : CurveInterpolationType = CurveInterpolationType.LINEAR, points : list = [0,8], reference_kind : ReferenceType = ReferenceType.TIME, reference_id : int = 0):
         super().__init__()
         self.data["kind"] = controllers_type[ControllerType.POWER]
-        self.data["algorithm"] = algorithms_type[AlgorithmType.POWER][Power_Algorithm_Type.SPRING]
+        self.data["algorithm"] = algorithms_type[AlgorithmType.POWER][algorithm]
+        self.data["curve"]["id"] = curve_id
+        self.data["curve"]["interpolation_kind"] = curve_interpolation[interpolation_kind]
+        self.data["curve"]["points"] = [points]
+        self.data["curve"]["reference"]["kind"] = reference_type[ReferenceType.CURVE][reference_kind]
+        self.data["curve"]["reference"]["id"] = reference_id
     
     def set_algorithm(self, algorithm: Power_Algorithm_Type):
         if algorithm not in algorithms_type[AlgorithmType.POWER]:
@@ -144,10 +159,15 @@ class PowerController(CurveControllers):
         self.data["algorithm"] = algorithms_type[AlgorithmType.POWER][algorithm]
 
 class WeightController(CurveControllers):
-    def __init__(self):
+    def __init__(self, algorithm : Weight_Algorithm_Type = Weight_Algorithm_Type.PID_V1, curve_id : int = 0, interpolation_kind : CurveInterpolationType = CurveInterpolationType.LINEAR, points : list = [0,8], reference_kind : ReferenceType = ReferenceType.TIME, reference_id : int = 0):
         super().__init__()
         self.data["kind"] = controllers_type[ControllerType.WEIGHT]
-        self.data["algorithm"] = algorithms_type[AlgorithmType.WEIGHT][Weight_Algorithm_Type.PID_V1]
+        self.data["algorithm"] = algorithms_type[AlgorithmType.WEIGHT][algorithm]
+        self.data["curve"]["id"] = curve_id
+        self.data["curve"]["interpolation_kind"] = curve_interpolation[interpolation_kind]
+        self.data["curve"]["points"] = [points]
+        self.data["curve"]["reference"]["kind"] = reference_type[ReferenceType.CURVE][reference_kind]
+        self.data["curve"]["reference"]["id"] = reference_id
         
     def set_algorithm(self, algorithm: Weight_Algorithm_Type):
         if algorithm not in algorithms_type[AlgorithmType.WEIGHT]:
@@ -157,11 +177,10 @@ class WeightController(CurveControllers):
 
 class LogController(Controllers):
     #This class displays a message
-    def __init__(self):
-        self.data = {
-            "kind": controllers_type[ControllerType.MESSAGE],
-            "message": ""
-        }
+    def __init__(self, message : Message_Type = Message_Type.NO_WATER):
+        super().__init__()
+        self.data["kind"] = controllers_type[ControllerType.MESSAGE]
+        self.data["message"] = messages[message]
         
     def set_message(self, message: Message_Type):
         if message not in messages:
@@ -195,22 +214,23 @@ class ReferenceController(Controllers):
         
 class TimeReferenceController(ReferenceController):
     #This class is a controller that when called, the machine makes a reference in time
-    def __init__(self):
+    def __init__(self, id: int = 0):
         super().__init__()
         self.data["kind"] = reference_type[ReferenceType.CONTROL][ReferenceType.TIME]
+        self.data["id"] = id
         
 class PositionReferenceController(ReferenceController):
     #This class is a controller that when called, the machine makes a reference in position
-    def __init__(self):
+    def __init__(self, id: int = 0):
         super().__init__()
         self.data["kind"] = reference_type[ReferenceType.CONTROL][ReferenceType.POSITION]
-        
+        self.data["id"] = id
 class WeightReferenceController(ReferenceController):
     #This class is a controller that when called, the machine makes a reference in weight
-    def __init__(self):
+    def __init__(self, id: int = 0):
         super().__init__()
         self.data["kind"] = reference_type[ReferenceType.CONTROL][ReferenceType.WEIGHT]   
-        
+        self.data["id"] = id
     
 if __name__ == "__main__":
     # Example usage of the Controllers class.
@@ -219,56 +239,60 @@ if __name__ == "__main__":
 
     points = [[0, 6],[10,8]]
     
-    pressure_controller_1 = PressureController()
-    pressure_controller_1.set_algorithm(Pressure_Algorithm_Type.PID_V1)
-    pressure_controller_1.set_curve_id(1)
-    pressure_controller_1.set_interpolation_kind(CurveInterpolationType.LINEAR)
-    pressure_controller_1.set_points(points)
-    pressure_controller_1.set_reference_type(ReferenceType.TIME)
-    pressure_controller_1.set_reference_id(2)
+    # First option to assign values to the control when it initializes
+    pressure_controller_1 = PressureController(Pressure_Algorithm_Type.PID_V1, 7, CurveInterpolationType.LINEAR, points, ReferenceType.TIME, 9)
+    # Second option to assign values to the control after it initializes
+    # pressure_controller_1.set_algorithm(Pressure_Algorithm_Type.PID_V1)
+    # pressure_controller_1.set_curve_id(1)
+    # pressure_controller_1.set_interpolation_kind(CurveInterpolationType.LINEAR)
+    # pressure_controller_1.set_points(points)
+    # pressure_controller_1.set_reference_type(ReferenceType.TIME)
+    # pressure_controller_1.set_reference_id(2)
     print(json.dumps(pressure_controller_1.get_controller(), indent=4))
     
-    flow_controller_1 = FlowController()
-    flow_controller_1.set_curve_id(3)
-    flow_controller_1.set_interpolation_kind(CurveInterpolationType.CATMULL)
-    flow_controller_1.set_points(points)
-    flow_controller_1.set_reference_type(ReferenceType.POSITION)
-    flow_controller_1.set_reference_id(4)
+    #! The same process is repeated for the other controllers when the control accepts at least one parameter
+    
+    flow_controller_1 = FlowController(Flow_Algorithm_Type.PID_V1, 1, CurveInterpolationType.LINEAR, points, ReferenceType.TIME, 2)
+    # flow_controller_1.set_curve_id(3)
+    # flow_controller_1.set_interpolation_kind(CurveInterpolationType.CATMULL)
+    # flow_controller_1.set_points(points)
+    # flow_controller_1.set_reference_type(ReferenceType.POSITION)
+    # flow_controller_1.set_reference_id(4)
     print(json.dumps(flow_controller_1.get_controller(), indent=4))
     
-    temperature_controller_1 = TemperatureController()
-    temperature_controller_1.set_algorithm(Temperature_Algorithm_Type.WATER)
-    temperature_controller_1.set_curve_id(5)
-    temperature_controller_1.set_interpolation_kind(CurveInterpolationType.LINEAR)
-    temperature_controller_1.set_points(points)
-    temperature_controller_1.set_reference_type(ReferenceType.WEIGHT)
-    temperature_controller_1.set_reference_id(6)
+    temperature_controller_1 = TemperatureController(Temperature_Algorithm_Type.WATER, 5, CurveInterpolationType.LINEAR, points, ReferenceType.WEIGHT, 6)
+    # temperature_controller_1.set_algorithm(Temperature_Algorithm_Type.WATER)
+    # temperature_controller_1.set_curve_id(5)
+    # temperature_controller_1.set_interpolation_kind(CurveInterpolationType.LINEAR)
+    # temperature_controller_1.set_points(points)
+    # temperature_controller_1.set_reference_type(ReferenceType.WEIGHT)
+    # temperature_controller_1.set_reference_id(6)
     print(json.dumps(temperature_controller_1.get_controller(), indent=4))
     
-    speed_controller_1 = SpeedController()
-    speed_controller_1.set_algorithm(Speed_Algorithm_Type.EASE_IN)
-    speed_controller_1.set_speed(7)
-    speed_controller_1.set_direction(Direction_Type.FORWARD)
+    speed_controller_1 = SpeedController(Speed_Algorithm_Type.EASE_IN, 7, Direction_Type.FORWARD)
+    # speed_controller_1.set_algorithm(Speed_Algorithm_Type.EASE_IN)
+    # speed_controller_1.set_speed(7)
+    # speed_controller_1.set_direction(Direction_Type.FORWARD)
     print(json.dumps(speed_controller_1.get_controller(), indent=4))
     
-    power_controller_1 = PowerController()
-    power_controller_1.set_curve_id(7)
-    power_controller_1.set_interpolation_kind(CurveInterpolationType.CATMULL)
-    power_controller_1.set_points(points)
-    power_controller_1.set_reference_type(ReferenceType.TIME)
-    power_controller_1.set_reference_id(8)
+    power_controller_1 = PowerController(Power_Algorithm_Type.SPRING, 8, CurveInterpolationType.CATMULL, points, ReferenceType.TIME, 9)
+    # power_controller_1.set_curve_id(7)
+    # power_controller_1.set_interpolation_kind(CurveInterpolationType.CATMULL)
+    # power_controller_1.set_points(points)
+    # power_controller_1.set_reference_type(ReferenceType.TIME)
+    # power_controller_1.set_reference_id(8)
     print(json.dumps(power_controller_1.get_controller(), indent=4))
     
-    weight_controller_1 = WeightController()
-    weight_controller_1.set_curve_id(9)
-    weight_controller_1.set_interpolation_kind(CurveInterpolationType.LINEAR)
-    weight_controller_1.set_points(points)
-    weight_controller_1.set_reference_type(ReferenceType.POSITION)
-    weight_controller_1.set_reference_id(10)
+    weight_controller_1 = WeightController(Weight_Algorithm_Type.PID_V1, 9, CurveInterpolationType.LINEAR, points, ReferenceType.POSITION, 10)
+    # weight_controller_1.set_curve_id(9)
+    # weight_controller_1.set_interpolation_kind(CurveInterpolationType.LINEAR)
+    # weight_controller_1.set_points(points)
+    # weight_controller_1.set_reference_type(ReferenceType.POSITION)
+    # weight_controller_1.set_reference_id(10)
     print(json.dumps(weight_controller_1.get_controller(), indent=4))
     
-    log_controller_1 = LogController()
-    log_controller_1.set_message(Message_Type.NO_WATER) 
+    log_controller_1 = LogController(Message_Type.NO_WATER)
+    # log_controller_1.set_message(Message_Type.NO_WATER) 
     print(json.dumps(log_controller_1.get_controller(), indent=4))
     
     tare_controller_1 = TareController()
@@ -277,15 +301,15 @@ if __name__ == "__main__":
     end_profile_1 = EndProfile()
     print(json.dumps(end_profile_1.get_controller(), indent=4))
     
-    time_reference_controller_1 = TimeReferenceController()
-    time_reference_controller_1.set_reference_id(11)
+    time_reference_controller_1 = TimeReferenceController(100)
+    # time_reference_controller_1.set_reference_id(11)
     print(json.dumps(time_reference_controller_1.get_controller(), indent=4))
     
-    position_reference_controller_1 = PositionReferenceController()
-    position_reference_controller_1.set_reference_id(12)
+    position_reference_controller_1 = PositionReferenceController(101)
+    # position_reference_controller_1.set_reference_id(12)
     print(json.dumps(position_reference_controller_1.get_controller(), indent=4))
     
-    weight_reference_controller_1 = WeightReferenceController()
-    weight_reference_controller_1.set_reference_id(13)
+    weight_reference_controller_1 = WeightReferenceController(102)
+    # weight_reference_controller_1.set_reference_id(13)
     print(json.dumps(weight_reference_controller_1.get_controller(), indent=4))
     
