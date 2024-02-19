@@ -88,9 +88,6 @@ class GATTServer:
             max_response_bytes=250,
         )
         config = WifiManager.getCurrentConfig()
-        # Only update the hostname if it is a new system or if the hostname has been
-        # set before. Do so in case the lookup table ever changed or the hostname is only
-        # saved transient
         if config.mac != "":
             (host_adjective, host_noun) = HostnameManager.generateHostnameComponents(config.mac)
             self.gatt_name = "Meticulous" + host_adjective.title() + host_noun.title()
