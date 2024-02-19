@@ -29,6 +29,7 @@ class WifiSystemConfig():
     dns: List[IPAddress]
     mac: str
     hostname: str
+    domains: List[str]
 
     def to_json(self):
         gateway = ""
@@ -205,6 +206,7 @@ class WifiManager():
         routes: list[str] = []
         ips: list[IPNetwork] = []
         dns: list[IPAddress] = []
+        domains: list[str] = []
         mac: str = ""
         hostname: str = socket.gethostname()
 
@@ -215,25 +217,33 @@ class WifiManager():
             if dev.device_type == 'wifi' and dev.state == "connected":
                 connected = True
                 config = nmcli.device.show(dev.device)
-                for k, v in config.items():
-                    match k:
-                        case str(k) if "IP4.ADDRESS" in k or "IP6.ADDRESS" in k:
-                            if v is not None:
-                                ip = IPNetwork(v)
-                                ips.append(ip)
-                        case str(k) if "IP4.ROUTE" in k or "IP6.ROUTE" in k:
-                            if v is not None:
-                                routes.append(v)
-                        case str(k) if "IP4.DNS" in k or "IP6.DNS" in k:
-                            if v is not None:
-                                ip = IPAddress(v)
-                                dns.append(ip)
-                        case "GENERAL.HWADDR":
-                            mac = v
-                        case "GENERAL.CONNECTION":
-                            connection_name = v
-                        case "IP4.GATEWAY":
-                            if v is not None:
-                                gateway = IPAddress(v)
+                if dev.state == "connected":
+                    connected = True
+                    for k, v in config.items():
+                        match k:
+                            case str(k) if "IP4.ADDRESS" in k or "IP6.ADDRESS" in k:
+                                if v is not None:
+                                    ip = IPNetwork(v)
+                                    ips.append(ip)
+                            case str(k) if "IP4.ROUTE" in k or "IP6.ROUTE" in k:
+                                if v is not None:
+                                    routes.append(v)
+                            case str(k) if "IP4.DNS" in k or "IP6.DNS" in k:
+                                if v is not None:
+                                    ip = IPAddress(v)
+                                    dns.append(ip)
+                            case str(k) if "IP4.DOMAIN" in k:
+                                if v is not None and v != "domain_not_set.invalid":
+                                    domains.append(v)
+                            case "GENERAL.HWADDR":
+                                mac = v
+                            case "GENERAL.CONNECTION":
+                                connection_name = v
+                            case "IP4.GATEWAY":
+                                if v is not None:
+                                    gateway = IPAddress(v)
+                elif mac == "" and config.get("GENERAL.HWADDR"):
+                    mac = config.get("GENERAL.HWADDR")
 
-        return WifiSystemConfig(connected, connection_name, gateway, routes, ips, dns, mac, hostname)
+
+        return WifiSystemConfig(connected, connection_name, gateway, routes, ips, dns, mac, hostname, domains)

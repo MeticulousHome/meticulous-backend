@@ -35,6 +35,8 @@ class ZeroConfAnnouncement:
             # We can announce arbitrary information here (e.g. version numbers or features or state)
             properties={
                 'server_name': self.network_config.hostname,
+                'ips': ips,
+                'domain' : self.network_config.domains,
                 'machine_name': HostnameManager.generateHostname(self.network_config.mac)
             },
             server=f"{self.network_config.hostname}.local"
