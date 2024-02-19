@@ -193,7 +193,8 @@ class WifiManager():
         ips: list[IPNetwork] = [mockIP]
         dns: list[IPAddress] = [IPAddress("8.8.8.8")]
         mac: str = "AA:BB:CC:FF:FF:FF"
-        return WifiSystemConfig(connected, connection_name, gateway, routes, ips, dns, mac, hostname)
+        domains: list[str] = []
+        return WifiSystemConfig(connected, connection_name, gateway, routes, ips, dns, mac, hostname, domains)
 
     def getCurrentConfig() -> WifiSystemConfig:
 

@@ -5,6 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: meticulous-backend
     ports:
       - 8080:8080
     expose:
