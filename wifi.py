@@ -214,8 +214,7 @@ class WifiManager():
             return WifiSystemConfig(connected, connection_name, gateway, routes, ips, dns, mac, hostname)
 
         for dev in nmcli.device():
-            if dev.device_type == 'wifi' and dev.state == "connected":
-                connected = True
+            if dev.device_type == 'wifi':
                 config = nmcli.device.show(dev.device)
                 if dev.state == "connected":
                     connected = True
@@ -244,6 +243,5 @@ class WifiManager():
                                     gateway = IPAddress(v)
                 elif mac == "" and config.get("GENERAL.HWADDR"):
                     mac = config.get("GENERAL.HWADDR")
-
 
         return WifiSystemConfig(connected, connection_name, gateway, routes, ips, dns, mac, hostname, domains)
