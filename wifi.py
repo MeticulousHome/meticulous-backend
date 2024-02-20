@@ -79,6 +79,10 @@ class WifiManager():
             if config.hostname.startswith(MACHINE_HOSTNAMES):
                 HostnameManager.checkAndUpdateHostname(config.hostname, config.mac)
 
+            ap_name = HostnameManager.generateDeviceName(config.mac)
+            MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME] = ap_name
+            MeticulousConfig.save()
+
         if WifiManager._zeroconf is None:
             WifiManager._zeroconf = ZeroConfAnnouncement(config_function = WifiManager.getCurrentConfig)
 
@@ -106,14 +110,11 @@ class WifiManager():
     def startHotspot():
         if not WifiManager._networking_available:
             return
-        ap_name = HostnameManager.generateDeviceName()
-        MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME] = ap_name
-        MeticulousConfig.save()
 
         logger.info("Starting hotspot")
         nmcli.device.wifi_hotspot(
             con_name=WifiManager._conname,
-            ssid=ap_name,
+            ssid=MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME],
             password=MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
         )
         WifiManager._zeroconf.restart()

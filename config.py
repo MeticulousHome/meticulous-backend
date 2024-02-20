@@ -66,7 +66,7 @@ WIFI_MODE_CLIENT = "CLIENT"
 
 ## Wifi access point configuration
 WIFI_AP_NAME = "APName"
-WIFI_DEFAULT_AP_NAME = None
+WIFI_DEFAULT_AP_NAME = "MeticulousEspresso"
 WIFI_AP_PASSWORD = "APPassword"
 WIFI_DEFAULT_AP_PASSWORD = str(uuid.uuid4())[:8]
 
