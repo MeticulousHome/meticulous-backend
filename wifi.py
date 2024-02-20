@@ -46,6 +46,9 @@ class WifiSystemConfig():
             "hostname": self.hostname
         }
 
+    def is_hotspot(self):
+        return self.connection_name == WifiManager._conname
+
 class WifiManager():
     _known_wifis = []
     # Internal name used by network manager to refer to the AP configuration
@@ -97,15 +100,20 @@ class WifiManager():
                 WifiManager.startHotspot()
             else:
                 WifiManager.stopHotspot()
+                WifiManager.scanForNetworks(time = 1)
+                WifiManager._zeroconf.restart()
 
     def startHotspot():
         if not WifiManager._networking_available:
             return
-        
+        ap_name = HostnameManager.generateDeviceName()
+        MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME] = ap_name
+        MeticulousConfig.save()
+
         logger.info("Starting hotspot")
         nmcli.device.wifi_hotspot(
             con_name=WifiManager._conname,
-            ssid=MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME],
+            ssid=ap_name,
             password=MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
         )
         WifiManager._zeroconf.restart()

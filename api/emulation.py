@@ -1,10 +1,7 @@
-import tornado.ioloop
 import tornado.web
 import json
 from config import *
-from wifi import WifiManager
-from .wifi import WiFiConfig
-from ble_gatt import GATTServer
+from .wifi import WiFiConfig,WiFiQRHandler, WifiManager
 from .base_handler import BaseHandler
 
 from log import MeticulousLogger
@@ -12,12 +9,11 @@ logger = MeticulousLogger.getLogger(__name__)
 
 class WiFiConfigHandler(BaseHandler):
     def get(self):
-        provisioning = GATTServer().is_provisioning()
         mode = MeticulousConfig[CONFIG_WIFI][WIFI_MODE]
         apName = MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME]
         apPassword = MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
         wifi_config = {
-            "config": WiFiConfig(provisioning, mode, apName, apPassword).to_json(),
+            "config": WiFiConfig(mode, apName, apPassword).to_json(),
             "status": {
                 "connected": True,
                 "connection_name": "MeticulousWifi",
@@ -53,11 +49,32 @@ class WiFiConfigHandler(BaseHandler):
     def post(self):
         try:
             data = json.loads(self.request.body)
-            self.write(f"No action taked, needs implementation. Data={data}")
+            if "mode" in data and data["mode"] in [WIFI_MODE_AP, WIFI_MODE_CLIENT]:
+                logger.warning("Changing wifi mode")
+                MeticulousConfig[CONFIG_WIFI][WIFI_MODE] = data["mode"]
+                MeticulousConfig.save()
+                WifiManager.resetWifiMode()
+                del data["mode"]
+
+            if "apPassword" in data:
+                logger.warning("Changing wifi ap password")
+                MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD] = data["apPassword"]
+                MeticulousConfig.save()
+                WifiManager.resetWifiMode()
+                del data["mode"]
+
+            logger.info(f"Unused request entries: {data}")
+
+            return self.get()
+        except json.JSONDecodeError as e:
+            self.set_status(400)
+            self.write(f"Invalid JSON")
+            logger.warning(f"Failed to parse passed JSON: {e}", stack_info=False)
 
         except Exception as e:
             self.set_status(400)
-            self.write(f"Error: {str(e)}")
+            self.write(f"Failed to write config")
+            logger.warning("Failed to accept passed config: ", exc_info=e, stack_info=True)
 
 class WiFiListHandler(BaseHandler):
     def get(self):
@@ -106,4 +123,5 @@ EMULATED_WIFI_HANDLER = [
         (r"/wifi/config", WiFiConfigHandler),
         (r"/wifi/list", WiFiListHandler),
         (r"/wifi/connect", WiFiConnectHandler),
+        (r"/wifi/config/qr.png", WiFiQRHandler),
     ]

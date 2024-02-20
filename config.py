@@ -1,6 +1,9 @@
 from typing import Any
 import yaml
 import os
+import asyncio
+import uuid
+
 from pathlib import Path
 from datetime import datetime
 from mergedeep import merge
@@ -63,11 +66,9 @@ WIFI_MODE_CLIENT = "CLIENT"
 
 ## Wifi access point configuration
 WIFI_AP_NAME = "APName"
-WIFI_DEFAULT_AP_NAME = "MeticulousEspresso"
+WIFI_DEFAULT_AP_NAME = None
 WIFI_AP_PASSWORD = "APPassword"
-WIFI_DEFAULT_AP_PASSWORD = "meticulous"
-
-
+WIFI_DEFAULT_AP_PASSWORD = str(uuid.uuid4())[:8]
 
 DefaultConfiguration_V1 = {
     # Only needs to be incremented in case of incompatible restructurings

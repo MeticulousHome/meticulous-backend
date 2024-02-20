@@ -23,6 +23,11 @@ class HostnameManager():
         noun = HostnameManager.NOUNS[byte2 % len(HostnameManager.NOUNS)]
         return (adjective, noun)
 
+    def generateDeviceName(mac_address: str) -> str:
+        (adjective, noun)  = HostnameManager.generateHostnameComponents(mac_address)
+        adjective = adjective.title()
+        return f"Meticulous{adjective}{noun}"
+
     def generateHostname(mac_address: str) -> str:
         (adjective, noun) = HostnameManager.generateHostnameComponents(mac_address)
         # Combine to form a hostname
