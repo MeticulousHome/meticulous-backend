@@ -288,7 +288,9 @@ async def send_data():
 
         elif _input.startswith("notification"):
             notification = _input[12:]
-            await NotificationManager.add_notification(Notification(notification, [NotificationResponse.OK]))
+            noti = Notification(notification, ["Ok", "Not okay"])
+            noti.add_qrcode("Hello asjkdljlasjjkdsajkldasljkasdljk")
+            await NotificationManager.add_notification(noti)
         elif _input == "l" or _input == "CCW":
             await sio.emit("button", ButtonEventData.from_args(["CCW"]).to_sio())
         elif _input == "r" or _input == "CW":

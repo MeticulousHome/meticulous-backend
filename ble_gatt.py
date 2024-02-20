@@ -89,8 +89,7 @@ class GATTServer:
         )
         config = WifiManager.getCurrentConfig()
         if config.mac != "":
-            (host_adjective, host_noun) = HostnameManager.generateHostnameComponents(config.mac)
-            self.gatt_name = "Meticulous" + host_adjective.title() + host_noun.title()
+            self.gatt_name = HostnameManager.generateDeviceName(config.mac)
         else:
             self.gatt_name = "MeticulousEspresso"
 

@@ -1,7 +1,9 @@
 import datetime
 import uuid
 import json
-import asyncio
+import base64
+import pyqrcode
+import io
 
 from dataclasses import dataclass, replace
 from enum import Enum, auto, unique
@@ -41,6 +43,24 @@ class Notification:
         self.callback = callback
         self.timestamp = datetime.now()
 
+    def add_image(self, filename):
+        ext = filename.split('.')[-1]
+        prefix = f'data:image/{ext};base64,'
+        with open(filename, 'rb') as f:
+            img = f.read()
+        self.image = prefix + base64.b64encode(img).decode('utf-8')
+
+    def add_qrcode(self, qrcontents):
+        buffer = io.BytesIO()
+        qr = pyqrcode.create(qrcontents)
+        qr.png(buffer, scale=6,
+               module_color=[0x00, 0x00, 0x00, 0xFF],
+               background=[0xFF, 0xFF, 0xFF, 0xFF])
+
+        prefix = f'data:image/png;base64,'
+        self.image = prefix + \
+            base64.b64encode(buffer.getvalue()).decode('utf-8')
+
     def acknowledge(self, response):
         self.acknowledged = True
         self.response = response
@@ -76,8 +96,6 @@ class NotificationManager:
 
         # Emit the notification over socketIO as json
         await NotificationManager._sio.emit("notification", notification.to_json())
-
-
 
     def get_unacknowledged_notifications():
         NotificationManager.delete_old_acknowledged()

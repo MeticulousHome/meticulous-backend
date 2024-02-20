@@ -8,6 +8,8 @@ nmcli
 psutil
 packaging==23.2
 pyImprov @ git+https://github.com/Mimoja/pyImprov@main
+pypng==0.20220715.0
+PyQRCode==1.2.1
 pyserial==3.5
 python-engineio==4.6.1
 python-socketio==5.8.0

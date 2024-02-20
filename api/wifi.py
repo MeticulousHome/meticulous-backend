@@ -1,8 +1,10 @@
-import tornado.web
 import json
+import pyqrcode
+import io
+
 from config import *
 from wifi import WifiManager
-from ble_gatt import GATTServer
+from ble_gatt import GATTServer, PORT
 
 from .base_handler import BaseHandler
 
@@ -10,40 +12,63 @@ from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
 
 class WiFiConfig:
-    def __init__(self, provisioning = None, mode = None, apName = None, apPassword = None):
-        self.provisioning = provisioning
+    def __init__(self, mode = None, apName = None, apPassword = None):
         self.mode = mode
         self.apName = apName
         self.apPassword = apPassword
 
     def __repr__(self):
-        return f"WiFiConfiguration(provisioning={self.provisioning}, mode='{self.mode}', apName='{self.apName}', apPassword='{self.apPassword}')"
+        return f"WiFiConfiguration(mode='{self.mode}', apName='{self.apName}', apPassword='{self.apPassword}')"
 
     @classmethod
     def from_json(cls, json_data):
-        provisioning = json_data.get('provisioning')
         mode = json_data.get('mode')
         apName = json_data.get('apName')
         apPassword = json_data.get('apPassword')
-        return cls(provisioning, mode, apName, apPassword)
+        return cls(mode, apName, apPassword)
 
     def to_json(self):
         return {
-            "provisioning": self.provisioning,
             "mode": self.mode,
             "apName": self.apName,
             "apPassword": self.apPassword,
         }
 
+class WiFiQRHandler(BaseHandler):
+    def get(self):
+        config = WifiManager.getCurrentConfig()
+        logger.warning(config)
+        qr_contents: str = ""
+        if config.is_hotspot():
+            ssid = MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME]
+            password = MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
+            qr_contents = f"WIFI:S:{ssid};T:WPA2;P:{password};H:true;;"
+        elif len(config.ips) > 0:
+            current_ip = config.ips[0]
+            if current_ip.ip.version == 6:
+                qr_contents = f"http://[{str(current_ip.ip)}]:{PORT}"
+            else:
+                qr_contents = f"http://{str(current_ip.ip)}:{PORT}"
+        else:
+            qr_contents = f"http://{str(config.hostname)}.local:{PORT}"
+
+        buffer = io.BytesIO()
+
+        qr = pyqrcode.create(qr_contents)
+        qr.png(buffer, scale=3, quiet_zone=2,
+               module_color=[0xFF, 0x00, 0x00, 0xFF],
+               background=[0xFF, 0xFF, 0xFF, 0xFF],)
+
+        self.set_header("Content-Type", "image/png")
+        self.write(buffer.getvalue())
 
 class WiFiConfigHandler(BaseHandler):
     def get(self):
-        provisioning = GATTServer().is_provisioning()
         mode = MeticulousConfig[CONFIG_WIFI][WIFI_MODE]
         apName = MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME]
         apPassword = MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
         wifi_config = {
-            "config": WiFiConfig(provisioning, mode, apName, apPassword).to_json(),
+            "config": WiFiConfig(mode, apName, apPassword).to_json(),
             "status": WifiManager.getCurrentConfig().to_json(),
         }
         self.write(json.dumps(wifi_config))
@@ -123,6 +148,7 @@ class WiFiConnectHandler(BaseHandler):
 
 WIFI_HANDLER = [
         (r"/wifi/config", WiFiConfigHandler),
+        (r"/wifi/config/qr.png", WiFiQRHandler),
         (r"/wifi/list", WiFiListHandler),
         (r"/wifi/connect", WiFiConnectHandler),
     ]
