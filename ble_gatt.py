@@ -42,9 +42,6 @@ class GATTServer:
         getServer() -> GATTServer:
             Static method to get the singleton instance of the GATTServer.
 
-        allow_wifi_provisioning():
-            Authorizes the server for Wi-Fi provisioning if it is awaiting authorization.
-
         is_running() -> bool:
             Checks if the server's loop thread is alive and running.
 
@@ -102,13 +99,6 @@ class GATTServer:
         if GATTServer._singletonServer is None:
             GATTServer._singletonServer = GATTServer()
         return GATTServer._singletonServer
-
-    def allow_wifi_provisioning(self):
-        if self.improv_server.state == ImprovState.AWAITING_AUTHORIZATION:
-            self.improv_server.state = ImprovState.AUTHORIZED
-
-    def is_provisioning(self):
-        return self.improv_server.state.value >= ImprovState.AUTHORIZED.value
 
     def is_running(self):
         if self.loopThread is None:

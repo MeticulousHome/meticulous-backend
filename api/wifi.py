@@ -76,14 +76,16 @@ class WiFiConfigHandler(BaseHandler):
     def post(self):
         try:
             data = json.loads(self.request.body)
-            if "provisioning" in data and data["provisioning"] == True:
-                logger.warning("Enableing GATT provisioning")
-                GATTServer.getServer().allow_wifi_provisioning()
-                del data["provisioning"]
-
             if "mode" in data and data["mode"] in [WIFI_MODE_AP, WIFI_MODE_CLIENT]:
                 logger.warning("Changing wifi mode")
                 MeticulousConfig[CONFIG_WIFI][WIFI_MODE] = data["mode"]
+                MeticulousConfig.save()
+                WifiManager.resetWifiMode()
+                del data["mode"]
+
+            if "apPassword" in data:
+                logger.warning("Changing wifi ap password")
+                MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD] = data["apPassword"]
                 MeticulousConfig.save()
                 WifiManager.resetWifiMode()
                 del data["mode"]
