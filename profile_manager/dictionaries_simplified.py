@@ -1,31 +1,34 @@
 from dictionaries import *
 from controllers import *
+from triggers import *
 
 type_dict = {
-    "power" : controllers_type[ControllerType.POWER],
-    "flow" : controllers_type[ControllerType.FLOW],
-    "pressure" : controllers_type[ControllerType.PRESSURE],
+    "power" : PowerController,
+    "flow" : FlowController,
+    "pressure" : PressureController,
+    "temperature" : TemperatureController,
 }
 
 over_dict = {
-    "time" : reference_type[ReferenceType.CURVE][ReferenceType.TIME],
-    "weight" : reference_type[ReferenceType.CURVE][ReferenceType.WEIGHT],
-    "piston_position" : reference_type[ReferenceType.CURVE][ReferenceType.POSITION],
+    "time" : ReferenceType.TIME,
+    "weight" : ReferenceType.WEIGHT,
+    "piston_position" : ReferenceType.POSITION,
 }
 
 interpolation_dict = {
-    "linear" : curve_interpolation[CurveInterpolationType.LINEAR],
-    "catmul" : curve_interpolation[CurveInterpolationType.CATMULL],
+    "linear" : CurveInterpolationType.LINEAR,
+    "catmull" : CurveInterpolationType.CATMULL,
 }
 
 exit_trigger_dict = {
-    "time" : trigger_type[TriggerType.TIME],
-    "weight" : trigger_type[TriggerType.WEIGHT],
-    "pressure" : trigger_type[TriggerType.VALUE][TriggerType.PRESSURE],
-    "flow" : trigger_type[TriggerType.VALUE][TriggerType.FLOW],
-    "piston_position" : trigger_type[TriggerType.PISTON_POSITION],
-    "power" : trigger_type[TriggerType.VALUE][TriggerType.POWER],
-    "temperature" : trigger_type[TriggerType.VALUE][TriggerType.TEMPERATURE],
+    "time" : TimerTrigger,
+    "weight" : WeightTrigger,
+    "pressure" : PressureValueTrigger,
+    "flow" : FlowValueTrigger,
+    "piston_position" : PistonPositionTrigger,
+    "power" : PowerValueTrigger,
+    "temperature" : TemperatureValueTrigger,
+    "speed" : SpeedTrigger,
 }
 
 limit_trigger_dict = {
@@ -35,5 +38,25 @@ limit_trigger_dict = {
     "temperature" : trigger_type[TriggerType.VALUE][TriggerType.TEMPERATURE],
 }
 
+def create_controller(name, *args, **kwargs):
+    if name in type_dict:
+        controller_class = type_dict[name]
+        return controller_class(*args, **kwargs)
+    else:
+        raise ValueError(f"No controller found with name: {name}")
+    
+def create_trigger(name, *args, **kwargs):
+    if name in exit_trigger_dict:
+        trigger_class = exit_trigger_dict[name]
+        return trigger_class(*args, **kwargs)
+    else:
+        raise ValueError(f"No trigger found with name: {name}")
+
 if __name__ == '__main__':
-    print(type_dict)
+    # print(type_dict)
+    flow_controller = create_controller("flow", algorithm=Flow_Algorithm_Type.PID_V1, curve_id=1, points=[0, 10])
+    print(flow_controller.get_controller())
+    
+    weight_trigger = create_trigger("weight", source=SourceType.AVERAGE, operator=TriggerOperatorType.GREATER_THAN, value=10, weight_reference=1, next_node_id=2)
+    print(weight_trigger.get_trigger())
+    # print(flow_controller)
