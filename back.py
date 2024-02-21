@@ -330,6 +330,7 @@ def main():
     WifiManager.init()
     NotificationManager.init(sio)
     ProfileManager.init()
+    MeticulousConfig.setSIO(sio)
 
     handlers = [
             (r"/socket.io/", socketio.get_tornado_handler(sio)),

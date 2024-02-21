@@ -129,6 +129,7 @@ class MeticulousConfigDict(dict):
 
         self.__path = Path(path)
         self.__configError = False
+        self.__sio = None
 
         ext = self.__path.suffix
         if ext not in [".yml", ".yaml"]:
@@ -143,6 +144,11 @@ class MeticulousConfigDict(dict):
             self.copy(),  default_flow_style=False, allow_unicode=True)
         for line in cs.split('\n'):
             _config_logger.debug(f"CONF: {line}")
+
+    # FIXME: Remove once the socket IO server lives in its own file
+    def setSIO(self, sio):
+        self.__sio = sio
+
     def hasError(self):
         return self.__configError
 
@@ -173,5 +179,15 @@ class MeticulousConfigDict(dict):
         with open(self.__path, "w") as f:
             yaml.dump(
                 self.copy(), f, default_flow_style=False, allow_unicode=True)
+
+        if self.__sio:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            async def sendSettingsNotification():
+                await self.__sio.emit("settings", {})
+
+            loop.run_until_complete(sendSettingsNotification())
+            loop.close()
+
 
 MeticulousConfig = MeticulousConfigDict(os.path.join(CONFIG_PATH, "config.yml"), DefaultConfiguration_V1)
