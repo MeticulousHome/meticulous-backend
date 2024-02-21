@@ -242,7 +242,7 @@ class Machine:
                         logger.info(info_string)
                         Machine._updateNotification = Notification(
                             info_string, [NotificationResponse.OK])
-                        await NotificationManager.add_notification(
+                        NotificationManager.add_notification(
                             Machine._updateNotification)
                         Machine.startUpdate()
 

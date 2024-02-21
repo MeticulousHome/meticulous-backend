@@ -1,34 +1,26 @@
-import datetime
+import time
 import uuid
 import json
 import base64
 import pyqrcode
 import io
+import queue
+import threading
 
 from dataclasses import dataclass, replace
 from enum import Enum, auto, unique
 
 from config import *
 
-@unique
-class NotificationResponse(Enum):
+from log import MeticulousLogger
+
+logger = MeticulousLogger.getLogger(__name__)
+class NotificationResponse:
     OK = "Ok"
     YES = "Yes"
     NO = "No"
     UPDATE = "Update"
     SKIP = "Skip"
-
-    # Failure type
-    UNKNOWN = "Acknowledge"
-
-    @classmethod
-    def _missing_(cls, value):
-        return cls.UNKNOWN
-    
-    @classmethod
-    def from_str(cls, type_str):
-        return cls[type_str.upper()]
-
 
 class Notification:
 
@@ -64,7 +56,7 @@ class Notification:
     def acknowledge(self, response):
         self.acknowledged = True
         self.response = response
-        self.acknowledged_timestamp = datetime.datetime.now()
+        self.acknowledged_timestamp = time.time()
         if self.callback:
             self.callback()
 
@@ -73,29 +65,62 @@ class Notification:
             "id": self.id,
             "message": self.message,
             "image": self.image,
-            "responses": [x.value for x in self.respone_options],
+            "responses": [x for x in self.respone_options],
             "timestamp": self.timestamp.isoformat()
         })
 
 class NotificationManager:
     _notifications = []
     _sio = None
-    
+    _queue = queue.Queue()
+    _thread = None
+
     def init(sio):
         NotificationManager._sio = sio
+        NotificationManager._thread = threading.Thread(target=NotificationManager._notification_loop)
+        NotificationManager._thread.start()
 
-    def acknowledge_notification(self, notification_id, response):
+    def _notification_loop():
+        """
+        This function runs an asyncio event loop in a new process.
+        It continuously checks for new items in the queue and processes them.
+        """
+        async def process_queue():
+            while True:
+                try:
+                    # Try to get an item from the queue allowing blocking
+                    notification : Notification = NotificationManager._queue.get()
+                except queue.Empty:
+                    # If the queue is empty, wait for a short period before trying again
+                    await asyncio.sleep(0.1)
+                else:
+                    # Emit the notification over socketIO as json
+                    await NotificationManager._sio.emit("notification", notification.to_json())
+
+
+        # Create and run the asyncio event loop
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(process_queue())
+
+    def acknowledge_notification(notification_id, response):
         for notification in NotificationManager.get_unacknowledged_notifications():
             if notification.id == notification_id:
+                if response not in notification.respone_options:
+                    return False
+
                 notification.acknowledge(response)
+                if notification.callback:
+                    notification.callback(response)
                 return True
         return False
 
-    async def add_notification(notification):
+    def add_notification(notification: Notification):
+        NotificationManager._queue.put(notification)
+        for old_notfication in NotificationManager.get_unacknowledged_notifications():
+            if notification.id == old_notfication.id:
+                return
         NotificationManager._notifications.append(notification)
-
-        # Emit the notification over socketIO as json
-        await NotificationManager._sio.emit("notification", notification.to_json())
 
     def get_unacknowledged_notifications():
         NotificationManager.delete_old_acknowledged()
@@ -107,7 +132,7 @@ class NotificationManager:
 
     def delete_old_acknowledged():
         ttl = MeticulousConfig[CONFIG_SYSTEM][NOTIFICATION_KEEPALIVE]
-        current_time = datetime.now()
+        current_time = time.time()
         NotificationManager._notifications = [
-            n for n in NotificationManager._notifications if not n.acknowledged or (current_time - n.acknowledged_timestamp).total_seconds() < ttl
+            n for n in NotificationManager._notifications if not n.acknowledged or (current_time - n.acknowledged_timestamp) < ttl
         ]
