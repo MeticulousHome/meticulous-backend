@@ -18,6 +18,9 @@ class Nodes:
     def add_trigger(self, trigger: Triggers):
         self.data["triggers"].append(trigger.get_trigger()) 
 
+    def get_node_id(self):
+        return self.data["id"]
+    
     def get_node(self):
         return self.data    
     
