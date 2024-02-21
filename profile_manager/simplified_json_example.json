@@ -49,15 +49,19 @@
                     "relative": false
                 },
                 {
-                    "type": "position",
+                    "type": "piston_position",
                     "value": 40,
                     "relative": true
+                }, 
+                {
+                    "type": "temperature",
+                    "value": 150
                 }
             ],
             "limits": [
                 {
-                    "type": "flow",
-                    "value": 8
+                    "type": "temperature",
+                    "value": 70
                 },
                 {
                     "type": "pressure",
@@ -94,7 +98,7 @@
                     "relative": false
                 },
                 {
-                    "type": "speed",
+                    "type": "flow",
                     "value": 15
                 },
                 {
