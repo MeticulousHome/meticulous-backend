@@ -32,15 +32,18 @@ class SimplifiedJson:
         return current_node_id - 1
     
     def to_complex(self):
+        global current_node_id
+
         # Use the comments with * as debugging tools.
-        comnplex_stages = []
+        complex_stages = []
         for stage_index, stage in enumerate(self.parameters.get("stages")):
             # print(stage) # *Print the stages in the JSON file.
             # print(stage_index) # *Print the index of the stages in the JSON file.
+            # print("beginning of the stage") # *Print the beginning of the loop        
             init_node = InitNode(self.get_new_node_id()) 
             # print(f"Init Node ID: {init_node.get_node_id()}") # *Print the ID of the init node.
             main_node = Nodes(self.get_new_node_id())
-            # print(f"Mian Node ID: {main_node.get_node_id()}") # *Print the ID of the main node.
+            # print(f"Main Node ID: {main_node.get_node_id()}") # *Print the ID of the main node.
             init_node.set_next_node_id(main_node.get_node_id())
             # print(json.dumps(init_node.get_node(), indent=2)) # *Print the init node with json format to see the changes.
             
@@ -64,7 +67,7 @@ class SimplifiedJson:
                         limit_controller = PressureController(Pressure_Algorithm_Type.PID_V1, 7, CurveInterpolationType.LINEAR, points_trigger, ReferenceType.TIME, 9)
                         limit_id = limit_node.get_node_id()
                         limit_trigger = PressureValueTrigger(SourceType.RAW, TriggerOperatorType.GREATER_THAN_OR_EQUAL, trigger_limit_value, limit_id)
-                        # print(f"Limit Node ID: {limit_id}") # *Print the limit node ID from the limit node of the stages
+                        # print(f"Limit Node ID: {limit_id} from the {stage_name}") # *Print the limit node ID from the limit node of the stages
                         limit_node.add_controller(limit_controller) 
                         # limit_node.add_trigger(limit_trigger) # *Add the limit trigger to the limit node as an example
                         # limit_node_example = limit_node.get_node() # *Get the limit node as an example
@@ -77,7 +80,7 @@ class SimplifiedJson:
                         limit_controller = FlowController(Flow_Algorithm_Type.PID_V1, 1, CurveInterpolationType.LINEAR, points_trigger, ReferenceType.TIME, 9)
                         limit_id = limit_node.get_node_id()
                         limit_trigger = FlowValueTrigger(SourceType.RAW, TriggerOperatorType.GREATER_THAN_OR_EQUAL, trigger_limit_value, limit_id)
-                        # print(f"Limit Node ID: {limit_id}") # *Print the limit node ID from the limit node of the stages
+                        # print(f"Limit Node ID: {limit_id} from the {stage_name}") # *Print the limit node ID from the limit node of the stages
                         limit_node.add_controller(limit_controller) 
                         # limit_node.add_trigger(limit_trigger) # *Add the limit trigger to the limit node as an example
                         # limit_node_example = limit_node.get_node() # *Get the limit node as an example
@@ -90,7 +93,7 @@ class SimplifiedJson:
                         limit_controller = TemperatureController(Temperature_Algorithm_Type.WATER, 4, CurveInterpolationType.LINEAR, points_trigger, ReferenceType.TIME, 9)
                         limit_id = limit_node.get_node_id()
                         limit_trigger = TemperatureValueTrigger(TemperatureSourceType.WATER, TriggerOperatorType.GREATER_THAN_OR_EQUAL, trigger_limit_value, limit_id)
-                        # print(f"Limit Node ID: {limit_id}") # *Print the limit node ID from the limit node of the stages
+                        # print(f"Limit Node ID: {limit_id} from the {stage_name}") # *Print the limit node ID from the limit node of the stages
                         limit_node.add_controller(limit_controller) 
                         # limit_node.add_trigger(limit_trigger) # *Add the limit trigger to the limit node as an example
                         # limit_node_example = limit_node.get_node() # *Get the limit node as an example
@@ -103,7 +106,7 @@ class SimplifiedJson:
                         limit_controller = PowerController(Power_Algorithm_Type.SPRING, 1,  CurveInterpolationType.LINEAR, points_trigger, ReferenceType.TIME, 9)
                         limit_id = limit_node.get_node_id()
                         limit_trigger = PowerValueTrigger(SourceType.RAW, TriggerOperatorType.GREATER_THAN_OR_EQUAL, trigger_limit_value, limit_id)
-                        # print(f"Limit Node ID: {limit_id}") # *Print the limit node ID from the limit node of the stages
+                        # print(f"Limit Node ID: {limit_id} from the {stage_name}") # *Print the limit node ID from the limit node of the stages
                         limit_node.add_controller(limit_controller) 
                         # limit_node.add_trigger(limit_trigger) # *Add the limit trigger to the limit node as an example
                         # limit_node_example = limit_node.get_node() # *Get the limit node as an example
@@ -115,7 +118,9 @@ class SimplifiedJson:
                 # limit_node_example_complete = [limit_node.get_node(), limit_trigger.get_trigger()] # *Get the limit node and trigger as an example
                 # print(json.dumps(limit_node_example_complete, indent=2)) # *Print the limit node and trigger with json format to see the changes.
             next_stage_node_id = self.get_new_node_id()
-            # print(f"Next Stage Node ID: {next_stage_node_id}") # *Print the next stage node ID from the next stage node of the stages
+            current_node_id = next_stage_node_id
+            # print(f"Next Stage Node ID: {next_stage_node_id} after the {stage_name}") # *Print the next stage node ID from the next stage node of the stages
+            # print(F"Current Node ID: {current_node_id} from the stage {stage_name}") # *Print the current node ID from the current node of the stages
             for exits in stage["exit_triggers"]:
                 match exits["type"]:
                     case "time":
@@ -126,6 +131,7 @@ class SimplifiedJson:
                             reference_id = 0
                         exit_trigger = TimerTrigger(TriggerOperatorType.GREATER_THAN_OR_EQUAL, exit_trigger_value, reference_id, next_stage_node_id)
                         exit_triggers.append(exit_trigger.get_trigger())
+                        # print(F"Next Stage Node ID after match: {next_stage_node_id} from the stage {stage_name}")
                         # print(f"Exit trigger find in {stage_name} with type: {exits['type']}") # *Print the exit trigger type from the exit triggers of the stages 
                         # print(json.dumps(exit_trigger.get_trigger(), indent=2)) # *Print the exit trigger with json format to see the changes.
                     case "weight":
@@ -136,18 +142,21 @@ class SimplifiedJson:
                             reference_id = 100
                         exit_trigger = WeightTrigger(SourceType.RAW, TriggerOperatorType.GREATER_THAN_OR_EQUAL, exit_trigger_value, reference_id, next_stage_node_id)
                         exit_triggers.append(exit_trigger.get_trigger())
+                        # print(F"Next Stage Node ID after match: {next_stage_node_id} from the stage {stage_name}")
                         # print(f"Exit trigger find in {stage_name} with type: {exits['type']}") # *Print the exit trigger type from the exit triggers of the stages 
                         # print(json.dumps(exit_trigger.get_trigger(), indent=2)) # *Print the exit trigger with json format to see the changes.
                     case "pressure":
                         exit_trigger_value = exits["value"]
                         exit_trigger = PressureValueTrigger(SourceType.RAW, TriggerOperatorType.GREATER_THAN_OR_EQUAL, exit_trigger_value, next_stage_node_id)
                         exit_triggers.append(exit_trigger.get_trigger())
+                        # print(F"Next Stage Node ID after match: {next_stage_node_id} from the stage {stage_name}")
                         # print(f"Exit trigger find in {stage_name} with type: {exits['type']}") # *Print the exit trigger type from the exit triggers of the stages 
                         # print(json.dumps(exit_trigger.get_trigger(), indent=2)) # *Print the exit trigger with json format to see the changes.
                     case "flow":
                         exit_trigger_value = exits["value"]
                         exit_trigger = FlowValueTrigger(SourceType.RAW, TriggerOperatorType.GREATER_THAN_OR_EQUAL, exit_trigger_value, next_stage_node_id)
                         exit_triggers.append(exit_trigger.get_trigger())
+                        # print(F"Next Stage Node ID after match: {next_stage_node_id} from the stage {stage_name}")
                         # print(f"Exit trigger find in {stage_name} with type: {exits['type']}") # *Print the exit trigger type from the exit triggers of the stages 
                         # print(json.dumps(exit_trigger.get_trigger(), indent=2)) # *Print the exit trigger with json format to see the changes.
                     case "piston_position":
@@ -156,20 +165,23 @@ class SimplifiedJson:
                             reference_id = 1
                         else:
                             reference_id = 0
-                        exit_trigger = PistonPositionTrigger(TriggerOperatorType.GREATER_THAN_OR_EQUAL, exit_trigger_value, next_stage_node_id)
+                        exit_trigger = PistonPositionTrigger(TriggerOperatorType.GREATER_THAN_OR_EQUAL, exit_trigger_value, reference_id,next_stage_node_id)
                         exit_triggers.append(exit_trigger.get_trigger())
+                        # print(F"Next Stage Node ID after match: {next_stage_node_id} from the stage {stage_name}")
                         # print(f"Exit trigger find in {stage_name} with type: {exits['type']}") # *Print the exit trigger type from the exit triggers of the stages 
                         # print(json.dumps(exit_trigger.get_trigger(), indent=2)) # *Print the exit trigger with json format to see the changes.
                     case "power":
                         exit_trigger_value = exits["value"]
                         exit_trigger = PowerValueTrigger(SourceType.RAW, TriggerOperatorType.GREATER_THAN_OR_EQUAL, exit_trigger_value, next_stage_node_id)
                         exit_triggers.append(exit_trigger.get_trigger())
+                        # print(F"Next Stage Node ID after match: {next_stage_node_id} from the stage {stage_name}")
                         # print(f"Exit trigger find in {stage_name} with type: {exits['type']}") # *Print the exit trigger type from the exit triggers of the stages 
                         # print(json.dumps(exit_trigger.get_trigger(), indent=2)) # *Print the exit trigger with json format to see the changes.
                     case "temperature":
                         exit_trigger_value = exits["value"]
                         exit_trigger = TemperatureValueTrigger(TemperatureSourceType.WATER, TriggerOperatorType.GREATER_THAN_OR_EQUAL, exit_trigger_value, next_stage_node_id)
                         exit_triggers.append(exit_trigger.get_trigger())
+                        # print(F"Next Stage Node ID after match: {next_stage_node_id} from the stage {stage_name}")
                         # print(f"Exit trigger find in {stage_name} with type: {exits['type']}") # *Print the exit trigger type from the exit triggers of the stages 
                         # print(json.dumps(exit_trigger.get_trigger(), indent=2)) # *Print the exit trigger with json format to see the changes.
                     case _:
@@ -203,6 +215,7 @@ class SimplifiedJson:
             over_main_controller = dynamics.get("over")
             interpolation_main_controller = dynamics.get("interpolation")
             main_node_id = main_node.get_node_id()
+            # print(f"Main Node ID: ({main_node_id}) after exit triggers ") # *Print the main node ID from the main node of the stages
             # print(f"Type from the {stage_name}: {type_main_controller}") # *Print the type from the stage in the JSON file
             # print (f"Dynamics from the {stage_name}:")
             # print(f"Points: {points_main_controller}") # *Print the points from the stage in the JSON file
@@ -215,6 +228,8 @@ class SimplifiedJson:
                     main_curve_id = main_controller.get_curve_id()
                     main_node.add_controller(main_controller)
                     main_trigger = PressureCurveTrigger(SourceType.RAW,TriggerOperatorType.GREATER_THAN_OR_EQUAL, main_curve_id, main_node_id)
+                    main_trigger = main_trigger.get_trigger()
+                    # print(f"Main node id: {main_node_id} after main controller from the {stage_name}") # *Print the main node ID from the main node of the stages
                     # print(f"The type is {type_main_controller} from the {stage_name}") # *Print the type from the stage in the JSON file
                     # print(f"Main Node ID: {main_node.get_node_id()} from the {stage_name}") # *Print the main node ID from the main node of the stages
                     # print(json.dumps(main_node.get_node(), indent=2)) # *Print the main node with json format to see the changes.
@@ -223,6 +238,8 @@ class SimplifiedJson:
                     main_curve_id = main_controller.get_curve_id()
                     main_node.add_controller(main_controller)
                     main_trigger = FlowCurveTrigger(SourceType.RAW,TriggerOperatorType.GREATER_THAN_OR_EQUAL, main_curve_id, main_node_id)
+                    main_trigger = main_trigger.get_trigger()
+                    # print(f"Main node id: {main_node_id} after main controller from the {stage_name}") # *Print the main node ID from the main node of the stages
                     # print(f"The type is {type_main_controller} from the {stage_name}") # *Print the type from the stage in the JSON file
                     # print(f"Main Node ID: {main_node.get_node_id()} from the {stage_name}") # *Print the main node ID from the main node of the stages
                     # print(json.dumps(main_node.get_node(), indent=2)) # *Print the main node with json format to see the changes.
@@ -231,6 +248,8 @@ class SimplifiedJson:
                     main_curve_id = main_controller.get_curve_id()
                     main_node.add_controller(main_controller)
                     main_trigger = TemperatureCurveTrigger(SourceType.RAW,TriggerOperatorType.GREATER_THAN_OR_EQUAL, main_curve_id, 4)
+                    main_trigger = main_trigger.get_trigger()
+                    # print(f"Main node id: {main_node_id} after main controller from the {stage_name}") # *Print the main node ID from the main node of the stages
                     # print(f"The type is {type_main_controller} from the {stage_name}") # *Print the type from the stage in the JSON file
                     # print(f"Main Node ID: {main_node.get_node_id()} from the {stage_name}") # *Print the main node ID from the main node of the stages
                     # print(json.dumps(main_node.get_node(), indent=2)) # *Print the main node with json format to see the changes.
@@ -239,29 +258,37 @@ class SimplifiedJson:
                     main_curve_id = main_controller.get_curve_id()
                     main_node.add_controller(main_controller)
                     main_trigger = PowerCurveTrigger(SourceType.RAW,TriggerOperatorType.GREATER_THAN_OR_EQUAL, main_curve_id, main_node_id)
+                    main_trigger = main_trigger.get_trigger()
+                    # print(f"Main node id: {main_node_id} after main controller from the {stage_name}") # *Print the main node ID from the main node of the stages
                     # print(f"The type is {type_main_controller} from the {stage_name}") # *Print the type from the stage in the JSON file
                     # print(f"Main Node ID: {main_node.get_node_id()} from the {stage_name}") # *Print the main node ID from the main node of the stages
                     # print(json.dumps(main_node.get_node(), indent=2)) # *Print the main node with json format to see the changes.
                 case _:
                     print(f"Type: {type_main_controller} not found.")
+                    
             
-            # if main_node_id != main_trigger.get_next_node_id():
-            #     main_node.add_trigger(main_trigger)
-            #     for limit_node in limit_nodes:
-            #         limit_node["triggers"] 
-                
-            # print(f"Main Node ID: {main_node.get_node_id()} from the {stage_name}") # *Print the main node ID from the main node of the stages
+            
+            for limit_node in limit_nodes:
+                limit_node["triggers"].append(main_trigger)            
+            # print(f"limit node from the {stage_name}:") # *Print the limit node from the stages
+            # print(json.dumps(limit_nodes, indent=2)) # *Print the limit nodes with the main controller. 
+            # print(f"Main Node ID: {main_node.get_node_id()}") # *Print the main node ID from the main node of the stages
             # print(json.dumps(main_node.get_node(), indent=2)) # *Print the main node with json format to see the changes.
+            complex_stages.append({
+                "name": f"{stage_name}",
+                "nodes": [init_node.get_node(), main_node.get_node(), limit_nodes]
+            })
             
+            # Id's debugging
+            # print(f"Init Node ID: {init_node.get_node_id()} from the stage {stage_name} after the complex stage")# *Print the ID of the init node.
+            # print(f"Main Node ID: {main_node.get_node_id()} from the stage {stage_name} after the complex stage") # *Print the ID of the main node.
+            # print(f"Limit Nodes ID {limit_id} from the stage {stage_name} after the complex stage") # *Print the ID of the limit nodes.
+            # print(f"Next Stage Node ID: {next_stage_node_id} from the stage {stage_name} after the complex stage") # *Print the next stage node ID from the next stage node of the stages
             
-            # comnplex_stages.append({
-            #     "name": f"stage {stage_index}",
-            #     "nodes": [init_node.get_node(), main_node.get_node(), limit_nodes]
-            # })
-            
-            # print(json.dumps(comnplex_stages, indent=2))
-                # init_node.add_trigger(limit_node)
-        return 
+        # print(f"Complex stage nodes from the {stage_name}:") # *Print the complex stages with the stage's name
+        # print(json.dumps(complex_stages, indent=2)) # *Print the complex stages with json format to see the changes.
+
+        return complex_stages
     
 class InitNode(Nodes):
     def __init__(self, id : int = -1, time_ref_id: int = 1, weight_ref_id: int = 2, position_ref_id : int = 3, next_node_id: int = -1):
@@ -313,6 +340,7 @@ if __name__ == "__main__":
     # print(simplified_json.main_node(1))
     
     complex_node = simplified_json.to_complex()
+    print(json.dumps(complex_node, indent=2))
     
     
     points = [[0, 6],[10,8]]
