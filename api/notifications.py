@@ -10,21 +10,19 @@ logger = MeticulousLogger.getLogger(__name__)
 class GetNotificationsHandler(BaseHandler):
 
     def get(self):
-        unacknowledged_only = self.get_argument("acknowledged", "false").lower() == "true"
+        include_acknowledged = self.get_argument("acknowledged", "false").lower() == "true"
         
-        if unacknowledged_only:
-            # Return only unacknowledged notifications
-            notifications = NotificationManager.get_unacknowledged_notifications()
-        else:
+        if include_acknowledged:
             # Return all notifications
             notifications = NotificationManager.get_all_notifications()
+        else:
+            # Return only unacknowledged notifications
+            notifications = NotificationManager.get_unacknowledged_notifications()
 
         self.write(json.dumps(
             [
-                {"id": n.id, "message": n.message, "image": n.image, "timestamp": n.timestamp.isoformat()} for n in notifications
+                {"id": n.id, "message": n.message, "image": n.image, "respone_options": n.respone_options, "timestamp": n.timestamp.isoformat()} for n in notifications
             ]))
-
-class AcknowledgeNotificationHandler(BaseHandler):
 
     def post(self):
         data = json.loads(self.request.body)
@@ -38,5 +36,5 @@ class AcknowledgeNotificationHandler(BaseHandler):
 
 NOTIFICATIONS_HANDLER = [
         (r"/notifications", GetNotificationsHandler),
-        (r"/notifications/acknowledge", AcknowledgeNotificationHandler),
+        (r"/notifications/acknowledge", GetNotificationsHandler),
     ]

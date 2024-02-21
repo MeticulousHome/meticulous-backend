@@ -120,6 +120,13 @@ def setSendInfo(sid):
     global sendInfoToFront
     sendInfoToFront = True
 
+@sio.on('notification')
+def msg(sid, noti_json):
+    notification = json.loads(noti_json)
+    if "id" in notification and "response" in notification:
+        NotificationManager.acknowledge_notification(notification["id"], notification["response"])
+
+
 @sio.on('stopInfo')
 def StopInfo(sid):
     global sendInfoToFront
@@ -290,7 +297,7 @@ async def send_data():
             notification = _input[12:]
             noti = Notification(notification, ["Ok", "Not okay"])
             noti.add_qrcode("Hello asjkdljlasjjkdsajkldasljkasdljk")
-            await NotificationManager.add_notification(noti)
+            NotificationManager.add_notification(noti)
         elif _input == "l" or _input == "CCW":
             await sio.emit("button", ButtonEventData.from_args(["CCW"]).to_sio())
         elif _input == "r" or _input == "CW":
