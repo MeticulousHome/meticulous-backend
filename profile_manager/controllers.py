@@ -58,6 +58,9 @@ class CurveControllers(Controllers):
     def set_reference_id(self, reference_id: int):
         self.data["curve"]["reference"]["id"] = reference_id
 
+    def get_curve_id(self):
+        return self.data["curve"]["id"]
+    
 '''
 Child classes of CurveControllers that represent pressure, flow, temperature, power, and weight controllers
 These classes have methods to change the controller's algorithm and to change the curve associated with the controller
