@@ -16,6 +16,7 @@ from bless import (  # type: ignore
 from wifi import WifiManager
 from config import *
 from hostname import HostnameManager
+from notifications import NotificationManager, Notification, NotificationResponse
 
 from log import MeticulousLogger
 
@@ -27,6 +28,7 @@ if sys.platform in ["darwin", "win32"]:
 
 # FIXME Remove once the tornado server logic is in its own class
 PORT = int(os.getenv("PORT", '8080'))
+
 
 class GATTServer:
     """
@@ -72,9 +74,11 @@ class GATTServer:
     def __init__(self):
         self.trigger = asyncio.Event()
         self.loop = asyncio.new_event_loop()
+        self.auth_notification: Notification = None
 
         def _exception_handler(loop, context):
-            logger.exception("GATT Server crashed!", exc_info=context, stack_info=True)
+            logger.exception("GATT Server crashed!",
+                             exc_info=context, stack_info=True)
             GATTServer.getServer().stop()
 
         self.loop.set_exception_handler(_exception_handler)
@@ -93,7 +97,6 @@ class GATTServer:
         self.bless_gatt_server = None
         self.loopThread = None
         logger.info(f"BLE init called. Name={self.gatt_name}")
-
 
     def getServer():
         if GATTServer._singletonServer is None:
@@ -141,18 +144,21 @@ class GATTServer:
             time.sleep(uptime_missing)
 
         if self.bless_gatt_server is None:
-            self.bless_gatt_server = BlessServer(name=self.gatt_name, loop=self.loop)
+            self.bless_gatt_server = BlessServer(
+                name=self.gatt_name, loop=self.loop)
             self.bless_gatt_server.read_request_func = GATTServer.read_request
             self.bless_gatt_server.write_request_func = GATTServer.write_request
 
         try:
             await self.bless_gatt_server.setup_task
         except FileNotFoundError as e:
-            logger.warning("Could not initialize the BLE gatt interface. Bailing out!")
+            logger.warning(
+                "Could not initialize the BLE gatt interface. Bailing out!")
             return
 
         # Power on the hci device if it is powered off
-        interface = self.bless_gatt_server.adapter.get_interface("org.bluez.Adapter1")
+        interface = self.bless_gatt_server.adapter.get_interface(
+            "org.bluez.Adapter1")
         powered = await interface.get_powered()
         if not powered:
             logger.info("bluetooth device is not powered, powering now!")
@@ -175,7 +181,8 @@ class GATTServer:
         except KeyboardInterrupt:
             logger.info("KeyboardInterrupt: Shutting Down")
         except Exception as e:
-            logger.exception("GATT Server Crashed", exc_info=e, stack_info=True)
+            logger.exception("GATT Server Crashed",
+                             exc_info=e, stack_info=True)
             raise
         logger.info("GATT Server stopped")
 
@@ -251,6 +258,38 @@ class GATTServer:
             ssids.append(s.ssid)
         return ssids
 
+    def send_authentication_notification(self):
+        notification = "Allow Wifi provisioning for 3 minutes?"
+
+        def response_callback():
+            logger.info("BLE GATT NOTIFICATION CALLBACK")
+
+        # Only create a new notification if we dont have one already. In that case: update it
+        if self.auth_notification is None or self.auth_notification.acknowledged:
+            self.auth_notification = Notification(notification, [
+                                                  NotificationResponse.YES, NotificationResponse.NO], callback=response_callback)
+
+        NotificationManager.add_notification(self.auth_notification)
+
+    def updateAuthentication(self):
+        self.improv_server.state = ImprovState.AWAITING_AUTHORIZATION
+
+        # FIXME currently the dial notification flow does not call the backend so the notification is never returned
+        self.improv_server.state = ImprovState.AUTHORIZED
+        return
+
+        if not self.auth_notification:
+            self.send_authentication_notification()
+            return
+
+        if self.auth_notification.acknowledged:
+            if time.time() - self.auth_notification.acknowledged_timestamp < 180:
+                self.improv_server.state = ImprovState.AUTHORIZED
+                logger.info("Notification acknowleded, allowing provisioning")
+                return
+
+        self.send_authentication_notification()
+
     def read_request(characteristic: BlessGATTCharacteristic, **kwargs) -> bytearray:
         try:
             improv_char = ImprovUUID(characteristic.uuid)
@@ -259,10 +298,11 @@ class GATTServer:
             logger.info(f"Reading {characteristic.uuid}")
             pass
         if characteristic.service_uuid == ImprovUUID.SERVICE_UUID.value:
+            GATTServer.getServer().updateAuthentication()
             value = GATTServer.getServer().improv_server.handle_read(
                 characteristic.uuid
             )
-            GATTServer.getServer().allow_wifi_provisioning()
+
             return value
         return characteristic.value
 
@@ -278,7 +318,8 @@ class GATTServer:
             )
             if target_uuid != None and target_values != None:
                 for value in target_values:
-                    logger.debug(f"Setting {ImprovUUID(target_uuid)} to {value}")
+                    logger.debug(
+                        f"Setting {ImprovUUID(target_uuid)} to {value}")
                     GATTServer.getServer().bless_gatt_server.get_characteristic(
                         target_uuid,
                     ).value = value
