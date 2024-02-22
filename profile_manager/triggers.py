@@ -3,9 +3,10 @@ from dictionaries import *
 #This class is used to create the triggers for the complex JSON
 class Triggers:
         
-    def __init__(self,data = {}):
-        if data is not None:
-            self.data = data
+    def __init__(self,data = None):
+        if data is None:
+            data = {}
+        self.data = data
 
     def set_next_node_id(self, node_id: int):
         self.data["next_node_id"] = node_id
