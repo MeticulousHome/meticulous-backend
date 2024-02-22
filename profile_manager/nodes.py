@@ -30,7 +30,7 @@ if __name__ == "__main__":
     # node.set_id(1)
     points = [[0, 6],[10,8]]
      
-    controller = FlowController(Flow_Algorithm_Type.PID_V1, 1, CurveInterpolationType.LINEAR, points, ReferenceType.TIME, 1)
+    controller = FlowController(FlowAlgorithmType.PID_V1, 1, CurveInterpolationType.LINEAR, points, ReferenceType.TIME, 1)
     node.add_controller(controller)
     
     controller = TimeReferenceController(100)
@@ -42,13 +42,13 @@ if __name__ == "__main__":
     node_2 = Nodes(2)
     points = [[10, 15],[20,18]]
     
-    controller = PressureController(Pressure_Algorithm_Type.PID_V1, 7, CurveInterpolationType.CATMULL, points, ReferenceType.POSITION, 2)
+    controller = PressureController(PressureAlgorithmType.PID_V1, 7, CurveInterpolationType.CATMULL, points, ReferenceType.POSITION, 2)
     node_2.add_controller(controller)
     
-    controller = WeightController(Weight_Algorithm_Type.PID_V1, 2, CurveInterpolationType.LINEAR, points, ReferenceType.WEIGHT, 3)
+    controller = WeightController(WeightAlgorithmType.PID_V1, 2, CurveInterpolationType.LINEAR, points, ReferenceType.WEIGHT, 3)
     node_2.add_controller(controller)
     
-    controller = TemperatureController(Temperature_Algorithm_Type.WATER, 4, CurveInterpolationType.CATMULL, points, ReferenceType.TIME, 4)
+    controller = TemperatureController(TemperatureAlgorithmType.WATER, 4, CurveInterpolationType.CATMULL, points, ReferenceType.TIME, 4)
     node_2.add_controller(controller)
     
     trigger = WeightTrigger(SourceType.AVERAGE, TriggerOperatorType.GREATER_THAN, 10, 1)

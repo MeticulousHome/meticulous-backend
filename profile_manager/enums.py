@@ -8,27 +8,27 @@ class ReferenceType(Enum):
     CURVE = "curve"
     CONTROL = "control"
 
-class Pressure_Algorithm_Type(Enum):
+class PressureAlgorithmType(Enum):
     PID_V1 = "pid v1"
     PID_V2 = "pid v2"
     
-class Temperature_Algorithm_Type(Enum):
+class TemperatureAlgorithmType(Enum):
     WATER = "water"
     CYLINDER = "cylinder"
     TUBE = "tube"
     PLUNGER = "plunger"
     STABLE = "stable"
     
-class Power_Algorithm_Type(Enum):
+class PowerAlgorithmType(Enum):
     SPRING = "spring"
     
-class Flow_Algorithm_Type(Enum):
+class FlowAlgorithmType(Enum):
     PID_V1 = "pid v1"
     
-class Weight_Algorithm_Type(Enum):
+class WeightAlgorithmType(Enum):
     PID_V1 = "pid v1"    
     
-class Speed_Algorithm_Type(Enum):
+class SpeedAlgorithmType(Enum):
     EASE_IN = "ease-in"
     FAST = "fast"
 
@@ -36,14 +36,14 @@ class CurveInterpolationType(Enum):
     LINEAR = "linear"
     CATMULL = "catmull"
     
-class Message_Type(Enum):
+class MessageType(Enum):
     NO_WATER = "no water"
     REMOVE_CUP = "remove cup"
     PURGE = "purge"
     START_CLICK = "start click"
     PURGE_CLICK = "purge click"
     
-class Direction_Type(Enum):
+class DirectionType(Enum):
     FORWARD = "forward"
     BACKWARD = "backward"
     
