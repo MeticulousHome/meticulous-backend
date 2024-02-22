@@ -44,7 +44,7 @@ def get_retracting_2_stage(parameters: json,start_node: int, end_node: int):
                  "kind": "move_piston_controller",
                  "algorithm": "Piston Fast",
                  "direction": "UP",
-                 "speed": 4.0
+                 "speed": 1.0
                },
                {
                  "kind": "time_reference",
@@ -56,7 +56,7 @@ def get_retracting_2_stage(parameters: json,start_node: int, end_node: int):
                  "kind": "piston_position_trigger",
                  "position_reference_id": 7100,
                  "operator": "<=",
-                 "value": -4.0,
+                 "value": -10.0,
                  "next_node_id": 15,
                  "source": "Piston Position Raw"
                },
@@ -64,7 +64,7 @@ def get_retracting_2_stage(parameters: json,start_node: int, end_node: int):
                  "kind": "timer_trigger",
                  "timer_reference_id": 17,
                  "operator": ">=",
-                 "value": 5,
+                 "value": 100,
                  "next_node_id": 15
                }
              ]
