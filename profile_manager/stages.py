@@ -22,7 +22,7 @@ if __name__ == "__main__":
     node = Nodes(1)
     points = [[0, 6],[10,8]]
     
-    controller = FlowController(Flow_Algorithm_Type.PID_V1, 1, CurveInterpolationType.LINEAR, points, ReferenceType.TIME, 1)
+    controller = FlowController(FlowAlgorithmType.PID_V1, 1, CurveInterpolationType.LINEAR, points, ReferenceType.TIME, 1)
     node.add_controller(controller)
     
     controller = TimeReferenceController(2)
@@ -34,7 +34,7 @@ if __name__ == "__main__":
     node_1 = Nodes(2)
     points = [[10, 15],[20,18]]
     
-    controller = PressureController(Pressure_Algorithm_Type.PID_V1, 4, CurveInterpolationType.CATMULL, points, ReferenceType.POSITION, 2)
+    controller = PressureController(PressureAlgorithmType.PID_V1, 4, CurveInterpolationType.CATMULL, points, ReferenceType.POSITION, 2)
     node_1.add_controller(controller)
     
     stage_1.add_node(node)
@@ -46,7 +46,7 @@ if __name__ == "__main__":
     node_2 = Nodes(3)
     points = [[20, 25],[30,28]]
     
-    controller = PressureController(Pressure_Algorithm_Type.PID_V1, 5, CurveInterpolationType.CATMULL, points, ReferenceType.POSITION, 3)
+    controller = PressureController(PressureAlgorithmType.PID_V1, 5, CurveInterpolationType.CATMULL, points, ReferenceType.POSITION, 3)
     node_2.add_controller(controller)
     
     controller = TareController()
@@ -63,7 +63,7 @@ if __name__ == "__main__":
     controller.set_reference_id(4)
     node_3.add_controller(controller)
     
-    controller = WeightController(Weight_Algorithm_Type.PID_V1, 200, CurveInterpolationType.LINEAR, points, ReferenceType.WEIGHT, 4)
+    controller = WeightController(WeightAlgorithmType.PID_V1, 200, CurveInterpolationType.LINEAR, points, ReferenceType.WEIGHT, 4)
     node_3.add_controller(controller)
     
     trigger = WeightTrigger(SourceType.AVERAGE, TriggerOperatorType.GREATER_THAN_OR_EQUAL,3, 200, 4)

@@ -53,7 +53,7 @@ if __name__ == "__main__":
     points = [[10, 15],[20,18]]
     
     controller = PressureController()
-    controller.set_algorithm(Pressure_Algorithm_Type.PID_V1)
+    controller.set_algorithm(PressureAlgorithmType.PID_V1)
     controller.set_curve_id(2)
     controller.set_interpolation_kind(CurveInterpolationType.LINEAR)
     controller.set_points(points)
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     points = [[20, 25],[30,28]]
     
     controller = PressureController()
-    controller.set_algorithm(Pressure_Algorithm_Type.PID_V1)
+    controller.set_algorithm(PressureAlgorithmType.PID_V1)
     controller.set_curve_id(3)
     controller.set_interpolation_kind(CurveInterpolationType.LINEAR)
     controller.set_points(points)

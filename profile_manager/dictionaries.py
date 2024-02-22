@@ -14,28 +14,28 @@ controllers_type = {
 
 algorithms_type = {
     AlgorithmType.PRESSURE : {
-        Pressure_Algorithm_Type.PID_V1 : "Pressure PID v1.0",
-        Pressure_Algorithm_Type.PID_V2 : "Pressure PID v2.0",
+        PressureAlgorithmType.PID_V1 : "Pressure PID v1.0",
+        PressureAlgorithmType.PID_V2 : "Pressure PID v2.0",
     },
     AlgorithmType.POWER: {
-        Power_Algorithm_Type.SPRING :  "Spring v1.0"        
+        PowerAlgorithmType.SPRING :  "Spring v1.0"        
     },
     AlgorithmType.TEMPERATURE : {
-        Temperature_Algorithm_Type.WATER : "Water Temperature PID v1.0",
-        Temperature_Algorithm_Type.CYLINDER : "Cylinder Temperature PID v1.0",
-        Temperature_Algorithm_Type.TUBE: "Tube Temperature PID v1.0",
-        Temperature_Algorithm_Type.PLUNGER : "Plunger Temperature PID v1.0",
-        Temperature_Algorithm_Type.STABLE : "Stable Temperature"
+        TemperatureAlgorithmType.WATER : "Water Temperature PID v1.0",
+        TemperatureAlgorithmType.CYLINDER : "Cylinder Temperature PID v1.0",
+        TemperatureAlgorithmType.TUBE: "Tube Temperature PID v1.0",
+        TemperatureAlgorithmType.PLUNGER : "Plunger Temperature PID v1.0",
+        TemperatureAlgorithmType.STABLE : "Stable Temperature"
     },
     AlgorithmType.FLOW : {
-      Flow_Algorithm_Type.PID_V1 : "Flow PID v1.0"  
+      FlowAlgorithmType.PID_V1 : "Flow PID v1.0"  
     },
     AlgorithmType.WEIGHT : {
-        Weight_Algorithm_Type.PID_V1 : "Weight PID v1.0"    
+        WeightAlgorithmType.PID_V1 : "Weight PID v1.0"    
     },
     AlgorithmType.SPEED : {
-        Speed_Algorithm_Type.EASE_IN : "Piston Ease-In",
-        Speed_Algorithm_Type.FAST : "Piston Fast",
+        SpeedAlgorithmType.EASE_IN : "Piston Ease-In",
+        SpeedAlgorithmType.FAST : "Piston Fast",
     }
 } 
 
@@ -58,16 +58,16 @@ curve_interpolation = {
 }
         
 messages = {
-    Message_Type.NO_WATER : "No Water",
-    Message_Type.REMOVE_CUP : "Remove Cup",
-    Message_Type.PURGE : "Purge",
-    Message_Type.START_CLICK : "Click to start",
-    Message_Type.PURGE_CLICK : "Click to purge"
+    MessageType.NO_WATER : "No Water",
+    MessageType.REMOVE_CUP : "Remove Cup",
+    MessageType.PURGE : "Purge",
+    MessageType.START_CLICK : "Click to start",
+    MessageType.PURGE_CLICK : "Click to purge"
 }
 
 directions = {
-    Direction_Type.FORWARD : "DOWN",
-    Direction_Type.BACKWARD : "UP"
+    DirectionType.FORWARD : "DOWN",
+    DirectionType.BACKWARD : "UP"
 }
 
 trigger_type = {
