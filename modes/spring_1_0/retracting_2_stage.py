@@ -52,7 +52,7 @@ def get_retracting_2_stage(parameters: json,start_node: int, end_node: int):
                  "kind": "piston_position_trigger",
                  "position_reference_id": 1,
                  "operator": "<=",
-                 "value": -10.0,
+                 "value": -21.0,
                  "next_node_id": 15,
                  "source": "Piston Position Raw"
                },
