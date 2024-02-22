@@ -36,22 +36,12 @@ class SimplifiedJson:
 
         # Use the comments with * as debugging tools.
         complex_stages = []
-        i = 0
         for stage_index, stage in enumerate(self.parameters.get("stages")):
                    
-            init_node = Nodes(self.get_new_node_id()) 
+            init_node = InitNode(self.get_new_node_id()) 
             main_node = Nodes(self.get_new_node_id())
             
-            init_note_time_reference = TimeReferenceController(1)
-            init_note_weight_reference = WeightReferenceController(2)
-            init_note_position_reference = PositionReferenceController(3)
-            init_node_exit_trigger = ExitTrigger(main_node.get_node_id())
-
-            init_node.add_controller(init_note_time_reference)
-            init_node.add_controller(init_note_weight_reference)
-            init_node.add_controller(init_note_position_reference)
-            init_node.add_trigger(init_node_exit_trigger) 
-            
+            init_node.set_next_node_id(main_node.get_node_id())
             
             stage_name = stage.get("name")
             
@@ -68,7 +58,7 @@ class SimplifiedJson:
                         limit_node = Nodes(self.get_new_node_id())
                         trigger_limit_value = limit["value"]
                         points_trigger = [0, trigger_limit_value]
-                        limit_controller = PressureController(Pressure_Algorithm_Type.PID_V1, 7, CurveInterpolationType.LINEAR, points_trigger, ReferenceType.TIME, 9)
+                        limit_controller = PressureController(PressureAlgorithmType.PID_V1, 7, CurveInterpolationType.LINEAR, points_trigger, ReferenceType.TIME, 9)
                         limit_id = limit_node.get_node_id()
                         limit_trigger = PressureValueTrigger(SourceType.RAW, TriggerOperatorType.GREATER_THAN_OR_EQUAL, trigger_limit_value, limit_id)
                         limit_node.add_controller(limit_controller) 
@@ -77,7 +67,7 @@ class SimplifiedJson:
                         limit_node = Nodes(self.get_new_node_id())
                         trigger_limit_value = limit["value"]
                         points_trigger = [0, trigger_limit_value]
-                        limit_controller = FlowController(Flow_Algorithm_Type.PID_V1, 1, CurveInterpolationType.LINEAR, points_trigger, ReferenceType.TIME, 9)
+                        limit_controller = FlowController(FlowAlgorithmType.PID_V1, 1, CurveInterpolationType.LINEAR, points_trigger, ReferenceType.TIME, 9)
                         limit_id = limit_node.get_node_id()
                         limit_trigger = FlowValueTrigger(SourceType.RAW, TriggerOperatorType.GREATER_THAN_OR_EQUAL, trigger_limit_value, limit_id)
                         limit_node.add_controller(limit_controller) 
@@ -86,7 +76,7 @@ class SimplifiedJson:
                         limit_node = Nodes(self.get_new_node_id())
                         trigger_limit_value = limit["value"]
                         points_trigger = [0, trigger_limit_value]
-                        limit_controller = TemperatureController(Temperature_Algorithm_Type.WATER, 4, CurveInterpolationType.LINEAR, points_trigger, ReferenceType.TIME, 9)
+                        limit_controller = TemperatureController(TemperatureAlgorithmType.WATER, 4, CurveInterpolationType.LINEAR, points_trigger, ReferenceType.TIME, 9)
                         limit_id = limit_node.get_node_id()
                         limit_trigger = TemperatureValueTrigger(TemperatureSourceType.WATER, TriggerOperatorType.GREATER_THAN_OR_EQUAL, trigger_limit_value, limit_id)
                         limit_node.add_controller(limit_controller) 
@@ -95,7 +85,7 @@ class SimplifiedJson:
                         limit_node = Nodes(self.get_new_node_id())
                         trigger_limit_value = limit["value"]
                         points_trigger = [0, trigger_limit_value]
-                        limit_controller = PowerController(Power_Algorithm_Type.SPRING, 1,  CurveInterpolationType.LINEAR, points_trigger, ReferenceType.TIME, 9)
+                        limit_controller = PowerController(PowerAlgorithmType.SPRING, 1,  CurveInterpolationType.LINEAR, points_trigger, ReferenceType.TIME, 9)
                         limit_id = limit_node.get_node_id()
                         limit_trigger = PowerValueTrigger(SourceType.RAW, TriggerOperatorType.GREATER_THAN_OR_EQUAL, trigger_limit_value, limit_id)
                         limit_node.add_controller(limit_controller) 
@@ -118,7 +108,7 @@ class SimplifiedJson:
                             reference_id = 0
                         exit_trigger = TimerTrigger(TriggerOperatorType.GREATER_THAN_OR_EQUAL, exit_trigger_value, reference_id, next_stage_node_id)
                         exit_triggers.append(exit_trigger.get_trigger())
-                        print(F"Next Stage Node ID after match: {next_stage_node_id} from the stage {stage_name}")
+                        # print(F"Next Stage Node ID after match: {next_stage_node_id} from the stage {stage_name}")
     
                     case "weight":
                         exit_trigger_value = exits["value"]
@@ -182,28 +172,28 @@ class SimplifiedJson:
             
             match type_main_controller:
                 case "pressure":
-                    main_controller = PressureController(Pressure_Algorithm_Type.PID_V1, 7, interpolation_dict[interpolation_main_controller], points_main_controller, over_dict[over_main_controller], 9)
+                    main_controller = PressureController(PressureAlgorithmType.PID_V1, 7, interpolation_dict[interpolation_main_controller], points_main_controller, over_dict[over_main_controller], 9)
                     main_curve_id = main_controller.get_curve_id()
                     main_node.add_controller(main_controller)
                     main_trigger = PressureCurveTrigger(SourceType.RAW,TriggerOperatorType.GREATER_THAN_OR_EQUAL, main_curve_id, main_node_id)
                     main_trigger = main_trigger.get_trigger()
                     
                 case "flow":
-                    main_controller = FlowController(Flow_Algorithm_Type.PID_V1, 8, interpolation_dict[interpolation_main_controller], points_main_controller, over_dict[over_main_controller], 9)
+                    main_controller = FlowController(FlowAlgorithmType.PID_V1, 8, interpolation_dict[interpolation_main_controller], points_main_controller, over_dict[over_main_controller], 9)
                     main_curve_id = main_controller.get_curve_id()
                     main_node.add_controller(main_controller)
                     main_trigger = FlowCurveTrigger(SourceType.RAW,TriggerOperatorType.GREATER_THAN_OR_EQUAL, main_curve_id, main_node_id)
                     main_trigger = main_trigger.get_trigger()
                     
                 case "temperature":
-                    main_controller = TemperatureController(Temperature_Algorithm_Type.WATER, 4, interpolation_dict[interpolation_main_controller], points_main_controller, over_dict[over_main_controller], 9)
+                    main_controller = TemperatureController(TemperatureAlgorithmType.WATER, 4, interpolation_dict[interpolation_main_controller], points_main_controller, over_dict[over_main_controller], 9)
                     main_curve_id = main_controller.get_curve_id()
                     main_node.add_controller(main_controller)
                     main_trigger = TemperatureCurveTrigger(SourceType.RAW,TriggerOperatorType.GREATER_THAN_OR_EQUAL, main_curve_id, 4)
                     main_trigger = main_trigger.get_trigger()
                     
                 case "power":
-                    main_controller = PowerController(Power_Algorithm_Type.SPRING, 1, interpolation_dict[interpolation_main_controller], points_main_controller, over_dict[over_main_controller], 9)
+                    main_controller = PowerController(PowerAlgorithmType.SPRING, 1, interpolation_dict[interpolation_main_controller], points_main_controller, over_dict[over_main_controller], 9)
                     main_curve_id = main_controller.get_curve_id()
                     main_node.add_controller(main_controller)
                     main_trigger = PowerCurveTrigger(SourceType.RAW,TriggerOperatorType.GREATER_THAN_OR_EQUAL, main_curve_id, main_node_id)
@@ -223,9 +213,8 @@ class SimplifiedJson:
                 "nodes": all_nodes
             })
                         
-            print(f"Complex stage nodes from the {stage_name}:") # *Print the complex stages with the stage's name
-            print(json.dumps(complex_stages, indent=2)) # *Print the complex stages with json format to see the changes.
-            i = i+1
+        # print(f"Complex stage nodes from the {stage_name}:") # *Print the complex stages with the stage's name
+        # print(json.dumps(complex_stages, indent=2)) # *Print the complex stages with json format to see the changes.
         return complex_stages
     
 class InitNode(Nodes):
@@ -278,7 +267,7 @@ if __name__ == "__main__":
     # print(simplified_json.main_node(1))
     
     complex_node = simplified_json.to_complex()
-    
+    print(json.dumps(complex_node, indent=2))
     
     points = [[0, 6],[10,8]]
     trigger = WeightTrigger(SourceType.AVERAGE, TriggerOperatorType.GREATER_THAN, 10, 12)
