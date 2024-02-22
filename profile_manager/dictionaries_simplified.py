@@ -54,7 +54,7 @@ def create_trigger(name, *args, **kwargs):
 
 if __name__ == '__main__':
     # print(type_dict)
-    flow_controller = create_controller("flow", algorithm=Flow_Algorithm_Type.PID_V1, curve_id=1, points=[0, 10])
+    flow_controller = create_controller("flow", algorithm=FlowAlgorithmType.PID_V1, curve_id=1, points=[0, 10])
     print(flow_controller.get_controller())
     
     weight_trigger = create_trigger("weight", source=SourceType.AVERAGE, operator=TriggerOperatorType.GREATER_THAN, value=10, weight_reference=1, next_node_id=2)
