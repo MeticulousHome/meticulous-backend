@@ -205,10 +205,10 @@ class ButtonEventEnum(Enum):
     ENCODER_DOUBLE = auto()
     ENCODER_LONG = auto()
     TARE = auto()
-    TARE_DUBLE = auto()
+    TARE_DOUBLE = auto()
     TARE_LONG = auto()
     TARE_SUPER_LONG = auto()
-    START = auto()
+    CONTEXT = auto()
     # Failure type
     UNKNOWN = auto()
 
@@ -225,10 +225,11 @@ class ButtonEventEnum(Enum):
             "pu_d": "ENCODER_DOUBLE",
             "elng": "ENCODER_LONG",
             "tare": "TARE",
-            "ta_d": "TARE_DUBLE",
+            "ta_d": "TARE_DOUBLE",
             "ta_l": "TARE_LONG",
             "ta_sl": "TARE_SUPER_LONG",
-            "strt": "START"
+            "strt": "CONTEXT",
+            "cntx": "CONTEXT",
         }
 
         if event_lookup.get(type_str) is not None:
