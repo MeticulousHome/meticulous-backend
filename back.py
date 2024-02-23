@@ -10,7 +10,6 @@ import time
 import json
 import os
 import os.path
-import hashlib
 import version as backend
 import subprocess
 import asyncio
@@ -41,7 +40,6 @@ tornado.log.app_log = MeticulousLogger.getLogger("tornado.application")
 tornado.log.gen_log = MeticulousLogger.getLogger("tornado.general")
 
 sendInfoToFront = True
-lastJSON_source = "LCD"
 
 PORT = int(os.getenv("PORT", '8080'))
 
@@ -68,31 +66,6 @@ software_info = {
     "name": "Meticulous Espresso",
     "lcdV": 3,
 }
-
-def send_json_hash(json_obj):
-    json_string = json.dumps(json_obj)
-    json_data = "json\n" + json_string + "\x03"
-    #proof = detect_source(json_string,json_data)
-    #logger.info(proof)
-    logger.debug(json_data)
-    # logger.info(json_data)
-    json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
-    logger.debug("hash_enviado: " + json_hash + "\n")
-    logger.info(f"hash: {json_hash}")
-    Machine.write("hash ".encode("utf-8"))
-    Machine.write(json_hash.encode("utf-8"))
-    Machine.write("\x03".encode("utf-8"))
-    Machine.write(json_data.encode("utf-8"))
-
-def detect_source(json_data):
-    
-    source = ""
-    try:
-        source = json_data["source"]
-        source = source.upper()
-    except:
-        source = "LCD"
-    return source
 
 @sio.event
 def connect(sid, environ):
@@ -132,13 +105,6 @@ def StopInfo(sid):
     global sendInfoToFront
     sendInfoToFront = False
 
-@sio.on('parameters')
-def msg(sid, data):
-    global lastJSON_source
-    send_json_hash(data)
-    lastJSON_source = detect_source(data)
-    logger.info(lastJSON_source)
-
 @sio.on('send_profile')
 async def forwardJSON(sid,data):
     logger.info(json.dumps(data, indent=1, sort_keys=False))
@@ -165,7 +131,7 @@ async def feed_profile(sid, data):
             json_result = generate_italian_1_0(obj) #<class 'str'>
             logger.info(json_result)
             obj_json = json.loads(json_result) #<class 'dict'>
-            send_json_hash(obj_json)
+            Machine.send_json_with_hash(obj_json)
             time.sleep(5)
             _input = "action,"+"start"+"\x03"
             Machine.write(str.encode(_input))
@@ -177,7 +143,7 @@ async def feed_profile(sid, data):
                 json_result = generate_dashboard_1_0(obj)  #<class 'str'>
                 logger.info(json_result)
                 obj_json = json.loads(json_result) #<class 'dict'>
-                send_json_hash(obj_json)
+                Machine.send_json_with_hash(obj_json)
                 time.sleep(5)
                 _input = "action,"+"start"+"\x03"
                 Machine.write(str.encode(_input))
@@ -199,7 +165,6 @@ send_data_thread = None
 async def live():
 
     global sendInfoToFront
-    global lastJSON_source
 
     process_started = False
     SAMPLE_TIME = 0.1
@@ -214,7 +179,7 @@ async def live():
             _time = time.time()
             Machine.action("info")
 
-        await sio.emit("status", {**Machine.data_sensors.to_sio(), "source": lastJSON_source,})
+        await sio.emit("status", {**Machine.data_sensors.to_sio()})
 
         if sendInfoToFront:
             if Machine.sensor_sensors is not None:
@@ -234,7 +199,6 @@ def send_data_loop():
     loop.close()
 
 async def send_data():
-    global lastJSON_source
 
     while (True):
         print("> ", end="")
@@ -260,8 +224,7 @@ async def send_data():
                 json_file = json.load(openfile)
                 # json_data = json.dumps(json_file, indent=1, sort_keys=False)
                 # logger.info(json_data)
-                send_json_hash(json_file)
-                lastJSON_source = detect_source(json_file)
+                Machine.send_json_with_hash(json_file)
                 json_data=""
                 json_file=""
             

@@ -2,6 +2,9 @@ import os
 import threading
 import asyncio
 import time
+import json
+import hashlib
+
 from packaging import version
 
 from config import *
@@ -282,6 +285,31 @@ class Machine:
         Machine._connection.reset()
         Machine.infoReady = False
         Machine.startTime = time.time()
+
+    def send_json_with_hash(json_obj):
+        json_string = json.dumps(json_obj)
+        json_data = "json\n" + json_string + "\x03"
+
+        logger.debug("JSON to stream to the machine:")
+        logger.debug(json_data)
+
+        json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
+
+        logger.info(f"JSON Hash: {json_hash}")
+
+        start = time.time()
+        Machine.write("hash ".encode("utf-8"))
+        Machine.write(json_hash.encode("utf-8"))
+        Machine.write("\x03".encode("utf-8"))
+        Machine.write(json_data.encode("utf-8"))
+        end = time.time()
+        time_ms = (end-start)*1000
+        if time_ms > 10:
+            time_str = f"{int(time_ms)} ms"
+        else:
+            time_str = f"{int(time_ms*1000)} ns"
+        logger.info(
+            f"Streaming profile to ESP32 took {time_str}")
 
     def _parseVersionString(version_str: str):
         release = None
