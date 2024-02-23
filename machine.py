@@ -247,6 +247,9 @@ class Machine:
                         Machine.startUpdate()
 
                 if button_event is not None:
+                    if button_event.event is not ButtonEventEnum.ENCODER_CLOCKWISE and button_event.event is not ButtonEventEnum.ENCODER_COUNTERCLOCKWISE:
+                        logger.debug(f"Button Event recieved: {button_event}")
+
                     await Machine._sio.emit("button", button_event.to_sio())
 
                 # FIXME this should be a callback to the frontends in the future
