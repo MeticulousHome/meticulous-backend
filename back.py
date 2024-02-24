@@ -43,6 +43,7 @@ tornado.log.gen_log = MeticulousLogger.getLogger("tornado.general")
 sendInfoToFront = True
 
 PORT = int(os.getenv("PORT", '8080'))
+DEBUG=os.getenv("DEBUG", 'False').lower() in ('true', '1', 'y')
 
 def gatherVersionInfo():
     global infoSolicited
@@ -316,7 +317,7 @@ def main():
 
     app = tornado.web.Application(
         handlers,
-        debug=False,
+        debug=DEBUG,
     )
 
     app.listen(PORT)

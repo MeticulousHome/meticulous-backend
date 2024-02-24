@@ -7,4 +7,5 @@ export HISTORY_PATH=./shots
 export DEBUG_HISTORY_PATH=./shots/debug
 export UPDATE_PATH=/tmp/firmware
 export PORT=8080
+export DEBUG=y
 python3 back.py
