@@ -20,13 +20,12 @@ class Shot:
         self.profile = None
         self.startTime = time.time()
 
-    def addSensorData(self, sensorData: SensorData, time_ms):
+    def addSensorData(self, sensorData: SensorData):
         if len(self.shotData) > 0:
+            # Append onto the last shotData
             self.shotData[-1]["sensors"] = dict(sensorData.__dict__)
 
     def addShotData(self, shotData: ShotData):
-        if shotData.profile is not None:
-            logger.info(shotData.profile)
         if self.profile is None and shotData.profile is not None:
             self.profile = shotData.profile
         # Shotdata is not json serialziable and we dont need the profile entry multiple times
@@ -59,9 +58,9 @@ class ShotManager:
         ShotManager._current_shot = Shot()
 
     @staticmethod
-    def handleSensorData(sensoData: SensorData, time_ms):
+    def handleSensorData(sensoData: SensorData):
         if sensoData is not None and ShotManager._current_shot is not None:
-            ShotManager._current_shot.addSensorData(sensoData, time_ms)
+            ShotManager._current_shot.addSensorData(sensoData)
 
     @staticmethod
     def handleShotData(shotData: ShotData):
@@ -71,15 +70,18 @@ class ShotManager:
     @staticmethod
     def stop():
         if ShotManager._current_shot is not None:
-            # Determine the folder path based on the current date
-            folder_name = datetime.now().strftime("%Y-%m-%d")
+            # Determine the folder path based on the shot start
+            start = datetime.fromtimestamp(ShotManager._current_shot.startTime)
+
+            folder_name = start.now().strftime("%Y-%m-%d")
             folder_path = os.path.join(HISTORY_PATH, folder_name)
 
             # Create the folder if it does not exist
             os.makedirs(folder_path, exist_ok=True)
 
             # Prepare the file path
-            file_name = f"{time.time()}.shot.json.zst"
+            formatted_time = start.strftime('%H:%M:%S')
+            file_name = f"{formatted_time}.shot.json.zst"
             file_path = os.path.join(folder_path, file_name)
 
             json_data = json.dumps(
