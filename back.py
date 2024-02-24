@@ -14,7 +14,7 @@ import version as backend
 import subprocess
 import asyncio
 
-from esp_serial.data import *
+from esp_serial.data import ButtonEventData
 
 from ble_gatt import GATTServer
 from wifi import WifiManager
@@ -26,6 +26,7 @@ from machine import Machine
 from api.profiles import PROFILE_HANDLER
 from api.notifications import NOTIFICATIONS_HANDLER
 from api.wifi import WIFI_HANDLER
+from api.history import HISTORY_HANDLER
 from api.emulation import EMULATED_WIFI_HANDLER
 from api.settings import SETTINGS_HANDLER
 from api.update import UPDATE_HANDLER
@@ -308,6 +309,8 @@ def main():
         handlers.extend(EMULATED_WIFI_HANDLER)
     else:
         handlers.extend(WIFI_HANDLER)
+
+    handlers.extend(HISTORY_HANDLER)
 
     handlers.extend(WEB_UI_HANDLER)
 

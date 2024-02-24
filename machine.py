@@ -9,13 +9,14 @@ from packaging import version
 
 from config import *
 
-from esp_serial.data import *
+from esp_serial.data import SensorData, ShotData, ButtonEventData, MachineStatus, ButtonEventEnum, ESPInfo
 from esp_serial.connection.usb_serial_connection import USBSerialConnection
 from esp_serial.connection.fika_serial_connection import FikaSerialConnection
 from esp_serial.connection.emulator_serial_connection import EmulatorSerialConnection
 from esp_serial.esp_tool_wrapper import ESPToolWrapper
 
 from shot_manager import ShotManager
+from shot_debug_manager import ShotDebugManager
 
 from notifications import NotificationManager, Notification, NotificationResponse
 
@@ -109,6 +110,7 @@ class Machine:
         old_status = MachineStatus.IDLE
         time_flag = False
         info_requested = False
+        time_passed = 0
 
         logger.info("Starting to listen for esp32 messages")
         Machine.startTime = time.time()
@@ -198,9 +200,15 @@ class Machine:
                             "shot start_time: {:.1f}".format(shot_start_time))
                         ShotManager.start()
 
+                    if old_status == MachineStatus.IDLE and not is_idle:
+                        ShotDebugManager.start()
+
                     if (is_idle or is_purge):
                         time_flag = False
                         ShotManager.stop()
+
+                    if (is_idle):
+                        ShotDebugManager.stop()
 
                     if (time_flag):
                         time_passed = int(
@@ -210,15 +218,19 @@ class Machine:
                         ShotManager.handleShotData(Machine.data_sensors)
                     else:
                         Machine.data_sensors = data
+                        time_passed = 0
+
+                    ShotDebugManager.handleShotData(Machine.data_sensors)
                     old_status = Machine.data_sensors.status
                     Machine.infoReady = True
 
                 if sensor is not None:
                     Machine.sensor_sensors = sensor
                     Machine.reset_count = 0
+                    ShotDebugManager.handleSensorData(Machine.sensor_sensors)
                     if (time_flag):
                         ShotManager.handleSensorData(
-                            Machine.sensor_sensors, time_passed)
+                            Machine.sensor_sensors)
 
                 if info is not None:
                     Machine.esp_info = info
