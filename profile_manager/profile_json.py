@@ -2,10 +2,13 @@ import json
 from stages import *
 
 class Profile:
-    def __init__(self, name: str = ""):
+    def __init__(self, name: str = "", complex_stages: list = None):
+        
+        if complex_stages is None:
+            complex_stages = []
         self.data = {
             "name": name,
-            "stages": []
+            "stages": complex_stages
         }
         
     def set_name(self, name: str):
