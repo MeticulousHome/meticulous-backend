@@ -243,6 +243,7 @@ class ComplexProfileConverter:
                         {
                             "kind": "button_trigger",
                             "next_node_id": 17,
+                            "gesture": "Single Tap",
                             "source": "Encoder Button"
                         }
                     ]
@@ -466,6 +467,7 @@ class ComplexProfileConverter:
                             {
                             "kind": "button_trigger",
                             "next_node_id": 31,
+                            "gesture": "Single Tap",
                             "source": "Encoder Button"
                             }
                         ]
