@@ -221,6 +221,9 @@ class TimeReferenceController(ReferenceController):
         super().__init__()
         self.data["kind"] = reference_type[ReferenceType.CONTROL][ReferenceType.TIME]
         self.data["id"] = id
+    
+    def get_time_reference_id(self):
+        return self.data["id"]
         
 class PositionReferenceController(ReferenceController):
     #This class is a controller that when called, the machine makes a reference in position
@@ -228,12 +231,18 @@ class PositionReferenceController(ReferenceController):
         super().__init__()
         self.data["kind"] = reference_type[ReferenceType.CONTROL][ReferenceType.POSITION]
         self.data["id"] = id
+        
+    def get_position_reference_id(self):
+        return self.data["id"]
 class WeightReferenceController(ReferenceController):
     #This class is a controller that when called, the machine makes a reference in weight
     def __init__(self, id: int = 0):
         super().__init__()
         self.data["kind"] = reference_type[ReferenceType.CONTROL][ReferenceType.WEIGHT]   
         self.data["id"] = id
+        
+    def get_weight_id(self):
+        return self.data["id"]
     
 if __name__ == "__main__":
     # Example usage of the Controllers class.
