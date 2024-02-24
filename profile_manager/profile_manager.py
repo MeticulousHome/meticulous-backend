@@ -487,7 +487,7 @@ class ProfileManager:
                           {
                           "kind": "weight_value_trigger",
                           "weight_reference_id": 4,
-                          "next_node_id": 25,
+                          "next_node_id": 49,
                           "source": "Weight Raw",
                           "operator": "<=",
                           "value": -5
@@ -632,7 +632,7 @@ if __name__ == '__main__':
     with open(file_path, 'r') as file:
         data = json.load(file)
         
-    sample = ProfileManager(True, True, 1000, 5000, data)
+    sample = ProfileManager(False, True, 1000, 7000, data)
     
     # head_template = sample.head_template()
     # print(json.dumps(head_template, indent = 2))
