@@ -42,12 +42,12 @@ class LoadProfileHandler(BaseHandler):
     def post(self):
         try:
             data = json.loads(self.request.body)
-            profile = ProfileManager.load_profile_from_data(data)
+            profile = ProfileManager.send_profile_to_esp32(data)
             self.write({"name": profile["name"], "id": profile["id"]})
         except Exception as e:
             self.set_status(400)
             self.write(f"Error: Failed to load temporary profile")
-            logger.warning("Failed to save profile:", exc_info=e, stack_info=True)
+            logger.warning("Failed to execute profile in place:", exc_info=e, stack_info=True)
 
 
 class GetProfileHandler(BaseHandler):

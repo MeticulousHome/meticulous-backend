@@ -4,7 +4,12 @@ import uuid
 import datetime
 import time
 
+from config import *
+
 from log import MeticulousLogger
+from profile_converter.profile_converter import ComplexProfileConverter
+from machine import Machine
+
 logger = MeticulousLogger.getLogger(__name__)
 
 PROFILE_PATH = os.getenv("PROFILE_PATH", '/meticulous-user/profiles')
@@ -42,11 +47,15 @@ class ProfileManager:
             ProfileManager.send_profile_to_esp32(profile)
         return profile
 
-    def load_profile_from_data(data):
-        return data
-
     def send_profile_to_esp32(data):
-        logger.warning("FIXME: send profile to ESP32")
+        click_to_start = not MeticulousConfig[CONFIG_USER][PROFILE_AUTO_START]
+        click_to_purge = not MeticulousConfig[CONFIG_USER][PROFILE_AUTO_PURGE]
+        
+        logger.info(f"Streaming JSON to ESP32: click_to_start={click_to_start} click_to_purge={click_to_purge}")
+
+        converter = ComplexProfileConverter(click_to_start, click_to_purge, 1000, 7000, data)
+        profile = converter.get_profile()
+        Machine.send_json_with_hash(profile)
         return data
 
     def refresh_profile_list():
