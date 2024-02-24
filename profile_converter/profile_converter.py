@@ -1,9 +1,9 @@
 import json
-from profile_json import *
-from simplified_json import *
+from .profile_json import *
+from .simplified_json import *
 
 
-class ProfileManager:
+class ComplexProfileConverter:
     
     def __init__(self, click_to_start: bool, click_to_purge: bool, end_node_head: int, init_node_tail: int, parameters : dict = None):
         
@@ -632,7 +632,7 @@ if __name__ == '__main__':
     with open(file_path, 'r') as file:
         data = json.load(file)
         
-    sample = ProfileManager(False, True, 1000, 7000, data)
+    sample = ComplexProfileConverter(False, True, 1000, 7000, data)
     
     # head_template = sample.head_template()
     # print(json.dumps(head_template, indent = 2))

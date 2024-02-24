@@ -1,5 +1,5 @@
 import json 
-from stages import *
+from .stages import *
 
 class Profile:
     def __init__(self, name: str = "", complex_stages: list = None):
