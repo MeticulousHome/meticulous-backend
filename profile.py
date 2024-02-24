@@ -51,9 +51,6 @@ class ProfileManager:
         click_to_start = not MeticulousConfig[CONFIG_USER][PROFILE_AUTO_START]
         click_to_purge = not MeticulousConfig[CONFIG_USER][PROFILE_AUTO_PURGE]
         
-        
-        click_to_start = False
-        click_to_purge = True
         logger.info(f"Streaming JSON to ESP32: click_to_start={click_to_start} click_to_purge={click_to_purge}")
 
         converter = ComplexProfileConverter(click_to_start, click_to_purge, 1000, 7000, data)
