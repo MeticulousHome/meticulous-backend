@@ -48,7 +48,7 @@ class CurveControllers(Controllers):
         self.data["curve"]["interpolation_kind"] = curve_interpolation[interpolation_kind]
     
     def set_points(self, points: list):
-        self.data["curve"]["points"] = points
+        self.data["curve"]["points"].extend(points)
         
     def set_reference_type(self, reference_kind: ReferenceType):
         if reference_kind not in reference_type[ReferenceType.CURVE]:
@@ -72,7 +72,7 @@ class PressureController(CurveControllers):
         self.data["algorithm"] = algorithms_type[AlgorithmType.PRESSURE][algorithm]
         self.data["curve"]["id"] = curve_id
         self.data["curve"]["interpolation_kind"] = curve_interpolation[interpolation_kind]
-        self.data["curve"]["points"] = [points]
+        self.data["curve"]["points"] = points
         self.data["curve"]["reference"]["kind"] = reference_type[ReferenceType.CURVE][reference_kind]
         self.data["curve"]["reference"]["id"] = reference_id
         
@@ -92,7 +92,7 @@ class FlowController(CurveControllers):
         self.data["algorithm"] = algorithms_type[AlgorithmType.FLOW][algorithm]
         self.data["curve"]["id"] = curve_id
         self.data["curve"]["interpolation_kind"] = curve_interpolation[interpolation_kind]
-        self.data["curve"]["points"] = [points]
+        self.data["curve"]["points"] = points
         self.data["curve"]["reference"]["kind"] = reference_type[ReferenceType.CURVE][reference_kind]
         self.data["curve"]["reference"]["id"] = reference_id
         
@@ -109,7 +109,7 @@ class TemperatureController(CurveControllers):
         self.data["algorithm"] = algorithms_type[AlgorithmType.TEMPERATURE][algorithm]
         self.data["curve"]["id"] = curve_id
         self.data["curve"]["interpolation_kind"] = curve_interpolation[interpolation_kind]
-        self.data["curve"]["points"] = [points]
+        self.data["curve"]["points"] = points
         self.data["curve"]["reference"]["kind"] = reference_type[ReferenceType.CURVE][reference_kind]
         self.data["curve"]["reference"]["id"] = reference_id
         
@@ -151,7 +151,7 @@ class PowerController(CurveControllers):
         self.data["algorithm"] = algorithms_type[AlgorithmType.POWER][algorithm]
         self.data["curve"]["id"] = curve_id
         self.data["curve"]["interpolation_kind"] = curve_interpolation[interpolation_kind]
-        self.data["curve"]["points"] = [points]
+        self.data["curve"]["points"] = points
         self.data["curve"]["reference"]["kind"] = reference_type[ReferenceType.CURVE][reference_kind]
         self.data["curve"]["reference"]["id"] = reference_id
     
@@ -168,7 +168,7 @@ class WeightController(CurveControllers):
         self.data["algorithm"] = algorithms_type[AlgorithmType.WEIGHT][algorithm]
         self.data["curve"]["id"] = curve_id
         self.data["curve"]["interpolation_kind"] = curve_interpolation[interpolation_kind]
-        self.data["curve"]["points"] = [points]
+        self.data["curve"]["points"] = points
         self.data["curve"]["reference"]["kind"] = reference_type[ReferenceType.CURVE][reference_kind]
         self.data["curve"]["reference"]["id"] = reference_id
         
