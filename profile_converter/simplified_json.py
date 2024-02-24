@@ -78,7 +78,7 @@ class SimplifiedJson:
                     case "pressure":
                         limit_node = Nodes(self.get_new_node_id())
                         trigger_limit_value = limit["value"]
-                        points_trigger = [0, trigger_limit_value]
+                        points_trigger = [[0, trigger_limit_value]]
                         limit_curve_id = self.get_new_curve_id()
                         limit_reference_curve_id = init_node.get_time_id()
                         limit_controller = PressureController(PressureAlgorithmType.PID_V1, limit_curve_id, CurveInterpolationType.LINEAR, points_trigger, ReferenceType.TIME, limit_reference_curve_id)
@@ -89,7 +89,7 @@ class SimplifiedJson:
                     case "flow":
                         limit_node = Nodes(self.get_new_node_id())
                         trigger_limit_value = limit["value"]
-                        points_trigger = [0, trigger_limit_value]
+                        points_trigger = [[0, trigger_limit_value]]
                         limit_curve_id = self.get_new_curve_id()
                         limit_reference_curve_id = init_node.get_time_id()
                         limit_controller = FlowController(FlowAlgorithmType.PID_V1, limit_curve_id, CurveInterpolationType.LINEAR, points_trigger, ReferenceType.TIME, limit_reference_curve_id)
@@ -100,7 +100,7 @@ class SimplifiedJson:
                     case "temperature":
                         limit_node = Nodes(self.get_new_node_id())
                         trigger_limit_value = limit["value"]
-                        points_trigger = [0, trigger_limit_value]
+                        points_trigger = [[0, trigger_limit_value]]
                         limit_curve_id = self.get_new_curve_id()
                         limit_reference_curve_id = init_node.get_time_id()
                         limit_controller = TemperatureController(TemperatureAlgorithmType.WATER, limit_curve_id, CurveInterpolationType.LINEAR, points_trigger, ReferenceType.TIME, limit_reference_curve_id)
@@ -111,7 +111,7 @@ class SimplifiedJson:
                     case "power":
                         limit_node = Nodes(self.get_new_node_id())
                         trigger_limit_value = limit["value"]
-                        points_trigger = [0, trigger_limit_value]
+                        points_trigger = [[0, trigger_limit_value]]
                         limit_curve_id = self.get_new_curve_id()
                         limit_reference_curve_id = init_node.get_time_id()
                         limit_controller = PowerController(PowerAlgorithmType.SPRING, limit_curve_id,  CurveInterpolationType.LINEAR, points_trigger, ReferenceType.TIME, limit_reference_curve_id)
