@@ -1,5 +1,5 @@
 import json 
-from dictionaries import * 
+from .dictionaries import *
 class Controllers:
 #This parent class has the get_controller method that returns a dictionary with the information of the controllers
 

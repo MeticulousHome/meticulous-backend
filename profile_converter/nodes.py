@@ -1,7 +1,7 @@
 import json
-from controllers import *
-from triggers import *
-from dictionaries import *
+from .controllers import *
+from .triggers import *
+from .dictionaries import *
 class Nodes:
     def __init__(self, id : int = 0):
         self.data = {}

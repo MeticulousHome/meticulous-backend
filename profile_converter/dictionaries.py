@@ -1,4 +1,4 @@
-from enums import *
+from .enums import *
 
 controllers_type = {
     ControllerType.POWER: "piston_power_controller",

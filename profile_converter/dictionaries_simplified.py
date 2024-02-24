@@ -1,6 +1,6 @@
-from dictionaries import *
-from controllers import *
-from triggers import *
+from .dictionaries import *
+from .controllers import *
+from .triggers import *
 
 type_dict = {
     "power" : PowerController,

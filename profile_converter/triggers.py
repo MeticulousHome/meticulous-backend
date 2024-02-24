@@ -1,5 +1,5 @@
 import json
-from dictionaries import *
+from .dictionaries import *
 #This class is used to create the triggers for the complex JSON
 class Triggers:
         
