@@ -72,22 +72,22 @@ directions = {
 
 trigger_type = {
     TriggerType.PISTON_POSITION : "piston_position_trigger",
-    TriggerType.SPEED: "speed_trigger",
+    TriggerType.SPEED: "piston_speed_trigger",
     TriggerType.TIME : "time_trigger",
-    TriggerType.WEIGHT : "weight_trigger",
+    TriggerType.WEIGHT : "weight_value_trigger",
     TriggerType.BUTTON : "button_trigger",
     TriggerType.WATER_DETECTION : "water_detection_trigger",
     TriggerType.CURVE:{
         TriggerType.FLOW : "flow_curve_trigger",
         TriggerType.PRESSURE : "pressure_curve_trigger",
         TriggerType.TEMPERATURE : "temperature_curve_trigger",
-        TriggerType.POWER : "power_curve_trigger",
+        TriggerType.POWER : "piston_power_curve_trigger",
     },
     TriggerType.VALUE :{
         TriggerType.FLOW :"flow_value_trigger",
         TriggerType.PRESSURE : "pressure_value_trigger",
         TriggerType.TEMPERATURE: "temperature_value_trigger",
-        TriggerType.POWER :  "power_value_trigger",
+        TriggerType.POWER :  "piston_power_value_trigger",
     },
     TriggerType.EXIT : "exit"
 }
