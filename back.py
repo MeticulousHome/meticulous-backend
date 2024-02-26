@@ -23,6 +23,7 @@ from profile import ProfileManager
 from config import *
 from machine import Machine
 
+from api.action import ACTIONS_HANDLER
 from api.profiles import PROFILE_HANDLER
 from api.notifications import NOTIFICATIONS_HANDLER
 from api.wifi import WIFI_HANDLER
@@ -312,6 +313,7 @@ def main():
         handlers.extend(WIFI_HANDLER)
 
     handlers.extend(HISTORY_HANDLER)
+    handlers.extend(ACTIONS_HANDLER)
 
     handlers.extend(WEB_UI_HANDLER)
 
