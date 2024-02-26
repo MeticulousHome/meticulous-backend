@@ -8,7 +8,7 @@ logger = MeticulousLogger.getLogger(__name__)
 
 class ExecuteActionHandler(BaseHandler):
     def get(self, action):
-        allowed_actions = ["start, stop, reset, tare"]
+        allowed_actions = ["start", "stop", "reset", "tare"]
         if (action in allowed_actions):
             Machine.action(action_event=action)
             self.write(json.dumps(
