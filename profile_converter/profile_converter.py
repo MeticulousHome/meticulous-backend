@@ -351,7 +351,7 @@ class ComplexProfileConverter:
                             ],
                             "reference": {
                             "kind": "time",
-                            "id": 9
+                            "id": 4
                             }
                         }
                     },
@@ -401,6 +401,10 @@ class ComplexProfileConverter:
                             {
                             "kind": "weight_reference",
                             "id": 4
+                            },
+                            {
+                            "kind": "time_reference",
+                            "id": 8
                             }
                         ],
                         "triggers": [
