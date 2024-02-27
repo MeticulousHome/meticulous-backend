@@ -73,7 +73,7 @@ directions = {
 trigger_type = {
     TriggerType.PISTON_POSITION : "piston_position_trigger",
     TriggerType.SPEED: "piston_speed_trigger",
-    TriggerType.TIME : "time_trigger",
+    TriggerType.TIME : "timer_trigger",
     TriggerType.WEIGHT : "weight_value_trigger",
     TriggerType.BUTTON : "button_trigger",
     TriggerType.WATER_DETECTION : "water_detection_trigger",
@@ -97,19 +97,19 @@ source_type = {
         SourceType.FLOW : "Flow Raw",
         SourceType.PRESSURE : "Pressure Raw",
         SourceType.WEIGHT : "Weight Raw",
-        SourceType.POWER : "Piston Power Raw"
+        SourceType.POWER : "Raw Piston Power"
     },
     SourceType.AVERAGE : {
         SourceType.FLOW : "Flow Average",
         SourceType.PRESSURE : "Pressure Average",
         SourceType.WEIGHT : "Weight Average",
-        SourceType.POWER : "Piston Power Average"
+        SourceType.POWER : "Average Piston Power"
     },
     SourceType.PREDICTIVE : {
         SourceType.FLOW : "Flow Predictive",
         SourceType.PRESSURE : "Pressure Predictive",
         SourceType.WEIGHT  : "Weight Predictive",
-        SourceType.POWER : "Piston Power Predictive"
+        SourceType.POWER : "Predictive Piston Power"
     },
     SourceType.TEMPERATURE: {
         TemperatureSourceType.TUBE:"Tube Temperature", 
