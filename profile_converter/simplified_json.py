@@ -1,6 +1,5 @@
 import json
 from .stages import *
-
 from .dictionaries_simplified import *
 current_node_id = 1
 current_curve_id = 10000
@@ -30,6 +29,9 @@ class SimplifiedJson:
     
     def get_name(self):
         return self.parameters["name"]
+    
+    def get_final_weight(self):
+        return self.parameters["final_weight"]
     
     def get_new_node_id(self):
         global current_node_id
@@ -244,12 +246,15 @@ class SimplifiedJson:
                     print(f"Type: {type_main_controller} not found.")
                     
             button_trigger = ButtonTrigger(ButtonSourceType.ENCODER_BUTTON, next_node_id = next_stage_node_id)
+            weight_final_trigger = WeightTrigger(SourceType.RAW, TriggerOperatorType.GREATER_THAN_OR_EQUAL, self.get_final_weight(), 1, next_stage_node_id) 
             
             for limit_node in all_nodes[2:]:
                 limit_node["triggers"].append(main_trigger)     
                 limit_node["triggers"].append(button_trigger.get_trigger())
+                limit_node["triggers"].append(weight_final_trigger.get_trigger())
                 
             main_node.add_trigger(button_trigger)   
+            main_node.add_trigger(weight_final_trigger)
             
             if stage_index == len(self.parameters.get("stages")) - 1:
                 for exit_trigger in exit_triggers:

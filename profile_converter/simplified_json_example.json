@@ -16,6 +16,7 @@
         }
     ],
     "temperature": 93,
+    "final_weight": 75,
     "stages": [
         {
             "name": "stage 1",
