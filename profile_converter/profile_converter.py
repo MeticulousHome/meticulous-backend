@@ -44,6 +44,12 @@ class ComplexProfileConverter:
                         "source": "Piston Position Raw",
                         "operator": "<",
                         "value": 78
+                    },
+                    {
+                        "kind": "button_trigger",
+                        "next_node_id": 45,
+                        "gesture": "Single Tap",
+                        "source": "Encoder Button"
                     }
                 ]
                 },
@@ -76,6 +82,12 @@ class ComplexProfileConverter:
                         "source": "Piston Position Raw",
                         "operator": ">=",
                         "value": 78
+                    },
+                    {
+                        "kind": "button_trigger",
+                        "next_node_id": 45,
+                        "gesture": "Single Tap",
+                        "source": "Encoder Button"
                     }
                 ]
                 },
@@ -109,6 +121,12 @@ class ComplexProfileConverter:
                         "source": "Piston Position Raw",
                         "operator": ">=",
                         "value": 78
+                    },
+                    {
+                        "kind": "button_trigger",
+                        "next_node_id": 45,
+                        "gesture": "Single Tap",
+                        "source": "Encoder Button"
                     }
                 ]
                 }
@@ -139,6 +157,12 @@ class ComplexProfileConverter:
                         "next_node_id": -2,
                         "operator": ">=",
                         "value": 100
+                    },
+                    {
+                        "kind": "button_trigger",
+                        "next_node_id": 15,
+                        "gesture": "Single Tap",
+                        "source": "Encoder Button"
                     }
                 ]
                 },
@@ -175,6 +199,12 @@ class ComplexProfileConverter:
                         "kind": "water_detection_trigger",
                         "next_node_id": 12,
                         "value": False
+                    },
+                    {
+                        "kind": "button_trigger",
+                        "next_node_id": 15,
+                        "gesture": "Single Tap",
+                        "source": "Encoder Button"
                     }
                 ]
                 }
@@ -223,6 +253,12 @@ class ComplexProfileConverter:
                         "next_node_id": -2,
                         "operator": ">=",
                         "value": 900
+                    },
+                    {
+                        "kind": "button_trigger",
+                        "next_node_id": self.head_next_node_id,
+                        "gesture": "Single Tap",
+                        "source": "Encoder Button"
                     }
                 ]
                 }
@@ -257,6 +293,24 @@ class ComplexProfileConverter:
                 "id": 18,
                 "controllers": [
                     {
+                        "kind": "temperature_controller",
+                        "algorithm": "Cylinder Temperature PID v1.0",
+                        "curve": {
+                            "id": 6,
+                            "interpolation_kind": "linear_interpolation",
+                            "points": [
+                            [
+                                0,
+                                25
+                            ]
+                            ],
+                            "reference": {
+                            "kind": "time",
+                            "id": 2
+                            }
+                        }
+                    },
+                    {
                         "kind": "move_piston_controller",
                         "speed": 6,
                         "direction": "UP",
@@ -269,6 +323,12 @@ class ComplexProfileConverter:
                         "next_node_id": 21,
                         "operator": "==",
                         "value": 0
+                    },
+                    {
+                        "kind": "button_trigger",
+                        "next_node_id": 23,
+                        "gesture": "Single Tap",
+                        "source": "Encoder Button"
                     }
                 ]
                 },
@@ -305,6 +365,12 @@ class ComplexProfileConverter:
                         "next_node_id": 23,
                         "operator": ">=",
                         "value": 2
+                    },
+                    {
+                        "kind": "button_trigger",
+                        "next_node_id": 23,
+                        "gesture": "Single Tap",
+                        "source": "Encoder Button"
                     }
                 ]
                 },
@@ -326,6 +392,12 @@ class ComplexProfileConverter:
                         "position_reference_id": 1,
                         "operator": "<=",
                         "value": -2
+                    },
+                    {
+                        "kind": "button_trigger",
+                        "next_node_id": 23,
+                        "gesture": "Single Tap",
+                        "source": "Encoder Button"
                     }
                 ]
                 }
@@ -337,24 +409,6 @@ class ComplexProfileConverter:
                 {
                 "id": 23,
                 "controllers": [
-                    {
-                        "kind": "temperature_controller",
-                        "algorithm": "Cylinder Temperature PID v1.0",
-                        "curve": {
-                            "id": 6,
-                            "interpolation_kind": "linear_interpolation",
-                            "points": [
-                            [
-                                0,
-                                25
-                            ]
-                            ],
-                            "reference": {
-                            "kind": "time",
-                            "id": 4
-                            }
-                        }
-                    },
                     {
                         "kind": "move_piston_controller",
                         "speed": 5,
@@ -373,6 +427,14 @@ class ComplexProfileConverter:
                         "source": "Pressure Raw",
                         "operator": ">=",
                         "value": 0.2
+                    },
+                    {
+                        "kind": "piston_position_trigger",
+                        "position_reference_id": 0,
+                        "next_node_id": -2,
+                        "source": "Piston Position Raw",
+                        "operator": ">=",
+                        "value": 78
                     }
                 ]
                 }
@@ -430,6 +492,12 @@ class ComplexProfileConverter:
                             "next_node_id": self.tail_next_node_id ,
                             "operator": "==",
                             "value": 0
+                            },
+                            {
+                            "kind": "button_trigger",
+                            "next_node_id": self.tail_next_node_id,
+                            "gesture": "Single Tap",
+                            "source": "Encoder Button"
                             }
                         ]
                     },
@@ -451,6 +519,12 @@ class ComplexProfileConverter:
                             "position_reference_id": 3,
                             "operator": "<=",
                             "value": -4
+                            },
+                            {
+                            "kind": "button_trigger",
+                            "next_node_id": self.tail_next_node_id,
+                            "gesture": "Single Tap",
+                            "source": "Encoder Button"
                             }
                         ]
                     }
@@ -559,6 +633,12 @@ class ComplexProfileConverter:
                             "source": "Piston Position Raw",
                             "operator": ">=",
                             "value": 78
+                            },
+                            {
+                            "kind": "button_trigger",
+                            "next_node_id": -2,
+                            "gesture": "Single Tap",
+                            "source": "Encoder Button"
                             }
                         ]
                     },
@@ -592,6 +672,12 @@ class ComplexProfileConverter:
                             "source": "Piston Position Raw",
                             "operator": ">=",
                             "value": 78
+                            },
+                            {
+                            "kind": "button_trigger",
+                            "next_node_id": -2,
+                            "gesture": "Single Tap",
+                            "source": "Encoder Button"
                             }
                         ]
                     }
