@@ -26,7 +26,7 @@ class SaveProfileHandler(BaseHandler):
             self.write({"name": name, "id": profile_id})
         except Exception as e:
             self.set_status(400)
-            self.write(f"Error: Failed to save profile")
+            self.write({"status":"error", "error": "failed to save profile", "data":data})
             logger.warning("Failed to save profile:", exc_info=e, stack_info=True)
 
 class LoadProfileHandler(BaseHandler):
@@ -37,7 +37,8 @@ class LoadProfileHandler(BaseHandler):
             self.write({"name": profile["name"], "id": profile["id"]})
         else:
             self.set_status(404)
-            self.write(f"No profile found with id: {profile_id}")
+            self.write({"status":"error", "error": "profile not found", "id":profile_id})
+
     
     def post(self):
         try:
@@ -46,7 +47,7 @@ class LoadProfileHandler(BaseHandler):
             self.write({"name": profile["name"], "id": profile["id"]})
         except Exception as e:
             self.set_status(400)
-            self.write(f"Error: Failed to load temporary profile")
+            self.write({"status":"error", "error": "failed to load temporary profile"})
             logger.warning("Failed to execute profile in place:", exc_info=e, stack_info=True)
 
 
@@ -56,9 +57,21 @@ class GetProfileHandler(BaseHandler):
         data = ProfileManager.get_profile(profile_id)
         if data:
             self.write(data)
+            logger.info(data)
         else:
             self.set_status(404)
-            self.write(f"No profile found with id: {profile_id}")
+            self.write({"status":"error", "error": "profile not found", "id":profile_id})
+
+class DeleteProfileHandler(BaseHandler):
+    def get(self, profile_id):
+        logger.info("Deletion for profile "+profile_id)
+        data = ProfileManager.delete_profile(profile_id)
+        if data:
+            logger.info(f"Deleted profile: {data}")
+            self.write(data)
+        else:
+            self.set_status(404)
+            self.write({"status":"error", "error": "profile not found", "id":profile_id})
 
 PROFILE_HANDLER= [
         (r"/profile/list", ListHandler),
@@ -66,5 +79,6 @@ PROFILE_HANDLER= [
         (r"/profile/load", LoadProfileHandler),
         (r"/profile/load/(?P<profile_id>\w+)", LoadProfileHandler),
         (r"/profile/get/([0-9a-fA-F-]+)", GetProfileHandler),
+        (r"/profile/delete/([0-9a-fA-F-]+)", DeleteProfileHandler),
 ]
 

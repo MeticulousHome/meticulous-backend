@@ -1,7 +1,6 @@
 import os
 import json
 import uuid
-import datetime
 import time
 
 from config import *
@@ -25,20 +24,34 @@ class ProfileManager:
     def save_profile(data, set_last_changed = False):
         if "id" not in data:
             data["id"] = str(uuid.uuid4())
+
         name = f'{data["name"]}_{data["id"]}.json'
 
         if set_last_changed:
-            data["last_changed"] = int(datetime.datetime.now(
-                        datetime.timezone.utc).timestamp())  # Ensuring it's in UTC
+            data["last_changed"] = time.time()
 
         file_path = os.path.join(PROFILE_PATH, name)
         with open(file_path, 'w') as f:
             json.dump(data, f, indent=4)
-        ProfileManager._known_profiles[name] = data
+
+        ProfileManager._known_profiles[data["id"]] = data
         logger.info(f"Saved profile {name}")
         return (name, data["id"])
 
+    def delete_profile(id):
+        profile = ProfileManager._known_profiles.get(id)
+        if not profile:
+            return None
+
+        filename = f'{profile["name"]}_{profile["id"]}.json'
+        file_path = os.path.join(PROFILE_PATH, filename)
+        os.remove(file_path)
+        del ProfileManager._known_profiles[profile["id"]]
+        return (profile["name"], profile["id"])
+
     def get_profile(id):
+        logger.info(f"Serving profile: {id}")
+        logger.info(ProfileManager._known_profiles.get(id))
         return ProfileManager._known_profiles.get(id)
 
     def load_profile(id):
@@ -51,7 +64,7 @@ class ProfileManager:
         click_to_start = not MeticulousConfig[CONFIG_USER][PROFILE_AUTO_START]
         click_to_purge = not MeticulousConfig[CONFIG_USER][PROFILE_AUTO_PURGE]
         
-        logger.info(f"Streaming JSON to ESP32: click_to_start={click_to_start} click_to_purge={click_to_purge}")
+        logger.info(f"Streaming JSON to ESP32: click_to_start={click_to_start} click_to_purge={click_to_purge} data={data}")
 
         converter = ComplexProfileConverter(click_to_start, click_to_purge, 1000, 7000, data)
         profile = converter.get_profile()
@@ -60,6 +73,7 @@ class ProfileManager:
 
     def refresh_profile_list():
         start = time.time()
+        ProfileManager._known_profiles = dict()
         for filename in os.listdir(PROFILE_PATH):
             if not filename.endswith('.json'):
                 continue

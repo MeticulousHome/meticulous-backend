@@ -191,14 +191,16 @@ class MeticulousConfigDict(dict):
             yaml.dump(
                 self.copy(), f, default_flow_style=False, allow_unicode=True)
 
-        if self.__sio:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            async def sendSettingsNotification():
-                await self.__sio.emit("settings", {})
-
-            loop.run_until_complete(sendSettingsNotification())
-            loop.close()
+        # if self.__sio:
+        #     loop = asyncio.new_event_loop()
+        #     asyncio.set_event_loop(loop)
+        #     async def sendSettingsNotification():
+        #         await self.__sio.emit("settings", {})
+        #     try:
+        #         loop.run_until_complete(sendSettingsNotification())
+        #         loop.close()
+        #     except RuntimeError:
+        #         await sendSettingsNotification()
 
 
 MeticulousConfig = MeticulousConfigDict(os.path.join(CONFIG_PATH, "config.yml"), DefaultConfiguration_V1)
