@@ -9,21 +9,6 @@ def get_preinfusion_stage(parameters: json, start_node: int, end_node: int):
         "id": start_node,
         "controllers": [
          {
-          "kind": "temperature_controller",
-          "algorithm": "Cylinder Temperature PID v1.0",
-          "curve": {
-           "id": 3,
-           "interpolation_kind": "linear_interpolation",
-           "points": [
-            [
-             0,
-             25
-            ]
-           ],
-           "time_reference_id": 2
-          }
-         },
-         {
           "kind": "flow_controller",
           "algorithm": "Flow PID v1.0",
           "curve": {
