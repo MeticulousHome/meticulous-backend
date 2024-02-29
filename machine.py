@@ -187,13 +187,11 @@ class Machine:
 
                 if data is not None:
                     is_idle = data.status == MachineStatus.IDLE
-                    is_infusion = data.status == MachineStatus.INFUSION
-                    is_preinfusion = data.status == MachineStatus.PREINFUSION
-                    is_spring = data.status == MachineStatus.SPRING
                     is_purge = data.status == MachineStatus.PURGE
-                    was_preparing = old_status == MachineStatus.CLOSING_VALVE
+                    is_retracting = data.status == MachineStatus.RETRACTING
+                    is_preparing = data.status == MachineStatus.CLOSING_VALVE
 
-                    if (was_preparing and (is_preinfusion or is_infusion or is_spring)):
+                    if (is_preparing and data.status != old_status):
                         time_flag = True
                         shot_start_time = time.time()
                         logger.info(
@@ -203,7 +201,7 @@ class Machine:
                     if old_status == MachineStatus.IDLE and not is_idle:
                         ShotDebugManager.start()
 
-                    if (is_idle or is_purge):
+                    if (is_idle or is_purge or is_retracting):
                         time_flag = False
                         ShotManager.stop()
 

@@ -152,7 +152,7 @@ class ShotData:
     temperature: float = 20.0
     status: str = ""
     profile: str = ""
-    time: int = 0
+    time: int = -1
 
     def clone_with_time(self, shot_start_time):
         return replace(self, time=shot_start_time)
