@@ -13,6 +13,21 @@ def get_retracting_stage(parameters: json,start_node: int, end_node: int):
                         "algorithm": "Piston Ease-In",
                         "direction": "UP",
                         "speed": 4
+                    },
+                    {
+                        "kind": "temperature_controller",
+                        "algorithm": "Cylinder Temperature PID v1.0",
+                        "curve": {
+                            "id": 3,
+                            "interpolation_kind": "linear_interpolation",
+                            "points": [
+                             [
+                              0,
+                              25
+                             ]
+                            ],
+                            "time_reference_id": 2
+                        }
                     }
                 ],
                 "triggers": [

@@ -122,21 +122,6 @@ def get_curve(parameters, start_node, end_node):
                     "id": _NODE_1_ID,
                     "controllers": [
                         {
-                            "kind": "temperature_controller",
-                            "algorithm": "Cylinder Temperature PID v1.0",
-                            "curve": {
-                                "id": _CURVE_TEMP_ID,
-                                "interpolation_kind": "linear_interpolation",
-                                "points": [
-                                    [0, 25.0]
-                                ],
-                                "reference": {
-                                    "kind": "time",
-                                    "id": _TIME_REFERENCE_1_ID
-                                }
-                            }
-                        },
-                        {
                             "kind": control_kind,
                             "algorithm": algorithm,
                             "curve": {
