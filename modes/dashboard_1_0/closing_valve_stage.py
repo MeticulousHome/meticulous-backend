@@ -26,6 +26,14 @@ def get_closing_valve_stage(parameters: json,start_node: int, end_node: int):
                         "operator": ">=",
                         "value": 0.2,
                         "next_node_id": end_node
+                    },
+                    {
+                        "kind": "piston_position_trigger",
+                        "position_reference_id": 0,
+                        "operator": ">=",
+                        "value": 78,
+                        "next_node_id": -2,
+                        "source": "Piston Position Raw"
                     }
                 ]
             }
