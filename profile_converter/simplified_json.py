@@ -257,10 +257,11 @@ class SimplifiedJson:
             main_node.add_trigger(weight_final_trigger)
             
             if stage_index == len(self.parameters.get("stages")) - 1:
+                button_trigger.set_next_node_id(init_node_tail)
+                weight_final_trigger.set_next_node_id(init_node_tail)
                 for exit_trigger in exit_triggers:
                     exit_trigger["next_node_id"] = init_node_tail
-                    button_trigger.set_next_node_id(init_node_tail)
-                    weight_final_trigger.set_next_node_id(init_node_tail)
+                    
 
             complex_stages.append({
                 "name": f"{stage_name}",
