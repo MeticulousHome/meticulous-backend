@@ -47,7 +47,7 @@ class ProfileManager:
         file_path = os.path.join(PROFILE_PATH, filename)
         os.remove(file_path)
         del ProfileManager._known_profiles[profile["id"]]
-        return (profile["name"], profile["id"])
+        return {"profile": profile["name"], "id": profile["id"]}
 
     def get_profile(id):
         logger.info(f"Serving profile: {id}")
