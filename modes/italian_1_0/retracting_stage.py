@@ -25,7 +25,7 @@ def get_retracting_stage(parameters: json,start_node: int, end_node: int):
                             ],
                             "reference": {
                                 "kind": "time",
-                                "id": 20
+                                "id": 2
                             }
                         }
                     },
