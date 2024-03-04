@@ -64,6 +64,9 @@ class GetProfileHandler(BaseHandler):
 
 class DeleteProfileHandler(BaseHandler):
     def get(self, profile_id):
+        return self.delete(profile_id)
+    
+    def delete(self, profile_id):
         logger.info("Deletion for profile "+profile_id)
         data = ProfileManager.delete_profile(profile_id)
         if data:
