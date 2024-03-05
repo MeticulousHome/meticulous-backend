@@ -1,4 +1,8 @@
 
+### [v0.1.23] - 2024-03-05
+This Changeset mostly contains all the small things that were needed to get the machine to connect to the mobile App.
+
+
 ### [v0.1.22] - 2024-02-21
 The dial app and the mobile app need a REST API to fetch static data. Implement it here.
 
