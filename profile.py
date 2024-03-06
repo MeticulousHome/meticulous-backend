@@ -25,7 +25,7 @@ class ProfileManager:
         if "id" not in data:
             data["id"] = str(uuid.uuid4())
 
-        name = f'{data["name"]}_{data["id"]}.json'
+        name = f'{data["id"]}.json'
 
         if set_last_changed:
             data["last_changed"] = time.time()
