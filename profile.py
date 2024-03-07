@@ -43,7 +43,7 @@ class ProfileManager:
         if not profile:
             return None
 
-        filename = f'{profile["name"]}_{profile["id"]}.json'
+        filename = f'{profile["id"]}.json'
         file_path = os.path.join(PROFILE_PATH, filename)
         os.remove(file_path)
         del ProfileManager._known_profiles[profile["id"]]
