@@ -139,13 +139,13 @@ class WiFiConnectHandler(BaseHandler):
             success = WifiManager.connectToWifi(ssid, password)
 
             if success:
-                self.write("Successfully initiated connection to WiFi network.")
+                self.write({"status":"ok"})
             else:
                 self.set_status(400)
-                self.write("Failed to conect")
+                self.write({"status":"error", "error": "failed to conect to wifi"})
         except Exception as e:
             self.set_status(400)
-            self.write(f"Failed to connect")
+            self.write({"status":"error", "error": f"failed to conect to wifi: {e}"})
             logger.warning("Failed to connect: ", exc_info=e, stack_info=True)
 
 WIFI_HANDLER = [

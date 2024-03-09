@@ -1,4 +1,6 @@
+from config import MeticulousConfig
 from config import *
+
 from netaddr import IPAddress, IPNetwork
 from typing import List
 from dataclasses import dataclass
@@ -184,6 +186,8 @@ class WifiManager():
             if len([x for x in networks if x.in_use]) > 0:
                 logger.info("Successfully connected")
                 WifiManager._zeroconf.restart()
+                MeticulousConfig[CONFIG_WIFI][WIFI_MODE] = WIFI_MODE_CLIENT
+                MeticulousConfig.save()
                 return True
         logger.info("Target network was not found, no connection established")
         return False

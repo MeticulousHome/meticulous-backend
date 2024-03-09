@@ -114,7 +114,7 @@ class WiFiConnectHandler(BaseHandler):
             ssid = data['ssid']
             password = data['password']
 
-            self.write(f"MOCK: Calling WifiManager.connectToWifi({ssid}, {password})")
+            self.write({"status":"ok", "ssid": ssid, "password": password})
         except Exception as e:
             self.set_status(400)
             self.write(f"Error: {str(e)}")
