@@ -159,7 +159,7 @@ class Machine:
                     info_requested = True
 
                 if time.time() - Machine.startTime > 60 and not Machine.infoReady:
-                    if MeticulousConfig[CONFIG_USER][DISALLOW_FIRMWARE_FLASHING]:
+                    if MeticulousConfig[CONFIG_USER][DISALLOW_FIRMWARE_FLASHING][VALUE]:
                         logger.warning(
                             "The ESP never send an info, but user requested no updates!")
                     else:
@@ -250,7 +250,7 @@ class Machine:
                             if Machine.firmware_running["ExtraCommits"] < Machine.firmware_available["ExtraCommits"]:
                                 needs_update = True
 
-                    if needs_update and not MeticulousConfig[CONFIG_USER][DISALLOW_FIRMWARE_FLASHING]:
+                    if needs_update and not MeticulousConfig[CONFIG_USER][DISALLOW_FIRMWARE_FLASHING][VALUE]:
                         info_string = f"Firmware {Machine.firmware_running.get('Release')}-{Machine.firmware_running['ExtraCommits']} is outdated, upgrading"
                         logger.info(info_string)
                         Machine._updateNotification = Notification(

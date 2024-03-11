@@ -56,6 +56,7 @@ PROFILE_AUTO_START = "auto_start_shot"
 PROFILE_AUTO_START_DEFAULT = True
 PROFILE_AUTO_PURGE = "auto_purge_after_shot"
 PROFILE_AUTO_PURGE_DEFAULT = True
+VALUE = "value"
 
 #
 # LOGGING config
@@ -89,12 +90,32 @@ DefaultConfiguration_V1 = {
         HTTP_ALLOWED_NETWORKS: HTTP_DEFAULT_ALLOWED_NETWORKS,
         NOTIFICATION_KEEPALIVE: NOTIFICATION_DEFAULT_KEEPALIVE,
     },
-    CONFIG_USER:{
-        SOUNDS_ENABLED: SOUNDS_DEFAULT_ENABLED,
-        DISALLOW_FIRMWARE_FLASHING: DISALLOW_FIRMWARE_FLASHING_DEFAULT,
-        DEBUG_SHOT_DATA: DEBUG_SHOT_DATA_DEFAULT,
-        PROFILE_AUTO_START: PROFILE_AUTO_START_DEFAULT,
-        PROFILE_AUTO_PURGE: PROFILE_AUTO_PURGE_DEFAULT,
+    CONFIG_USER: {
+        SOUNDS_ENABLED: {
+            "type": 'boolean',
+            "value": SOUNDS_DEFAULT_ENABLED,
+            "visible": False
+        },
+        DISALLOW_FIRMWARE_FLASHING: {
+            "type": 'boolean',
+            "value": DISALLOW_FIRMWARE_FLASHING_DEFAULT,
+            "visible": False
+        },
+        DEBUG_SHOT_DATA: {
+            "type": 'boolean',
+            "value": DEBUG_SHOT_DATA_DEFAULT,
+            "visible": False
+        },
+        PROFILE_AUTO_START: {
+            "type": 'boolean',
+            "value": PROFILE_AUTO_START_DEFAULT,
+            "visible": True
+        },
+        PROFILE_AUTO_PURGE: {
+            "type": 'boolean',
+            "value": PROFILE_AUTO_PURGE_DEFAULT,
+            "visible": True
+        },
     },
     CONFIG_WIFI: {
         WIFI_MODE: WIFI_MODE_AP,
@@ -102,7 +123,6 @@ DefaultConfiguration_V1 = {
         WIFI_AP_PASSWORD: WIFI_DEFAULT_AP_PASSWORD
     },
 }
-
 
 class MeticulousConfigDict(dict):
     """

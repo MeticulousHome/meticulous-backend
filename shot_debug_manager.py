@@ -77,7 +77,7 @@ class ShotDebugManager:
 
     @staticmethod
     def start():
-        if not MeticulousConfig[CONFIG_USER][DEBUG_SHOT_DATA]:
+        if not MeticulousConfig[CONFIG_USER][DEBUG_SHOT_DATA][VALUE]:
             return
 
         if ShotDebugManager._current_data is None:

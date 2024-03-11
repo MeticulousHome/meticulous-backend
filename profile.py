@@ -61,8 +61,8 @@ class ProfileManager:
         return profile
 
     def send_profile_to_esp32(data):
-        click_to_start = not MeticulousConfig[CONFIG_USER][PROFILE_AUTO_START]
-        click_to_purge = not MeticulousConfig[CONFIG_USER][PROFILE_AUTO_PURGE]
+        click_to_start = not MeticulousConfig[CONFIG_USER][PROFILE_AUTO_START][VALUE]
+        click_to_purge = not MeticulousConfig[CONFIG_USER][PROFILE_AUTO_PURGE][VALUE]
         
         logger.info(f"Streaming JSON to ESP32: click_to_start={click_to_start} click_to_purge={click_to_purge} data={json.dumps(data)}")
 

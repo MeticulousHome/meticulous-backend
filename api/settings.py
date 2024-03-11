@@ -45,7 +45,7 @@ class SettingsHandler(BaseHandler):
                 return
             setting = MeticulousConfig[CONFIG_USER].get(setting_name)
             if setting != None:
-                MeticulousConfig[CONFIG_USER][setting_name] = value
+                MeticulousConfig[CONFIG_USER][setting_name]["value"] = value
             else:
                 self.set_status(404)
                 self.write(
