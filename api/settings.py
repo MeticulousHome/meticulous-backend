@@ -32,12 +32,13 @@ class SettingsHandler(BaseHandler):
             settings = json.loads(self.request.body)
         except json.decoder.JSONDecodeError as e:
             self.set_status(403)
-            self.write({"status": "error", "error": "invalid json", "json_error": f"{e}"})
+            self.write(
+                {"status": "error", "error": "invalid json", "json_error": f"{e}"})
             return
 
         for setting_name in settings:
             value = settings.get(setting_name)
-            if value not in [True, False]:
+            if not isinstance(value, (int, bool)):
                 self.set_status(404)
                 self.write({"status": "error", "error": "setting value invalidm, expected boolean",
                            "setting": setting_name, "value": value})
