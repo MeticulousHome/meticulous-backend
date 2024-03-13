@@ -23,29 +23,29 @@ CONFIG_WIFI = "wifi"
 #
 # SYSTEM config
 #
-## GATT configuration
+# GATT configuration
 GATT_DEFAULT_NAME = "MeticulousEspresso"
 GATT_NAME = "gatt_device_name"
 
-## HTTP Authentication configuration
+# HTTP Authentication configuration
 HTTP_AUTH_KEY = "auth_key"
 HTTP_DEFAULT_AUTH_KEY = "AAAABBBBCCCCDDDEEEFFFFGGGG"
 
 HTTP_ALLOWED_NETWORKS = "always_allowed_networks"
 HTTP_DEFAULT_ALLOWED_NETWORKS = []
 
-## Notification Logic
+# Notification Logic
 NOTIFICATION_KEEPALIVE = "notifications_ttl"
 NOTIFICATION_DEFAULT_KEEPALIVE = 3600
 
 #
 # USER config
 #
-## SOUND configuration
+# SOUND configuration
 SOUNDS_ENABLED = "enable_sounds"
 SOUNDS_DEFAULT_ENABLED = True
 
-## Firmware pinning
+# Firmware pinning
 DISALLOW_FIRMWARE_FLASHING = "disallow_firmware_flashing"
 DISALLOW_FIRMWARE_FLASHING_DEFAULT = False
 
@@ -56,23 +56,26 @@ PROFILE_AUTO_START = "auto_start_shot"
 PROFILE_AUTO_START_DEFAULT = True
 PROFILE_AUTO_PURGE = "auto_purge_after_shot"
 PROFILE_AUTO_PURGE_DEFAULT = True
+PROFILE_AUTO_PREHEAT = 'auto_preheat'
+PROFILE_AUTO_PREHEAT_DEFAULT = 0
+
 
 #
 # LOGGING config
 #
-## Should all formated messages (sensors, data, ESPInfo, etc...) be logged
+# Should all formated messages (sensors, data, ESPInfo, etc...) be logged
 LOGGING_SENSOR_MESSAGES = "log_all_sensor_messages"
 LOGGING_DEFAULT_SENSOR_MESSAGES = False
 
 #
 # WIFI related config items
 #
-## Wifi Config items
+# Wifi Config items
 WIFI_MODE = "mode"
 WIFI_MODE_AP = "AP"
 WIFI_MODE_CLIENT = "CLIENT"
 
-## Wifi access point configuration
+# Wifi access point configuration
 WIFI_AP_NAME = "APName"
 WIFI_DEFAULT_AP_NAME = "MeticulousEspresso"
 WIFI_AP_PASSWORD = "APPassword"
@@ -84,17 +87,18 @@ DefaultConfiguration_V1 = {
     CONFIG_LOGGING: {
         LOGGING_SENSOR_MESSAGES: LOGGING_DEFAULT_SENSOR_MESSAGES
     },
-    CONFIG_SYSTEM : {
+    CONFIG_SYSTEM: {
         HTTP_AUTH_KEY: HTTP_DEFAULT_AUTH_KEY,
         HTTP_ALLOWED_NETWORKS: HTTP_DEFAULT_ALLOWED_NETWORKS,
         NOTIFICATION_KEEPALIVE: NOTIFICATION_DEFAULT_KEEPALIVE,
     },
-    CONFIG_USER:{
+    CONFIG_USER: {
         SOUNDS_ENABLED: SOUNDS_DEFAULT_ENABLED,
         DISALLOW_FIRMWARE_FLASHING: DISALLOW_FIRMWARE_FLASHING_DEFAULT,
         DEBUG_SHOT_DATA: DEBUG_SHOT_DATA_DEFAULT,
         PROFILE_AUTO_START: PROFILE_AUTO_START_DEFAULT,
         PROFILE_AUTO_PURGE: PROFILE_AUTO_PURGE_DEFAULT,
+        PROFILE_AUTO_PREHEAT: PROFILE_AUTO_PREHEAT_DEFAULT
     },
     CONFIG_WIFI: {
         WIFI_MODE: WIFI_MODE_AP,
@@ -173,14 +177,16 @@ class MeticulousConfigDict(dict):
                     disk_config = yaml.safe_load(f)
                     disk_version = disk_config.get("version")
                     if disk_version is not None and disk_version > self["version"]:
-                        _config_logger.warning("Config on disk is newer than this software")
+                        _config_logger.warning(
+                            "Config on disk is newer than this software")
                     merge(self, disk_config)
                     _config_logger.info("Successfully loaded config from disk")
                     self.__configError = False
                 except Exception as e:
                     _config_logger.warning(f"Failed to load config: {e}")
                     basename, extension = os.path.splitext(self.__path)
-                    backup_path = basename + "_broken_" +  datetime.now().strftime("%Y_%m_%d_%H_%M_%S") +extension
+                    backup_path = basename + "_broken_" + \
+                        datetime.now().strftime("%Y_%m_%d_%H_%M_%S") + extension
                     os.rename(self.__path, backup_path)
                     self.__configError = True
                 self.save()
@@ -192,7 +198,8 @@ class MeticulousConfigDict(dict):
                 self.copy(), f, default_flow_style=False, allow_unicode=True)
 
         if self.__sio:
-            loop = asyncio.get_event_loop() if asyncio.get_event_loop().is_running() else asyncio.new_event_loop()
+            loop = asyncio.get_event_loop() if asyncio.get_event_loop(
+            ).is_running() else asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
 
             async def sendSettingsNotification():
@@ -204,4 +211,5 @@ class MeticulousConfigDict(dict):
                 asyncio.create_task(sendSettingsNotification())
 
 
-MeticulousConfig = MeticulousConfigDict(os.path.join(CONFIG_PATH, "config.yml"), DefaultConfiguration_V1)
+MeticulousConfig = MeticulousConfigDict(os.path.join(
+    CONFIG_PATH, "config.yml"), DefaultConfiguration_V1)
