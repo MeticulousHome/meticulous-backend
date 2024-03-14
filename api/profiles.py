@@ -31,13 +31,18 @@ class SaveProfileHandler(BaseHandler):
 
 class LoadProfileHandler(BaseHandler):
     def get(self, profile_id):
-        data = ProfileManager.get_profile(profile_id)
-        if data:
-            profile = ProfileManager.load_profile(profile_id)
-            self.write({"name": profile["name"], "id": profile["id"]})
-        else:
-            self.set_status(404)
-            self.write({"status":"error", "error": "profile not found", "id":profile_id})
+        try:
+            data = ProfileManager.get_profile(profile_id)
+            if data:
+                profile = ProfileManager.load_profile_and_send(profile_id)
+                self.write({"name": profile["name"], "id": profile["id"]})
+            else:
+                self.set_status(404)
+                self.write({"status":"error", "error": "profile not found", "id":profile_id})
+        except Exception as e:
+            self.set_status(400)
+            self.write({"status":"error", "error": f"failed to load profile {e}"})
+            logger.warning("Failed to execute profile in place:", exc_info=e, stack_info=True)
 
     
     def post(self):
@@ -47,7 +52,7 @@ class LoadProfileHandler(BaseHandler):
             self.write({"name": profile["name"], "id": profile["id"]})
         except Exception as e:
             self.set_status(400)
-            self.write({"status":"error", "error": "failed to load temporary profile"})
+            self.write({"status":"error", "error": f"failed to load profile {e}"})
             logger.warning("Failed to execute profile in place:", exc_info=e, stack_info=True)
 
 

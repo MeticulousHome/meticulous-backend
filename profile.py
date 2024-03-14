@@ -1,15 +1,15 @@
-import os
 import json
-import uuid
+import os
 import time
-
-from config import *
+import uuid
 
 from log import MeticulousLogger
-from profile_converter.profile_converter import ComplexProfileConverter
 from machine import Machine
-
 from modes.italian_1_0.italian_1_0 import generate_italian_1_0
+from profile_converter.profile_converter import ComplexProfileConverter
+from profile_preprocessor import ProfilePreprocessor
+
+from config import *
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -57,7 +57,7 @@ class ProfileManager:
         logger.info(ProfileManager._known_profiles.get(id))
         return ProfileManager._known_profiles.get(id)
 
-    def load_profile(id):
+    def load_profile_and_send(id):
         profile = ProfileManager._known_profiles.get(id)
         if profile is not None:
             ProfileManager.send_profile_to_esp32(profile)
@@ -85,12 +85,14 @@ class ProfileManager:
             Machine.send_json_with_hash(profile)
             return data
 
-        logger.info("loading simplified profile")
+        logger.info("processing simplified profile")
+        preprocessed_profile = ProfilePreprocessor.processVariables(data)
+
         logger.info(
-            f"Streaming JSON to ESP32: click_to_start={click_to_start} click_to_purge={click_to_purge} data={json.dumps(data)}")
+            f"Streaming JSON to ESP32: click_to_start={click_to_start} click_to_purge={click_to_purge} data={json.dumps(preprocessed_profile)}")
 
         converter = ComplexProfileConverter(
-            click_to_start, click_to_purge, 1000, 7000, data)
+            click_to_start, click_to_purge, 1000, 7000, preprocessed_profile)
         profile = converter.get_profile()
         Machine.send_json_with_hash(profile)
         return data
