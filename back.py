@@ -123,7 +123,7 @@ def msg(sid, data=True):
 
 @sio.on('feed_profile')
 async def feed_profile(sid, data):
-    logger.info("Received JSON:", data)  # Print the received JSON data
+    logger.info(f"Received JSON: {data}")  # Print the received JSON data
     # Deserialize the JSON
     obj = json.loads(data)
     # Extract and print the value of "kind"
