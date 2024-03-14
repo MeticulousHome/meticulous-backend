@@ -1,3 +1,8 @@
+import os
+from jsonschema import validate, ValidationError
+import json
+
+from config import CONFIG_PATH
 
 from log import MeticulousLogger
 
@@ -21,8 +26,44 @@ class FormatException(Exception):
     pass
 
 
+SCHEMA_FILENAME = "schema.json"
+
 
 class ProfilePreprocessor:
+
+    _json_schema = None
+    _json_schema_last_modified = None
+
+    @staticmethod
+    def _load_and_cache_json_schema():
+        """Loads the JSON schema from disk if it's not loaded or if it has been updated since the last load."""
+
+        schema_path = os.path.join(CONFIG_PATH, SCHEMA_FILENAME)
+
+        # Check if the schema file has been modified since last loaded
+        try:
+            last_modified = os.path.getmtime(schema_path)
+            if ProfilePreprocessor._json_schema is None or last_modified > ProfilePreprocessor._json_schema_last_modified:
+                with open(schema_path, 'r') as schema_file:
+                    ProfilePreprocessor._json_schema = json.load(schema_file)
+                    ProfilePreprocessor._json_schema_last_modified = last_modified
+        except OSError as e:
+            logger.warning(f"Error loading JSON schema: {e}")
+
+    @staticmethod
+    def validateJSON(json_data):
+        ProfilePreprocessor._load_and_cache_json_schema()
+        if ProfilePreprocessor._json_schema is None:
+            logger.error(
+                "JSON schema couldn't be loaded. Skipping (this is bad!)")
+            return
+
+        try:
+            validate(instance=json_data,
+                     schema=ProfilePreprocessor._json_schema)
+        except ValidationError as e:
+            raise FormatException(f"Validation error: {e.message}")
+
     @staticmethod
     def _replace_variable(value_or_variable, expected_type, variables_map):
         """Checks and replaces variables in points with their values, ensuring type correctness."""
