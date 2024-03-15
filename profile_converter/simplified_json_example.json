@@ -47,16 +47,19 @@
                 {
                     "type": "weight",
                     "value": 5,
-                    "relative": false
+                    "relative": false,
+                    "comparison": "<="
                 },
                 {
                     "type": "piston_position",
                     "value": 40,
-                    "relative": true
+                    "relative": true,
+                    "comparison": ">="
                 }, 
                 {
                     "type": "temperature",
-                    "value": 150
+                    "value": 150,
+                    "comparison": "<="
                 }
             ],
             "limits": [
@@ -96,16 +99,19 @@
                 {
                     "type": "weight",
                     "value": 35,
-                    "relative": false
+                    "relative": false,
+                    "comparison": "<="
                 },
                 {
                     "type": "flow",
-                    "value": 15
+                    "value": 15,
+                    "comparison": "<="
                 },
                 {
                     "type": "time",
                     "value": 50,
-                    "relative": true
+                    "relative": true,
+                    "comparison": ">="
                 }
             ],
             "limits": [
