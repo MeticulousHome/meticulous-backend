@@ -48,9 +48,11 @@ class SimplifiedJson:
         current_reference_id += 1
         return current_reference_id - 1
     
-    def set_comparison_type(exits, key="comparison", default_comparison=TriggerOperatorType.GREATER_THAN_OR_EQUAL):
+    def set_comparison_type(comparison_value=None, default_comparison=TriggerOperatorType.GREATER_THAN_OR_EQUAL):
 
-        comparison_value = exits.get(key, default_comparison)
+        if comparison_value is None:
+            comparison_value = default_comparison
+            print(f"Comparison value is None. Using default value: {default_comparison}.")
 
         
         if comparison_value == ">=":
@@ -58,9 +60,8 @@ class SimplifiedJson:
         elif comparison_value == "<=":
             comparison = TriggerOperatorType.LESS_THAN_OR_EQUAL
         else:
-        
             comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
-            print(f"Comparison value '{comparison_value}' not recognized. Using default value: {default_comparison}.")
+            print(f"Comparison: {comparison_value} not supported. Using default value: >= .")
 
         return comparison
     
