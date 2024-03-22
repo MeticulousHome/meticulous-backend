@@ -48,6 +48,22 @@ class SimplifiedJson:
         current_reference_id += 1
         return current_reference_id - 1
     
+    def set_comparison_type(exits, key="comparison", default_comparison=TriggerOperatorType.GREATER_THAN_OR_EQUAL):
+
+        comparison_value = exits.get(key, default_comparison)
+
+        
+        if comparison_value == ">=":
+            comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
+        elif comparison_value == "<=":
+            comparison = TriggerOperatorType.LESS_THAN_OR_EQUAL
+        else:
+        
+            comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
+            print(f"Comparison value '{comparison_value}' not recognized. Using default value: {default_comparison}.")
+
+        return comparison
+    
     def to_complex(self, end_node_head: int, init_node_tail: int):
         global current_node_id
         global current_curve_id
@@ -137,14 +153,8 @@ class SimplifiedJson:
                             reference_id = init_node.get_time_id()
                         else:
                             reference_id = 4
-                        if exits["comparison"] == ">=":
-                            comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
-                        elif exits["comparison"] == "<=":
-                            comparison = TriggerOperatorType.LESS_THAN_OR_EQUAL
-                        else:
-                            comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
-                            print(f"Comparison: {exits['comparison']} not found. Using default value: >= .")
-                        exit_trigger = TimerTrigger(TriggerOperatorType.GREATER_THAN_OR_EQUAL, exit_trigger_value, reference_id, next_stage_node_id)
+                        time_comparison = self.set_comparison_type(exits)
+                        exit_trigger = TimerTrigger(time_comparison, exit_trigger_value, reference_id, next_stage_node_id)
                         exit_triggers.append(exit_trigger.get_trigger())
                         # print(F"Next Stage Node ID after match: {next_stage_node_id} from the stage {stage_name}")
     
@@ -154,38 +164,20 @@ class SimplifiedJson:
                             reference_id = init_node.get_weight_id()
                         else:
                             reference_id = 1
-                        if exits["comparison"] == ">=":
-                            comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
-                        elif exits["comparison"] == "<=":
-                            comparison = TriggerOperatorType.LESS_THAN_OR_EQUAL
-                        else:
-                            comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
-                            print(f"Comparison: {exits['comparison']} not found. Using default value: >= .")
-                        exit_trigger = WeightTrigger(SourceType.RAW, comparison, exit_trigger_value, reference_id, next_stage_node_id)
+                        weight_comparison = self.set_comparison_type(exits)
+                        exit_trigger = WeightTrigger(SourceType.RAW, weight_comparison, exit_trigger_value, reference_id, next_stage_node_id)
                         exit_triggers.append(exit_trigger.get_trigger())
                         
                     case "pressure":
-                        if exits["comparison"] == ">=":
-                            comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
-                        elif exits["comparison"] == "<=":
-                            comparison = TriggerOperatorType.LESS_THAN_OR_EQUAL
-                        else:
-                            comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
-                            print(f"Comparison: {exits['comparison']} not found. Using default value: >= .")
+                        pressure_comparison = self.set_comparison_type(exits)
                         exit_trigger_value = exits["value"]
-                        exit_trigger = PressureValueTrigger(SourceType.RAW, comparison, exit_trigger_value, next_stage_node_id)
+                        exit_trigger = PressureValueTrigger(SourceType.RAW, pressure_comparison, exit_trigger_value, next_stage_node_id)
                         exit_triggers.append(exit_trigger.get_trigger())
                     
                     case "flow":    
-                        if exits["comparison"] == ">=":
-                            comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
-                        elif exits["comparison"] == "<=":
-                            comparison = TriggerOperatorType.LESS_THAN_OR_EQUAL
-                        else:
-                            comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
-                            print(f"Comparison: {exits['comparison']} not found. Using default value: >= .")
+                        flow_comparison = self.set_comparison_type(exits)
                         exit_trigger_value = exits["value"]
-                        exit_trigger = FlowValueTrigger(SourceType.RAW, comparison, exit_trigger_value, next_stage_node_id)
+                        exit_trigger = FlowValueTrigger(SourceType.RAW, flow_comparison, exit_trigger_value, next_stage_node_id)
                         exit_triggers.append(exit_trigger.get_trigger())
                         
                     case "piston_position":
@@ -194,38 +186,20 @@ class SimplifiedJson:
                             reference_id = init_node.get_position_id()
                         else:
                             reference_id = 0
-                        if exits["comparison"] == ">=":
-                            comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
-                        elif exits["comparison"] == "<=":
-                            comparison = TriggerOperatorType.LESS_THAN_OR_EQUAL
-                        else:
-                            comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
-                            print(f"Comparison: {exits['comparison']} not found. Using default value: >= .")
-                        exit_trigger = PistonPositionTrigger(comparison, exit_trigger_value, reference_id, next_stage_node_id)
+                        piston_position_comparison = self.set_comparison_type(exits)
+                        exit_trigger = PistonPositionTrigger(piston_position_comparison, exit_trigger_value, reference_id, next_stage_node_id)
                         exit_triggers.append(exit_trigger.get_trigger())
                         
                     case "power":
-                        if exits["comparison"] == ">=":
-                            comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
-                        elif exits["comparison"] == "<=":
-                            comparison = TriggerOperatorType.LESS_THAN_OR_EQUAL
-                        else:
-                            comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
-                            print(f"Comparison: {exits['comparison']} not found. Using default value: >= .")
+                        power_comparison = self.set_comparison_type(exits)
                         exit_trigger_value = exits["value"]
-                        exit_trigger = PowerValueTrigger(SourceType.RAW, comparison, exit_trigger_value, next_stage_node_id)
+                        exit_trigger = PowerValueTrigger(SourceType.RAW, power_comparison, exit_trigger_value, next_stage_node_id)
                         exit_triggers.append(exit_trigger.get_trigger())
                         
                     case "temperature":
-                        if exits["comparison"] == ">=":
-                            comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
-                        elif exits["comparison"] == "<=":
-                            comparison = TriggerOperatorType.LESS_THAN_OR_EQUAL
-                        else:
-                            comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
-                            print(f"Comparison: {exits['comparison']} not found. Using default value: >= .")
+                        temperature_comparison = self.set_comparison_type(exits)
                         exit_trigger_value = exits["value"]
-                        exit_trigger = TemperatureValueTrigger(TemperatureSourceType.WATER, comparison, exit_trigger_value, next_stage_node_id)
+                        exit_trigger = TemperatureValueTrigger(TemperatureSourceType.WATER, temperature_comparison, exit_trigger_value, next_stage_node_id)
                         exit_triggers.append(exit_trigger.get_trigger())
                     case _:
                         print(f"Exit type: {exits['type']} not found.")
