@@ -15,7 +15,7 @@ class ComplexProfileConverter:
         self.init_node_tail = init_node_tail
         self.complex = SimplifiedJson(self.parameters)
         self.temperature = self.complex.get_temperature() 
-        self.offset_temperature = 1
+        self.offset_temperature = 2
         
     def head_template(self):
         if self.click_to_start:
@@ -280,7 +280,13 @@ class ComplexProfileConverter:
                         {
                             "kind": "exit",
                             "next_node_id": 8
-                        } 
+                        },
+                        {
+                            "kind": "button_trigger",
+                            "next_node_id": self.head_next_node_id,
+                            "gesture": "Single Tap",
+                            "source": "Encoder Button"
+                        }
                     ]
                 },
                 {
