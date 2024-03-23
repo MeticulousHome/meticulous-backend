@@ -20,9 +20,9 @@ class ComplexProfileConverter:
         
     def head_template(self):
         if self.click_to_start:
-            self.head_next_node_id = 16
+            self.head_next_node_id = 13
         else:
-            self.head_next_node_id = 17
+            self.head_next_node_id = 13
         self.stages_head = [
         {
             "name": "purge",
@@ -348,6 +348,23 @@ class ComplexProfileConverter:
                     ]
                 } 
             ]        
+        },
+        {
+            "name": "click encoder",
+            "nodes": [
+                {
+                    "id": 13,
+                    "controllers": [],
+                    "triggers": [
+                        {
+                            "kind": "button_trigger",
+                            "next_node_id": 7,
+                            "gesture": "Single Tap",
+                            "source": "Encoder Button"
+                        }
+                    ]
+                }
+            ]
         },
         {
             "name": "click to start",
