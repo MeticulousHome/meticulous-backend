@@ -258,7 +258,7 @@ class ComplexProfileConverter:
                     },
                     {
                         "kind": "button_trigger",
-                        "next_node_id": 5,
+                        "next_node_id": 7,
                         "gesture": "Single Tap",
                         "source": "Encoder Button"
                     }
