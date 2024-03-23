@@ -358,7 +358,7 @@ class ComplexProfileConverter:
                     "triggers": [
                         {
                             "kind": "button_trigger",
-                            "next_node_id": 7,
+                            "next_node_id": 5,
                             "gesture": "Single Tap",
                             "source": "Encoder Button"
                         }
