@@ -333,6 +333,20 @@ class ComplexProfileConverter:
                             "value": self.temperature - self.offset_temperature 
                         },
                         {
+                            "kind": "temperature_value_trigger",
+                            "next_node_id": self.head_next_node_id,
+                            "source": "Water Temperature",
+                            "operator": "<=",
+                            "value": self.temperature - self.offset_temperature_tolerance 
+                        },
+                        {
+                            "kind": "temperature_value_trigger",
+                            "next_node_id": self.head_next_node_id,
+                            "source": "Water Temperature",
+                            "operator": "<=",
+                            "value": self.temperature + self.offset_temperature_tolerance 
+                        },
+                        {
                             "kind": "button_trigger",
                             "next_node_id": self.head_next_node_id,
                             "gesture": "Single Tap",
