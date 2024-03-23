@@ -333,35 +333,9 @@ class ComplexProfileConverter:
                             "value": self.temperature - self.offset_temperature 
                         },
                         {
-                            "kind": "temperature_value_trigger",
-                            "next_node_id": self.head_next_node_id,
-                            "source": "Water Temperature",
-                            "operator": "<=",
-                            "value": self.temperature - self.offset_temperature_tolerance 
-                        },
-                        {
-                            "kind": "temperature_value_trigger",
-                            "next_node_id": self.head_next_node_id,
-                            "source": "Water Temperature",
-                            "operator": ">=",
-                            "value": self.temperature + self.offset_temperature_tolerance 
-                        },
-                        {
-                            "kind": "button_trigger",
-                            "next_node_id": self.head_next_node_id,
-                            "gesture": "Single Tap",
-                            "source": "Encoder Button"
-                        }
-                    ]
-                },
-                {
-                    "id": 10,
-                    "controllers": [],
-                    "triggers": [
-                        {
                             "kind": "timer_trigger",
                             "timer_reference_id": 5,
-                            "next_node_id": 7,
+                            "next_node_id": self.head_next_node_id,
                             "operator": ">=",
                             "value": 5
                         },
