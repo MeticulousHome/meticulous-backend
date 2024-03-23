@@ -15,6 +15,7 @@ class ComplexProfileConverter:
         self.init_node_tail = init_node_tail
         self.complex = SimplifiedJson(self.parameters)
         self.temperature = self.complex.get_temperature() 
+        self.offset_temperature = 1
         
     def head_template(self):
         if self.click_to_start:
@@ -242,7 +243,7 @@ class ComplexProfileConverter:
                 "triggers": [
                     {
                         "kind": "temperature_value_trigger",
-                        "next_node_id": self.head_next_node_id,
+                        "next_node_id": 7,
                         "source": "Water Temperature",
                         "operator": ">=",
                         "value": self.temperature 
@@ -256,13 +257,66 @@ class ComplexProfileConverter:
                     },
                     {
                         "kind": "button_trigger",
-                        "next_node_id": self.head_next_node_id,
+                        "next_node_id": 7,
                         "gesture": "Single Tap",
                         "source": "Encoder Button"
                     }
                 ]
                 }
             ]
+        },
+        {
+            "name": "heating",
+            "nodes": [
+                {
+                    "id": 7,
+                    "controllers": [
+                        {
+                            "kind": "time_reference",
+                            "id": 5
+                        } 
+                    ],
+                    "triggers": [
+                        {
+                            "kind": "exit",
+                            "next_node_id": 8
+                        } 
+                    ]
+                },
+                {
+                    "id": 8,
+                    "controllers": [],
+                    "triggers": [
+                        {
+                            "kind": "temperature_value_trigger",
+                            "next_node_id": 7,
+                            "source": "Water Temperature",
+                            "operator": ">=",
+                            "value": self.temperature + self.offset_temperature 
+                        },
+                        {
+                            "kind": "temperature_value_trigger",
+                            "next_node_id": 7,
+                            "source": "Water Temperature",
+                            "operator": "<=",
+                            "value": self.temperature - self.offset_temperature 
+                        },
+                        {
+                            "kind": "timer_trigger",
+                            "timer_reference_id": 5,
+                            "next_node_id": self.head_next_node_id,
+                            "operator": ">=",
+                            "value": 5
+                        },
+                        {
+                            "kind": "button_trigger",
+                            "next_node_id": self.head_next_node_id,
+                            "gesture": "Single Tap",
+                            "source": "Encoder Button"
+                        }
+                    ]
+                } 
+            ]        
         },
         {
             "name": "click to start",
