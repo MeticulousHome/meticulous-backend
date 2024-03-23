@@ -244,7 +244,7 @@ class ComplexProfileConverter:
                 "triggers": [
                     {
                         "kind": "temperature_value_trigger",
-                        "next_node_id": 7,
+                        "next_node_id": 5,
                         "source": "Water Temperature",
                         "operator": ">=",
                         "value": self.temperature - self.offset_temperature
@@ -258,7 +258,7 @@ class ComplexProfileConverter:
                     },
                     {
                         "kind": "button_trigger",
-                        "next_node_id": 7,
+                        "next_node_id": 5,
                         "gesture": "Single Tap",
                         "source": "Encoder Button"
                     }
