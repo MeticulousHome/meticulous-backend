@@ -243,7 +243,7 @@ class ComplexProfileConverter:
                 "triggers": [
                     {
                         "kind": "temperature_value_trigger",
-                        "next_node_id": 7,
+                        "next_node_id": 5,
                         "source": "Water Temperature",
                         "operator": ">=",
                         "value": self.temperature 
@@ -257,7 +257,7 @@ class ComplexProfileConverter:
                     },
                     {
                         "kind": "button_trigger",
-                        "next_node_id": 7,
+                        "next_node_id": 5,
                         "gesture": "Single Tap",
                         "source": "Encoder Button"
                     }
@@ -269,6 +269,27 @@ class ComplexProfileConverter:
             "name": "heating",
             "nodes": [
                 {
+                    "id": 5,
+                    "controllers": [
+                        {
+                            "kind": "time_reference",
+                            "id": 3
+                        }    
+                    ],
+                    "triggers": [
+                        {
+                            "kind": "exit",
+                            "next_node_id": 7
+                        },
+                        {
+                            "kind": "button_trigger",
+                            "next_node_id": self.head_next_node_id,
+                            "gesture": "Single Tap",
+                            "source": "Encoder Button"
+                        }
+                    ]   
+                },
+                {
                     "id": 7,
                     "controllers": [
                         {
@@ -278,8 +299,11 @@ class ComplexProfileConverter:
                     ],
                     "triggers": [
                         {
-                            "kind": "exit",
-                            "next_node_id": 8
+                            "kind": "timer_trigger",
+                            "timer_reference_id": 3,
+                            "next_node_id": 8,
+                            "operator": ">=",
+                            "value": 1
                         },
                         {
                             "kind": "button_trigger",

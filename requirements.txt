@@ -4,8 +4,8 @@ esptool==4.6.2
 gpiod==1.5.4
 mergedeep==1.3.4
 netaddr==0.9.0
-nmcli
-psutil
+nmcli==1.0.2
+psutil==5.8.0
 packaging==23.2
 pyImprov @ git+https://github.com/Mimoja/pyImprov@main
 pypng==0.20220715.0
