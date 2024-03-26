@@ -140,6 +140,14 @@ class Machine:
                 data = None
                 info = None
 
+                if "##Encoder button pressed##" in data_str:
+                    string_event = '{"type": "ENCODER_PRESSED", "time_since_last_event": 0}'
+                    await Machine._sio.emit("button", string_event)
+
+                if "##Encoder button released##" in data_str:
+                    string_event = '{"type": "ENCODER_RELEASED", "time_since_last_event": 0}'
+                    await Machine._sio.emit("button", string_event)
+
                 if data_str.startswith("rst:0x") and "boot:0x16 (SPI_FAST_FLASH_BOOT)" in data_str:
                     Machine.reset_count += 1
                     Machine.startTime = time.time()
