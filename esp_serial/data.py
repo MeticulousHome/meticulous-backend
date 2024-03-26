@@ -74,6 +74,7 @@ class SensorData:
                 adc_3=safeFloat(args[17]),
                 water_status=args[18].lower() == 'true',
             )
+            print(data)
         except Exception as e:
             logger.warning(f"Failed to parse SensorData: {args}", exc_info=e)
             return None
