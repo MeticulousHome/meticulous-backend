@@ -183,7 +183,10 @@ async def live():
             Machine.action("info")
 
         await sio.emit("status", {**Machine.data_sensors.to_sio()})
-        await sio.emit("warter_status", Machine.sensor_sensors.to_sio_water_status())
+        
+        water_status_dict = Machine.sensor_sensors.to_sio_water_status()
+        water_status_value = water_status_dict["water_status"]
+        await sio.emit("water_status", water_status_value)
 
         if sendInfoToFront:
             if Machine.sensor_sensors is not None:
