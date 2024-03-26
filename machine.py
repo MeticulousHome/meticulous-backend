@@ -133,7 +133,6 @@ class Machine:
                     logger.info(data_str.strip("\r\n"))
 
                 data_str_sensors = data_str.strip("\r\n").split(',')
-                # print(data_str_sensors)
 
                 # potential message types
                 button_event = None
