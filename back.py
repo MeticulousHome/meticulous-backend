@@ -278,6 +278,10 @@ async def send_data():
             await sio.emit("button", ButtonEventData.from_args(["ta_l"]).to_sio())
         elif _input == "ta_sl":
             await sio.emit("button", ButtonEventData.from_args(["ta_sl"]).to_sio())
+        elif _input == "pr":
+            await sio.emit("button", ButtonEventData.from_args(["encoder_button_pressed"]).to_sio())
+        elif _input == "re":
+            await sio.emit("button", ButtonEventData.from_args(["encoder_button_released"]).to_sio())
 
 def main():
     global data_thread
