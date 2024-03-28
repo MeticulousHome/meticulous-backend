@@ -5,7 +5,7 @@ import uuid
 
 from log import MeticulousLogger
 from machine import Machine
-from modes.italian_1_0.italian_1_0 import generate_italian_1_0
+from modes.italian_1_0.italian_1_0 import generate_italian_1_0, convert_italian_json
 from profile_converter.profile_converter import ComplexProfileConverter
 from profile_preprocessor import ProfilePreprocessor
 
@@ -80,8 +80,10 @@ class ProfileManager:
             data["automatic_purge"] = not click_to_purge
             data["preheat"] = click_to_start
             logger.info(data)
-            json_result = generate_italian_1_0(data)
-            profile = json.loads(json_result)
+            json_result = convert_italian_json(data)
+            converter = ComplexProfileConverter(
+                click_to_start, click_to_purge, 1000, 7000, json_result)
+            profile = converter.get_profile()
             Machine.send_json_with_hash(profile)
             return data
 

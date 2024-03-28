@@ -1,11 +1,11 @@
 import json
 from .prepurge_stage import get_prepurge_stage as get_prepurge_stage
+from .water_detection import get_water_detection_stage as get_water_detection_stage
 from .heating_stage import get_heating_stage as get_heating_stage
 from .retracting_stage import get_retracting_stage as get_retracting_stage
 from .closing_valve_stage import get_closing_valve_stage as get_closing_valve_stage
 from .preinfusion_stage import get_preinfusion_stage as get_preinfusion_stage
 from .infusion_stage import get_infusion_stage as get_infusion_stage
-from .idle_stage import get_idle_stage as get_idle_stage
 from .retracting_2_stage import get_retracting_2_stage as get_retracting_2_stage
 from .remove_cup_stage import get_remove_cup_stage as get_remove_cup_stage
 from .end_purge_stage import get_end_purge_stage as get_end_purge_stage
@@ -17,6 +17,8 @@ def get_stages(parameters: json):
     final_node = -2
 
     prepurge_stage = get_prepurge_stage(parameters, initial_node, current_stage)
+    water_detection_stage = get_water_detection_stage(parameters, current_stage, current_stage + 1)
+    current_stage += 1
     heating_stage = get_heating_stage(parameters, current_stage, current_stage + 1)
     current_stage += 1
     retracting_stage = get_retracting_stage(parameters, current_stage, current_stage + 1)
@@ -28,8 +30,6 @@ def get_stages(parameters: json):
         current_stage += 1
     infusion_stage = get_infusion_stage(parameters, current_stage, current_stage + 1)
     current_stage += 1
-    idle_stage = get_idle_stage(parameters, current_stage, current_stage + 1)
-    current_stage += 1
     retracting_2_stage = get_retracting_2_stage(parameters, current_stage, final_node if not parameters["automatic_purge"] else current_stage + 1)
     current_stage += 1
     if (parameters["automatic_purge"]):
@@ -39,13 +39,13 @@ def get_stages(parameters: json):
         current_stage += 1
 
     stages.append(prepurge_stage)
+    stages.append(water_detection_stage)
     stages.extend(heating_stage if isinstance(heating_stage, list) else [heating_stage])
     stages.append(retracting_stage)
     stages.append(closing_valve_stage)
     if (parameters["preinfusion"]):
         stages.append(preinfusion_stage)
     stages.append(infusion_stage)
-    stages.append(idle_stage)
     stages.append(retracting_2_stage)
     if (parameters["automatic_purge"]):
         stages.append(remove_cup_stage)
