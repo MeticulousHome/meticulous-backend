@@ -14,7 +14,7 @@ def get_prepurge_stage(parameters: json,start_node: int, end_node: int):
                         "position_reference_id": 0,
                         "operator": ">=",
                         "value": 78,
-                        "next_node_id": 5,
+                        "next_node_id": end_node,
                         "source": "Piston Position Raw"
                     },
                     {
@@ -29,7 +29,7 @@ def get_prepurge_stage(parameters: json,start_node: int, end_node: int):
                         "kind": "button_trigger",
                         "source": "Encoder Button",
                         "gesture": "Single Tap",
-                        "next_node_id": 5
+                        "next_node_id": end_node
                     }
                 ]
             },
@@ -61,13 +61,13 @@ def get_prepurge_stage(parameters: json,start_node: int, end_node: int):
                         "source": "Piston Position Raw",
                         "operator": ">=",
                         "value": 78,
-                        "next_node_id": 5
+                        "next_node_id": end_node
                     },
                     {
                         "kind": "button_trigger",
                         "source": "Encoder Button",
                         "gesture": "Single Tap",
-                        "next_node_id": 5
+                        "next_node_id": end_node
                     }
                 ]
             },
@@ -97,113 +97,22 @@ def get_prepurge_stage(parameters: json,start_node: int, end_node: int):
                         "source": "Piston Position Raw",
                         "operator": ">=",
                         "value": 78,
-                        "next_node_id": 5
+                        "next_node_id": end_node
                     },
                     {
                         "kind": "button_trigger",
                         "source": "Encoder Button",
                         "gesture": "Single Tap",
-                        "next_node_id": 5
+                        "next_node_id": end_node
                     }
                 ]
             },
         ]
     }
     
-    # This code is ready when water detection will be implemented
-    
-    #     water_detection_node = {
-    #     "id": 5,
-    #     "controllers": [
-    #         {
-    #             "kind": "time_reference",
-    #             "id": 2
-    #         }
-    #     ],
-    #     "triggers": [
-    #         {
-    #             "kind": "water_detection_trigger",
-    #             "value": True,
-    #             "next_node_id": 7
-    #         },
-    #         {
-    #             "kind": "timer_trigger",
-    #             "timer_reference_id": 2,
-    #             "operator": ">=",
-    #             "value": 100,
-    #             "next_node_id": 6
-    #         }
-    #     ]
-    # }
-        
-    water_detection_node = {
-                "id": 5,
-                "controllers": [
-                    {
-                        "kind": "time_reference",
-                        "id": 2
-                    },
-                    {
-                        "kind": "move_piston_controller",
-                        "algorithm": "Piston Ease-In",
-                        "direction": "DOWN",
-                        "speed": 0.0
-                    }
-                ],
-                "triggers": [
-                    {
-                        "kind": "water_detection_trigger",
-                        "value": True,
-                        "next_node_id": end_node
-                    },
-                ]
-            }
-    
-    no_water_node = {
-                "id": 6,
-                "controllers": [
-                    {
-                        "kind": "log_controller",
-                        "message": "No Water"
-                    }
-                ],
-                "triggers": [
-                    {
-                        "kind": "timer_trigger",
-                        "timer_reference_id": 2,
-                        "operator": ">=",
-                        "value": 2,
-                        "next_node_id": 5
-                    },
-                    {
-                        "kind": "timer_trigger",
-                        "timer_reference_id": 1,
-                        "operator": ">=",
-                        "value": 100,
-                        "next_node_id": -2
-                    }
-                ]
-    }
-    water_detection_value = water_detection_node['triggers'][0]['value']
-
-    # Set next_node_id based on the water_detection_value
-    end_node = end_node if water_detection_value else 6
-    water_detection_node['triggers'][0]['next_node_id'] = end_node
-
-    # Merge the dictionaries
-    if water_detection_value:
-        # Merge pre_purge_stage with water_detection_node
-        prepurge_stage['nodes'].append(water_detection_node)
-    else:
-        # Merge pre_purge_stage with water_detection_node and no_water_node
-        prepurge_stage['nodes'].extend([water_detection_node, no_water_node])
-
     # The merged dictionary is now in pre_purge_stage
     return prepurge_stage
     # return {}
-    
-
-
 
 if __name__ == '__main__':
   

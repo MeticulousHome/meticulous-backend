@@ -157,7 +157,7 @@ class ComplexProfileConverter:
                         "timer_reference_id": 12,
                         "next_node_id": -2,
                         "operator": ">=",
-                        "value": 100
+                        "value": 300
                     },
                     {
                         "kind": "button_trigger",
@@ -319,14 +319,14 @@ class ComplexProfileConverter:
                     "triggers": [
                         {
                             "kind": "temperature_value_trigger",
-                            "next_node_id": 7,
+                            "next_node_id": 5,
                             "source": "Water Temperature",
                             "operator": ">=",
                             "value": self.temperature + self.offset_temperature 
                         },
                         {
                             "kind": "temperature_value_trigger",
-                            "next_node_id": 7,
+                            "next_node_id": 5,
                             "source": "Water Temperature",
                             "operator": "<=",
                             "value": self.temperature - self.offset_temperature 

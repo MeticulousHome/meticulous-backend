@@ -11,8 +11,8 @@ def get_heating_stage(parameters: json, start_node: int, end_node: int):
         print('Error: temperature is not defined')
         return None
     
-    control_algorithm = "Cylinder Temperature PID v1.0" if not preheat else "Water Temperature PID v1.0"
-    temperature_algorithm = 180 if not preheat else temperature
+    control_algorithm = "Water Temperature PID v1.0"
+    temperature_algorithm = temperature
     start_node_preheat = 8 if preheat else end_node
     
     heating_stage = {
@@ -37,11 +37,7 @@ def get_heating_stage(parameters: json, start_node: int, end_node: int):
                 {
                     "kind": "position_reference",
                     "id": 5,
-                },
-                {
-                    "kind": "time_reference",
-                    "id": 20,
-                },
+                }
             ],
             "triggers": [
                 {
@@ -49,7 +45,7 @@ def get_heating_stage(parameters: json, start_node: int, end_node: int):
                     "source": "Tube Temperature",
                     "operator": ">=",
                     "value": temperature,
-                    "next_node_id": start_node_preheat,
+                    "next_node_id": 6,
                 },
                 {
                     "kind": "timer_trigger",
@@ -62,34 +58,98 @@ def get_heating_stage(parameters: json, start_node: int, end_node: int):
                     "kind": "button_trigger",
                     "source": "Encoder Button",
                     "gesture": "Single Tap",
-                    "next_node_id": start_node_preheat,
+                    "next_node_id": 6,
                 },
             ],
+            },
+            {
+                "id": 6,
+                "controllers": [
+                {
+                    "kind": "time_reference",
+                    "id": 8
+                }
+                ],
+                "triggers": [
+                {
+                    "kind": "exit",
+                    "next_node_id": 7
+                },
+                {
+                    "kind": "button_trigger",
+                    "next_node_id": start_node_preheat,
+                    "gesture": "Single Tap",
+                    "source": "Encoder Button"
+                }
+                ]
+            },
+            {
+                "id": 7,
+                "controllers": [
+                {
+                    "kind": "time_reference",
+                    "id": 9
+                }
+                ],
+                "triggers": [
+                {
+                    "kind": "timer_trigger",
+                    "timer_reference_id": 8,
+                    "next_node_id": 10,
+                    "operator": ">=",
+                    "value": 1
+                },
+                {
+                    "kind": "button_trigger",
+                    "next_node_id": start_node_preheat,
+                    "gesture": "Single Tap",
+                    "source": "Encoder Button"
+                }
+                ]
+            },
+            {
+                "id": 10,
+                "controllers": [],
+                "triggers": [
+                {
+                    "kind": "temperature_value_trigger",
+                    "next_node_id": 6,
+                    "source": "Water Temperature",
+                    "operator": ">=",
+                    "value": temperature + 2
+                },
+                {
+                    "kind": "temperature_value_trigger",
+                    "next_node_id": 6,
+                    "source": "Water Temperature",
+                    "operator": "<=",
+                    "value": temperature - 2
+                },
+                {
+                    "kind": "timer_trigger",
+                    "timer_reference_id": 9,
+                    "next_node_id": start_node_preheat,
+                    "operator": ">=",
+                    "value": 5
+                },
+                {
+                    "kind": "button_trigger",
+                    "next_node_id": start_node_preheat,
+                    "gesture": "Single Tap",
+                    "source": "Encoder Button"
+                }
+                ]
             },
         ],
     }
     
     if preheat:
         preheat_stage = {
-            "name": "press dial",
+            "name": "click to start",
             "nodes": [
                 {
                 "id": start_node_preheat,
-                "controllers": [
-                    {
-                    "kind": "temperature_controller",
-                    "algorithm": "Water Temperature PID v1.0",
-                    "curve": {
-                        "id": 1,
-                        "interpolation_kind": "linear_interpolation",
-                        "points": [[0, temperature]],
-                        "reference": {
-                            "kind": "time",
-                            "id": 2,
-                        },
-                    },
-                    },
-                ],
+                "controllers": [],
                 "triggers": [
                     {
                         "kind": "button_trigger",
