@@ -135,7 +135,7 @@ async def feed_profile(sid, data):
             logger.info(json_result)
             obj_json = json.loads(json_result) #<class 'dict'>
             Machine.send_json_with_hash(obj_json)
-            time.sleep(5)
+            await asyncio.sleep(5)
             _input = "action,"+"start"+"\x03"
             Machine.write(str.encode(_input))
             
@@ -147,7 +147,7 @@ async def feed_profile(sid, data):
                 logger.info(json_result)
                 obj_json = json.loads(json_result) #<class 'dict'>
                 Machine.send_json_with_hash(obj_json)
-                time.sleep(5)
+                await asyncio.sleep(5)
                 _input = "action,"+"start"+"\x03"
                 Machine.write(str.encode(_input))
                 logger.info("Se envio start")
@@ -242,11 +242,11 @@ async def send_data():
             for i in range(0,10):
                 _input = "action,"+"purge"+"\x03"
                 Machine.write(str.encode(_input))
-                time.sleep(15)
+                await asyncio.sleep(15)
                 logger.info(_input)
                 _input = "action,"+"home"+"\x03"
                 Machine.write(str.encode(_input))
-                time.sleep(15)
+                await asyncio.sleep(15)
                 contador = "Numero de prueba: "+str(i+1)
                 logger.info(_input)
                 logger.info(contador)
