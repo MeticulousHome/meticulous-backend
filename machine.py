@@ -116,7 +116,7 @@ class Machine:
         Machine.startTime = time.time()
         while True:
             if Machine._stopESPcomm:
-                time.sleep(0.1)
+                await asyncio.sleep(0.1)
                 Machine.startTime = time.time()
                 continue
 

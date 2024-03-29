@@ -141,7 +141,7 @@ class GATTServer:
             logger.info(
                 f"GattServer started to fast after system boot. Waiting {uptime_missing} seconds"
             )
-            time.sleep(uptime_missing)
+            await asyncio.sleep(uptime_missing)
 
         if self.bless_gatt_server is None:
             self.bless_gatt_server = BlessServer(
