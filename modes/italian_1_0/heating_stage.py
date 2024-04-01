@@ -14,6 +14,7 @@ def get_heating_stage(parameters: json, start_node: int, end_node: int):
     control_algorithm = "Water Temperature PID v1.0"
     temperature_algorithm = temperature
     start_node_preheat = 8 if preheat else end_node
+    offset_temperature = 1
     
     heating_stage = {
         "name": "heating",
@@ -44,7 +45,7 @@ def get_heating_stage(parameters: json, start_node: int, end_node: int):
                     "kind": "temperature_value_trigger",
                     "source": "Tube Temperature",
                     "operator": ">=",
-                    "value": temperature - 2,
+                    "value": temperature - offset_temperature,
                     "next_node_id": 6,
                 },
                 {
@@ -116,14 +117,14 @@ def get_heating_stage(parameters: json, start_node: int, end_node: int):
                     "next_node_id": start_node_preheat,
                     "source": "Water Temperature",
                     "operator": ">=",
-                    "value": temperature
+                    "value": temperature + offset_temperature
                 },
                 {
                     "kind": "temperature_value_trigger",
                     "next_node_id": 6,
                     "source": "Water Temperature",
                     "operator": "<=",
-                    "value": temperature - 2
+                    "value": temperature - offset_temperature
                 },
                 {
                     "kind": "timer_trigger",
