@@ -270,7 +270,7 @@ class SimplifiedJson:
                     print(f"Type: {type_main_controller} not found.")
                     
             button_trigger = ButtonTrigger(ButtonSourceType.ENCODER_BUTTON, next_node_id = next_stage_node_id)
-            weight_final_trigger = WeightTrigger(SourceType.RAW, TriggerOperatorType.GREATER_THAN_OR_EQUAL, self.get_final_weight(), 1, next_stage_node_id) 
+            weight_final_trigger = WeightTrigger(SourceType.RAW, TriggerOperatorType.GREATER_THAN_OR_EQUAL, self.get_final_weight(), 1, init_node_tail) 
             
             for limit_node in all_nodes[2:]:
                 limit_node["triggers"].append(main_trigger)     

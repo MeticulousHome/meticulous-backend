@@ -21,7 +21,13 @@ def get_remove_cup_stage(parameters: json, start_node: int, end_node: int):
           "operator": "<=",
           "value": -5,
           "next_node_id": 30
-         }
+         },
+         {
+          "kind": "button_trigger",
+          "source": "Encoder Button",
+          "gesture": "Single Tap",
+          "next_node_id": end_node,
+        },
         ]
        },
        {
