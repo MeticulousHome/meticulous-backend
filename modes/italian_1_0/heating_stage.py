@@ -44,7 +44,7 @@ def get_heating_stage(parameters: json, start_node: int, end_node: int):
                     "kind": "temperature_value_trigger",
                     "source": "Tube Temperature",
                     "operator": ">=",
-                    "value": temperature,
+                    "value": temperature - 2,
                     "next_node_id": 6,
                 },
                 {
@@ -113,10 +113,10 @@ def get_heating_stage(parameters: json, start_node: int, end_node: int):
                 "triggers": [
                 {
                     "kind": "temperature_value_trigger",
-                    "next_node_id": 6,
+                    "next_node_id": start_node_preheat,
                     "source": "Water Temperature",
                     "operator": ">=",
-                    "value": temperature + 2
+                    "value": temperature
                 },
                 {
                     "kind": "temperature_value_trigger",
