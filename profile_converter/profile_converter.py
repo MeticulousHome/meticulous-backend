@@ -246,7 +246,7 @@ class ComplexProfileConverter:
                         "next_node_id": 5,
                         "source": "Water Temperature",
                         "operator": ">=",
-                        "value": self.temperature 
+                        "value": self.temperature - self.offset_temperature
                     },
                     {
                         "kind": "timer_trigger",
@@ -319,7 +319,7 @@ class ComplexProfileConverter:
                     "triggers": [
                         {
                             "kind": "temperature_value_trigger",
-                            "next_node_id": 5,
+                            "next_node_id": self.head_next_node_id,
                             "source": "Water Temperature",
                             "operator": ">=",
                             "value": self.temperature + self.offset_temperature 
