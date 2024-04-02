@@ -1,6 +1,7 @@
 import json
 
 def get_closing_valve_stage(parameters: json,start_node: int, end_node: int):
+    max_piston_position = 82
     
     closing_valve_stage = {
         "name": "closing valve",
@@ -31,7 +32,7 @@ def get_closing_valve_stage(parameters: json,start_node: int, end_node: int):
                         "kind": "piston_position_trigger",
                         "position_reference_id": 0,
                         "operator": ">=",
-                        "value": 78,
+                        "value": max_piston_position ,
                         "next_node_id": -2,
                         "source": "Piston Position Raw"
                     }
