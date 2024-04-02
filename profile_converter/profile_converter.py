@@ -16,6 +16,7 @@ class ComplexProfileConverter:
         self.complex = SimplifiedJson(self.parameters)
         self.temperature = self.complex.get_temperature() 
         self.offset_temperature = 1
+        self.max_piston_position = 82
         
     def head_template(self):
         if self.click_to_start:
@@ -36,7 +37,7 @@ class ComplexProfileConverter:
                         "next_node_id": 45,
                         "source": "Piston Position Raw",
                         "operator": ">=",
-                        "value": 78
+                        "value": self.max_piston_position 
                     },
                     {
                         "kind": "piston_position_trigger",
@@ -44,7 +45,7 @@ class ComplexProfileConverter:
                         "next_node_id": 6,
                         "source": "Piston Position Raw",
                         "operator": "<",
-                        "value": 78
+                        "value": self.max_piston_position 
                     },
                     {
                         "kind": "button_trigger",
@@ -82,7 +83,7 @@ class ComplexProfileConverter:
                         "next_node_id": 45,
                         "source": "Piston Position Raw",
                         "operator": ">=",
-                        "value": 78
+                        "value": self.max_piston_position 
                     },
                     {
                         "kind": "button_trigger",
@@ -121,7 +122,7 @@ class ComplexProfileConverter:
                         "next_node_id": 45,
                         "source": "Piston Position Raw",
                         "operator": ">=",
-                        "value": 78
+                        "value": self.max_piston_position 
                     },
                     {
                         "kind": "button_trigger",
@@ -518,7 +519,7 @@ class ComplexProfileConverter:
                         "next_node_id": -2,
                         "source": "Piston Position Raw",
                         "operator": ">=",
-                        "value": 78
+                        "value": self.max_piston_position 
                     }
                 ]
                 }
@@ -716,7 +717,7 @@ class ComplexProfileConverter:
                             "next_node_id": -2,
                             "source": "Piston Position Raw",
                             "operator": ">=",
-                            "value": 78
+                            "value": self.max_piston_position 
                             },
                             {
                             "kind": "button_trigger",
@@ -755,7 +756,7 @@ class ComplexProfileConverter:
                             "next_node_id": -2,
                             "source": "Piston Position Raw",
                             "operator": ">=",
-                            "value": 78
+                            "value": self.max_piston_position 
                             },
                             {
                             "kind": "button_trigger",

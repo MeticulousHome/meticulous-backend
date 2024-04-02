@@ -95,7 +95,7 @@ def get_preinfusion_stage(parameters: json, start_node: int, end_node: int):
           "source": "Flow Raw",
           "operator": ">=",
           "curve_id": 4,
-          "next_node_id": 10
+          "next_node_id": start_node
          },
          {
           "kind": "weight_value_trigger",
