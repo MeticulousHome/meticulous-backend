@@ -7,12 +7,14 @@ from wifi import WifiManager
 from ble_gatt import GATTServer, PORT
 
 from .base_handler import BaseHandler
+from .api import API, APIVersion
 
 from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
 
+
 class WiFiConfig:
-    def __init__(self, mode = None, apName = None, apPassword = None):
+    def __init__(self, mode=None, apName=None, apPassword=None):
         self.mode = mode
         self.apName = apName
         self.apPassword = apPassword
@@ -33,6 +35,7 @@ class WiFiConfig:
             "apName": self.apName,
             "apPassword": self.apPassword,
         }
+
 
 class WiFiQRHandler(BaseHandler):
     def get(self):
@@ -61,6 +64,7 @@ class WiFiQRHandler(BaseHandler):
 
         self.set_header("Content-Type", "image/png")
         self.write(buffer.getvalue())
+
 
 class WiFiConfigHandler(BaseHandler):
     def get(self):
@@ -96,12 +100,15 @@ class WiFiConfigHandler(BaseHandler):
         except json.JSONDecodeError as e:
             self.set_status(400)
             self.write(f"Invalid JSON")
-            logger.warning(f"Failed to parse passed JSON: {e}", stack_info=False)
+            logger.warning(
+                f"Failed to parse passed JSON: {e}", stack_info=False)
 
         except Exception as e:
             self.set_status(400)
             self.write(f"Failed to write config")
-            logger.warning("Failed to accept passed config: ", exc_info=e, stack_info=True)
+            logger.warning("Failed to accept passed config: ",
+                           exc_info=e, stack_info=True)
+
 
 class WiFiListHandler(BaseHandler):
     def get(self):
@@ -109,7 +116,8 @@ class WiFiListHandler(BaseHandler):
         try:
             for s in WifiManager.scanForNetworks():
                 if s.ssid is not None and s.ssid != "":
-                    formated : dict = {"ssid": s.ssid, "signal": s.signal, "rate": s.rate, "in_use": s.in_use}
+                    formated: dict = {
+                        "ssid": s.ssid, "signal": s.signal, "rate": s.rate, "in_use": s.in_use}
                     exists = networks.get(s.ssid)
                     # Make sure the network in use is always listed
                     if exists is None or s.in_use:
@@ -121,13 +129,16 @@ class WiFiListHandler(BaseHandler):
                             continue
                         if s.signal > exists["signal"]:
                             networks[s.ssid] = formated
-            response = sorted(networks.values(), key=lambda x: x["signal"], reverse=True)
+            response = sorted(networks.values(),
+                              key=lambda x: x["signal"], reverse=True)
             response = json.dumps(response)
             self.write(response)
         except Exception as e:
             self.set_status(400)
             self.write(f"Failed to fetch wifi list")
-            logger.warning("Failed to fetch / format wifi list: ", exc_info=e, stack_info=True)
+            logger.warning("Failed to fetch / format wifi list: ",
+                           exc_info=e, stack_info=True)
+
 
 class WiFiConnectHandler(BaseHandler):
     def post(self):
@@ -139,18 +150,19 @@ class WiFiConnectHandler(BaseHandler):
             success = WifiManager.connectToWifi(ssid, password)
 
             if success:
-                self.write({"status":"ok"})
+                self.write({"status": "ok"})
             else:
                 self.set_status(400)
-                self.write({"status":"error", "error": "failed to conect to wifi"})
+                self.write(
+                    {"status": "error", "error": "failed to conect to wifi"})
         except Exception as e:
             self.set_status(400)
-            self.write({"status":"error", "error": f"failed to conect to wifi: {e}"})
+            self.write(
+                {"status": "error", "error": f"failed to conect to wifi: {e}"})
             logger.warning("Failed to connect: ", exc_info=e, stack_info=True)
 
-WIFI_HANDLER = [
-        (r"/wifi/config", WiFiConfigHandler),
-        (r"/wifi/config/qr.png", WiFiQRHandler),
-        (r"/wifi/list", WiFiListHandler),
-        (r"/wifi/connect", WiFiConnectHandler),
-    ]
+
+API.register_handler(APIVersion.V1, r"/wifi/config", WiFiConfigHandler),
+API.register_handler(APIVersion.V1, r"/wifi/config/qr.png", WiFiQRHandler),
+API.register_handler(APIVersion.V1, r"/wifi/list", WiFiListHandler),
+API.register_handler(APIVersion.V1, r"/wifi/connect", WiFiConnectHandler),

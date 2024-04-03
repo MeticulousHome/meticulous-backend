@@ -4,8 +4,9 @@ import os
 import tempfile
 import zipfile
 
-
 from .base_handler import BaseHandler
+from .api import API, APIVersion
+
 from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -89,6 +90,5 @@ class UpdateFirmwareWithZipHandler(BaseHandler):
         return False
 
 
-UPDATE_HANDLER = [
-    (r"/update/firmware", UpdateFirmwareWithZipHandler),
-]
+API.register_handler(APIVersion.V1, r"/update/firmware",
+                     UpdateFirmwareWithZipHandler)

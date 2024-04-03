@@ -2,6 +2,7 @@ import tornado.web
 import json
 from notifications import NotificationManager
 from .base_handler import BaseHandler
+from .api import API, APIVersion
 
 from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
@@ -10,8 +11,9 @@ logger = MeticulousLogger.getLogger(__name__)
 class GetNotificationsHandler(BaseHandler):
 
     def get(self):
-        include_acknowledged = self.get_argument("acknowledged", "false").lower() == "true"
-        
+        include_acknowledged = self.get_argument(
+            "acknowledged", "false").lower() == "true"
+
         if include_acknowledged:
             # Return all notifications
             notifications = NotificationManager.get_all_notifications()
@@ -32,9 +34,11 @@ class GetNotificationsHandler(BaseHandler):
             self.write({"status": "success"})
         else:
             self.set_status(404)
-            self.write({"status": "failure", "message": "Notification not found"})
+            self.write(
+                {"status": "failure", "message": "Notification not found"})
 
-NOTIFICATIONS_HANDLER = [
-        (r"/notifications", GetNotificationsHandler),
-        (r"/notifications/acknowledge", GetNotificationsHandler),
-    ]
+
+API.register_handler(APIVersion.V1, r"/notifications",
+                     GetNotificationsHandler),
+API.register_handler(
+    APIVersion.V1, r"/notifications/acknowledge", GetNotificationsHandler),

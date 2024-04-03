@@ -1,13 +1,12 @@
 import json
 
-import tornado.ioloop
 import tornado.web
-from log import MeticulousLogger
-
 from config import CONFIG_USER, MeticulousConfig
 
 from .base_handler import BaseHandler
+from .api import API, APIVersion
 
+from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
 
 
@@ -57,6 +56,4 @@ class SettingsHandler(BaseHandler):
         return self.get()
 
 
-SETTINGS_HANDLER = [
-    (r"/settings/*", SettingsHandler),
-]
+API.register_handler(APIVersion.V1, r"/settings/*", SettingsHandler),

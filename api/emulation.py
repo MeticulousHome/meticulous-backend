@@ -1,11 +1,13 @@
 import tornado.web
 import json
 from config import *
-from .wifi import WiFiConfig,WiFiQRHandler, WifiManager
+from .wifi import WiFiConfig, WiFiQRHandler, WifiManager
+from .api import API, APIVersion
 from .base_handler import BaseHandler
 
 from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
+
 
 class WiFiConfigHandler(BaseHandler):
     def get(self):
@@ -69,43 +71,47 @@ class WiFiConfigHandler(BaseHandler):
         except json.JSONDecodeError as e:
             self.set_status(400)
             self.write(f"Invalid JSON")
-            logger.warning(f"Failed to parse passed JSON: {e}", stack_info=False)
+            logger.warning(
+                f"Failed to parse passed JSON: {e}", stack_info=False)
 
         except Exception as e:
             self.set_status(400)
             self.write(f"Failed to write config")
-            logger.warning("Failed to accept passed config: ", exc_info=e, stack_info=True)
+            logger.warning("Failed to accept passed config: ",
+                           exc_info=e, stack_info=True)
+
 
 class WiFiListHandler(BaseHandler):
     def get(self):
         networks = [
-                {
-                    "ssid": "MeticulousWifi",
-                    "signal": 75,
-                    "rate": 195,
-                    "in_use": True
-                },
-                {
-                    "ssid": "StarGate Legacy",
-                    "signal": 59,
-                    "rate": 195,
-                    "in_use": True
-                },
-                {
-                    "ssid": "StarGate Enterprise",
-                    "signal": 57,
-                    "rate": 405,
-                    "in_use": True
-                },
-                {
-                    "ssid": "StarGate Picard",
-                    "signal": 57,
-                    "rate": 405,
-                    "in_use": True
-                },
-            ]
+            {
+                "ssid": "MeticulousWifi",
+                "signal": 75,
+                "rate": 195,
+                "in_use": True
+            },
+            {
+                "ssid": "StarGate Legacy",
+                "signal": 59,
+                "rate": 195,
+                "in_use": True
+            },
+            {
+                "ssid": "StarGate Enterprise",
+                "signal": 57,
+                "rate": 405,
+                "in_use": True
+            },
+            {
+                "ssid": "StarGate Picard",
+                "signal": 57,
+                "rate": 405,
+                "in_use": True
+            },
+        ]
 
         self.write(json.dumps(networks))
+
 
 class WiFiConnectHandler(BaseHandler):
     def post(self):
@@ -114,14 +120,14 @@ class WiFiConnectHandler(BaseHandler):
             ssid = data['ssid']
             password = data['password']
 
-            self.write({"status":"ok", "ssid": ssid, "password": password})
+            self.write({"status": "ok", "ssid": ssid, "password": password})
         except Exception as e:
             self.set_status(400)
             self.write(f"Error: {str(e)}")
 
-EMULATED_WIFI_HANDLER = [
-        (r"/wifi/config", WiFiConfigHandler),
-        (r"/wifi/list", WiFiListHandler),
-        (r"/wifi/connect", WiFiConnectHandler),
-        (r"/wifi/config/qr.png", WiFiQRHandler),
-    ]
+
+def register_emulation_handlers():
+    API.register_handler(APIVersion.V1, r"/wifi/config", WiFiConfigHandler),
+    API.register_handler(APIVersion.V1, r"/wifi/list", WiFiListHandler),
+    API.register_handler(APIVersion.V1, r"/wifi/connect", WiFiConnectHandler),
+    API.register_handler(APIVersion.V1, r"/wifi/config/qr.png", WiFiQRHandler),

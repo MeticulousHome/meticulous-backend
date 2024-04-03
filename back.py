@@ -23,14 +23,8 @@ from profile import ProfileManager
 from config import *
 from machine import Machine
 
-from api.action import ACTIONS_HANDLER
-from api.profiles import PROFILE_HANDLER
-from api.notifications import NOTIFICATIONS_HANDLER
-from api.wifi import WIFI_HANDLER
-from api.history import HISTORY_HANDLER
-from api.emulation import EMULATED_WIFI_HANDLER
-from api.settings import SETTINGS_HANDLER
-from api.update import UPDATE_HANDLER
+from api.api import API
+from api.emulation import register_emulation_handlers
 from api.web_ui import WEB_UI_HANDLER
 
 from log import MeticulousLogger
@@ -317,21 +311,13 @@ def main():
     MeticulousConfig.setSIO(sio)
 
     handlers = [
-            (r"/socket.io/", socketio.get_tornado_handler(sio)),
-        ]
-
-    handlers.extend(PROFILE_HANDLER)
-    handlers.extend(NOTIFICATIONS_HANDLER)
-    handlers.extend(UPDATE_HANDLER)
-    handlers.extend(SETTINGS_HANDLER)
+        (r"/socket.io/", socketio.get_tornado_handler(sio)),
+    ]
 
     if Machine.emulated:
-        handlers.extend(EMULATED_WIFI_HANDLER)
-    else:
-        handlers.extend(WIFI_HANDLER)
+        register_emulation_handlers()
 
-    handlers.extend(HISTORY_HANDLER)
-    handlers.extend(ACTIONS_HANDLER)
+    handlers.extend(API.get_routes())
 
     handlers.extend(WEB_UI_HANDLER)
 

@@ -3,17 +3,19 @@ import tornado.web
 from config import *
 from netaddr import IPAddress, IPNetwork
 
+
 class BaseHandler(tornado.web.RequestHandler):
     def set_default_headers(self):
-        #FIXME: I know this is not great, you know this isn't great. What shall we do about this?
+        # FIXME: I know this is not great, you know this isn't great. What shall we do about this?
         self.set_header("Access-Control-Allow-Origin", "*")
         self.set_header('Content-type', 'application/json')
-        self.set_header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,DELETE')
+        self.set_header('Access-Control-Allow-Methods',
+                        'GET,POST,OPTIONS,DELETE')
         self.set_header('Access-Control-Allow-Headers', 'content-type')
-    
+
     def options(self):
         pass
-    
+
     def prepare(self):
 
         return
@@ -25,7 +27,8 @@ class BaseHandler(tornado.web.RequestHandler):
         if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP:
             return
 
-        allowed_networks = [IPNetwork(x) for x in MeticulousConfig[CONFIG_SYSTEM][SYSTEM_ALLOWED_NETWORKS_NAME]]
+        allowed_networks = [IPNetwork(
+            x) for x in MeticulousConfig[CONFIG_SYSTEM][SYSTEM_ALLOWED_NETWORKS_NAME]]
 
         # TODO test me well!
         if len([network for network in allowed_networks if self.request.remote_ip in network]) > 0:
