@@ -175,6 +175,10 @@ async def live():
     i = 0
     _time = time.time()
     logger.info("Starting to emit machine data")
+    
+    #Store previous value of 'auto_preheat' to detect changes
+    previous_auto_preheat = MeticulousConfig[CONFIG_USER].get('auto_preheat', None)
+
     while True:
 
         elapsed_time = time.time() - _time
@@ -183,6 +187,10 @@ async def live():
             Machine.action("info")
 
         await sio.emit("status", {**Machine.data_sensors.to_sio()})
+        
+        water_status_dict = Machine.sensor_sensors.to_sio_water_status()
+        water_status_value = water_status_dict["water_status"]
+        await sio.emit("water_status", water_status_value)
 
         if sendInfoToFront:
             if Machine.sensor_sensors is not None:
@@ -191,6 +199,12 @@ async def live():
                 await sio.emit("actuators", Machine.sensor_sensors.to_sio_actuators())
             if Machine.esp_info is not None:
                 await sio.emit("info", {**software_info, **Machine.esp_info.to_sio()})
+
+        current_auto_preheat = MeticulousConfig[CONFIG_USER].get('auto_preheat')
+        if current_auto_preheat != previous_auto_preheat:
+            Machine.write(str.encode("action,auto_preheat,"+str(current_auto_preheat)+"\x03"))
+            previous_auto_preheat = current_auto_preheat
+
         await sio.sleep(SAMPLE_TIME)
         i = i + 1
 

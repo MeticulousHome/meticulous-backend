@@ -37,6 +37,7 @@ class SensorData:
     adc_1: float = 0.0
     adc_2: float = 0.0
     adc_3: float = 0.0
+    water_status: bool = False
 
     def from_color_coded_args(colorSeperatedArgs):
         global colorSensorRegex
@@ -52,6 +53,12 @@ class SensorData:
 
     def from_args(args):
         try:
+            
+            if len(args) > 18:
+                water_status = args[18].lower() == 'true'
+            else:
+                water_status = False
+
             data = SensorData(
                 external_1=safeFloat(args[0]),
                 external_2=safeFloat(args[1]),
@@ -71,6 +78,7 @@ class SensorData:
                 adc_1=safeFloat(args[15]),
                 adc_2=safeFloat(args[16]),
                 adc_3=safeFloat(args[17]),
+                water_status=water_status,
             )
         except Exception as e:
             logger.warning(f"Failed to parse SensorData: {args}", exc_info=e)
@@ -105,6 +113,11 @@ class SensorData:
             "m_pwr": self.motor_power,
             "m_cur": self.motor_current,
             "bh_pwr": self.bandheater_power
+        }
+    
+    def to_sio_water_status(self):
+        return {
+            "water_status": self.water_status
         }
 
 
@@ -275,4 +288,3 @@ class ButtonEventData:
             "type": self.event.name,
             "time_since_last_event": int(self.time_since_last_event),
         }
-
