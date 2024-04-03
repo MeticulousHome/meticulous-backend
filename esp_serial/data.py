@@ -53,6 +53,12 @@ class SensorData:
 
     def from_args(args):
         try:
+            
+            if len(args) > 18:
+                water_status = args[18].lower() == 'true'
+            else:
+                water_status = False
+
             data = SensorData(
                 external_1=safeFloat(args[0]),
                 external_2=safeFloat(args[1]),
@@ -72,7 +78,7 @@ class SensorData:
                 adc_1=safeFloat(args[15]),
                 adc_2=safeFloat(args[16]),
                 adc_3=safeFloat(args[17]),
-                water_status=args[18].lower() == 'true',
+                water_status=water_status,
             )
         except Exception as e:
             logger.warning(f"Failed to parse SensorData: {args}", exc_info=e)
