@@ -3,7 +3,7 @@
   "kind": "italian_1_0",
   "automatic_purge": false,
   "temperature": 80,
-  "preinfusion": true,
+  "preinfusion": false,
   "preheat": false,
   "pressure": 8,
   "out_weight": 36,
