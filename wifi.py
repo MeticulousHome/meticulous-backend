@@ -106,7 +106,7 @@ class WifiManager():
                 WifiManager.startHotspot()
             else:
                 WifiManager.stopHotspot()
-                WifiManager.scanForNetworks(time = 1)
+                WifiManager.scanForNetworks(timeout=1)
                 WifiManager._zeroconf.restart()
 
     def startHotspot():

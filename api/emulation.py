@@ -63,7 +63,7 @@ class WiFiConfigHandler(BaseHandler):
                 MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD] = data["apPassword"]
                 MeticulousConfig.save()
                 WifiManager.resetWifiMode()
-                del data["mode"]
+                del data["apPassword"]
 
             logger.info(f"Unused request entries: {data}")
 
