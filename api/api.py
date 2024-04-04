@@ -42,6 +42,7 @@ class API():
         from . import settings as _
         from . import update as _
         from . import wifi as _
+        from . import sounds as _
         routes = []
         logger.info(f"API Routes registered:")
         for version, paths in cls._versions.items():

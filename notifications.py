@@ -15,6 +15,8 @@ from config import *
 from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
+
+
 class NotificationResponse:
     OK = "Ok"
     YES = "Yes"
@@ -22,12 +24,13 @@ class NotificationResponse:
     UPDATE = "Update"
     SKIP = "Skip"
 
+
 class Notification:
 
-    def __init__(self, message, responses=[NotificationResponse.OK], image=None, callback:callable = None):
+    def __init__(self, message, responses=[NotificationResponse.OK], image=None, callback: callable = None):
         self.id = str(uuid.uuid4())
         self.message = message
-        self.respone_options=responses
+        self.respone_options = responses
         self.image = image
         self.acknowledged = False
         self.acknowledged_timestamp = None
@@ -69,6 +72,7 @@ class Notification:
             "timestamp": self.timestamp.isoformat()
         })
 
+
 class NotificationManager:
     _notifications = []
     _sio = None
@@ -77,7 +81,8 @@ class NotificationManager:
 
     def init(sio):
         NotificationManager._sio = sio
-        NotificationManager._thread = threading.Thread(target=NotificationManager._notification_loop)
+        NotificationManager._thread = threading.Thread(
+            target=NotificationManager._notification_loop)
         NotificationManager._thread.start()
 
     def _notification_loop():
@@ -89,14 +94,13 @@ class NotificationManager:
             while True:
                 try:
                     # Try to get an item from the queue allowing blocking
-                    notification : Notification = NotificationManager._queue.get()
+                    notification: Notification = NotificationManager._queue.get()
                 except queue.Empty:
                     # If the queue is empty, wait for a short period before trying again
                     await asyncio.sleep(0.1)
                 else:
                     # Emit the notification over socketIO as json
                     await NotificationManager._sio.emit("notification", notification.to_json())
-
 
         # Create and run the asyncio event loop
         loop = asyncio.new_event_loop()
@@ -121,11 +125,12 @@ class NotificationManager:
             if notification.id == old_notfication.id:
                 return
         NotificationManager._notifications.append(notification)
+        SoundPlayer.play_event_sound(Sounds.Notification)
 
     def get_unacknowledged_notifications():
         NotificationManager.delete_old_acknowledged()
         return [n for n in NotificationManager._notifications if not n.acknowledged]
-    
+
     def get_all_notifications():
         NotificationManager.delete_old_acknowledged()
         return NotificationManager._notifications

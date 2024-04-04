@@ -1,0 +1,159 @@
+import time
+from enum import Enum, auto
+import os
+import json
+from playsound import playsound
+
+from log import MeticulousLogger
+from config import MeticulousConfig, CONFIG_USER, CONFIG_SYSTEM, SOUNDS_THEME, SOUNDS_ENABLED
+
+logger = MeticulousLogger.getLogger(__name__)
+
+USER_SOUNDS = os.getenv("USER_SOUNDS", "/meticulous-user/sounds")
+SYSTEM_SOUNDS = os.getenv("SYSTEM_SOUNDS", "/opt/meticulous-sounds")
+
+
+class Sounds(Enum):
+    STARTUP = auto()
+    HEATING_START = auto()
+    HEATING_END = auto()
+    BREWING_START = auto()
+    BREWING_END = auto()
+    ABORT = auto()
+    IDLE = auto()
+    NOTIFICATION = auto()
+
+
+class SoundPlayer:
+    SUPPORTED_FORMATS = ['.mp3', '.wav', '.ogg', '.flac']
+    DEFAULT_THEME_NAME = "default"
+    KNOWN_THEMES = {}
+
+    CURRENT_THEME_CONFIG = {}
+    CURRENT_THEME_NAME = ""
+    DEFAULT_THEME_CONFIG = {}
+
+    def init():
+        themes = {}
+
+        system_themes = SoundPlayer.scan_folder(SYSTEM_SOUNDS)
+
+        if USER_SOUNDS != "":
+            user_themes = SoundPlayer.scan_folder(USER_SOUNDS)
+            themes.update(user_themes)
+
+        themes.update(system_themes)
+
+        SoundPlayer.KNOWN_THEMES = themes
+        SoundPlayer.DEFAULT_THEME_CONFIG = SoundPlayer._load_theme(
+            SoundPlayer.DEFAULT_THEME_NAME)
+
+        SoundPlayer.set_theme(MeticulousConfig[CONFIG_SYSTEM][SOUNDS_THEME])
+        SoundPlayer.play_event_sound(Sounds.STARTUP)
+
+    @staticmethod
+    def availableThemes():
+        return SoundPlayer.KNOWN_THEMES
+
+    @staticmethod
+    def scan_folder(folder_path):
+        themefolders = {}
+        logger.info(f"Scanning Theme folder {folder_path}")
+        for root, dirs, files in os.walk(folder_path):
+            for dir in dirs:
+                subfolder_path = os.path.join(root, dir)
+                if SoundPlayer._has_config_file(subfolder_path):
+                    themefolders[dir] = subfolder_path
+                    logger.info(f"Found sound theme '{subfolder_path}'")
+        return themefolders
+
+    @staticmethod
+    def _has_config_file(subfolder_path):
+        try:
+            config_path = os.path.join(subfolder_path, "config.json")
+            with open(config_path) as f:
+                json.load(f)
+                return True
+        except:
+            logger.info(f"'{subfolder_path}' has no config.json")
+            pass
+        return False
+
+    @staticmethod
+    def set_theme(theme_name):
+        """
+        Set the current theme if it exists.
+        :param theme_name: The name of the theme to set as the current theme.
+        """
+        if theme_name in SoundPlayer.availableThemes() or theme_name is None:
+            MeticulousConfig[CONFIG_SYSTEM][SOUNDS_THEME] = theme_name
+            MeticulousConfig.save()
+
+            SoundPlayer.CURRENT_THEME_CONFIG = SoundPlayer.DEFAULT_THEME_CONFIG
+            new_theme = SoundPlayer._load_theme(theme_name)
+            SoundPlayer.CURRENT_THEME_CONFIG.update(new_theme)
+            SoundPlayer.CURRENT_THEME_NAME = theme_name
+            logger.info(f"Sound theme '{theme_name}' loaded")
+            return True
+        else:
+            logger.error(f"Error: Theme '{theme_name}' is not available.")
+            # Prevent infinite recursion
+            if theme_name != SoundPlayer.DEFAULT_THEME_NAME:
+                SoundPlayer.set_theme(SoundPlayer.DEFAULT_THEME_NAME)
+            return False
+
+    @staticmethod
+    def get_theme():
+        return SoundPlayer.CURRENT_THEME_CONFIG
+
+    @staticmethod
+    def _load_theme(theme_name):
+        if theme_name not in SoundPlayer.availableThemes():
+            return False
+
+        try:
+            theme_folder = SoundPlayer.availableThemes()[theme_name]
+            theme_config_file = open(os.path.join(theme_folder, 'config.json'))
+            theme_config = json.load(theme_config_file)
+            return theme_config
+        except:
+            return {}
+
+    @staticmethod
+    def play_event_sound(sound_event: Sounds):
+        return SoundPlayer.play_sound(sound_event.name.lower())
+
+    @staticmethod
+    def play_sound(sound_name):
+        if not MeticulousConfig[CONFIG_USER][SOUNDS_ENABLED]:
+            logger.info("No sounds enabled")
+            return True
+
+        # Just in case we have a stale mapping
+        if SoundPlayer.CURRENT_THEME_NAME != MeticulousConfig[CONFIG_SYSTEM][SOUNDS_THEME]:
+            SoundPlayer.set_theme(
+                MeticulousConfig[CONFIG_SYSTEM][SOUNDS_THEME])
+
+        if sound_name not in SoundPlayer.CURRENT_THEME_CONFIG:
+            logger.info("Sound not found")
+            return False
+
+        theme_name = SoundPlayer.CURRENT_THEME_NAME
+        theme_path = SoundPlayer.KNOWN_THEMES[theme_name]
+        file_name = SoundPlayer.CURRENT_THEME_CONFIG.get(sound_name, {})
+
+        # Sound is disabled by the theme
+        if file_name in [{}, "", None]:
+            logger.info("Sound is disabled")
+            return True
+
+        file_path = os.path.join(theme_path, file_name)
+        logger.info(f"Playing {sound_name} from {file_path}")
+
+        try:
+            playsound(file_path, block=False)
+        except Exception as e:
+            logger.exception(f"Failed to play sound: {e}")
+            return False
+
+        return True

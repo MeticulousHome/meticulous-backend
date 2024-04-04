@@ -18,6 +18,8 @@ from esp_serial.esp_tool_wrapper import ESPToolWrapper
 from shot_manager import ShotManager
 from shot_debug_manager import ShotDebugManager
 
+from sounds import SoundPlayer, Sounds
+
 from notifications import NotificationManager, Notification, NotificationResponse
 
 from log import MeticulousLogger
@@ -36,8 +38,8 @@ class Machine:
 
     infoReady = False
 
-    data_sensors : ShotData = ShotData()
-    sensor_sensors : SensorData = None
+    data_sensors: ShotData = ShotData()
+    sensor_sensors: SensorData = None
     esp_info = None
     reset_count = 0
     shot_start_time = 0
@@ -154,7 +156,8 @@ class Machine:
                     Machine.reset_count = 0
 
                 if Machine.infoReady and not info_requested and Machine.esp_info is None:
-                    logger.info("Machine has not provided us with a firmware version yet. Requesting now")
+                    logger.info(
+                        "Machine has not provided us with a firmware version yet. Requesting now")
                     Machine.action("info")
                     info_requested = True
 
@@ -190,6 +193,7 @@ class Machine:
                     is_purge = data.status == MachineStatus.PURGE
                     is_retracting = data.status == MachineStatus.RETRACTING
                     is_preparing = data.status == MachineStatus.CLOSING_VALVE
+                    is_heating = data.status == MachineStatus.HEATING
 
                     if (is_preparing and data.status != old_status):
                         time_flag = True
@@ -197,16 +201,28 @@ class Machine:
                         logger.info(
                             "shot start_time: {:.1f}".format(shot_start_time))
                         ShotManager.start()
+                        SoundPlayer.play_event_sound(Sounds.BREWING_START)
 
                     if old_status == MachineStatus.IDLE and not is_idle:
                         ShotDebugManager.start()
 
+                    if is_idle and old_status != MachineStatus.IDLE:
+                        SoundPlayer.play_event_sound(Sounds.IDLE)
+
                     if (is_idle or is_purge or is_retracting):
+                        if time_flag == True:
+                            SoundPlayer.play_event_sound(Sounds.BREWING_END)
                         time_flag = False
                         ShotManager.stop()
 
                     if (is_idle):
                         ShotDebugManager.stop()
+
+                    if (is_heating and old_status != MachineStatus.HEATING):
+                        SoundPlayer.play_event_sound(Sounds.HEATING_START)
+
+                    if (old_status == MachineStatus.HEATING and not is_heating):
+                        SoundPlayer.play_event_sound(Sounds.HEATING_END)
 
                     if (time_flag):
                         time_passed = int(
@@ -278,6 +294,7 @@ class Machine:
     def return_to_idle():
         if (Machine.data_sensors.status != "idle"):
             Machine.action("stop")
+        SoundPlayer.play_event_sound(Sounds.ABORT)
 
     def action(action_event):
         logger.info(f"sending action,{action_event}")

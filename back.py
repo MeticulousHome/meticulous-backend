@@ -22,6 +22,7 @@ from notifications import Notification, NotificationManager, NotificationRespons
 from profile import ProfileManager
 from config import *
 from machine import Machine
+from sounds import SoundPlayer
 
 from api.api import API
 from api.emulation import register_emulation_handlers
@@ -308,6 +309,7 @@ def main():
     WifiManager.init()
     NotificationManager.init(sio)
     ProfileManager.init()
+    SoundPlayer.init()
     MeticulousConfig.setSIO(sio)
 
     handlers = [
