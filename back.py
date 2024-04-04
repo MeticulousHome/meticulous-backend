@@ -309,7 +309,7 @@ def main():
     WifiManager.init()
     NotificationManager.init(sio)
     ProfileManager.init()
-    SoundPlayer.init()
+    SoundPlayer.init(emulation=Machine.emulated)
     MeticulousConfig.setSIO(sio)
 
     handlers = [

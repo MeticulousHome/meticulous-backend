@@ -3,6 +3,7 @@ from enum import Enum, auto
 import os
 import json
 from playsound import playsound
+import subprocess
 
 from log import MeticulousLogger
 from config import MeticulousConfig, CONFIG_USER, CONFIG_SYSTEM, SOUNDS_THEME, SOUNDS_ENABLED
@@ -10,7 +11,7 @@ from config import MeticulousConfig, CONFIG_USER, CONFIG_SYSTEM, SOUNDS_THEME, S
 logger = MeticulousLogger.getLogger(__name__)
 
 USER_SOUNDS = os.getenv("USER_SOUNDS", "/meticulous-user/sounds")
-SYSTEM_SOUNDS = os.getenv("SYSTEM_SOUNDS", "/opt/meticulous-sounds")
+SYSTEM_SOUNDS = os.getenv("SYSTEM_SOUNDS", "/opt/meticulous-backend/sounds")
 
 
 class Sounds(Enum):
@@ -33,7 +34,13 @@ class SoundPlayer:
     CURRENT_THEME_NAME = ""
     DEFAULT_THEME_CONFIG = {}
 
-    def init():
+    def init(emulation=False):
+        if not emulation:
+            # Set the output pin for the IMX som
+            command = ['gpioset', 'gpiochip4', '25=1']
+            subprocess.run(command)
+
+        # Theme detection
         themes = {}
 
         system_themes = SoundPlayer.scan_folder(SYSTEM_SOUNDS)
