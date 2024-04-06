@@ -2,7 +2,6 @@ import time
 from enum import Enum, auto
 import os
 import json
-from playsound import playsound
 import subprocess
 
 from log import MeticulousLogger
@@ -158,7 +157,9 @@ class SoundPlayer:
         logger.info(f"Playing {sound_name} from {file_path}")
 
         try:
-            playsound(file_path, block=False)
+            logger.warning("Playsound is disabled due to build issues")
+            pass
+            # playsound(file_path, block=False)
         except Exception as e:
             logger.exception(f"Failed to play sound: {e}")
             return False
