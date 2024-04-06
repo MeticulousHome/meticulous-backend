@@ -10,12 +10,15 @@ logger = MeticulousLogger.getLogger(__name__)
 
 class ListHandler(BaseHandler):
     def get(self):
+        full_profiles = self.get_argument(
+            "full", "false").lower() == "true"
         profiles = ProfileManager.list_profiles()
         response = []
         for profile in profiles:
             p = profiles[profile].copy()
-            if "stages" in p:
-                del p["stages"]
+            if not full_profiles:
+                if "stages" in p:
+                    del p["stages"]
             response.append(p)
         self.write(json.dumps(response))
 
