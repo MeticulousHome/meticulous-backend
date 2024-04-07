@@ -33,7 +33,7 @@ class SoundPlayer:
     CURRENT_THEME_NAME = ""
     DEFAULT_THEME_CONFIG = {}
 
-    def init(emulation=False):
+    def init(emulation=False, play_startup_sound=True):
         if not emulation:
             # Set the output pin for the IMX som
             command = ['gpioset', 'gpiochip4', '25=1']
@@ -55,7 +55,8 @@ class SoundPlayer:
             SoundPlayer.DEFAULT_THEME_NAME)
 
         SoundPlayer.set_theme(MeticulousConfig[CONFIG_SYSTEM][SOUNDS_THEME])
-        SoundPlayer.play_event_sound(Sounds.STARTUP)
+        if play_startup_sound:
+            SoundPlayer.play_event_sound(Sounds.STARTUP)
 
     @staticmethod
     def availableThemes():

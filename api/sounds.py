@@ -1,8 +1,12 @@
 import json
+from io import BytesIO
+import zipfile
+import os
+
 from .base_handler import BaseHandler
 from .api import API, APIVersion
 
-from sounds import SoundPlayer
+from sounds import SoundPlayer, USER_SOUNDS
 from config import MeticulousConfig, CONFIG_SYSTEM, SOUNDS_THEME
 
 from log import MeticulousLogger
@@ -51,6 +55,73 @@ class SetThemeHandler(BaseHandler):
                 {"error": "theme not found", "details": theme})
 
 
+class UploadThemeHandler(BaseHandler):
+    def post(self):
+
+        # Ensure there is a file in the request
+        if 'file' not in self.request.files:
+            self.set_status(400)
+            self.write(
+                {"error": "invalid zip", "details": "file not found in request"})
+            return
+
+        fileinfo = self.request.files['file'][0]
+        zip_bytes = BytesIO(fileinfo['body'])
+
+        try:
+            with zipfile.ZipFile(zip_bytes, 'r') as zip_ref:
+                # Validate the structure of the zip file
+                root_folders = {
+                    name.split(
+                        '/')[0] for name in zip_ref.namelist() if '/' in name}
+                if len(root_folders) != 1:
+                    self.set_status(400)
+                    self.write(
+                        {"error": "invalid zip", "details": "Zip must contain exactly one folder at the root."})
+                    return
+
+                root_folder = root_folders.pop()
+                has_config = f"{root_folder}/config.json" in zip_ref.namelist()
+                if not has_config:
+                    self.set_status(400)
+                    self.write(
+                        {"error": "invalid zip", "details": "No config.json found in the root folder."})
+                    return
+
+                # Check for subfolders and validate config.json
+                for name in zip_ref.namelist():
+
+                    if name.endswith('config.json'):
+                        config_data = zip_ref.read(name)
+                        try:
+                            # parse to check valid JSON
+                            json.loads(config_data)
+                        except json.JSONDecodeError:
+                            self.set_status(400)
+                            self.write(
+                                {"error": "invalid zip", "details": "config.json is not valid JSON."})
+                            return
+
+                # Extraction destination
+                extraction_path = USER_SOUNDS
+
+                # If all checks pass, extract the zip
+                zip_ref.extractall(extraction_path)
+                SoundPlayer.init(False, False)
+            self.write("Zip file uploaded and unpacked successfully.")
+        except zipfile.BadZipFile:
+            self.set_status(400)
+            self.write(
+                {"error": "invalid zip", "details": "zip file corrupted"})
+        except ValueError as e:
+            self.set_status(400)
+            self.write({"error": "invalid zip", "details": str(e)})
+
+        except Exception as e:
+            self.set_status(500)
+            self.write({"error": "unknown issue", "details": str(e)})
+
+
 API.register_handler(APIVersion.V1, r"/sounds/play/(.*)", PlaySoundHandler),
 API.register_handler(APIVersion.V1, r"/sounds/list",
                      ListSoundsHandler),
@@ -60,3 +131,5 @@ API.register_handler(APIVersion.V1, r"/sounds/theme/get",
                      GetThemeHandler),
 API.register_handler(APIVersion.V1, r"/sounds/theme/set/(.*)",
                      SetThemeHandler),
+API.register_handler(APIVersion.V1, r"/sounds/theme/upload",
+                     UploadThemeHandler),
