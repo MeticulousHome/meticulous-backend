@@ -15,7 +15,7 @@ class ComplexProfileConverter:
         self.init_node_tail = init_node_tail
         self.complex = SimplifiedJson(self.parameters)
         self.temperature = self.complex.get_temperature() 
-        self.offset_temperature = 1
+        self.offset_temperature = 2
         self.max_piston_position = 81
         
     def head_template(self):
