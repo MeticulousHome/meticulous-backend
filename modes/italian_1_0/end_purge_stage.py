@@ -1,7 +1,7 @@
 import json
 
 def get_end_purge_stage(parameters: json, start_node: int, end_node: int):
-    max_piston_position = 82
+    max_piston_position = 81
     end_purge_stage =      {
       "name": "purge",
       "nodes": [
