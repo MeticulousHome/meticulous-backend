@@ -14,7 +14,7 @@ def get_heating_stage(parameters: json, start_node: int, end_node: int):
     control_algorithm = "Water Temperature PID v1.0"
     temperature_algorithm = temperature
     start_node_preheat = 8 if preheat else end_node
-    offset_temperature = 1
+    offset_temperature = 2
     
     heating_stage = {
         "name": "heating",
