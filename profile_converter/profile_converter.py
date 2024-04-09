@@ -29,23 +29,22 @@ class ComplexProfileConverter:
             "nodes": [
                 {
                 "id": -1,
-                "controllers": [],
-                "triggers": [
+                "controllers": [
                     {
-                        "kind": "piston_position_trigger",
-                        "position_reference_id": 0,
-                        "next_node_id": 45,
-                        "source": "Piston Position Raw",
-                        "operator": ">=",
-                        "value": self.max_piston_position 
+                        "kind": "time_reference",
+                        "id": 20
                     },
                     {
-                        "kind": "piston_position_trigger",
-                        "position_reference_id": 0,
-                        "next_node_id": 6,
-                        "source": "Piston Position Raw",
-                        "operator": "<",
-                        "value": self.max_piston_position 
+                        "kind": "move_piston_controller",
+                        "algorithm": "Piston Fast",
+                        "direction": "DOWN",
+                        "speed": 6
+                    }
+                ],
+                "triggers": [
+                    {
+                        "kind": "exit",
+                        "next_node_id": 1
                     },
                     {
                         "kind": "button_trigger",
@@ -56,34 +55,22 @@ class ComplexProfileConverter:
                 ]
                 },
                 {
-                "id": 6,
-                "controllers": [
-                    {
-                        "kind": "move_piston_controller",
-                        "speed": 6,
-                        "direction": "DOWN",
-                        "algorithm": "Piston Ease-In"
-                    },
-                    {
-                        "kind": "time_reference",
-                        "id": 3
-                    }
-                ],
+                "id": 1,
+                "controllers": [],
                 "triggers": [
                     {
                         "kind": "pressure_value_trigger",
-                        "next_node_id": 11,
+                        "next_node_id": 2,
                         "source": "Pressure Raw",
                         "operator": ">=",
                         "value": 6
                     },
                     {
-                        "kind": "piston_position_trigger",
-                        "position_reference_id": 0,
-                        "next_node_id": 45,
-                        "source": "Piston Position Raw",
+                        "kind": "timer_trigger",
+                        "timer_reference_id": 20,
                         "operator": ">=",
-                        "value": self.max_piston_position 
+                        "value": 1.5,
+                        "next_node_id": 40
                     },
                     {
                         "kind": "button_trigger",
@@ -94,7 +81,7 @@ class ComplexProfileConverter:
                 ]
                 },
                 {
-                "id": 11,
+                "id": 2,
                 "controllers": [
                     {
                         "kind": "pressure_controller",
@@ -110,19 +97,108 @@ class ComplexProfileConverter:
                             ],
                             "reference": {
                             "kind": "time",
-                            "id": 3
+                            "id": 20
                             }
                         }
                     }
                 ],
                 "triggers": [
                     {
-                        "kind": "piston_position_trigger",
-                        "position_reference_id": 0,
+                        "kind": "piston_speed_trigger",
+                        "operator": "==",
+                        "value": 0,
+                        "next_node_id": 3
+                    },
+                    {
+                        "kind": "button_trigger",
                         "next_node_id": 45,
-                        "source": "Piston Position Raw",
+                        "gesture": "Single Tap",
+                        "source": "Encoder Button"
+                    }
+                ]
+                },
+                {
+                "id": 40,
+                "controllers": [
+                    {
+                        "kind": "move_piston_controller",
+                        "algorithm": "Piston Ease-In",
+                        "direction": "DOWN",
+                        "speed": 6
+                    }
+                ],
+                "triggers": [
+                    {
+                        "kind": "piston_speed_trigger",
+                        "operator": "==",
+                        "value": 0,
+                        "next_node_id": 3
+                    },
+                    {
+                        "kind": "pressure_value_trigger",
+                        "source": "Pressure Raw",
                         "operator": ">=",
-                        "value": self.max_piston_position 
+                        "value": 6,
+                        "next_node_id": 2
+                    },
+                    {
+                        "kind": "button_trigger",
+                        "next_node_id": 45,
+                        "gesture": "Single Tap",
+                        "source": "Encoder Button"
+                    }
+                    ]
+                },
+                {
+                "id": 3,
+                "controllers": [
+                    {
+                        "kind" : "time_reference",
+                        "id": 21
+                    }
+                    ],
+                        "triggers": [
+                    {
+                        "kind": "exit",
+                        "next_node_id": 6
+                    }
+                    ]
+                },
+                {
+                "id": 6,
+                "controllers": [],
+                "triggers": [
+                    {
+                        "kind": "piston_speed_trigger",
+                        "operator": "!=",
+                        "value": 0,
+                        "next_node_id": 3
+                    },
+                    {
+                        "kind": "timer_trigger",
+                        "timer_reference_id": 21,
+                        "operator": ">=",
+                        "value": 1,
+                        "next_node_id": 4
+                    },
+                    {
+                        "kind": "button_trigger",
+                        "next_node_id": 45,
+                        "gesture": "Single Tap",
+                        "source": "Encoder Button"
+                    }
+                ]
+                },
+                {
+                "id": 4,
+                "controllers": [],
+                "triggers" : [
+                    {
+                        "kind": "timer_trigger",
+                        "timer_reference_id": 20,
+                        "operator": ">=",
+                        "value": 1,
+                        "next_node_id": 45
                     },
                     {
                         "kind": "button_trigger",
@@ -274,7 +350,7 @@ class ComplexProfileConverter:
                     "controllers": [
                         {
                             "kind": "time_reference",
-                            "id": 3
+                            "id": 10
                         }    
                     ],
                     "triggers": [
@@ -301,7 +377,7 @@ class ComplexProfileConverter:
                     "triggers": [
                         {
                             "kind": "timer_trigger",
-                            "timer_reference_id": 3,
+                            "timer_reference_id": 10,
                             "next_node_id": 8,
                             "operator": ">=",
                             "value": 1
@@ -690,81 +766,183 @@ class ComplexProfileConverter:
               "name": "purge",
               "nodes": [
                     {
-                        "id": 31,
-                        "controllers": [
-                            {
-                            "kind": "move_piston_controller",
-                            "speed": 6,
-                            "direction": "DOWN",
-                            "algorithm": "Piston Ease-In"
-                            },
-                            {
+                    "id": 31,
+                    "controllers": [
+                        {
                             "kind": "time_reference",
-                            "id": 8
-                            }
-                        ],
-                        "triggers": [
-                            {
-                            "kind": "pressure_value_trigger",
-                            "next_node_id": 32,
-                            "source": "Pressure Raw",
-                            "operator": ">=",
-                            "value": 6
-                            },
-                            {
-                            "kind": "piston_position_trigger",
-                            "position_reference_id": 0,
-                            "next_node_id": -2,
-                            "source": "Piston Position Raw",
-                            "operator": ">=",
-                            "value": self.max_piston_position 
-                            },
-                            {
+                            "id": 22
+                        },
+                        {
+                            "kind": "move_piston_controller",
+                            "algorithm": "Piston Fast",
+                            "direction": "DOWN",
+                            "speed": 6
+                        }
+                    ],
+                    "triggers": [
+                        {
+                            "kind": "exit",
+                            "next_node_id": 32
+                        },
+                        {
                             "kind": "button_trigger",
                             "next_node_id": -2,
                             "gesture": "Single Tap",
                             "source": "Encoder Button"
-                            }
-                        ]
+                        }
+                    ]
                     },
                     {
-                        "id": 32,
-                        "controllers": [
-                            {
+                    "id": 32,
+                    "controllers": [],
+                    "triggers": [
+                        {
+                            "kind": "pressure_value_trigger",
+                            "source": "Pressure Raw",
+                            "operator": ">=",
+                            "value": 6,
+                            "next_node_id": 33
+                        },
+                        {
+                            "kind": "timer_trigger",
+                            "timer_reference_id": 22,
+                            "operator": ">=",
+                            "value": 1.5,
+                            "next_node_id": 34
+                        },
+                        {
+                            "kind": "button_trigger",
+                            "next_node_id": -2,
+                            "gesture": "Single Tap",
+                            "source": "Encoder Button"
+                        }
+                    ]
+                    },
+                    {
+                    "id": 33,
+                    "controllers": [
+                        {
                             "kind": "pressure_controller",
                             "algorithm": "Pressure PID v1.0",
                             "curve": {
-                                "id": 5,
+                                "id": 10,
                                 "interpolation_kind": "linear_interpolation",
-                                "points": [
-                                    [
-                                        0,
-                                        6
-                                    ]
-                                ],
-                                "reference": {
-                                    "kind": "time",
-                                    "id": 8
-                                }
+                                "points": [[0, 6]],
+                                "time_reference_id": 22
                             }
-                            }
-                        ],
-                        "triggers": [
-                            {
-                            "kind": "piston_position_trigger",
-                            "position_reference_id": 0,
-                            "next_node_id": -2,
-                            "source": "Piston Position Raw",
-                            "operator": ">=",
-                            "value": self.max_piston_position 
-                            },
-                            {
+                        }
+                    ],
+                    "triggers": [
+                        {
+                            "kind": "piston_speed_trigger",
+                            "operator": "==",
+                            "value": 0,
+                            "next_node_id": 35
+                        },
+                        {
                             "kind": "button_trigger",
                             "next_node_id": -2,
                             "gesture": "Single Tap",
                             "source": "Encoder Button"
-                            }
-                        ]
+                        }
+                    ]
+                    },
+                    {
+                    "id": 34,
+                    "controllers": [
+                        {
+                            "kind": "move_piston_controller",
+                            "algorithm": "Piston Ease-In",
+                            "direction": "DOWN",
+                            "speed": 6
+                        }
+                    ],
+                    "triggers": [
+                        {
+                            "kind": "piston_speed_trigger",
+                            "operator": "==",
+                            "value": 0,
+                            "next_node_id": 35
+                        },
+                        {
+                            "kind": "pressure_value_trigger",
+                            "source": "Pressure Raw",
+                            "operator": ">=",
+                            "value": 6,
+                            "next_node_id": 33
+                        },
+                        {
+                            "kind": "button_trigger",
+                            "next_node_id": -2,
+                            "gesture": "Single Tap",
+                            "source": "Encoder Button"
+                        }
+                    ]
+                    },
+                    {
+                    "id": 35,
+                    "controllers": [
+                        {
+                            "kind" : "time_reference",
+                            "id": 23
+                        }
+                    ],
+                    "triggers": [
+                        {
+                            "kind": "exit",
+                            "next_node_id": 36
+                        },
+                        {
+                            "kind": "button_trigger",
+                            "next_node_id": -2,
+                            "gesture": "Single Tap",
+                            "source": "Encoder Button"
+                        }
+                    ]
+                    },
+                    {
+                    "id": 36,
+                    "controllers": [],
+                    "triggers": [
+                        {
+                            "kind": "piston_speed_trigger",
+                            "operator": "!=",
+                            "value": 0,
+                            "next_node_id": 35
+                        },
+                        {
+                            "kind": "timer_trigger",
+                            "timer_reference_id": 23,
+                            "operator": ">=",
+                            "value": 1,
+                            "next_node_id": 37
+                        },
+                        {
+                            "kind": "button_trigger",
+                            "next_node_id": -2,
+                            "gesture": "Single Tap",
+                            "source": "Encoder Button"
+                        }
+                    ]
+                    },
+                    {
+                    "id": 37,
+                    "controllers": [],
+                    "triggers" : [
+                        {
+                            "kind": "timer_trigger",
+                            "timer_reference_id": 22,
+                            "operator": ">=",
+                            "value": 1,
+                            "next_node_id": -2
+                        },
+                        {
+                            "kind": "button_trigger",
+                            "next_node_id": -2,
+                            "gesture": "Single Tap",
+                            "source": "Encoder Button"
+                        }
+                    ]
                     }
                 ]
               },
