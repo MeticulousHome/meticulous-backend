@@ -2,52 +2,40 @@ import json
 
 def get_prepurge_stage(parameters: json,start_node: int, end_node: int):
     
-    max_piston_position = 81
+    max_piston_position = 82
     prepurge_stage = {
         "name": "purge",
         "nodes": [
             {
                 "id": start_node,
-                "controllers": [],
-                "triggers": [
+                "controllers": [
                     {
-                        "kind": "piston_position_trigger",
-                        "position_reference_id": 0,
-                        "operator": ">=",
-                        "value": max_piston_position,
-                        "next_node_id": end_node,
-                        "source": "Piston Position Raw"
+                        "kind": "time_reference",
+                        "id": 29
                     },
                     {
-                        "kind": "piston_position_trigger",
-                        "position_reference_id": 0,
-                        "operator": "<",
-                        "value": max_piston_position,
-                        "next_node_id": 2,
-                        "source": "Piston Position Raw"
+                        "kind": "move_piston_controller",
+                        "algorithm": "Piston Fast",
+                        "direction": "DOWN",
+                        "speed": 6
+                    }
+                ],
+                "triggers": [
+                    {
+                        "kind": "exit",
+                        "next_node_id": 2
                     },
                     {
                         "kind": "button_trigger",
-                        "source": "Encoder Button",
+                        "next_node_id": end_node,
                         "gesture": "Single Tap",
-                        "next_node_id": end_node
+                        "source": "Encoder Button"
                     }
                 ]
             },
             {
                 "id": 2,
-                "controllers": [
-                    {
-                        "kind": "move_piston_controller",
-                        "algorithm": "Piston Ease-In",
-                        "direction": "DOWN",
-                        "speed": 6.0
-                    },
-                    {
-                        "kind": "time_reference",
-                        "id": 30
-                    }
-                ],
+                "controllers": [],
                 "triggers": [
                     {
                         "kind": "pressure_value_trigger",
@@ -57,12 +45,11 @@ def get_prepurge_stage(parameters: json,start_node: int, end_node: int):
                         "next_node_id": 3
                     },
                     {
-                        "kind": "piston_position_trigger",
-                        "position_reference_id": 0,
-                        "source": "Piston Position Raw",
+                        "kind": "timer_trigger",
+                        "timer_reference_id": 29,
                         "operator": ">=",
-                        "value": max_piston_position,
-                        "next_node_id": end_node
+                        "value": 1.5,
+                        "next_node_id": 21
                     },
                     {
                         "kind": "button_trigger",
@@ -87,18 +74,16 @@ def get_prepurge_stage(parameters: json,start_node: int, end_node: int):
                                     6
                                 ]
                             ],
-                            "time_reference_id": 30
+                            "time_reference_id": 29
                         }
                     }
                 ],
                 "triggers": [
                     {
-                        "kind": "piston_position_trigger",
-                        "position_reference_id": 0,
-                        "source": "Piston Position Raw",
-                        "operator": ">=",
-                        "value": max_piston_position,
-                        "next_node_id": end_node
+                        "kind": "piston_speed_trigger",
+                        "operator": "==",
+                        "value": 0,
+                        "next_node_id": 22
                     },
                     {
                         "kind": "button_trigger",
@@ -108,9 +93,100 @@ def get_prepurge_stage(parameters: json,start_node: int, end_node: int):
                     }
                 ]
             },
+            {
+            "id": 21,
+            "controllers": [
+                {
+                        "kind": "move_piston_controller",
+                        "algorithm": "Piston Ease-In",
+                        "direction": "DOWN",
+                        "speed": 6
+                    }
+                ],
+            "triggers": [
+                    {
+                        "kind": "piston_speed_trigger",
+                        "operator": "==",
+                        "value": 0,
+                        "next_node_id": 22
+                    },
+                    {
+                        "kind": "pressure_value_trigger",
+                        "source": "Pressure Raw",
+                        "operator": ">=",
+                        "value": 6,
+                        "next_node_id": 3
+                    },
+                    {
+                        "kind": "button_trigger",
+                        "next_node_id": end_node,
+                        "gesture": "Single Tap",
+                        "source": "Encoder Button"
+                    }
+                ]
+            },
+            {
+            "id": 22,
+            "controllers": [
+                    {
+                        "kind" : "time_reference",
+                        "id": 21
+                    }
+                ],
+                        "triggers": [
+                    {
+                        "kind": "exit",
+                        "next_node_id": 23
+                    }
+                ]
+            },
+            {
+            "id": 23,
+            "controllers": [],
+            "triggers": [
+                    {
+                        "kind": "piston_speed_trigger",
+                        "operator": "!=",
+                        "value": 0,
+                        "next_node_id": 22
+                    },
+                    {
+                        "kind": "timer_trigger",
+                        "timer_reference_id": 21,
+                        "operator": ">=",
+                        "value": 1,
+                        "next_node_id": 24
+                    },
+                    {
+                        "kind": "button_trigger",
+                        "next_node_id": end_node,
+                        "gesture": "Single Tap",
+                        "source": "Encoder Button"
+                    }
+                ]
+            },
+            {
+            "id": 24,
+            "controllers": [],
+            "triggers" : [
+                    {
+                        "kind": "timer_trigger",
+                        "timer_reference_id": 29,
+                        "operator": ">=",
+                        "value": 1,
+                        "next_node_id": end_node
+                    },
+                    {
+                        "kind": "button_trigger",
+                        "next_node_id": end_node,
+                        "gesture": "Single Tap",
+                        "source": "Encoder Button"
+                    }
+                ]
+            }
         ]
     }
-    
+
     # The merged dictionary is now in pre_purge_stage
     return prepurge_stage
     # return {}

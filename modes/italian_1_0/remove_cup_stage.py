@@ -38,7 +38,7 @@ def get_remove_cup_stage(parameters: json, start_node: int, end_node: int):
           "kind": "timer_trigger",
           "timer_reference_id": 5,
           "operator": ">=",
-          "value": 2,
+          "value": 5,
           "next_node_id": end_node
          }
         ]
