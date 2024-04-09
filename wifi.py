@@ -79,11 +79,11 @@ class WifiManager():
             # In the later case we dont want to set the hostname
             MACHINE_HOSTNAMES = ("imx8mn-var-som", "meticulous-")
             if config.hostname.startswith(MACHINE_HOSTNAMES):
-                HostnameManager.checkAndUpdateHostname(config.hostname, config.mac)
-
-            ap_name = HostnameManager.generateDeviceName(config.mac)
-            MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME] = ap_name
-            MeticulousConfig.save()
+                HostnameManager.checkAndUpdateHostname(
+                    config.hostname, config.mac)
+                ap_name = HostnameManager.generateDeviceName(config.mac)
+                MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME] = ap_name
+                MeticulousConfig.save()
 
         if WifiManager._zeroconf is None:
             WifiManager._zeroconf = ZeroConfAnnouncement(config_function = WifiManager.getCurrentConfig)
