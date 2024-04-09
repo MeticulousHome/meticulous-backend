@@ -13,6 +13,12 @@ class BaseHandler(tornado.web.RequestHandler):
                         'GET,POST,OPTIONS,DELETE')
         self.set_header('Access-Control-Allow-Headers', 'content-type')
 
+    def report_error(self, error_code, error: str, error_details=None):
+        self.set_status(error_code)
+        self.write(
+            {"error": error, "details": error_details}
+        )
+
     def options(self):
         pass
 

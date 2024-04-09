@@ -101,7 +101,7 @@ API.register_handler(APIVersion.V1, r"/profile/list", ListHandler),
 API.register_handler(APIVersion.V1, r"/profile/save", SaveProfileHandler),
 API.register_handler(APIVersion.V1, r"/profile/load", LoadProfileHandler),
 API.register_handler(
-    APIVersion.V1, r"/profile/load/(?P<profile_id>\w+)", LoadProfileHandler),
+    APIVersion.V1, r"/profile/load/([0-9a-fA-F-]+)", LoadProfileHandler),
 API.register_handler(
     APIVersion.V1, r"/profile/get/([0-9a-fA-F-]+)", GetProfileHandler),
 API.register_handler(

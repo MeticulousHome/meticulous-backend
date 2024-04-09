@@ -36,6 +36,7 @@ class API():
 
     @classmethod
     def get_routes(cls):
+        from . import action as _
         from . import history as _
         from . import notifications as _
         from . import profiles as _
