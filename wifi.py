@@ -9,6 +9,7 @@ from api.zeroconf_announcement import ZeroConfAnnouncement
 import nmcli
 import time
 import socket
+import os
 
 from hostname import HostnameManager
 
@@ -19,7 +20,9 @@ nmcli.disable_use_sudo()
 nmcli.set_lang("C.UTF-8")
 
 # Should be something like "192.168.2.123/24,MyHostname"
-ZEROCONF_OVERWRITE=os.getenv("ZEROCONF_OVERWRITE", '')
+ZEROCONF_OVERWRITE = os.getenv("ZEROCONF_OVERWRITE", '')
+
+
 @dataclass
 class WifiSystemConfig():
     """Class Representing the current network configuration"""
@@ -51,6 +54,7 @@ class WifiSystemConfig():
     def is_hotspot(self):
         return self.connection_name == WifiManager._conname
 
+
 class WifiManager():
     _known_wifis = []
     # Internal name used by network manager to refer to the AP configuration
@@ -60,7 +64,8 @@ class WifiManager():
 
     def init():
         if ZEROCONF_OVERWRITE != '':
-            logger.info(f"Overwriting network configuration due to ZEROCONF_OVERWRITE={ZEROCONF_OVERWRITE}")
+            logger.info(
+                f"Overwriting network configuration due to ZEROCONF_OVERWRITE={ZEROCONF_OVERWRITE}")
 
         try:
             nmcli.device.show_all()
@@ -77,7 +82,7 @@ class WifiManager():
 
             # Check if we are on a deployed machine, a container or if we are running elsewhere
             # In the later case we dont want to set the hostname
-            MACHINE_HOSTNAMES = ("imx8mn-var-som", "meticulous-")
+            MACHINE_HOSTNAMES = ("imx8mn-var-som")
             if config.hostname.startswith(MACHINE_HOSTNAMES):
                 HostnameManager.checkAndUpdateHostname(
                     config.hostname, config.mac)
@@ -86,7 +91,8 @@ class WifiManager():
                 MeticulousConfig.save()
 
         if WifiManager._zeroconf is None:
-            WifiManager._zeroconf = ZeroConfAnnouncement(config_function = WifiManager.getCurrentConfig)
+            WifiManager._zeroconf = ZeroConfAnnouncement(
+                config_function=WifiManager.getCurrentConfig)
 
         # Without networking we have no chance starting the wifi or getting the creads
         if WifiManager._networking_available:
@@ -181,25 +187,28 @@ class WifiManager():
             except Exception as e:
                 logger.info(f"Failed to connect to wifi: {e}")
                 return False
-            logger.info("Connection should be established, checking if a network is marked in-use")
-            networks = WifiManager.scanForNetworks(timeout=10, target_network_ssid=ssid)
+            logger.info(
+                "Connection should be established, checking if a network is marked in-use")
+            networks = WifiManager.scanForNetworks(
+                timeout=10, target_network_ssid=ssid)
             if len([x for x in networks if x.in_use]) > 0:
                 logger.info("Successfully connected")
                 WifiManager._zeroconf.restart()
                 MeticulousConfig[CONFIG_WIFI][WIFI_MODE] = WIFI_MODE_CLIENT
-                MeticulousConfig.save()
+
                 return True
         logger.info("Target network was not found, no connection established")
         return False
 
     # Reads the IP from ZEROCONF_OVERWRITE and announces that instead
+
     def mockCurrentConfig():
         connected: bool = True
         connection_name: str = "MeticulousMockConnection"
 
         overwrite = ZEROCONF_OVERWRITE.split(",")
         mockIP = IPNetwork(overwrite[0])
-        hostname : str = overwrite[1]
+        hostname: str = overwrite[1]
 
         gateway: IPAddress = IPAddress(mockIP.first)
         routes: list[str] = []
@@ -211,7 +220,7 @@ class WifiManager():
 
     def getCurrentConfig() -> WifiSystemConfig:
 
-        if ZEROCONF_OVERWRITE  != '' :
+        if ZEROCONF_OVERWRITE != '':
             return WifiManager.mockCurrentConfig()
 
         connected: bool = False
