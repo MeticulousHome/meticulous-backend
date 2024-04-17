@@ -195,13 +195,17 @@ class WifiManager():
                 logger.info("Successfully connected")
                 WifiManager._zeroconf.restart()
                 MeticulousConfig[CONFIG_WIFI][WIFI_MODE] = WIFI_MODE_CLIENT
+                WifiManager.rememberWifi(ssid, password)
 
                 return True
         logger.info("Target network was not found, no connection established")
         return False
 
-    # Reads the IP from ZEROCONF_OVERWRITE and announces that instead
+    def rememberWifi(name, password):
+        MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS][name] = password
+        MeticulousConfig.save()
 
+    # Reads the IP from ZEROCONF_OVERWRITE and announces that instead
     def mockCurrentConfig():
         connected: bool = True
         connection_name: str = "MeticulousMockConnection"

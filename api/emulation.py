@@ -43,8 +43,8 @@ class WiFiConfigHandler(BaseHandler):
                 ],
                 "mac": "C0:EE:40:A4:7D:A9",
                 "hostname": "imx8mn-var-som"
-            }
-
+            },
+            "known_wifis": MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS]
         }
         self.write(json.dumps(wifi_config))
 
