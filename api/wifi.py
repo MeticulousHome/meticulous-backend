@@ -162,7 +162,29 @@ class WiFiConnectHandler(BaseHandler):
             logger.warning("Failed to connect: ", exc_info=e, stack_info=True)
 
 
+class WiFiDeleteHandler(BaseHandler):
+    def post(self):
+        try:
+            data = json.loads(self.request.body)
+            ssid = data['ssid']
+
+            if ssid in MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS]:
+                del MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS][ssid]
+                MeticulousConfig.save()
+                self.write({"status": "ok"})
+            else:
+                self.set_status(400)
+                self.write(
+                    {"status": "error", "error": "failed to delete unknown wifi"})
+        except Exception as e:
+            self.set_status(400)
+            self.write(
+                {"status": "error", "error": f"failed to delete wifi: {e}"})
+            logger.warning("Failed to connect: ", exc_info=e, stack_info=True)
+
+
 API.register_handler(APIVersion.V1, r"/wifi/config", WiFiConfigHandler),
 API.register_handler(APIVersion.V1, r"/wifi/config/qr.png", WiFiQRHandler),
 API.register_handler(APIVersion.V1, r"/wifi/list", WiFiListHandler),
 API.register_handler(APIVersion.V1, r"/wifi/connect", WiFiConnectHandler),
+API.register_handler(APIVersion.V1, r"/wifi/delete", WiFiDeleteHandler),
