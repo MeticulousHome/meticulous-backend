@@ -84,6 +84,9 @@ WIFI_DEFAULT_AP_NAME = "MeticulousEspresso"
 WIFI_AP_PASSWORD = "APPassword"
 WIFI_DEFAULT_AP_PASSWORD = str(uuid.uuid4())[:8]
 
+WIFI_KNOWN_WIFIS = "KnownWifis"
+WIFI_DEFAULT_KNOWN_WIFIS = dict()
+
 DefaultConfiguration_V1 = {
     # Only needs to be incremented in case of incompatible restructurings
     "version": 1,
@@ -107,7 +110,8 @@ DefaultConfiguration_V1 = {
     CONFIG_WIFI: {
         WIFI_MODE: WIFI_MODE_AP,
         WIFI_AP_NAME: WIFI_DEFAULT_AP_NAME,
-        WIFI_AP_PASSWORD: WIFI_DEFAULT_AP_PASSWORD
+        WIFI_AP_PASSWORD: WIFI_DEFAULT_AP_PASSWORD,
+        WIFI_KNOWN_WIFIS: WIFI_DEFAULT_KNOWN_WIFIS
     },
 }
 

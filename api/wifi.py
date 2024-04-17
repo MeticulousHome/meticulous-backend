@@ -74,27 +74,27 @@ class WiFiConfigHandler(BaseHandler):
         wifi_config = {
             "config": WiFiConfig(mode, apName, apPassword).to_json(),
             "status": WifiManager.getCurrentConfig().to_json(),
+            "known_wifis": MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS]
         }
         self.write(json.dumps(wifi_config))
 
     def post(self):
         try:
+            config_changed = False
             data = json.loads(self.request.body)
             if "mode" in data and data["mode"] in [WIFI_MODE_AP, WIFI_MODE_CLIENT]:
                 logger.warning("Changing wifi mode")
                 MeticulousConfig[CONFIG_WIFI][WIFI_MODE] = data["mode"]
-                MeticulousConfig.save()
-                WifiManager.resetWifiMode()
-                del data["mode"]
+                config_changed = True
 
             if "apPassword" in data:
                 logger.warning("Changing wifi ap password")
                 MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD] = data["apPassword"]
+                config_changed = True
+
+            if config_changed:
                 MeticulousConfig.save()
                 WifiManager.resetWifiMode()
-                del data["mode"]
-
-            logger.info(f"Unused request entries: {data}")
 
             return self.get()
         except json.JSONDecodeError as e:
