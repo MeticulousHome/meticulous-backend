@@ -1,3 +1,4 @@
+import subprocess
 import json
 from machine import Machine
 from wifi import WifiManager
@@ -26,4 +27,13 @@ class MachineInfoHandler(BaseHandler):
         self.write(json.dumps(response))
 
 
-API.register_handler(APIVersion.V1, r"/machine", MachineInfoHandler),
+class MachineResetHandler(BaseHandler):
+
+    def get(self):
+        subprocess.run("rm -rf /meticulous-user/*")
+        subprocess.run("reboot")
+
+
+API.register_handler(APIVersion.V1, r"/machine", MachineInfoHandler)
+API.register_handler(
+    APIVersion.V1, r"/machine/factory_reset", MachineResetHandler)
