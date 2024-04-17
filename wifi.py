@@ -10,6 +10,7 @@ import nmcli
 import time
 import socket
 import os
+import threading
 
 from hostname import HostnameManager
 
@@ -57,6 +58,7 @@ class WifiSystemConfig():
 
 class WifiManager():
     _known_wifis = []
+    _thread = None
     # Internal name used by network manager to refer to the AP configuration
     _conname = "meticulousLocalAP"
     _networking_available = True
@@ -102,7 +104,33 @@ class WifiManager():
             else:
                 WifiManager.stopHotspot()
 
+            WifiManager._thread = threading.Thread(
+                target=WifiManager.tryAutoConnect)
+            WifiManager._thread.start()
+
         WifiManager._zeroconf.start()
+
+    def tryAutoConnect():
+        while (True):
+            time.sleep(10)
+
+            if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP:
+                continue
+
+            current = WifiManager.getCurrentConfig()
+            if current.connected:
+                continue
+
+            networks = WifiManager.scanForNetworks(timeout=10)
+            previousNetworks = MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS]
+
+            for network in networks:
+                if network.ssid in previousNetworks:
+                    logger.info(f"Found known WIFI {network.ssid}. Connecting")
+                    success = WifiManager.connectToWifi(
+                        ssid=network.ssid, password=previousNetworks[network.ssid])
+                    if success:
+                        break
 
     def resetWifiMode():
         # Without networking we have no chance starting the wifi or getting the creads
