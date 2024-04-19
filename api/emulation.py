@@ -14,6 +14,16 @@ class WiFiConfigHandler(BaseHandler):
         mode = MeticulousConfig[CONFIG_WIFI][WIFI_MODE]
         apName = MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME]
         apPassword = MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
+        knownWifis = MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS]
+        knownWifis["hello miguel"] = "This hopefully works"
+        knownWifis["Test123"] = "Password123"
+        knownWifis["Placeholder1"] = "Placeholder1"
+        knownWifis["Placeholder2"] = "Placeholder2"
+        knownWifis["Placeholder3"] = "Placeholder3"
+        knownWifis["Placeholder4"] = "Placeholder4"
+        knownWifis["Placeholder5"] = "Placeholder5"
+        knownWifis["Placeholder6"] = "Placeholder6"
+
         wifi_config = {
             "config": WiFiConfig(mode, apName, apPassword).to_json(),
             "status": {
@@ -44,7 +54,7 @@ class WiFiConfigHandler(BaseHandler):
                 "mac": "C0:EE:40:A4:7D:A9",
                 "hostname": "imx8mn-var-som"
             },
-            "known_wifis": MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS]
+            "known_wifis": knownWifis
         }
         self.write(json.dumps(wifi_config))
 
