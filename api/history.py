@@ -14,7 +14,7 @@ from .base_handler import BaseHandler
 from .api import API, APIVersion
 
 logger = MeticulousLogger.getLogger(__name__)
-
+last_version_path = f"/api/{APIVersion.latest_version().name.lower()}"
 
 class ZstdHistoryHandler(tornado.web.StaticFileHandler):
     async def get(self, path, include_body=True):
@@ -66,19 +66,14 @@ class ZstdHistoryHandler(tornado.web.StaticFileHandler):
         # Ensure content type for served files is correct
         return 'application/octet-stream'
 
-
-class ZstdDebugHandler(ZstdHistoryHandler):
-    def get_content_type(self):
-        return "text/plain; charset=utf-8"
-
-
 API.register_handler(APIVersion.V1, r'/history/debug',
-                     tornado.web.RedirectHandler, url="/history/debug/"),
+                     tornado.web.RedirectHandler, url=f"{last_version_path}/history/debug/"),
 
 API.register_handler(APIVersion.V1, r'/history/debug/(.*)',
-                     ZstdDebugHandler, path=DEBUG_HISTORY_PATH),
+                     ZstdHistoryHandler, path=DEBUG_HISTORY_PATH),
 
 API.register_handler(APIVersion.V1, r'/history',
-                     tornado.web.RedirectHandler, url="/history/"),
-API.register_handler(APIVersion.V1, r'/history/(.*)',
+                     tornado.web.RedirectHandler, url=f"{last_version_path}/history/"),
+
+API.register_handler(APIVersion.V1, r'/history/((?!debug)).*)',
                      ZstdHistoryHandler, path=HISTORY_PATH),
