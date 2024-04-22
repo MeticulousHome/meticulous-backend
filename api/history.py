@@ -16,6 +16,7 @@ from .api import API, APIVersion
 logger = MeticulousLogger.getLogger(__name__)
 last_version_path = f"/api/{APIVersion.latest_version().name.lower()}"
 
+
 class ZstdHistoryHandler(tornado.web.StaticFileHandler):
     async def get(self, path, include_body=True):
         # Check if the path is a directory
@@ -66,6 +67,7 @@ class ZstdHistoryHandler(tornado.web.StaticFileHandler):
         # Ensure content type for served files is correct
         return 'application/octet-stream'
 
+
 API.register_handler(APIVersion.V1, r'/history/debug',
                      tornado.web.RedirectHandler, url=f"{last_version_path}/history/debug/"),
 
@@ -75,5 +77,5 @@ API.register_handler(APIVersion.V1, r'/history/debug/(.*)',
 API.register_handler(APIVersion.V1, r'/history',
                      tornado.web.RedirectHandler, url=f"{last_version_path}/history/"),
 
-API.register_handler(APIVersion.V1, r'/history/((?!debug)).*)',
+API.register_handler(APIVersion.V1, r'/history/(((?!debug)).*)',
                      ZstdHistoryHandler, path=HISTORY_PATH),
