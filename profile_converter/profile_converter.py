@@ -334,7 +334,7 @@ class ComplexProfileConverter:
                     },
                     {
                         "kind": "button_trigger",
-                        "next_node_id": 5,
+                        "next_node_id": 16,
                         "gesture": "Single Tap",
                         "source": "Encoder Button"
                     }
@@ -434,14 +434,35 @@ class ComplexProfileConverter:
                         {
                             "kind": "log_controller",
                             "message": "Click to start"
+                        },
+                        {
+                            "kind": "time_reference",
+                            "id": 30
                         }
                     ],
+                    "triggers": [
+                        {
+                            "kind": "exit",
+                            "next_node_id": 25
+                        }
+                    ]
+                },
+                {
+                    "id": 25,
+                    "controllers": [],
                     "triggers": [
                         {
                             "kind": "button_trigger",
                             "next_node_id": 17,
                             "gesture": "Single Tap",
                             "source": "Encoder Button"
+                        },
+                        {
+                            "kind": "timer_trigger",
+                            "timer_reference_id": 30,
+                            "next_node_id": -2,
+                            "operator": ">=",
+                            "value": 600
                         }
                     ]
                 }
