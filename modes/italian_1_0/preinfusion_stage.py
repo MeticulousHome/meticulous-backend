@@ -2,6 +2,12 @@ import json
 
 def get_preinfusion_stage(parameters: json, start_node: int, end_node: int):
     
+    try:
+        pressure = parameters["pressure"]
+    except:
+        print('Error: Pressure is not defined')
+        return None
+    
     preinfusion_stage =   {
       "name": "preinfusion",
       "nodes": [
@@ -40,7 +46,7 @@ def get_preinfusion_stage(parameters: json, start_node: int, end_node: int):
           "kind": "pressure_value_trigger",
           "source": "Pressure Predictive",
           "operator": ">=",
-          "value": 8,
+          "value": pressure,
           "next_node_id": 11
          },
          {
@@ -71,7 +77,7 @@ def get_preinfusion_stage(parameters: json, start_node: int, end_node: int):
            "points": [
             [
              0,
-             8
+             pressure
             ]
            ],
            "time_reference_id": 3
@@ -120,7 +126,7 @@ def get_preinfusion_stage(parameters: json, start_node: int, end_node: int):
 
 if __name__ == '__main__':
   
-    parameters = '{"preheat": true,"temperature": 200}'
+    parameters = '{"preheat": true,"temperature": 200, "out_weight": 0.3, "pressure": 3.5}'
 
     json_parameters = json.loads(parameters)
 
