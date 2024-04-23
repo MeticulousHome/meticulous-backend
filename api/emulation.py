@@ -15,7 +15,7 @@ class WiFiConfigHandler(BaseHandler):
         apName = MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME]
         apPassword = MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
         knownWifis = MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS]
-        knownWifis["hello miguel"] = "This hopefully works"
+        knownWifis["MeticulousWifi"] = "MeticulousWifiPassword"
         knownWifis["Test123"] = "Password123"
         knownWifis["Placeholder1"] = "Placeholder1"
         knownWifis["Placeholder2"] = "Placeholder2"
