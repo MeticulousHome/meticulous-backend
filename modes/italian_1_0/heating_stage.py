@@ -59,7 +59,7 @@ def get_heating_stage(parameters: json, start_node: int, end_node: int):
                     "kind": "button_trigger",
                     "source": "Encoder Button",
                     "gesture": "Single Tap",
-                    "next_node_id": 6,
+                    "next_node_id": start_node_preheat,
                 },
             ],
             },
@@ -150,14 +150,40 @@ def get_heating_stage(parameters: json, start_node: int, end_node: int):
             "nodes": [
                 {
                 "id": start_node_preheat,
+                "controllers": [
+                {
+                    "kind": "log_controller",
+                    "message": "Click to start"
+                },
+                {
+                    "kind": "time_reference",
+                    "id": 14
+                }
+                ],
+                "triggers": [
+                {
+                    "kind": "exit",
+                    "next_node_id": 50
+                }
+                ]
+                },
+                {
+                "id": 50,
                 "controllers": [],
                 "triggers": [
-                    {
+                {
                         "kind": "button_trigger",
                         "source": "Encoder Button",
                         "gesture": "Single Tap",
                         "next_node_id": end_node,
-                    },
+                },
+                {
+                    "kind": "timer_trigger",
+                    "timer_reference_id": 14,
+                    "next_node_id": -2,
+                    "operator": ">=",
+                    "value": 600
+                },
                 ],
                 },
             ],

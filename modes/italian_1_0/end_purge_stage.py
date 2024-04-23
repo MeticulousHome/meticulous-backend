@@ -75,7 +75,7 @@ def get_end_purge_stage(parameters: json, start_node: int, end_node: int):
                         ],
                         "reference": {
                         "kind": "time",
-                        "id": 8
+                        "id": 12
                         }
                     }
                 }
@@ -173,7 +173,7 @@ def get_end_purge_stage(parameters: json, start_node: int, end_node: int):
             "triggers" : [
                 {
                     "kind": "timer_trigger",
-                    "timer_reference_id": 8,
+                    "timer_reference_id": 12,
                     "operator": ">=",
                     "value": 1,
                     "next_node_id": end_node
