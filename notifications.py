@@ -7,8 +7,7 @@ import io
 import queue
 import threading
 
-from dataclasses import dataclass, replace
-from enum import Enum, auto, unique
+from sounds import SoundPlayer, Sounds
 
 from config import *
 
@@ -101,6 +100,7 @@ class NotificationManager:
                 else:
                     # Emit the notification over socketIO as json
                     await NotificationManager._sio.emit("notification", notification.to_json())
+                    logger.info(f"send notification: {notification.to_json()}")
 
         # Create and run the asyncio event loop
         loop = asyncio.new_event_loop()
@@ -120,12 +120,20 @@ class NotificationManager:
         return False
 
     def add_notification(notification: Notification):
+        notification.acknowledged = False
         NotificationManager._queue.put(notification)
-        for old_notfication in NotificationManager.get_unacknowledged_notifications():
+        updating = False
+        for idx, old_notfication in enumerate(NotificationManager.get_unacknowledged_notifications()):
             if notification.id == old_notfication.id:
-                return
+                del NotificationManager._notifications[idx]
+                updating = True
+
         NotificationManager._notifications.append(notification)
-        SoundPlayer.play_event_sound(Sounds.Notification)
+        if not updating:
+            logger.info("Notification created")
+            SoundPlayer.play_event_sound(Sounds.NOTIFICATION)
+        else:
+            logger.info("Notification updated")
 
     def get_unacknowledged_notifications():
         NotificationManager.delete_old_acknowledged()
