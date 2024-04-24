@@ -39,7 +39,8 @@ tornado.log.gen_log = MeticulousLogger.getLogger("tornado.general")
 sendInfoToFront = True
 
 PORT = int(os.getenv("PORT", '8080'))
-DEBUG=os.getenv("DEBUG", 'False').lower() in ('true', '1', 'y')
+DEBUG = os.getenv("DEBUG", 'False').lower() in ('true', '1', 'y')
+
 
 def gatherVersionInfo():
     global infoSolicited
@@ -48,7 +49,8 @@ def gatherVersionInfo():
 
     # #OBTENEMOS SU VERSION USANDO LOS COMANDOS DPKG y GREP
     command = f'dpkg --list | grep meticulous-ui'
-    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    result = subprocess.run(command, shell=True,
+                            capture_output=True, text=True)
     try:
         lcd_version = result.stdout.split()[2]
     except IndexError:
@@ -58,6 +60,7 @@ def gatherVersionInfo():
 
     software_info["lcdV"] = lcd_version
 
+
 sio = socketio.AsyncServer(cors_allowed_origins='*', async_mode='tornado')
 
 software_info = {
@@ -65,13 +68,16 @@ software_info = {
     "lcdV": 3,
 }
 
+
 @sio.event
 def connect(sid, environ):
     logger.info('connect %s', sid)
 
+
 @sio.event
 def disconnect(sid):
     logger.info('disconnect %s', sid)
+
 
 @sio.on('action')
 def msg(sid, data):
@@ -106,18 +112,21 @@ def StopInfo(sid):
     global sendInfoToFront
     sendInfoToFront = False
 
+
 @sio.on('send_profile')
-async def forwardJSON(sid,data):
+async def forwardJSON(sid, data):
     logger.info(json.dumps(data, indent=1, sort_keys=False))
     await sio.emit('save_profile', data)
 
-@sio.on('calibrate') #Use when calibration it is implemented
+
+@sio.on('calibrate')  # Use when calibration it is implemented
 def msg(sid, data=True):
     know_weight = "100.0"
     current_weight = Machine.data_sensors.weight
-    data ="calibration"+","+know_weight+","+str(current_weight)
+    data = "calibration"+","+know_weight+","+str(current_weight)
     _input = "action,"+data+"\x03"
     Machine.write(str.encode(_input))
+
 
 @sio.on('feed_profile')
 async def feed_profile(sid, data):
@@ -127,23 +136,23 @@ async def feed_profile(sid, data):
     # Extract and print the value of "kind"
     kind_value = obj.get('kind', None)
     if kind_value:
-        if kind_value =="italian_1_0":
+        if kind_value == "italian_1_0":
             logger.info("Is Italian 1.0")
-            json_result = generate_italian_1_0(obj) #<class 'str'>
+            json_result = generate_italian_1_0(obj)  # <class 'str'>
             logger.info(json_result)
-            obj_json = json.loads(json_result) #<class 'dict'>
+            obj_json = json.loads(json_result)  # <class 'dict'>
             Machine.send_json_with_hash(obj_json)
             await asyncio.sleep(5)
             _input = "action,"+"start"+"\x03"
             Machine.write(str.encode(_input))
-            
-        if kind_value =="dashboard_1_0":
+
+        if kind_value == "dashboard_1_0":
             logger.info("Is Dashboard 1.0")
             action_value = obj.get('action', None)
             if action_value == "to_play":
-                json_result = generate_dashboard_1_0(obj)  #<class 'str'>
+                json_result = generate_dashboard_1_0(obj)  # <class 'str'>
                 logger.info(json_result)
-                obj_json = json.loads(json_result) #<class 'dict'>
+                obj_json = json.loads(json_result)  # <class 'dict'>
                 Machine.send_json_with_hash(obj_json)
                 await asyncio.sleep(5)
                 _input = "action,"+"start"+"\x03"
@@ -153,15 +162,16 @@ async def feed_profile(sid, data):
                 # The following remove the property "action" from the json_data
                 obj.pop("action")
                 # emit the event to save the profile using "save_in_dial" event
-                logger.info("Se envio save_in_dial: ",obj)
-                await sio.emit("save_in_dial",json.dumps(obj))
-        
-        if kind_value =="spring_1_0":
+                logger.info("Se envio save_in_dial: ", obj)
+                await sio.emit("save_in_dial", json.dumps(obj))
+
+        if kind_value == "spring_1_0":
             logger.info("Spring 1.0")
     else:
         print("The 'kind' key is not present in the received JSON.")
 
 send_data_thread = None
+
 
 async def live():
 
@@ -173,8 +183,8 @@ async def live():
     i = 0
     _time = time.time()
     logger.info("Starting to emit machine data")
-    
-    #Store previous value of 'auto_preheat' to detect changes
+
+    # Store previous value of 'auto_preheat' to detect changes
     # previous_auto_preheat = MeticulousConfig[CONFIG_USER].get('auto_preheat', None)
 
     while True:
@@ -207,6 +217,7 @@ async def live():
         await sio.sleep(SAMPLE_TIME)
         i = i + 1
 
+
 def send_data_loop():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -214,8 +225,9 @@ def send_data_loop():
     loop.run_until_complete(send_data())
     loop.close()
 
-async def send_data():
 
+async def send_data():
+    noti = Notification("", ["Ok", "Not okay"])
     while (True):
         print("> ", end="")
         try:
@@ -230,29 +242,28 @@ async def send_data():
         elif _input == "show":
             MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES] = True
             MeticulousConfig.save()
-        
+
         elif _input == "hide":
             MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES] = False
             MeticulousConfig.save()
 
-        elif _input== "json":
-            with open('fika.json','r') as openfile:
+        elif _input == "json":
+            with open('fika.json', 'r') as openfile:
                 json_file = json.load(openfile)
                 # json_data = json.dumps(json_file, indent=1, sort_keys=False)
                 # logger.info(json_data)
                 Machine.send_json_with_hash(json_file)
-                json_data=""
-                json_file=""
-            
+                json_data = ""
+                json_file = ""
 
-        elif _input=="tare" or _input=="stop" or _input=="purge" or _input=="home" or _input=="start" :
+        elif _input == "tare" or _input == "stop" or _input == "purge" or _input == "home" or _input == "start":
             _input = "action,"+_input+"\x03"
             Machine.write(str.encode(_input))
-            
+
         elif _input == "test":
             previous_sensor_status = MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES]
             MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES] = True
-            for i in range(0,10):
+            for i in range(0, 10):
                 _input = "action,"+"purge"+"\x03"
                 Machine.write(str.encode(_input))
                 await asyncio.sleep(15)
@@ -266,15 +277,15 @@ async def send_data():
             MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES] = previous_sensor_status
 
         elif _input[:11] == "calibration":
-             _input = "action,"+_input+"\x03"
-             Machine.write(str.encode(_input))
+            _input = "action,"+_input+"\x03"
+            Machine.write(str.encode(_input))
 
         elif _input.startswith("update"):
             Machine.startUpdate()
 
         elif _input.startswith("notification"):
             notification = _input[12:]
-            noti = Notification(notification, ["Ok", "Not okay"])
+            noti.message = notification
             noti.add_qrcode("Hello asjkdljlasjjkdsajkldasljkasdljk")
             NotificationManager.add_notification(noti)
         elif _input == "l" or _input == "CCW":
@@ -295,6 +306,7 @@ async def send_data():
             await sio.emit("button", ButtonEventData.from_args(["encoder_button_pressed"]).to_sio())
         elif _input == "re":
             await sio.emit("button", ButtonEventData.from_args(["encoder_button_released"]).to_sio())
+
 
 def main():
     global data_thread
@@ -333,19 +345,26 @@ def main():
     )
 
     app.listen(PORT)
-    
+
     sio.start_background_task(live)
     tornado.ioloop.IOLoop.current().start()
 
-def menu():    
+
+def menu():
     logger.info("Hi, please select the option you want: ")
     logger.info("reset --> reset the esp32")
-    logger.info("[tare, stop, start, purge, home] --> Send the corresponding command on the esp32")
-    logger.info("json --> Send the latest fika.json from local storage to the ESP32")
+    logger.info(
+        "[tare, stop, start, purge, home] --> Send the corresponding command on the esp32")
+    logger.info(
+        "json --> Send the latest fika.json from local storage to the ESP32")
     logger.info("show --> Show data received from the esp32")
-    logger.info("hide --> Stop showing data received from esp32 except for status messages")
-    logger.info("test --> Moves the engine 10 times from purge to home and displays the value of the sensors")
-    logger.info("calibration,<known_weight>,<measured_weight> --> Calibrate the weight")
+    logger.info(
+        "hide --> Stop showing data received from esp32 except for status messages")
+    logger.info(
+        "test --> Moves the engine 10 times from purge to home and displays the value of the sensors")
+    logger.info(
+        "calibration,<known_weight>,<measured_weight> --> Calibrate the weight")
+
 
 if __name__ == "__main__":
     try:
