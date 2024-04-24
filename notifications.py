@@ -22,6 +22,7 @@ class NotificationResponse:
     NO = "No"
     UPDATE = "Update"
     SKIP = "Skip"
+    ABORT = "Abort"
 
 
 class Notification:
@@ -110,9 +111,6 @@ class NotificationManager:
     def acknowledge_notification(notification_id, response):
         for notification in NotificationManager.get_unacknowledged_notifications():
             if notification.id == notification_id:
-                if response not in notification.respone_options:
-                    return False
-
                 notification.acknowledge(response)
                 if notification.callback:
                     notification.callback(response)
