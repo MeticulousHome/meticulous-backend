@@ -29,6 +29,7 @@ class GetNotificationsHandler(BaseHandler):
     def post(self):
         data = json.loads(self.request.body)
         notification_id = data.get("id")
+        logger.info(f"acknowledge {notification_id}")
         response = data.get("response")
         if NotificationManager.acknowledge_notification(notification_id, response):
             self.write({"status": "success"})
@@ -36,6 +37,8 @@ class GetNotificationsHandler(BaseHandler):
             self.set_status(404)
             self.write(
                 {"status": "failure", "message": "Notification not found"})
+            logger.info(
+                f"acknoledge failed. Known notifications: {json.dumps([x.id for x in NotificationManager.get_all_notifications()])}")
 
 
 API.register_handler(APIVersion.V1, r"/notifications",

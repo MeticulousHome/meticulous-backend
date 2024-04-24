@@ -23,6 +23,7 @@ from profile import ProfileManager
 from config import *
 from machine import Machine
 from sounds import SoundPlayer
+from imager import DiscImager
 
 from api.api import API
 from api.emulation import register_emulation_handlers
@@ -347,6 +348,8 @@ def main():
     app.listen(PORT)
 
     sio.start_background_task(live)
+
+    DiscImager.flash_if_required()
     tornado.ioloop.IOLoop.current().start()
 
 
