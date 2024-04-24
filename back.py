@@ -86,16 +86,19 @@ def msg(sid, data):
         logger.info(data)
         Machine.write(data.encode("utf-8"))
 
+
 @sio.on('askForInfo')
 def setSendInfo(sid):
     global sendInfoToFront
     sendInfoToFront = True
 
+
 @sio.on('notification')
 def msg(sid, noti_json):
     notification = json.loads(noti_json)
     if "id" in notification and "response" in notification:
-        NotificationManager.acknowledge_notification(notification["id"], notification["response"])
+        NotificationManager.acknowledge_notification(
+            notification["id"], notification["response"])
 
 
 @sio.on('stopInfo')
