@@ -15,6 +15,8 @@ We create our own logger which we can register as stdout pointer and therefore
 redirect stdout to the logs.
 """
 logger = MeticulousLogger.getLogger(__name__)
+
+
 class ESPToolLogger:
     def __init__(self, level=logging.INFO):
         self.level = level
@@ -28,7 +30,9 @@ class ESPToolLogger:
     def flush(self): pass
     def isatty(self): return False
 
+
 esp_tool_logger = ESPToolLogger()
+
 
 class ESPToolArgs:
     default_flash_mapping = [
@@ -57,6 +61,7 @@ class ESPToolArgs:
     def loadFlashMapping(self, search_path=".", mapping=default_flash_mapping):
         self.addr_filename = [[partition[0], open(os.path.join(
             search_path, partition[1]), 'rb')] for partition in mapping]
+
 
 class ESPToolWrapper():
     CONFIG_BAUD = 921600
@@ -118,10 +123,12 @@ class ESPToolWrapper():
 
     def get_version_from_firmware():
         try:
-            image = LoadFirmwareImage("ESP32", os.path.join(UPDATE_PATH, "firmware.bin"))
+            image = LoadFirmwareImage(
+                "esp32s3", os.path.join(UPDATE_PATH, "firmware.bin"))
         except:
             return None
 
+        app_desc = None
         for idx, seg in enumerate(image.segments, start=1):
             segs = seg.get_memory_type(image)
             seg_name = ", ".join(segs)
@@ -147,7 +154,8 @@ class ESPToolWrapper():
                 logger.info(f"On-disk firmware file:")
                 logger.info(f'Project name: {project_name.decode("utf-8")}')
                 logger.info(f'App version: {version.decode("utf-8")}')
-                logger.info(f'Compile time: {date.decode("utf-8")} {time.decode("utf-8")}')
+                logger.info(
+                    f'Compile time: {date.decode("utf-8")} {time.decode("utf-8")}')
                 logger.info(f'ESP-IDF: {idf_ver.decode("utf-8")}')
                 logger.info(f"Secure version: {secure_version}")
                 return version.decode("utf-8").strip(" \x00\t")
