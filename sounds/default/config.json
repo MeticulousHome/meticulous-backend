@@ -1,5 +1,5 @@
 {
-    "startup": "startup.mp3",
+    "startup": {},
     "heating_start": {},
     "heating_end": "heating_end.mp3",
     "brewing_start": {},
