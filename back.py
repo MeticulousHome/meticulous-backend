@@ -37,8 +37,6 @@ tornado.log.access_log = MeticulousLogger.getLogger("tornado.access")
 tornado.log.app_log = MeticulousLogger.getLogger("tornado.application")
 tornado.log.gen_log = MeticulousLogger.getLogger("tornado.general")
 
-sendInfoToFront = True
-
 PORT = int(os.getenv("PORT", '8080'))
 DEBUG = os.getenv("DEBUG", 'False').lower() in ('true', '1', 'y')
 
@@ -94,24 +92,12 @@ def msg(sid, data):
         Machine.write(data.encode("utf-8"))
 
 
-@sio.on('askForInfo')
-def setSendInfo(sid):
-    global sendInfoToFront
-    sendInfoToFront = True
-
-
 @sio.on('notification')
 def msg(sid, noti_json):
     notification = json.loads(noti_json)
     if "id" in notification and "response" in notification:
         NotificationManager.acknowledge_notification(
             notification["id"], notification["response"])
-
-
-@sio.on('stopInfo')
-def StopInfo(sid):
-    global sendInfoToFront
-    sendInfoToFront = False
 
 
 @sio.on('send_profile')
@@ -176,8 +162,6 @@ send_data_thread = None
 
 async def live():
 
-    global sendInfoToFront
-
     process_started = False
     SAMPLE_TIME = 0.1
     elapsed_time = 0
@@ -202,13 +186,12 @@ async def live():
             # water_status_value = water_status_dict["water_status"]
             # await sio.emit("water_status", water_status_value)
 
-        if sendInfoToFront:
-            if Machine.sensor_sensors is not None:
-                await sio.emit("sensors", Machine.sensor_sensors.to_sio_temperatures())
-                await sio.emit("comunication", Machine.sensor_sensors.to_sio_communication())
-                await sio.emit("actuators", Machine.sensor_sensors.to_sio_actuators())
-            if Machine.esp_info is not None:
-                await sio.emit("info", {**software_info, **Machine.esp_info.to_sio()})
+        if Machine.sensor_sensors is not None:
+            await sio.emit("sensors", Machine.sensor_sensors.to_sio_temperatures())
+            await sio.emit("comunication", Machine.sensor_sensors.to_sio_communication())
+            await sio.emit("actuators", Machine.sensor_sensors.to_sio_actuators())
+        if Machine.esp_info is not None:
+            await sio.emit("info", {**software_info, **Machine.esp_info.to_sio()})
 
         # current_auto_preheat = MeticulousConfig[CONFIG_USER].get('auto_preheat')
         # if current_auto_preheat != previous_auto_preheat:
