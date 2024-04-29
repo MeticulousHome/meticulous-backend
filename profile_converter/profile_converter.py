@@ -604,19 +604,12 @@ class ComplexProfileConverter:
                 ],
                 "triggers": [
                     {
-                        "kind": "pressure_value_trigger",
-                        "next_node_id": self.end_node_head,
-                        "source": "Pressure Raw",
-                        "operator": ">=",
-                        "value": 0.2
-                    },
-                    {
                         "kind": "piston_position_trigger",
                         "position_reference_id": 0,
-                        "next_node_id": -2,
+                        "next_node_id": self.end_node_head,
                         "source": "Piston Position Raw",
                         "operator": ">=",
-                        "value": self.max_piston_position 
+                        "value": 3
                     }
                 ]
                 }
