@@ -219,6 +219,7 @@ class Machine:
                         ShotDebugManager.stop()
 
                     if (is_heating and old_status != MachineStatus.HEATING):
+                        time_passed = 0
                         SoundPlayer.play_event_sound(Sounds.HEATING_START)
 
                     if (old_status == MachineStatus.HEATING and not is_heating):
@@ -231,8 +232,8 @@ class Machine:
                             time_passed)
                         ShotManager.handleShotData(Machine.data_sensors)
                     else:
-                        Machine.data_sensors = data
-                        time_passed = 0
+                        Machine.data_sensors = data.clone_with_time(
+                            time_passed)
 
                     ShotDebugManager.handleShotData(Machine.data_sensors)
                     old_status = Machine.data_sensors.status
