@@ -56,7 +56,7 @@ class ZeroConfAnnouncement:
         )
 
     def start(self):
-        if self.met_service_info is not None and self.http_service_info_service_info is not None:
+        if self.met_service_info is not None and self.http_service_info is not None:
             return
 
         logger.info("Registering Service with zeroconf")
