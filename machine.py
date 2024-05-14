@@ -256,7 +256,7 @@ class Machine:
                         info.firmwareV
                     )
                     logger.info(
-                        f"ESPInfo running firmware version:   {Machine.firmware_running}")
+                        f"ESPInfo running firmware version:   {Machine.firmware_running} on pinout version {Machine.esp_info.espPinout}")
                     logger.info(
                         f"Backend available firmware version: {Machine.firmware_available}")
                     needs_update = False
@@ -289,8 +289,9 @@ class Machine:
 
     def startUpdate():
         Machine._stopESPcomm = True
-        Machine._connection.sendUpdate()
+        error_msg = Machine._connection.sendUpdate()
         Machine._stopESPcomm = False
+        return error_msg
 
     def return_to_idle():
         if (Machine.data_sensors.status != "idle"):

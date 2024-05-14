@@ -88,4 +88,4 @@ class EmulatorSerialConnection(SerialConnection):
 
     def sendUpdate(self):
         logger.info("Emulated ESP32 cannot be updated")
-        return
+        return None
