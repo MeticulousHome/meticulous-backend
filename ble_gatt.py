@@ -68,6 +68,7 @@ class GATTServer:
     """
 
     MIN_BOOT_TIME = 60
+    MACHINE_IDENT_UUID = "7f01d7b8-121e-11ef-a097-b3b1396fea81"
 
     _singletonServer = None
 
@@ -189,6 +190,15 @@ class GATTServer:
     def _build_gatt():
         gatt: Dict = {
             ImprovUUID.SERVICE_UUID.value: {
+                GATTServer.MACHINE_IDENT_UUID: {
+                    "Properties": (
+                        GATTCharacteristicProperties.read
+                    ),
+                    "Permissions": (
+                        GATTAttributePermissions.readable
+                        | GATTAttributePermissions.writeable
+                    ),
+                },
                 ImprovUUID.STATUS_UUID.value: {
                     "Properties": (
                         GATTCharacteristicProperties.read
@@ -290,6 +300,16 @@ class GATTServer:
 
         self.send_authentication_notification()
 
+    def machine_service_read_request(characteristic: BlessGATTCharacteristic) -> bytearray:
+
+        config = WifiManager.getCurrentConfig()
+        current_response = config.hostname + ","
+
+        current_response += "black" + ","
+        current_response += "v10.1.0" + ","
+        current_response += "103"
+        return bytearray(current_response.encode())
+
     def read_request(characteristic: BlessGATTCharacteristic, **kwargs) -> bytearray:
         try:
             improv_char = ImprovUUID(characteristic.uuid)
@@ -298,12 +318,15 @@ class GATTServer:
             logger.info(f"Reading {characteristic.uuid}")
             pass
         if characteristic.service_uuid == ImprovUUID.SERVICE_UUID.value:
-            GATTServer.getServer().updateAuthentication()
-            value = GATTServer.getServer().improv_server.handle_read(
-                characteristic.uuid
-            )
-
+            if characteristic.uuid == GATTServer.MACHINE_IDENT_UUID:
+                value = GATTServer.machine_service_read_request(characteristic)
+            else:
+                GATTServer.getServer().updateAuthentication()
+                value = GATTServer.getServer().improv_server.handle_read(
+                    characteristic.uuid
+                )
             return value
+
         return characteristic.value
 
     def write_request(
