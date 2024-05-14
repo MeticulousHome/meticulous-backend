@@ -125,12 +125,18 @@ class SensorData:
 class ESPInfo:
     """Class respresenting the current ESPs firmware and status"""
     firmwareV: str = "0.0.0"
-    fanStatus: bool = False
+    espPinout: int = 0
     mainVoltage: float = 0.0
 
     def from_args(args):
+        espPinout = 0
         try:
-            info = ESPInfo(args[0], args[1] == "on", float(args[2]))
+            # This used to be the fan status. To not break on old firmware we check parseability
+            espPinout = int(args[1])
+        except:
+            pass
+        try:
+            info = ESPInfo(args[0], espPinout, float(args[2]))
         except Exception as e:
             logger.warning(f"Failed to parse ESPInfo: {args}", exc_info=e)
             return None
@@ -139,7 +145,7 @@ class ESPInfo:
     def to_sio(self):
         return {
             "firmwareV": self.firmwareV,
-            "fanStatus": self.fanStatus,
+            "espPinout": self.espPinout,
             "mainVoltage": self.mainVoltage,
         }
 
