@@ -3,6 +3,7 @@ import sys
 import asyncio
 import psutil
 import time
+import threading
 from threading import Thread
 
 from improv import *
@@ -22,9 +23,6 @@ from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
 
-# NOTE: Some systems require different synchronization methods.
-if sys.platform in ["darwin", "win32"]:
-    raise ValueError("Cannot run on non-linux platforms")
 
 # FIXME Remove once the tornado server logic is in its own class
 PORT = int(os.getenv("PORT", '8080'))
@@ -73,7 +71,12 @@ class GATTServer:
     _singletonServer = None
 
     def __init__(self):
-        self.trigger = asyncio.Event()
+
+        if sys.platform in ["darwin", "win32"]:
+            self.trigger = threading.Event()
+        else:
+            self.trigger = asyncio.Event()
+
         self.loop = asyncio.new_event_loop()
         self.auth_notification: Notification = None
 
@@ -135,6 +138,7 @@ class GATTServer:
         # proper sdio power sequencing
         # After boot we need to was 10 or so seconds for the variscite wifi service
         # to enable bluetooth again
+        logger.info("Hello from execuion loop")
         uptime_missing = round(
             GATTServer.MIN_BOOT_TIME - (time.time() - psutil.boot_time())
         )
@@ -145,28 +149,35 @@ class GATTServer:
             await asyncio.sleep(uptime_missing)
 
         if self.bless_gatt_server is None:
+            logger.info("Creating Gatt server")
+
             self.bless_gatt_server = BlessServer(
-                name=self.gatt_name, loop=self.loop)
+                name=self.gatt_name)
             self.bless_gatt_server.read_request_func = GATTServer.read_request
             self.bless_gatt_server.write_request_func = GATTServer.write_request
 
-        try:
-            await self.bless_gatt_server.setup_task
-        except FileNotFoundError as e:
-            logger.warning(
-                "Could not initialize the BLE gatt interface. Bailing out!")
-            return
+        logger.info("Doing linux specific dances!")
 
-        # Power on the hci device if it is powered off
-        interface = self.bless_gatt_server.adapter.get_interface(
-            "org.bluez.Adapter1")
-        powered = await interface.get_powered()
-        if not powered:
-            logger.info("bluetooth device is not powered, powering now!")
-            await interface.set_powered(True)
+        if sys.platform not in ["darwin", "win32"]:
+            try:
+                await self.bless_gatt_server.setup_task
+            except FileNotFoundError as e:
+                logger.warning(
+                    "Could not initialize the BLE gatt interface. Bailing out!")
+                return
+
+            # Power on the hci device if it is powered off
+            interface = self.bless_gatt_server.adapter.get_interface(
+                "org.bluez.Adapter1")
+            powered = await interface.get_powered()
+            if not powered:
+                logger.info("bluetooth device is not powered, powering now!")
+                await interface.set_powered(True)
 
         # Init and start GATT
+        logger.info("Init Gatt server structure")
         await self.bless_gatt_server.add_gatt(GATTServer._build_gatt())
+        logger.info("calling Gatt server start")
         success = await self.bless_gatt_server.start()
 
         if not success:
@@ -175,7 +186,12 @@ class GATTServer:
         try:
             logger.info("GATT Server started")
             self.trigger.clear()
-            await self.trigger.wait()
+
+            if self.trigger.__module__ == "threading":
+                self.trigger.wait()
+            else:
+                await self.trigger.wait()
+
             logger.debug("GATT loop exiting")
             await self.bless_gatt_server.stop()
 
@@ -325,7 +341,7 @@ class GATTServer:
                 value = GATTServer.getServer().improv_server.handle_read(
                     characteristic.uuid
                 )
-            return value
+            return value    
 
         return characteristic.value
 

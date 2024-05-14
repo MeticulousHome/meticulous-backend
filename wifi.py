@@ -11,6 +11,7 @@ import time
 import socket
 import os
 import threading
+import sys
 
 from hostname import HostnameManager
 
@@ -72,8 +73,11 @@ class WifiManager():
         try:
             nmcli.device.show_all()
         except Exception as e:
-            logger.warning("Networking unavailable!")
-            WifiManager._networking_available = False
+            if sys.platform == "darwin":
+                logger.info("Mocking all logic on darwin based os!")
+            else:
+                logger.warning("Networking unavailable!")
+                WifiManager._networking_available = False
 
         config = WifiManager.getCurrentConfig()
         # Only update the hostname if it is a new system or if the hostname has been
@@ -97,7 +101,7 @@ class WifiManager():
                 config_function=WifiManager.getCurrentConfig)
 
         # Without networking we have no chance starting the wifi or getting the creads
-        if WifiManager._networking_available:
+        if WifiManager._networking_available and sys.platform != "darwin":
             # start AP if needed
             if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP:
                 WifiManager.startHotspot()
@@ -144,7 +148,7 @@ class WifiManager():
                 WifiManager._zeroconf.restart()
 
     def startHotspot():
-        if not WifiManager._networking_available:
+        if not WifiManager._networking_available or sys.platform == "darwin":
             return
 
         logger.info("Starting hotspot")
@@ -156,7 +160,7 @@ class WifiManager():
         WifiManager._zeroconf.restart()
 
     def stopHotspot():
-        if not WifiManager._networking_available:
+        if not WifiManager._networking_available or sys.platform == "darwin":
             return
 
         for dev in nmcli.device():
@@ -265,8 +269,14 @@ class WifiManager():
         mac: str = ""
         hostname: str = socket.gethostname()
 
-        if not WifiManager._networking_available:
-            return WifiSystemConfig(connected, connection_name, gateway, routes, ips, dns, mac, hostname)
+        if sys.platform == "darwin":
+            ips = [IPNetwork(socket.gethostbyname(socket.gethostname()))]
+            connected = True
+            connection_name = "MacOSMockConnection"
+            return WifiSystemConfig(connected, connection_name, gateway, routes, ips, dns, mac, hostname, domains)
+
+        if not WifiManager._networking_available or sys.platform == "win32":
+            return WifiSystemConfig(connected, connection_name, gateway, routes, ips, dns, mac, hostname, domains)
 
         for dev in nmcli.device():
             if dev.device_type == 'wifi':
