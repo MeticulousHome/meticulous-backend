@@ -1,8 +1,12 @@
 import logging
 import os
 import sys
+from enum import Enum, auto
+from typing import Optional
 
 import esptool
+import esptool.targets
+
 from log import MeticulousLogger
 from esptool.bin_image import LoadFirmwareImage
 import struct
@@ -15,6 +19,18 @@ We create our own logger which we can register as stdout pointer and therefore
 redirect stdout to the logs.
 """
 logger = MeticulousLogger.getLogger(__name__)
+
+
+class FikaSupportedESP32(Enum):
+    ESP32S1 = auto()
+    ESP32S3 = auto()
+
+    def fromString(chip: str) -> Optional['FikaSupportedESP32']:
+        if chip.upper() in ["ESP32", "ESP32S1", "ESP32-S1"]:
+            return FikaSupportedESP32.ESP32S1
+        if chip.upper() in ["ESP32S3", "ESP32-S3"]:
+            return FikaSupportedESP32.ESP32S3
+        return None
 
 
 class ESPToolLogger:
@@ -35,14 +51,21 @@ esp_tool_logger = ESPToolLogger()
 
 
 class ESPToolArgs:
-    default_flash_mapping = [
+    default_esp32_s1_flash_mapping = [
         [0x1000, "bootloader.bin"],
-        [0xe000, "boot_app0.bin"],
         [0x8000, "partitions.bin"],
+        [0xe000, "boot_app0.bin"],
         [0x10000, "firmware.bin"]
     ]
 
-    def __init__(self, chip="esp32"):
+    default_esp32_s3_flash_mapping = [
+        [0x0000, "bootloader.bin"],
+        [0x8000, "partitions.bin"],
+        [0xe000, "boot_app0.bin"],
+        [0x10000, "firmware.bin"]
+    ]
+
+    def __init__(self):
         self.compress = True
         self.no_compress = False
         self.flash_size = "detect"
@@ -56,26 +79,50 @@ class ESPToolArgs:
         self.no_progress = False
         self.addr_filename = []
         self.force = False
-        self.chip = chip
 
-    def loadFlashMapping(self, search_path=".", mapping=default_flash_mapping):
-        self.addr_filename = [[partition[0], open(os.path.join(
-            search_path, partition[1]), 'rb')] for partition in mapping]
+    def loadFlashMapping(self, chip: FikaSupportedESP32, mapping):
+        firmware_path = ESPToolWrapper.getFirmwarePath(chip)
+        if chip == FikaSupportedESP32.ESP32S1:
+            self.chip = "esp32"
+            # We compile the image for 8MB so we flash for that as well
+            # This is wasting flash on mot chips but we are only using 1MB for app0 anyways :/
+            self.flash_size = "8MB"
+        elif chip == FikaSupportedESP32.ESP32S3:
+            self.chip = "esp32s3"
+
+        try:
+            self.addr_filename = [[partition[0], open(os.path.join(
+                firmware_path, partition[1]), 'rb')] for partition in mapping]
+        except FileNotFoundError as e:
+            logger.error(f"Failed to load firmware from disk: {e}")
 
 
 class ESPToolWrapper():
     CONFIG_BAUD = 921600
 
-    def flash(self, port, reset=False):
-        _stdout = sys.stdout
+    @staticmethod
+    def getFirmwarePath(CHIP: FikaSupportedESP32):
+        if CHIP == FikaSupportedESP32.ESP32S3:
+            return os.path.join(UPDATE_PATH, "esp32-s3")
+        elif CHIP == FikaSupportedESP32.ESP32S1:
+            return os.path.join(UPDATE_PATH, "esp32")
+        else:
+            logger.error("Invalid CHIP for flash mapping!")
+            return None
 
+    def flash(self, port, reset=False):
+        failure = None
+        _stdout = sys.stdout
         logger.debug("Calling into esptool.py v%s" % esptool.__version__)
         if port is None:
             logger.warning("Running without esp32, not flashing!")
             return
         sys.stdout = esp_tool_logger
 
-        esp = esptool.ESP32ROM(port)
+        # ESP32S3 is a superset of the esp32
+        # So original esp32 will complain for unsupported features
+        esp = esptool.targets.ESP32S3ROM(port)
+
         if reset:
             esp.connect("default_reset", 10, detecting=True)
         else:
@@ -86,9 +133,18 @@ class ESPToolWrapper():
         try:
             chip_id = esp.get_chip_id()
             logger.info(f"ChipID is {chip_id}")
-        except esptool.util.NotImplementedInROMError as e:
+            if chip_id != 9:
+                logger.info("unexpected chip id")
+            CHIP = FikaSupportedESP32.ESP32S3
+            esp = esptool.targets.ESP32S3ROM(port)
+        except esptool.util.UnsupportedCommandError:
+            logger.info("Failed to get ESP32 ChipID, assuming ESP32-S1")
+            CHIP = FikaSupportedESP32.ESP32S1
+            esp = esptool.targets.ESP32ROM(port)
             pass
 
+        # esp32 chip description is ESP32-D0WD-V3
+        # esp32s3 chip is ESP32-D0WDQ6
         logger.info("Chip is %s" % (esp.get_chip_description()))
         logger.info("Features: %s" % ", ".join(esp.get_chip_features()))
         esptool.read_mac(esp, {})
@@ -107,7 +163,16 @@ class ESPToolWrapper():
             )
 
         args = ESPToolArgs()
-        args.loadFlashMapping(UPDATE_PATH)
+        # If we end up supporting  more chips this should be converted to a match, for now this is easier
+        if CHIP == FikaSupportedESP32.ESP32S3:
+            args.loadFlashMapping(CHIP,
+                                  ESPToolArgs.default_esp32_s3_flash_mapping)
+        elif CHIP == FikaSupportedESP32.ESP32S1:
+            args.loadFlashMapping(CHIP,
+                                  ESPToolArgs.default_esp32_s1_flash_mapping)
+        else:
+            logger.error("Invalid CHIP for flash mapping!")
+            return None
 
         logger.info("Detecting flash")
         esptool.detect_flash_size(esp, args)
@@ -115,16 +180,22 @@ class ESPToolWrapper():
         # Only needed for secure download mode
         esp.flash_set_parameters(esptool.flash_size_bytes(args.flash_size))
 
-        esptool.write_flash(esp, args)
+        try:
+            esptool.write_flash(esp, args)
+        except Exception as e:
+            logger.error(f"Failed to flash: {e}")
+            failure = e
         sys.stdout = _stdout
 
         logger.info("Done, Resetting baudrate")
         port.baudrate = initial_baudrate
+        return failure
 
     def get_version_from_firmware():
+        # ESP32-S3 is the default for customer hardware, everything else will be custom anyways
         try:
             image = LoadFirmwareImage(
-                "esp32s3", os.path.join(UPDATE_PATH, "firmware.bin"))
+                "esp32s3", os.path.join(UPDATE_PATH, "esp32-s3", "firmware.bin"))
         except:
             return None
 

@@ -66,10 +66,11 @@ class SerialConnection():
             raise serial.PortNotOpenError("Cannot update firmare!")
 
         self.reset(bootloader=True)
-        self.flasher.flash(self.port, reset=False)
+        error_msg = self.flasher.flash(self.port, reset=False)
 
         # esptool cannot reset the fika board so we alwys reset manually
         self.reset()
 
         # Just to be sure
         self.port.baudrate = SerialConnection.BAUDRATE
+        return error_msg
