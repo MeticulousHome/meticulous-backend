@@ -76,21 +76,25 @@ class WifiManager():
             WifiManager._networking_available = False
 
         config = WifiManager.getCurrentConfig()
+
         # Only update the hostname if it is a new system or if the hostname has been
         # set before. Do so in case the lookup table ever changed or the hostname is only
         # saved transient
-        if config.mac != "":
-            logger.info(f"Current hostname is '{config.hostname}'")
+        logger.info(f"Current hostname is '{config.hostname}'")
 
-            # Check if we are on a deployed machine, a container or if we are running elsewhere
-            # In the later case we dont want to set the hostname
-            MACHINE_HOSTNAMES = ("imx8mn-var-som")
-            if config.hostname.startswith(MACHINE_HOSTNAMES):
-                HostnameManager.checkAndUpdateHostname(
-                    config.hostname, config.mac)
-                ap_name = HostnameManager.generateDeviceName(config.mac)
-                MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME] = ap_name
-                MeticulousConfig.save()
+        # Check if we are on a deployed machine, a container or if we are running elsewhere
+        # In the later case we dont want to set the hostname
+        MACHINE_HOSTNAMES = ("imx8mn-var-som", "meticulous")
+        if config.hostname.startswith(MACHINE_HOSTNAMES):
+            new_hostname = HostnameManager.generateHostname()
+            if config.hostname == new_hostname:
+                return
+            logger.info(f"Changing hostname new = {new_hostname}")
+            HostnameManager.setHostname(new_hostname)
+
+        ap_name = HostnameManager.generateDeviceName()
+        MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME] = ap_name
+        MeticulousConfig.save()
 
         if WifiManager._zeroconf is None:
             WifiManager._zeroconf = ZeroConfAnnouncement(

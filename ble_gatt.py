@@ -89,9 +89,9 @@ class GATTServer:
             wifi_networks_callback=GATTServer.get_wifi_networks,
             max_response_bytes=250,
         )
-        config = WifiManager.getCurrentConfig()
-        if config.mac != "":
-            self.gatt_name = HostnameManager.generateDeviceName(config.mac)
+        deviceName = HostnameManager.generateDeviceName()
+        if deviceName is not None:
+            self.gatt_name = deviceName
         else:
             self.gatt_name = "MeticulousEspresso"
 
@@ -303,8 +303,8 @@ class GATTServer:
     def machine_service_read_request(characteristic: BlessGATTCharacteristic) -> bytearray:
 
         config = WifiManager.getCurrentConfig()
-        current_response = config.hostname + ","
-
+        current_response = HostnameManager.generateDeviceName() + ","
+        current_response += config.hostname + ","
         current_response += "black" + ","
         current_response += "v10.1.0" + ","
         current_response += "103"
