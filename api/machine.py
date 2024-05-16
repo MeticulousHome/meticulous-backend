@@ -1,11 +1,14 @@
-import subprocess
 import json
+import subprocess
+
+from hostname import HostnameManager
+from log import MeticulousLogger
 from machine import Machine
 from wifi import WifiManager
-from .base_handler import BaseHandler
-from .api import API, APIVersion
 
-from log import MeticulousLogger
+from .api import API, APIVersion
+from .base_handler import BaseHandler
+
 logger = MeticulousLogger.getLogger(__name__)
 
 
@@ -13,7 +16,8 @@ class MachineInfoHandler(BaseHandler):
     def get(self):
         response = {}
         config = WifiManager.getCurrentConfig()
-        response["name"] = config.hostname
+        response["name"] = HostnameManager.generateDeviceName()
+        response["hostname"] = config.hostname
 
         if Machine.esp_info is not None:
             response["firmware"] = Machine.esp_info.firmwareV
