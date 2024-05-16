@@ -20,6 +20,7 @@ from ble_gatt import GATTServer
 from wifi import WifiManager
 from notifications import Notification, NotificationManager, NotificationResponse
 from profile import ProfileManager
+from hostname import HostnameManager
 from config import *
 from machine import Machine
 from sounds import SoundPlayer
@@ -299,6 +300,7 @@ def main():
 
     gatherVersionInfo()
 
+    HostnameManager.init()
     Machine.init(sio)
 
     send_data_thread = threading.Thread(target=send_data_loop)
