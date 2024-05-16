@@ -2,7 +2,8 @@ from typing import Any
 import yaml
 import os
 import asyncio
-import uuid
+import string
+import random
 
 from pathlib import Path
 from datetime import datetime
@@ -82,7 +83,11 @@ WIFI_MODE_CLIENT = "CLIENT"
 WIFI_AP_NAME = "APName"
 WIFI_DEFAULT_AP_NAME = "MeticulousEspresso"
 WIFI_AP_PASSWORD = "APPassword"
-WIFI_DEFAULT_AP_PASSWORD = str(uuid.uuid4())[:8]
+
+# Could be out of string.ascii_letters, string.digits, string.punctuation
+wifi_allowed_characters = string.digits
+
+WIFI_DEFAULT_AP_PASSWORD = ''.join(random.choices(wifi_allowed_characters, k=12))
 
 WIFI_KNOWN_WIFIS = "KnownWifis"
 WIFI_DEFAULT_KNOWN_WIFIS = dict()
