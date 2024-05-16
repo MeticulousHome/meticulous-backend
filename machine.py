@@ -59,7 +59,7 @@ class Machine:
 
         match(BACKEND):
             case "USB":
-                Machine._connection = USBSerialConnection('/dev/ttyUSB0')
+                Machine._connection = USBSerialConnection("/dev/ttyUSB0")
             case "EMULATOR" | "EMULATION":
                 Machine._connection = EmulatorSerialConnection()
                 Machine.emulated = True
@@ -270,10 +270,7 @@ class Machine:
                     if needs_update and not MeticulousConfig[CONFIG_USER][DISALLOW_FIRMWARE_FLASHING]:
                         info_string = f"Firmware {Machine.firmware_running.get('Release')}-{Machine.firmware_running['ExtraCommits']} is outdated, upgrading"
                         logger.info(info_string)
-                        Machine._updateNotification = Notification(
-                            info_string, [NotificationResponse.OK])
-                        NotificationManager.add_notification(
-                            Machine._updateNotification)
+
                         Machine.startUpdate()
 
                 if button_event is not None:
@@ -288,9 +285,22 @@ class Machine:
                     Machine.return_to_idle()
 
     def startUpdate():
+        Machine._updateNotification = Notification(
+            "Upgrading system realtime core. This will take around 20 seconds", [NotificationResponse.OK]
+        )
+        NotificationManager.add_notification(Machine._updateNotification)
         Machine._stopESPcomm = True
         error_msg = Machine._connection.sendUpdate()
         Machine._stopESPcomm = False
+        if error_msg:
+            Machine._updateNotification = Notification(
+                f"Realtime core upgrade failed: {error_msg}. The machine will ensure a good state on next reboot. If you encounter any errors please reach out to product support!", [NotificationResponse.OK]
+            )
+        else:
+            Machine._updateNotification = Notification(
+                f"Upgrade finished sucessfully!", [NotificationResponse.OK]
+            )
+        NotificationManager.add_notification(Machine._updateNotification)
         return error_msg
 
     def return_to_idle():
