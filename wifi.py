@@ -148,11 +148,14 @@ class WifiManager():
             return
 
         logger.info("Starting hotspot")
-        nmcli.device.wifi_hotspot(
-            con_name=WifiManager._conname,
-            ssid=MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME],
-            password=MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
-        )
+        try:
+            nmcli.device.wifi_hotspot(
+                con_name=WifiManager._conname,
+                ssid=MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME],
+                password=MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
+            )
+        except Exception as e:
+            logger.error(f"Starting hotspot failed: {e}")
         WifiManager._zeroconf.restart()
 
     def stopHotspot():
@@ -162,7 +165,10 @@ class WifiManager():
         for dev in nmcli.device():
             if dev.device_type == 'wifi' and dev.connection == WifiManager._conname:
                 logger.info(f"Stopping Hotspot")
-                nmcli.connection.down(WifiManager._conname)
+                try:
+                    nmcli.connection.down(WifiManager._conname)
+                except Exception as e:
+                    logger.error(f"Stopping hotspot failed: {e}")
                 WifiManager._zeroconf.restart()
                 return
 
