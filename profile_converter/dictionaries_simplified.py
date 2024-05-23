@@ -18,6 +18,7 @@ over_dict = {
 interpolation_dict = {
     "linear" : CurveInterpolationType.LINEAR,
     "catmull" : CurveInterpolationType.CATMULL,
+    "curve": CurveInterpolationType.CATMULL,
 }
 
 exit_trigger_dict = {
