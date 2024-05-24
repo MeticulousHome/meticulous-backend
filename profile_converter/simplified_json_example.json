@@ -1,129 +1,96 @@
 {
-    "name": "E61 with dropping pressure",
-    "id": "4cdc0015-07cd-4738-b198-c7d8742acd2b",
-    "author": "Carlos",
+    "author": "meticulous",
     "author_id": "d9123a0a-d3d7-40fd-a548-b81376e43f23",
+    "final_weight": 40,
+    "id": "8d2de185-34c9-4ead-a46d-4ab056de1806",
+    "name": "Spring",
     "previous_authors": [
         {
-            "name": "mimoja",
             "author_id": "d9123a0a-d3d7-40fd-a548-b81376e43f23",
+            "name": "mimoja",
             "profile_id": "0cdf18ca-d72e-4776-8e25-7b3279907dce"
         },
         {
-            "name": "Alu",
             "author_id": "ee86a777-fdd6-46d6-8cf7-099a9fb609a1",
+            "name": "decentespresso",
             "profile_id": "58036fd5-7d5b-4647-9ab6-2832014bb9be"
         }
     ],
-    "temperature": 93,
-    "final_weight": 75,
     "stages": [
         {
-            "name": "stage 1",
-            "type": "power",
             "dynamics": {
+                "interpolation": "linear",
+                "over": "time",
                 "points": [
-                    [
+                    [ 
                         0,
-                        99.5
-                     ],
-                     [
-                        12,
-                        50.5
-                     ],
-                     [
-                        19,
-                        100
-                     ],
-                     [
-                        40,
-                        100
-                     ]
-                ],
-                "over": "piston_position",
-                "interpolation": "linear"
+                        4
+                    ]
+                ]
             },
             "exit_triggers": [
                 {
-                    "type": "weight",
-                    "value": 5,
-                    "relative": false,
-                    "comparison": "<="
+                    "comparison": ">=",
+                    "relative": true,
+                    "type": "time",
+                    "value": 30
                 },
                 {
-                    "type": "piston_position",
-                    "value": 40,
+                    "comparison": ">=",
                     "relative": true,
-                    "comparison": ">="
-                }, 
+                    "type": "weight",
+                    "value": 0.3
+                },
                 {
-                    "type": "temperature",
-                    "value": 150,
-                    "comparison": "<="
+                    "comparison": ">=",
+                    "relative": false,
+                    "type": "pressure",
+                    "value": 8
                 }
             ],
-            "limits": [
-                {
-                    "type": "temperature",
-                    "value": 70
-                },
-                {
-                    "type": "pressure",
-                    "value": 6
-                }
-            ]
-
+            "key": "preinfusion_1",
+            "limits": [],
+            "name": "Preinfusion",
+            "type": "flow"
         },
         {
-            "name": "stage 2",
-            "type": "flow",
             "dynamics": {
+                "interpolation": "curve",
+                "over": "time",
                 "points": [
                     [
                         0,
-                        2
-                     ],
-                     [
-                        17,
-                        6
-                     ],
-                     [
-                        50,
-                        6
-                     ]
-                ],
-                "over": "time",
-                "interpolation": "catmull"
+                        0
+                    ],
+                    [
+                        10,
+                        8
+                    ],
+                    [
+                        20,
+                        8
+                    ]
+                ]
             },
-            "exit_triggers": [
-                {
-                    "type": "weight",
-                    "value": 35,
-                    "relative": false,
-                    "comparison": "<="
-                },
-                {
-                    "type": "flow",
-                    "value": 15,
-                    "comparison": "<="
-                },
-                {
-                    "type": "time",
-                    "value": 50,
-                    "relative": true,
-                    "comparison": ">="
-                }
-            ],
+            "exit_triggers": [],
+            "key": "infusion_1",
             "limits": [
                 {
-                    "type": "pressure",
-                    "value": 12
-                },
-                {
-                    "type": "power",
-                    "value": 80
+                    "type": "flow",
+                    "value": 3
                 }
-            ]
+            ],
+            "name": "Infusion",
+            "type": "pressure"
+        }
+    ],
+    "temperature": 90.5,
+    "variables": [
+        {
+            "key": "pressure_1",
+            "name": "Pressure",
+            "type": "pressure",
+            "value": 8
         }
     ]
 }

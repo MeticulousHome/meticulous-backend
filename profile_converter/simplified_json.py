@@ -48,8 +48,9 @@ class SimplifiedJson:
         current_reference_id += 1
         return current_reference_id - 1
     
-    def set_comparison_type(comparison_value=None, default_comparison=TriggerOperatorType.GREATER_THAN_OR_EQUAL):
-
+    def set_comparison_type(self,comparison_value=None):
+        default_comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
+        
         if comparison_value is None:
             comparison_value = default_comparison
             print(f"Comparison value is None. Using default value: {default_comparison}.")
@@ -147,6 +148,8 @@ class SimplifiedJson:
             current_node_id = next_stage_node_id
             
             for exits in stage["exit_triggers"]:
+                json_comparison = exits["comparison"]
+                # print(json_comparison)
                 match exits["type"]:
                     case "time":
                         exit_trigger_value = exits["value"] 
@@ -154,7 +157,7 @@ class SimplifiedJson:
                             reference_id = init_node.get_time_id()
                         else:
                             reference_id = 4
-                        time_comparison = self.set_comparison_type(exits)
+                        time_comparison = self.set_comparison_type(json_comparison)
                         exit_trigger = TimerTrigger(time_comparison, exit_trigger_value, reference_id, next_stage_node_id)
                         exit_triggers.append(exit_trigger.get_trigger())
                         # print(F"Next Stage Node ID after match: {next_stage_node_id} from the stage {stage_name}")
@@ -165,18 +168,18 @@ class SimplifiedJson:
                             reference_id = init_node.get_weight_id()
                         else:
                             reference_id = 1
-                        weight_comparison = self.set_comparison_type(exits)
+                        weight_comparison = self.set_comparison_type(json_comparison)
                         exit_trigger = WeightTrigger(SourceType.RAW, weight_comparison, exit_trigger_value, reference_id, next_stage_node_id)
                         exit_triggers.append(exit_trigger.get_trigger())
                         
                     case "pressure":
-                        pressure_comparison = self.set_comparison_type(exits)
+                        pressure_comparison = self.set_comparison_type(json_comparison)
                         exit_trigger_value = exits["value"]
                         exit_trigger = PressureValueTrigger(SourceType.RAW, pressure_comparison, exit_trigger_value, next_stage_node_id)
                         exit_triggers.append(exit_trigger.get_trigger())
                     
                     case "flow":    
-                        flow_comparison = self.set_comparison_type(exits)
+                        flow_comparison = self.set_comparison_type(json_comparison)
                         exit_trigger_value = exits["value"]
                         exit_trigger = FlowValueTrigger(SourceType.RAW, flow_comparison, exit_trigger_value, next_stage_node_id)
                         exit_triggers.append(exit_trigger.get_trigger())
@@ -187,18 +190,18 @@ class SimplifiedJson:
                             reference_id = init_node.get_position_id()
                         else:
                             reference_id = 0
-                        piston_position_comparison = self.set_comparison_type(exits)
+                        piston_position_comparison = self.set_comparison_type(json_comparison)
                         exit_trigger = PistonPositionTrigger(piston_position_comparison, exit_trigger_value, reference_id, next_stage_node_id)
                         exit_triggers.append(exit_trigger.get_trigger())
                         
                     case "power":
-                        power_comparison = self.set_comparison_type(exits)
+                        power_comparison = self.set_comparison_type(json_comparison)
                         exit_trigger_value = exits["value"]
                         exit_trigger = PowerValueTrigger(SourceType.RAW, power_comparison, exit_trigger_value, next_stage_node_id)
                         exit_triggers.append(exit_trigger.get_trigger())
                         
                     case "temperature":
-                        temperature_comparison = self.set_comparison_type(exits)
+                        temperature_comparison = self.set_comparison_type(json_comparison)
                         exit_trigger_value = exits["value"]
                         exit_trigger = TemperatureValueTrigger(TemperatureSourceType.WATER, temperature_comparison, exit_trigger_value, next_stage_node_id)
                         exit_triggers.append(exit_trigger.get_trigger())
