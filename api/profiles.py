@@ -3,6 +3,7 @@ import json
 from profile import ProfileManager
 from .base_handler import BaseHandler
 from .api import API, APIVersion
+from .machine import Machine
 
 from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
@@ -39,6 +40,11 @@ class SaveProfileHandler(BaseHandler):
 
 class LoadProfileHandler(BaseHandler):
     def get(self, profile_id):
+        if not Machine.is_idle:
+            self.set_status(409)
+            self.write(
+                {"status": "error", "error": "machine is busy"})
+            return
         try:
             data = ProfileManager.get_profile(profile_id)
             if data:
@@ -56,6 +62,11 @@ class LoadProfileHandler(BaseHandler):
                            exc_info=e, stack_info=True)
 
     def post(self):
+        if not Machine.is_idle:
+            self.set_status(409)
+            self.write(
+                {"status": "error", "error": "machine is busy"})
+            return
         try:
             data = json.loads(self.request.body)
             profile = ProfileManager.send_profile_to_esp32(data)
