@@ -1,6 +1,8 @@
 
 # Contains strings for the emulated serial connection to use as data source
 class EmulationData:
+    PROFILE_PLACEHOLDER = "mimoja"
+
     #UNUSED
     BOOTUP_DATA = '''
 Success in initializing ADC 0

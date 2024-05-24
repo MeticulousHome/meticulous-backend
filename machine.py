@@ -37,6 +37,7 @@ class Machine:
     _updateNotification = None
 
     infoReady = False
+    profileReady  = False
 
     data_sensors: ShotData = ShotData()
     sensor_sensors: SensorData = None
@@ -150,6 +151,7 @@ class Machine:
                     Machine.esp_info = None
                     info_requested = False
                     Machine.infoReady = False
+                    Machine.profileReady = False
 
                 if Machine.reset_count >= 3:
                     logger.warning(
@@ -310,10 +312,21 @@ class Machine:
             Machine.action("stop")
         SoundPlayer.play_event_sound(Sounds.ABORT)
 
-    def action(action_event):
+    def action(action_event) -> bool:
         logger.info(f"sending action,{action_event}")
+        if action_event == "start" and not Machine.profileReady:
+            logger.warning("No profile loaded, sending last loaded profile to esp32")
+            from profile import ProfileManager
+            last_profile = ProfileManager.get_last_profile()
+            if last_profile is None:
+                logger.error("No known last profile which could be sent to the esp32")
+                return False
+
+            ProfileManager.send_profile_to_esp32(last_profile["profile"])
+
         machine_msg = f"action,{action_event}\x03"
         Machine.writeStr(machine_msg)
+        return True
 
     def writeStr(content):
         Machine.write(str.encode(content))
@@ -325,6 +338,7 @@ class Machine:
     def reset():
         Machine._connection.reset()
         Machine.infoReady = False
+        Machine.profileReady = False
         Machine.startTime = time.time()
 
     def send_json_with_hash(json_obj):
@@ -351,6 +365,7 @@ class Machine:
             time_str = f"{int(time_ms*1000)} ns"
         logger.info(
             f"Streaming profile to ESP32 took {time_str}")
+        Machine.profileReady = True
 
     def _parseVersionString(version_str: str):
         release = None
