@@ -20,6 +20,7 @@ CONFIG_LOGGING = "logging"
 CONFIG_SYSTEM = "system"
 CONFIG_USER = "user"
 CONFIG_WIFI = "wifi"
+CONFIG_PROFILES = "profiles"
 
 #
 # SYSTEM config
@@ -96,6 +97,13 @@ WIFI_DEFAULT_AP_PASSWORD = ''.join(random.choices(wifi_allowed_characters, k=12)
 WIFI_KNOWN_WIFIS = "KnownWifis"
 WIFI_DEFAULT_KNOWN_WIFIS = dict()
 
+#
+# Profiling related config items and persistency
+#
+PROFILE_LAST = "LastProfile"
+PROFILE_DEFAULT_LAST = None
+
+
 DefaultConfiguration_V1 = {
     # Only needs to be incremented in case of incompatible restructurings
     "version": 1,
@@ -123,6 +131,9 @@ DefaultConfiguration_V1 = {
         WIFI_AP_PASSWORD: WIFI_DEFAULT_AP_PASSWORD,
         WIFI_KNOWN_WIFIS: WIFI_DEFAULT_KNOWN_WIFIS
     },
+    CONFIG_PROFILES : {
+        PROFILE_LAST: PROFILE_DEFAULT_LAST
+    }
 }
 
 

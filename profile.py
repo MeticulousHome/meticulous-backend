@@ -20,11 +20,12 @@ logger = MeticulousLogger.getLogger(__name__)
 PROFILE_PATH = os.getenv("PROFILE_PATH", '/meticulous-user/profiles')
 
 
-class PROFILE_CHANGE(Enum):
+class PROFILE_EVENT(Enum):
     CREATE = "create"
     UPDATE = "update"
     DELETE = "delete"
     RELOAD = "full_reload"
+    LOAD = "load"
 
 
 class ProfileManager:
@@ -94,6 +95,14 @@ class ProfileManager:
             await ProfileManager._sio.emit("profile", payload)
 
         asyncio.run_coroutine_threadsafe(emit(), ProfileManager._loop)
+
+    def _set_last_profile(profile) -> None:
+        last_profile = {
+            "load_time": time.time(),
+            "profile": profile
+        }
+        MeticulousConfig[CONFIG_PROFILES][PROFILE_LAST] = last_profile
+        MeticulousConfig.save()
 
     def get_profile_changes() -> list[object]:
         return ProfileManager._last_profile_changes
@@ -183,11 +192,13 @@ class ProfileManager:
             profile = converter.get_profile()
             Machine.send_json_with_hash(profile)
 
+            ProfileManager._set_last_profile(json_result)
             ProfileManager._emit_profile_event(PROFILE_EVENT.LOAD, data["id"])
 
             return data
 
         logger.info("processing simplified profile")
+
         preprocessed_profile = ProfilePreprocessor.processVariables(data)
 
         logger.info(
@@ -197,6 +208,7 @@ class ProfileManager:
             click_to_start, click_to_purge, 1000, 7000, preprocessed_profile)
         profile = converter.get_profile()
         Machine.send_json_with_hash(profile)
+        ProfileManager._set_last_profile(data)
 
         ProfileManager._emit_profile_event(PROFILE_EVENT.LOAD, data["id"])
 
@@ -241,3 +253,6 @@ class ProfileManager:
 
     def list_profiles():
         return ProfileManager._known_profiles
+
+    def get_last_profile():
+        return MeticulousConfig[CONFIG_PROFILES][PROFILE_LAST]
