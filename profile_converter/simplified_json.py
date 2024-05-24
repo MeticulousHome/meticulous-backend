@@ -148,8 +148,12 @@ class SimplifiedJson:
             current_node_id = next_stage_node_id
             
             for exits in stage["exit_triggers"]:
-                json_comparison = exits["comparison"]
-                # print(json_comparison)
+                try:
+                    json_comparison = exits["comparison"]
+                    # print(json_comparison)
+                except KeyError:
+                    json_comparison = None
+                    print(f"Comparison not found in the exit triggers.")
                 match exits["type"]:
                     case "time":
                         exit_trigger_value = exits["value"] 
