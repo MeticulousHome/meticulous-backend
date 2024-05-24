@@ -110,6 +110,17 @@ class DeleteProfileHandler(BaseHandler):
                 {"status": "error", "error": "profile not found", "id": profile_id})
 
 
+class ChangesHandler(BaseHandler):
+    def get(self):
+        changes = ProfileManager.get_profile_changes()
+        response = []
+        for change in changes:
+            c = change.copy()
+            c["type"] = c["type"].value
+            response.append(c)
+        self.write(json.dumps(response))
+
+
 API.register_handler(APIVersion.V1, r"/profile/list", ListHandler),
 API.register_handler(APIVersion.V1, r"/profile/save", SaveProfileHandler),
 API.register_handler(APIVersion.V1, r"/profile/load", LoadProfileHandler),
@@ -119,3 +130,4 @@ API.register_handler(
     APIVersion.V1, r"/profile/get/([0-9a-fA-F-]+)", GetProfileHandler),
 API.register_handler(
     APIVersion.V1, r"/profile/delete/([0-9a-fA-F-]+)", DeleteProfileHandler),
+API.register_handler(APIVersion.V1, r"/profile/changes", ChangesHandler),
