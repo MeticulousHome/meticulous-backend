@@ -8,7 +8,7 @@ logger = MeticulousLogger.getLogger(__name__)
 
 
 class ExecuteActionHandler(BaseHandler):
-    def get(self, action):
+    def post(self, action):
         allowed_actions = ["start", "stop", "reset", "tare"]
         if (action in allowed_actions):
             Machine.action(action_event=action)
@@ -22,6 +22,9 @@ class ExecuteActionHandler(BaseHandler):
                  "action": action,
                  "allowed_actions": allowed_actions}
             ))
+
+    def get(self, action):
+        return self.post(action)
 
 
 API.register_handler(APIVersion.V1, r"/action/(.*)", ExecuteActionHandler),
