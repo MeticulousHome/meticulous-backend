@@ -27,10 +27,12 @@ class ListHandler(BaseHandler):
 class SaveProfileHandler(BaseHandler):
     def post(self):
         try:
+            change_id = self.request.headers.get("Change-Id", None)
             data = json.loads(self.request.body)
-            profile_response = ProfileManager.save_profile(data)
+            profile_response = ProfileManager.save_profile(data, change_id = change_id)
             self.write(
-                {"name": profile_response["name"], "id": profile_response["id"], "change_id": profile_response["change_id"]}
+                {"name": profile_response["name"], "id": profile_response["id"],
+                    "change_id": profile_response["change_id"]}
             )
         except Exception as e:
             self.set_status(400)
@@ -99,8 +101,9 @@ class DeleteProfileHandler(BaseHandler):
         return self.delete(profile_id)
 
     def delete(self, profile_id):
+        change_id = self.request.headers.get("ChangeID", None)
         logger.info("Deletion for profile "+profile_id)
-        data = ProfileManager.delete_profile(profile_id)
+        data = ProfileManager.delete_profile(profile_id, change_id = change_id)
         if data:
             logger.info(f"Deleted profile: {data}")
             self.write(data)
