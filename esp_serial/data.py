@@ -149,16 +149,22 @@ class ESPInfo:
             "mainVoltage": self.mainVoltage,
         }
 
+# From ESP32 to backend
 class MachineStatus():
     # Enum representing the events from the machine
     IDLE = "idle"
     HEATING = "heating"
-    INFUSION = "infusion"
-    PREINFUSION = "preinfusion"
-    PURGE = "purge"
+    PURGE = "Purge"
     RETRACTING = "retracting"
     CLOSING_VALVE = "closing valve"
-    SPRING = "spring"
+    HOME = "Home"
+    
+# Backend outwards
+class MachineState():
+    IDLE = "idle"
+    PURGE = "purge"
+    HOME = "home"
+    BREWING = "brewing"
 
 
 @dataclass
@@ -169,9 +175,10 @@ class ShotData:
     flow: float = 0.0
     weight: float = 0.0
     temperature: float = 20.0
-    status: str = ""
+    status: str = "" # Represented as "name" over socket.io
     profile: str = ""
     time: int = -1
+    state: str = ""
 
     def clone_with_time(self, shot_start_time):
         return replace(self, time=shot_start_time)
@@ -188,16 +195,26 @@ class ShotData:
         except:
             profile = None
 
+        state = MachineState.IDLE
+        if profile is not None:
+            if profile not in [MachineStatus.IDLE, MachineStatus.PURGE, MachineStatus.HOME]:
+                state = MachineState.BREWING
+            else:
+                state = profile.lower()
+
         try:
             data = ShotData(float(args[0]),
                             float(args[1]),
                             float(args[2]),
                             float(args[3]),
                             status,
-                            profile)
+                            profile,
+                            state=state
+                            )
         except Exception as e:
             logger.warning(f"Failed to parse ShotData: {args}", exc_info=e)
             return None
+
         return data
 
     def to_sio(self):
@@ -211,6 +228,7 @@ class ShotData:
             },
             "time": self.time,
             "profile": self.profile,
+            "state": self.state
         }
         return data
 

@@ -22,9 +22,10 @@ from notifications import Notification, NotificationManager, NotificationRespons
 from profile import ProfileManager
 from hostname import HostnameManager
 from config import *
-from machine import Machine
+from machine import Machine, MachineStatus
 from sounds import SoundPlayer
 from imager import DiscImager
+from esp_serial.connection.emulation_data import EmulationData
 
 from api.api import API
 from api.emulation import register_emulation_handlers
@@ -180,7 +181,27 @@ async def live():
             _time = time.time()
             Machine.action("info")
 
-        await sio.emit("status", {**Machine.data_sensors.to_sio()})
+        machine_status = {**Machine.data_sensors.to_sio()}
+        # We can enrich the machines functionality from within the backend
+        # as we know which profile was last loaded
+        last_profile_entry = ProfileManager.get_last_profile()
+        if last_profile_entry:
+            profile = last_profile_entry["profile"]
+
+            # In emulation mode the machine is unaware of its profile so we trick it here
+            if Machine.emulated and machine_status["profile"] == EmulationData.PROFILE_PLACEHOLDER:
+                if Machine.profileReady:
+                    machine_status["profile"] = profile["name"]
+                else:
+                    machine_status["profile"] = "default"
+
+            machine_status["loaded_profile"] = profile["name"]
+            machine_status["id"] = profile["id"]
+        else:
+            machine_status["loaded_profile"] = None
+            machine_status["id"] = None
+
+        await sio.emit("status", machine_status)
 
         if Machine.sensor_sensors is not None:
             water_status_dict = Machine.sensor_sensors.to_sio_water_status()
@@ -242,8 +263,7 @@ async def send_data():
                 json_file = ""
 
         elif _input == "tare" or _input == "stop" or _input == "purge" or _input == "home" or _input == "start":
-            _input = "action,"+_input+"\x03"
-            Machine.write(str.encode(_input))
+            Machine.action(_input)
 
         elif _input == "test":
             previous_sensor_status = MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES]
