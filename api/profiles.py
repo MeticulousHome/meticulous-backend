@@ -28,7 +28,7 @@ class ListHandler(BaseHandler):
 class SaveProfileHandler(BaseHandler):
     def post(self):
         try:
-            change_id = self.request.headers.get("Change-Id", None)
+            change_id = self.request.headers.get("X-Change-Id", None)
             data = json.loads(self.request.body)
             profile_response = ProfileManager.save_profile(
                 data, change_id=change_id)
@@ -103,7 +103,7 @@ class DeleteProfileHandler(BaseHandler):
         return self.delete(profile_id)
 
     def delete(self, profile_id):
-        change_id = self.request.headers.get("ChangeID", None)
+        change_id = self.request.headers.get("X-Change-Id", None)
         logger.info("Deletion for profile "+profile_id)
         data = ProfileManager.delete_profile(profile_id, change_id=change_id)
         if data:
