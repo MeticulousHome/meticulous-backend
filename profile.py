@@ -52,13 +52,16 @@ class ProfileManager:
 
         ProfileManager.refresh_profile_list()
 
-    def _register_profile_change(change: PROFILE_CHANGE,
-                                 profile_id: str, timestamp: Optional[float] = None) -> str:
+    def _register_profile_change(change: PROFILE_EVENT,
+                                 profile_id: str,
+                                 timestamp: Optional[float] = None,
+                                 change_id: Optional[str] = None) -> str:
         changes_to_keep = 100
 
         if timestamp is None:
             timestamp = time.time()
-        change_id = str(uuid.uuid4())
+        if change_id is None:
+            change_id = str(uuid.uuid4())
         change_entry = {
             "type": change,
             "profile_id": profile_id,
@@ -73,9 +76,9 @@ class ProfileManager:
         ProfileManager._last_profile_changes = changes
         return change_id
 
-    def _emit_profile_change(change: PROFILE_CHANGE,
-                             profile_id: Optional[str] = None,
-                             change_id: Optional[str] = None) -> None:
+    def _emit_profile_event(change: PROFILE_EVENT,
+                            profile_id: Optional[str] = None,
+                            change_id: Optional[str] = None) -> None:
 
         if not ProfileManager._loop:
             logger.warning("No event loop is running")
@@ -95,7 +98,10 @@ class ProfileManager:
     def get_profile_changes() -> list[object]:
         return ProfileManager._last_profile_changes
 
-    def save_profile(data, set_last_changed=False):
+    def save_profile(data,
+                     set_last_changed: bool = False,
+                     change_id: Optional[str] = None) -> dict:
+
         if "id" not in data or data["id"] == "":
             data["id"] = str(uuid.uuid4())
 
@@ -114,19 +120,19 @@ class ProfileManager:
         ProfileManager._known_profiles[data["id"]] = data
         logger.info(f"Saved profile {name}")
         if is_update:
-            change_type = PROFILE_CHANGE.UPDATE
+            change_type = PROFILE_EVENT.UPDATE
         else:
-            change_type = PROFILE_CHANGE.CREATE
+            change_type = PROFILE_EVENT.CREATE
 
         change_id = ProfileManager._register_profile_change(
-            change_type, data["id"], current_time)
+            change_type, data["id"], current_time, change_id)
 
-        ProfileManager._emit_profile_change(
+        ProfileManager._emit_profile_event(
             change_type, data["id"], change_id)
 
         return {"name": name, "id": data["id"], "change_id": change_id}
 
-    def delete_profile(id):
+    def delete_profile(id: str, change_id: Optional[str] = None) -> Optional[dict]:
         profile = ProfileManager._known_profiles.get(id)
         if not profile:
             return None
@@ -136,10 +142,10 @@ class ProfileManager:
         os.remove(file_path)
         del ProfileManager._known_profiles[profile["id"]]
         change_id = ProfileManager._register_profile_change(
-            PROFILE_CHANGE.DELETE, profile["id"])
+            PROFILE_EVENT.DELETE, profile["id"], change_id)
 
-        ProfileManager._emit_profile_change(
-            PROFILE_CHANGE.DELETE, profile["id"])
+        ProfileManager._emit_profile_event(
+            PROFILE_EVENT.DELETE, profile["id"])
 
         return {"profile": profile["name"], "id": profile["id"], "change_id": change_id}
 
@@ -159,7 +165,7 @@ class ProfileManager:
         click_to_purge = not MeticulousConfig[CONFIG_USER][PROFILE_AUTO_PURGE]
 
         if "id" not in data:
-            data["id"] = "00000000-0000-0000-0000-000000000000"
+            data["id"] = str(uuid.uuid4())
 
         logger.info(f"Recieved data: {data} {type(data)}")
 
@@ -176,6 +182,9 @@ class ProfileManager:
                 click_to_start, click_to_purge, 1000, 7000, json_result)
             profile = converter.get_profile()
             Machine.send_json_with_hash(profile)
+
+            ProfileManager._emit_profile_event(PROFILE_EVENT.LOAD, data["id"])
+
             return data
 
         logger.info("processing simplified profile")
@@ -188,6 +197,9 @@ class ProfileManager:
             click_to_start, click_to_purge, 1000, 7000, preprocessed_profile)
         profile = converter.get_profile()
         Machine.send_json_with_hash(profile)
+
+        ProfileManager._emit_profile_event(PROFILE_EVENT.LOAD, data["id"])
+
         return data
 
     def refresh_profile_list():
@@ -225,7 +237,7 @@ class ProfileManager:
             time_str = f"{int(time_ms*1000)} ns"
         logger.info(
             f"Refreshed profile list in {time_str} with {len(ProfileManager._known_profiles)} known profiles.")
-        ProfileManager._emit_profile_change(PROFILE_CHANGE.RELOAD)
+        ProfileManager._emit_profile_event(PROFILE_EVENT.RELOAD)
 
     def list_profiles():
         return ProfileManager._known_profiles
