@@ -229,6 +229,9 @@ class Machine:
                     if (old_status == MachineStatus.HEATING and not is_heating):
                         SoundPlayer.play_event_sound(Sounds.HEATING_END)
 
+                    if is_heating or is_preparing or is_retracting:
+                        time_passed = 0
+
                     if (time_flag):
                         time_passed = int(
                             (time.time() - shot_start_time) * 1000.0)
