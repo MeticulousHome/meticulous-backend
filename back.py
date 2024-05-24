@@ -310,7 +310,7 @@ def main():
 
     WifiManager.init()
     NotificationManager.init(sio)
-    ProfileManager.init()
+    ProfileManager.init(sio)
     SoundPlayer.init(emulation=Machine.emulated)
     MeticulousConfig.setSIO(sio)
 

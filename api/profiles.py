@@ -28,12 +28,14 @@ class SaveProfileHandler(BaseHandler):
     def post(self):
         try:
             data = json.loads(self.request.body)
-            (name, profile_id) = ProfileManager.save_profile(data)
-            self.write({"name": name, "id": profile_id})
+            profile_response = ProfileManager.save_profile(data)
+            self.write(
+                {"name": profile_response["name"], "id": profile_response["id"], "change_id": profile_response["change_id"]}
+            )
         except Exception as e:
             self.set_status(400)
             self.write(
-                {"status": "error", "error": "failed to save profile", "data": data})
+                {"status": "error", "error": "failed to save profile"})
             logger.warning("Failed to save profile:",
                            exc_info=e, stack_info=True)
 
