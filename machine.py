@@ -48,6 +48,8 @@ class Machine:
     firmware_running = None
     startTime = None
 
+    is_idle = True
+
     def init(sio):
         Machine._sio = sio
         Machine.firmware_available = Machine._parseVersionString(
@@ -189,7 +191,7 @@ class Machine:
                         logger.info(data_str.strip("\r\n"))
 
                 if data is not None:
-                    is_idle = data.status == MachineStatus.IDLE
+                    Machine.is_idle = data.status == MachineStatus.IDLE
                     is_purge = data.status == MachineStatus.PURGE
                     is_retracting = data.status == MachineStatus.RETRACTING
                     is_preparing = data.status == MachineStatus.CLOSING_VALVE
@@ -203,19 +205,19 @@ class Machine:
                         ShotManager.start()
                         SoundPlayer.play_event_sound(Sounds.BREWING_START)
 
-                    if old_status == MachineStatus.IDLE and not is_idle:
+                    if old_status == MachineStatus.IDLE and not Machine.is_idle:
                         ShotDebugManager.start()
 
-                    if is_idle and old_status != MachineStatus.IDLE:
+                    if Machine.is_idle and old_status != MachineStatus.IDLE:
                         SoundPlayer.play_event_sound(Sounds.IDLE)
 
-                    if (is_idle or is_purge or is_retracting):
+                    if (Machine.is_idle or is_purge or is_retracting):
                         if time_flag == True:
                             SoundPlayer.play_event_sound(Sounds.BREWING_END)
                         time_flag = False
                         ShotManager.stop()
 
-                    if (is_idle):
+                    if (Machine.is_idle):
                         ShotDebugManager.stop()
 
                     if (is_heating and old_status != MachineStatus.HEATING):
