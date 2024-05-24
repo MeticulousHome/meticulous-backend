@@ -9,4 +9,6 @@ export UPDATE_PATH=/tmp/firmware
 export PORT=8080
 export DEBUG=y
 export USER_SOUNDS=./sounds
+export DEFAULT_IMAGES=./images/default
+export IMAGES_PATH=./profile-images
 python3 back.py

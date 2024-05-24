@@ -5,6 +5,9 @@ import time
 import uuid
 from enum import Enum
 from typing import Optional
+import os
+import hashlib
+import shutil
 
 import socketio
 from config import *
@@ -18,7 +21,8 @@ from profile_preprocessor import ProfilePreprocessor
 logger = MeticulousLogger.getLogger(__name__)
 
 PROFILE_PATH = os.getenv("PROFILE_PATH", '/meticulous-user/profiles')
-
+IMAGES_PATH = os.getenv("IMAGES_PATH", '/meticulous-user/profile-images/')
+DEFAULT_IMAGES_PATH = os.getenv("DEFAULT_IMAGES", "/opt/meticulous-backend/images/default")
 
 class PROFILE_EVENT(Enum):
     CREATE = "create"
@@ -30,6 +34,7 @@ class PROFILE_EVENT(Enum):
 
 class ProfileManager:
     _known_profiles = dict()
+    _profile_default_images = []
     _sio: socketio.AsyncServer = None
     _loop: asyncio.AbstractEventLoop = None
     _thread: threading.Thread = None
@@ -51,7 +56,9 @@ class ProfileManager:
         if not os.path.exists(PROFILE_PATH):
             os.makedirs(PROFILE_PATH)
 
+        ProfileManager.refresh_image_list()
         ProfileManager.refresh_profile_list()
+
 
     def _register_profile_change(change: PROFILE_EVENT,
                                  profile_id: str,
@@ -113,6 +120,12 @@ class ProfileManager:
 
         if "id" not in data or data["id"] == "":
             data["id"] = str(uuid.uuid4())
+        
+        if "display" not in data:
+            data["display"] = {}
+        
+        if "image" not in data["display"] or data["display"]["image"] == "":
+            data["display"]["image"] = "/api/v1/" +     random.choice(ProfileManager.get_default_images())
 
         name = f'{data["id"]}.json'
 
@@ -139,7 +152,7 @@ class ProfileManager:
         ProfileManager._emit_profile_event(
             change_type, data["id"], change_id)
 
-        return {"name": name, "id": data["id"], "change_id": change_id}
+        return {"profile": data, "change_id": change_id}
 
     def delete_profile(id: str, change_id: Optional[str] = None) -> Optional[dict]:
         profile = ProfileManager._known_profiles.get(id)
@@ -156,7 +169,7 @@ class ProfileManager:
         ProfileManager._emit_profile_event(
             PROFILE_EVENT.DELETE, profile["id"])
 
-        return {"profile": profile["name"], "id": profile["id"], "change_id": change_id}
+        return {"profile": profile, "change_id": change_id}
 
     def get_profile(id):
         logger.info(f"Serving profile: {id}")
@@ -251,8 +264,41 @@ class ProfileManager:
             f"Refreshed profile list in {time_str} with {len(ProfileManager._known_profiles)} known profiles.")
         ProfileManager._emit_profile_event(PROFILE_EVENT.RELOAD)
 
+    def refresh_image_list():
+        logger.info("Refreshing default image list")
+        ProfileManager._profile_default_images = []
+        if not os.path.exists(DEFAULT_IMAGES_PATH):
+            os.makedirs(DEFAULT_IMAGES_PATH)
+            logger.error("Missing default images path!")
+            
+        if not os.path.exists(IMAGES_PATH):
+            os.makedirs(IMAGES_PATH)
+        
+        for filename in os.listdir(DEFAULT_IMAGES_PATH):
+            file_path = os.path.join(DEFAULT_IMAGES_PATH, filename)
+            if os.path.isfile(file_path):
+                file_extension = os.path.splitext(filename)[1].lower()
+                if file_extension not in [".png", ".jpg", ".jpeg", ".gif", ".webm", ".webp"]:
+                    continue
+                md5_hash = ProfileManager._get_md5_hash(file_path)
+                new_filename = f"{md5_hash}{file_extension}"
+                dst_path = os.path.join(IMAGES_PATH, new_filename)
+                shutil.copy2(file_path, dst_path)
+                ProfileManager._profile_default_images.append(new_filename)
+        logger.info(f"Found {len(ProfileManager._profile_default_images)} default images")
+        
+    def get_default_images():
+        return ProfileManager._profile_default_images
+
     def list_profiles():
         return ProfileManager._known_profiles
 
     def get_last_profile():
         return MeticulousConfig[CONFIG_PROFILES][PROFILE_LAST]
+
+    def _get_md5_hash(image_path):
+        hash_md5 = hashlib.md5()
+        with open(image_path, 'rb') as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+        return hash_md5.hexdigest()

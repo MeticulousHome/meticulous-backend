@@ -1,0 +1,3 @@
+[submodule "images/default"]
+	path = images/default
+	url = https://github.com/MeticulousHome/ProfileDefaultImages
