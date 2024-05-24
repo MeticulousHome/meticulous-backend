@@ -19,8 +19,11 @@ services:
       - UPDATE_PATH=/tmp/firmware
       - ZEROCONF_OVERWRITE=192.168.2.11/24,Mimoja-Datenschleuder
       - PORT=8080
+      - DEFAULT_IMAGES=/app/images/default
+      - IMAGES_PATH=/app/images/profile-images
     volumes:
       - ./config:/app/config
       - ./logs:/app/logs
       - ./profiles:/app/profiles
       - ./shots:/app/shots
+      - ./images:/app/images

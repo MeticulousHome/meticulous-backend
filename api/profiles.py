@@ -1,7 +1,8 @@
+import tornado
 from datetime import datetime, timezone
 import json
 from typing import Optional
-from profile import ProfileManager
+from profile import ProfileManager, IMAGES_PATH
 from .base_handler import BaseHandler
 from .api import API, APIVersion
 from .machine import Machine
@@ -32,10 +33,7 @@ class SaveProfileHandler(BaseHandler):
             data = json.loads(self.request.body)
             profile_response = ProfileManager.save_profile(
                 data, change_id=change_id)
-            self.write(
-                {"name": profile_response["name"], "id": profile_response["id"],
-                    "change_id": profile_response["change_id"]}
-            )
+            self.write(profile_response)
         except Exception as e:
             self.set_status(400)
             self.write(
@@ -143,9 +141,17 @@ class LastProfileHandler(BaseHandler):
         self.write(json.dumps(last_profile))
 
 
+class ListImagesHandler(BaseHandler):
+    def get(self, ignored):
+        self.write(json.dumps(ProfileManager.get_default_images()))
+
 API.register_handler(APIVersion.V1, r"/profile/list", ListHandler),
 API.register_handler(APIVersion.V1, r"/profile/save", SaveProfileHandler),
 API.register_handler(APIVersion.V1, r"/profile/load", LoadProfileHandler),
+API.register_handler(
+    APIVersion.V1, r"/profile/image([/]*)", ListImagesHandler), 
+API.register_handler(
+    APIVersion.V1, r"/profile/image/(.*)", tornado.web.StaticFileHandler,**{"path": IMAGES_PATH}),
 API.register_handler(
     APIVersion.V1, r"/profile/load/([0-9a-fA-F-]+)", LoadProfileHandler),
 API.register_handler(
