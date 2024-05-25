@@ -1,3 +1,6 @@
 [submodule "images/default"]
 	path = images/default
 	url = https://github.com/MeticulousHome/ProfileDefaultImages
+[submodule "profile_schema"]
+	path = profile_schema
+	url = https://github.com/MeticulousHome/espresso-profile-schema/
