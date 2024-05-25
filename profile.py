@@ -125,7 +125,7 @@ class ProfileManager:
             data["display"] = {}
         
         if "image" not in data["display"] or data["display"]["image"] == "":
-            data["display"]["image"] = "/api/v1/" +     random.choice(ProfileManager.get_default_images())
+            data["display"]["image"] = "/api/v1/profile/image/" +     random.choice(ProfileManager.get_default_images())
 
         name = f'{data["id"]}.json'
 
