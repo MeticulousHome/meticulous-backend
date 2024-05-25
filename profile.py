@@ -9,6 +9,7 @@ import os
 import hashlib
 import shutil
 
+import jsonschema
 import socketio
 from config import *
 from log import MeticulousLogger
@@ -39,6 +40,7 @@ class ProfileManager:
     _loop: asyncio.AbstractEventLoop = None
     _thread: threading.Thread = None
     _last_profile_changes = []
+    _schema = None
 
     def init(sio: socketio.AsyncServer):
         ProfileManager._sio = sio
@@ -56,6 +58,13 @@ class ProfileManager:
         if not os.path.exists(PROFILE_PATH):
             os.makedirs(PROFILE_PATH)
 
+        dirname = os.path.dirname(__file__)
+        profile_schema = os.path.join(dirname, 'profile_schema/schema.json')
+
+        # Load JSON schema from a file
+        with open(profile_schema, 'r') as schema_file:
+            ProfileManager._schema = json.load(schema_file)
+            
         ProfileManager.refresh_image_list()
         ProfileManager.refresh_profile_list()
 
@@ -128,6 +137,10 @@ class ProfileManager:
             data["display"]["image"] = "/api/v1/profile/image/" +     random.choice(ProfileManager.get_default_images())
 
         name = f'{data["id"]}.json'
+
+        errors = ProfileManager.validate_profile(data)
+        if errors is not None:
+            raise errors
 
         current_time = time.time()
         if set_last_changed:
@@ -211,6 +224,9 @@ class ProfileManager:
             return data
 
         logger.info("processing simplified profile")
+        errors = ProfileManager.validate_profile(data)
+        if errors is not None:
+            raise errors
 
         preprocessed_profile = ProfilePreprocessor.processVariables(data)
 
@@ -243,11 +259,15 @@ class ProfileManager:
                         f"Could not decode profile {f.name}: {error}")
                     continue
 
-                if "id" not in profile or profile["id"] == "":
-                    profile["id"] = str(uuid.uuid4())
-                    ProfileManager.save_profile(profile)
-                if "last_changed" not in profile:
-                    ProfileManager.save_profile(profile, set_last_changed=True)
+                try:
+                    if "id" not in profile or profile["id"] == "":
+                        profile["id"] = str(uuid.uuid4())
+                        ProfileManager.save_profile(profile)
+                    if "last_changed" not in profile:
+                        ProfileManager.save_profile(profile, set_last_changed=True)
+                except Exception:
+                    continue
+
                 id = profile["id"]
 
                 if id in ProfileManager._known_profiles and ProfileManager._known_profiles[id]["last_changed"] >= profile["last_changed"]:
@@ -302,3 +322,21 @@ class ProfileManager:
             for chunk in iter(lambda: f.read(4096), b""):
                 hash_md5.update(chunk)
         return hash_md5.hexdigest()
+
+
+    def validate_profile(data):
+        if not ProfileManager._schema:
+            logger.warning("No schema available, not validating")
+            return True
+
+        logger.info(f"validating profile: {data['id']}")
+        try:
+            jsonschema.validate(instance=data, schema=ProfileManager._schema)
+            logger.info("JSON data is valid.")
+        except jsonschema.exceptions.ValidationError as err:
+            logger.error(f"JSON validation error: {err.message}")
+            for error in sorted(err.context, key=lambda e: e.schema_path):
+                logger.error(f"Schema path: {list(error.schema_path)}")
+                logger.error(f"Message: {error.message}")
+            return err
+        return None

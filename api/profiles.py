@@ -1,3 +1,4 @@
+import jsonschema
 import tornado
 from datetime import datetime, timezone
 import json
@@ -52,7 +53,15 @@ class LoadProfileHandler(BaseHandler):
         try:
             data = ProfileManager.get_profile(profile_id)
             if data:
-                profile = ProfileManager.load_profile_and_send(profile_id)
+                try:
+                    profile = ProfileManager.load_profile_and_send(profile_id)
+                except jsonschema.exceptions.ValidationError as err:
+                    errors = {
+                        "status": "error", "error": f"JSON validation error: {err.message}"}
+
+                    self.set_status(400)
+                    self.write(errors)
+                    return
                 self.write({"name": profile["name"], "id": profile["id"]})
             else:
                 self.set_status(404)
@@ -73,7 +82,15 @@ class LoadProfileHandler(BaseHandler):
             return
         try:
             data = json.loads(self.request.body)
-            profile = ProfileManager.send_profile_to_esp32(data)
+
+            try:
+                profile = ProfileManager.send_profile_to_esp32(data)
+            except jsonschema.exceptions.ValidationError as err:
+                errors = {"status": "error", "error": f"JSON validation error: {err.message}"}
+
+                self.set_status(400)
+                self.write(errors)
+                return
             self.write({"name": profile["name"], "id": profile["id"]})
         except Exception as e:
             self.set_status(400)
