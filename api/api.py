@@ -43,6 +43,7 @@ class API():
         from . import settings as _
         from . import update as _
         from . import wifi as _
+        from . import update_os as _
         from . import sounds as _
         from . import machine as _
         routes = []
