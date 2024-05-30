@@ -50,13 +50,6 @@ class RaucManager:
             # Log before starting the process
             logger.info("Starting update_OS.sh script")
 
-            notification = Notification(
-                "Starting update_OS.sh script",
-                [NotificationResponse.OK]
-            )
-            NotificationManager.add_notification(notification)
-            logger.info("Notification sent: Starting update_OS.sh script")
-
             process = subprocess.Popen(
                 ["./update_OS.sh"],
                 stdout=subprocess.PIPE,
@@ -100,4 +93,3 @@ class RaucManager:
 if __name__ == "__main__":
     current_rauc_info = RaucManager.get_rauc_status()
     print(current_rauc_info.output)  # Directly print the output
-
