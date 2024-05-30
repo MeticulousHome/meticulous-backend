@@ -50,6 +50,7 @@ class RaucManager:
             # Log before starting the process
             logger.info("Starting update_OS.sh script")
 
+            # Start the script without waiting for it to complete
             process = subprocess.Popen(
                 ["./update_OS.sh"],
                 stdout=subprocess.PIPE,
@@ -58,24 +59,8 @@ class RaucManager:
                 cwd="/home"
             )
 
-            stdout, stderr = process.communicate()
-
-            for line in stdout.splitlines():
-                RaucManager.update_messages.put(line.strip())  # Add command output to queue
-                logger.info(f"Update command output: {line.strip()}")
-
-            if stderr:
-                for line in stderr.splitlines():
-                    RaucManager.update_messages.put(line.strip())  # Add error output to queue
-                    logger.error(f"Update command error: {line.strip()}")
-
-            # Log after process completes
-            logger.info("update_OS.sh script completed")
-
-            if process.returncode != 0:
-                error_message = f"update_OS.sh script failed with return code {process.returncode}"
-                RaucManager.update_messages.put(error_message)
-                logger.error(error_message)
+            # Log that the script has been started
+            logger.info("update_OS.sh script has been started in the background")
 
         except Exception as e:
             error_message = f"Error executing command: {str(e)}"
@@ -93,3 +78,4 @@ class RaucManager:
 if __name__ == "__main__":
     current_rauc_info = RaucManager.get_rauc_status()
     print(current_rauc_info.output)  # Directly print the output
+
