@@ -179,9 +179,10 @@ class ShotData:
     profile: str = ""
     time: int = -1
     state: str = ""
+    is_extracting : bool = False
 
-    def clone_with_time(self, shot_start_time):
-        return replace(self, time=shot_start_time)
+    def clone_with_time_and_state(self, shot_start_time, is_brewing):
+        return replace(self, time=shot_start_time, is_extracting=is_brewing)
     
     def from_args(args):
         try:
@@ -228,7 +229,8 @@ class ShotData:
             },
             "time": self.time,
             "profile": self.profile,
-            "state": self.state
+            "state": self.state,
+            "extracting": self.is_extracting
         }
         return data
 

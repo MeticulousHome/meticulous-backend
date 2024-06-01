@@ -235,12 +235,12 @@ class Machine:
                     if (time_flag):
                         time_passed = int(
                             (time.time() - shot_start_time) * 1000.0)
-                        Machine.data_sensors = data.clone_with_time(
-                            time_passed)
+                        Machine.data_sensors = data.clone_with_time_and_state(
+                            time_passed, True)
                         ShotManager.handleShotData(Machine.data_sensors)
                     else:
-                        Machine.data_sensors = data.clone_with_time(
-                            time_passed)
+                        Machine.data_sensors = data.clone_with_time_and_state(
+                            time_passed, False)
 
                     ShotDebugManager.handleShotData(Machine.data_sensors)
                     old_status = Machine.data_sensors.status
