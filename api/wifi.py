@@ -58,8 +58,8 @@ class WiFiQRHandler(BaseHandler):
         buffer = io.BytesIO()
 
         qr = pyqrcode.create(qr_contents)
-        qr.png(buffer, scale=3, quiet_zone=2,
-               module_color=[0xFF, 0x00, 0x00, 0xFF],
+        qr.png(buffer, scale=8, quiet_zone=2,
+               module_color=[0x00, 0x00, 0x00, 0xFF],
                background=[0xFF, 0xFF, 0xFF, 0xFF],)
 
         self.set_header("Content-Type", "image/png")
