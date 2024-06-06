@@ -1,5 +1,6 @@
 bidict==0.22.1
 bless @ git+https://github.com/Mimoja/bless@master
+datauri
 esptool==4.6.2
 gpiod==1.5.4
 mergedeep==1.3.4

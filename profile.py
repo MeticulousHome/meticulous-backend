@@ -1,17 +1,18 @@
+import hashlib
 import json
 import os
+import shutil
 import threading
 import time
 import uuid
 from enum import Enum
 from typing import Optional
-import os
-import hashlib
-import shutil
+from urllib.parse import urlparse
 
 import jsonschema
 import socketio
 from config import *
+import datauri
 from log import MeticulousLogger
 from machine import Machine
 from modes.italian_1_0.italian_1_0 import (convert_italian_json,
@@ -23,7 +24,9 @@ logger = MeticulousLogger.getLogger(__name__)
 
 PROFILE_PATH = os.getenv("PROFILE_PATH", '/meticulous-user/profiles')
 IMAGES_PATH = os.getenv("IMAGES_PATH", '/meticulous-user/profile-images/')
-DEFAULT_IMAGES_PATH = os.getenv("DEFAULT_IMAGES", "/opt/meticulous-backend/images/default")
+DEFAULT_IMAGES_PATH = os.getenv(
+    "DEFAULT_IMAGES", "/opt/meticulous-backend/images/default")
+
 
 class PROFILE_EVENT(Enum):
     CREATE = "create"
@@ -64,10 +67,9 @@ class ProfileManager:
         # Load JSON schema from a file
         with open(profile_schema, 'r') as schema_file:
             ProfileManager._schema = json.load(schema_file)
-            
+
         ProfileManager.refresh_image_list()
         ProfileManager.refresh_profile_list()
-
 
     def _register_profile_change(change: PROFILE_EVENT,
                                  profile_id: str,
@@ -123,18 +125,59 @@ class ProfileManager:
     def get_profile_changes() -> list[object]:
         return ProfileManager._last_profile_changes
 
+    def _is_relative_url(url):
+        """Check if the given URL is a relative URL."""
+        parsed = urlparse(url)
+        return not parsed.scheme and not parsed.netloc
+
+    def handle_image(data):
+        if "image" not in data["display"] or data["display"]["image"] == "":
+            data["display"]["image"] = "/api/v1/profile/image/" + \
+                random.choice(ProfileManager.get_default_images())
+        elif not ProfileManager._is_relative_url(data["display"]["image"]):
+            try:
+                uri = datauri.parse(data["display"]["image"])
+                logger.info("The string is a data URI with base64 payload.")
+
+                # Check if the MIME type is an image
+                if not uri.media_type.startswith("image/"):
+                    logger.warning("The data URI does not encode an image.")
+                    raise Exception("Invalid image MIME type")
+
+                file_content = uri.data
+                file_extension = uri.media_type.split('/')[-1]
+
+                if len(file_content) > 10 * 1024 * 1024:  # size check, e.g., less than 10MB
+                    logger.warning("File size exceeds limit.")
+                    raise Exception("Image file too large")
+
+                md5sum = hashlib.md5(file_content).hexdigest()
+                filename = f"{md5sum}.{file_extension}"
+                try:
+                    with open(os.path.join(IMAGES_PATH, filename), 'wb') as file:
+                        file.write(file_content)
+                        logger.info(f"File saved as {filename}")
+                        data["display"]["image"] = f"/api/v1/profile/image/{
+                            filename}"
+                except Exception as e:
+                    raise Exception(f"Saving file failed: {e}")
+
+            except datauri.DataURIError:
+                logger.warning(
+                    "The string is neither a relative URL nor a valid data URI with base64 payload.")
+                pass
+
     def save_profile(data,
                      set_last_changed: bool = False,
                      change_id: Optional[str] = None) -> dict:
 
         if "id" not in data or data["id"] == "":
             data["id"] = str(uuid.uuid4())
-        
+
         if "display" not in data:
             data["display"] = {}
-        
-        if "image" not in data["display"] or data["display"]["image"] == "":
-            data["display"]["image"] = "/api/v1/profile/image/" +     random.choice(ProfileManager.get_default_images())
+
+        ProfileManager.handle_image(data)
 
         name = f'{data["id"]}.json'
 
@@ -264,7 +307,8 @@ class ProfileManager:
                         profile["id"] = str(uuid.uuid4())
                         ProfileManager.save_profile(profile)
                     if "last_changed" not in profile:
-                        ProfileManager.save_profile(profile, set_last_changed=True)
+                        ProfileManager.save_profile(
+                            profile, set_last_changed=True)
                 except Exception:
                     continue
 
@@ -290,10 +334,10 @@ class ProfileManager:
         if not os.path.exists(DEFAULT_IMAGES_PATH):
             os.makedirs(DEFAULT_IMAGES_PATH)
             logger.error("Missing default images path!")
-            
+
         if not os.path.exists(IMAGES_PATH):
             os.makedirs(IMAGES_PATH)
-        
+
         for filename in os.listdir(DEFAULT_IMAGES_PATH):
             file_path = os.path.join(DEFAULT_IMAGES_PATH, filename)
             if os.path.isfile(file_path):
@@ -305,8 +349,9 @@ class ProfileManager:
                 dst_path = os.path.join(IMAGES_PATH, new_filename)
                 shutil.copy2(file_path, dst_path)
                 ProfileManager._profile_default_images.append(new_filename)
-        logger.info(f"Found {len(ProfileManager._profile_default_images)} default images")
-        
+        logger.info(
+            f"Found {len(ProfileManager._profile_default_images)} default images")
+
     def get_default_images():
         return ProfileManager._profile_default_images
 
@@ -322,7 +367,6 @@ class ProfileManager:
             for chunk in iter(lambda: f.read(4096), b""):
                 hash_md5.update(chunk)
         return hash_md5.hexdigest()
-
 
     def validate_profile(data):
         if not ProfileManager._schema:
