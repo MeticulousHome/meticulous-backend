@@ -35,10 +35,17 @@ class SaveProfileHandler(BaseHandler):
             profile_response = ProfileManager.save_profile(
                 data, change_id=change_id)
             self.write(profile_response)
+        except jsonschema.exceptions.ValidationError as err:
+            errors = {
+                "status": "error", "error": f"JSON validation error: {err.message}"}
+
+            self.set_status(400)
+            self.write(errors)
+            return
         except Exception as e:
             self.set_status(400)
             self.write(
-                {"status": "error", "error": "failed to save profile"})
+                {"status": "error", "error": "failed to save profile", "cause": f"{e}"})
             logger.warning("Failed to save profile:",
                            exc_info=e, stack_info=True)
 
