@@ -62,6 +62,8 @@ class LoadProfileHandler(BaseHandler):
             if data:
                 try:
                     profile = ProfileManager.load_profile_and_send(profile_id)
+                    self.write({"name": profile["name"], "id": profile["id"]})
+                    return
                 except jsonschema.exceptions.ValidationError as err:
                     errors = {
                         "status": "error", "error": f"JSON validation error: {err.message}"}
@@ -69,7 +71,6 @@ class LoadProfileHandler(BaseHandler):
                     self.set_status(400)
                     self.write(errors)
                     return
-                self.write({"name": profile["name"], "id": profile["id"]})
             else:
                 self.set_status(404)
                 self.write(
