@@ -6,13 +6,13 @@ import threading
 import time
 import uuid
 from enum import Enum
-from typing import Optional
+from typing import Optional, Set
 from urllib.parse import urlparse
 
+import datauri
 import jsonschema
 import socketio
 from config import *
-import datauri
 from log import MeticulousLogger
 from machine import Machine
 from modes.italian_1_0.italian_1_0 import (convert_italian_json,
@@ -38,6 +38,7 @@ class PROFILE_EVENT(Enum):
 
 class ProfileManager:
     _known_profiles = dict()
+    _known_images = []
     _profile_default_images = []
     _sio: socketio.AsyncServer = None
     _loop: asyncio.AbstractEventLoop = None
@@ -70,6 +71,7 @@ class ProfileManager:
 
         ProfileManager.refresh_image_list()
         ProfileManager.refresh_profile_list()
+        ProfileManager._delete_unused_images()
 
     def _register_profile_change(change: PROFILE_EVENT,
                                  profile_id: str,
@@ -225,6 +227,8 @@ class ProfileManager:
         ProfileManager._emit_profile_event(
             PROFILE_EVENT.DELETE, profile["id"])
 
+        ProfileManager._delete_unused_images()
+
         return {"profile": profile, "change_id": change_id}
 
     def get_profile(id):
@@ -351,6 +355,30 @@ class ProfileManager:
                 ProfileManager._profile_default_images.append(new_filename)
         logger.info(
             f"Found {len(ProfileManager._profile_default_images)} default images")
+
+        ProfileManager._known_images = os.listdir(IMAGES_PATH)
+
+    def _delete_unused_images():
+        logger.info("Garbage collecting unused images")
+
+        referenced_images: Set[str] = set()
+        for profile in ProfileManager._known_profiles.values():
+            image_url = profile.get("display", {}).get("image", "")
+            if image_url.startswith("/api/v1/profile/image/"):
+                referenced_images.add(image_url.split("/")[-1])
+
+        for image_filename in ProfileManager._known_images:
+            if image_filename in ProfileManager._profile_default_images:
+                continue
+            if image_filename in referenced_images:
+                continue
+
+            try:
+                os.remove(os.path.join(IMAGES_PATH, image_filename))
+                logger.info(f"Deleted unreferenced image: {image_filename}")
+            except Exception as e:
+                logger.error(f"Error deleting file {image_filename}: {e}")
+        ProfileManager.refresh_image_list()
 
     def get_default_images():
         return ProfileManager._profile_default_images
