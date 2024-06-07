@@ -8,10 +8,10 @@ logger = MeticulousLogger.getLogger(__name__)
 # FIXME: remove once the tornado server logic moved to its own file
 PORT = int(os.getenv("PORT", '8080'))
 
-
+import logging
 class ZeroConfAnnouncement:
     def __init__(self, config_function) -> None:
-        self.zeroconf = zeroconf.Zeroconf()
+        self.zeroconf = None
         self.http_service_info = None
         self.met_service_info = None
         self.network_config = None
@@ -58,12 +58,11 @@ class ZeroConfAnnouncement:
         )
 
     def start(self):
-        if self.met_service_info is not None and self.http_service_info is not None:
-            return
-
         logger.info("Registering Service with zeroconf")
         # Register the service
         try:
+            self.network_config = self.config_function()
+            self.zeroconf = zeroconf.Zeroconf(interfaces=zeroconf.InterfaceChoice.All, ip_version=zeroconf.IPVersion.All)
             self._createServiceConfig()
             if self.http_service_info is not None:
                 self.zeroconf.register_service(
@@ -80,7 +79,8 @@ class ZeroConfAnnouncement:
                     f"zeroconf service meticulous announced on port {PORT}")
             else:
                 logger.warning(
-                    "Could not fetch machine informations for meticulosu zeroconf")
+                    "Could not fetch machine informations for meticulous zeroconf")
+
             return
         except zeroconf.NonUniqueNameException as e:
             logger.warning(
@@ -98,6 +98,8 @@ class ZeroConfAnnouncement:
             self.zeroconf.unregister_service(self.http_service_info)
             print(f"zeroconf http stopped")
             self.http_service_info = None
+        self.zeroconf.close()
+        self.zeroconf = None
 
     def restart(self):
         self.stop()
