@@ -65,6 +65,7 @@ class WifiManager():
     _zeroconf = None
 
     def init():
+        logger.info("Wifi initializing")
         if ZEROCONF_OVERWRITE != '':
             logger.info(
                 f"Overwriting network configuration due to ZEROCONF_OVERWRITE={ZEROCONF_OVERWRITE}")
@@ -87,16 +88,16 @@ class WifiManager():
         MACHINE_HOSTNAMES = ("imx8mn-var-som", "meticulous")
         if config.hostname.startswith(MACHINE_HOSTNAMES):
             new_hostname = HostnameManager.generateHostname()
-            if config.hostname == new_hostname:
-                return
-            logger.info(f"Changing hostname new = {new_hostname}")
-            HostnameManager.setHostname(new_hostname)
+            if config.hostname != new_hostname:
+                logger.info(f"Changing hostname new = {new_hostname}")
+                HostnameManager.setHostname(new_hostname)
 
         ap_name = HostnameManager.generateDeviceName()
         MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME] = ap_name
         MeticulousConfig.save()
 
         if WifiManager._zeroconf is None:
+            logger.info("Creating Zeroconf Object")
             WifiManager._zeroconf = ZeroConfAnnouncement(
                 config_function=WifiManager.getCurrentConfig)
 
