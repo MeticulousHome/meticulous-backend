@@ -171,7 +171,8 @@ class ProfileManager:
 
     def save_profile(data,
                      set_last_changed: bool = False,
-                     change_id: Optional[str] = None) -> dict:
+                     change_id: Optional[str] = None,
+                     skip_validation: bool = False) -> dict:
 
         if "id" not in data or data["id"] == "":
             data["id"] = str(uuid.uuid4())
@@ -183,9 +184,10 @@ class ProfileManager:
 
         name = f'{data["id"]}.json'
 
-        errors = ProfileManager.validate_profile(data)
-        if errors is not None:
-            raise errors
+        if not skip_validation:
+            errors = ProfileManager.validate_profile(data)
+            if errors is not None:
+                raise errors
 
         current_time = time.time()
         if set_last_changed:
@@ -306,15 +308,44 @@ class ProfileManager:
                         f"Could not decode profile {f.name}: {error}")
                     continue
 
-                try:
-                    if "id" not in profile or profile["id"] == "":
-                        profile["id"] = str(uuid.uuid4())
-                        ProfileManager.save_profile(profile)
-                    if "last_changed" not in profile:
-                        ProfileManager.save_profile(
-                            profile, set_last_changed=True)
-                except Exception:
+                profile_changed = False
+
+                if "id" not in profile or profile["id"] == "":
+                    profile["id"] = str(uuid.uuid4())
+                    profile_changed = True
+
+                if "author" not in profile:
+                    profile["author"] = ""
+                    profile_changed = True
+
+                if "author_id" not in profile or profile["author_id"] == "":
+                    profile["author_id"] = str("00000000-0000-0000-0000-000000000000")
+                    profile_changed = True
+
+                if "last_changed" not in profile:
+                    profile_changed = True
+
+                if "stages" not in profile:
+                    profile["stages"] = []
+                    profile_changed = True
+                else:
+                    for stage in profile["stages"]:
+                        if "key" not in stage:
+                            stage["key"] = str(uuid.uuid4())
+                            profile_changed = True
+
+                logger.info(f"Profile {profile['id']} was updated on load")
+
+                errors = ProfileManager.validate_profile(profile)
+                if errors is not None:
+                    logger.warning(f"Profile on disk failed to be loaded: {errors.message}")
                     continue
+
+                if profile_changed:
+                    try:
+                        ProfileManager.save_profile(profile, set_last_changed=True, skip_validation=True)
+                    except Exception:
+                        continue
 
                 id = profile["id"]
 
