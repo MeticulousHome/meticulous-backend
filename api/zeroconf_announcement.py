@@ -30,7 +30,7 @@ class ZeroConfAnnouncement:
         self.http_service_info = zeroconf.ServiceInfo(
             "_http._tcp.local.",
             f"{machine_name}._http._tcp.local.",
-            addresses=ips,
+            parsed_addresses=ips,
             port=PORT,
             # We can announce arbitrary information here (e.g. version numbers or features or state)
             properties={
@@ -38,13 +38,14 @@ class ZeroConfAnnouncement:
                 'ips': ips,
                 'domain': self.network_config.domains,
                 'machine_name': machine_name
-            }
+            },
+            server=f"{machine_name}.local."
         )
 
         self.met_service_info = zeroconf.ServiceInfo(
             "_meticulous._tcp.local.",
             f"{machine_name}._meticulous._tcp.local.",
-            addresses=ips,
+            parsed_addresses=ips,
             port=PORT,
             # We can announce arbitrary information here (e.g. version numbers or features or state)
             properties={
@@ -52,7 +53,8 @@ class ZeroConfAnnouncement:
                 'ips': ips,
                 'domain': self.network_config.domains,
                 'machine_name': machine_name
-            }
+            },
+            server=f"{machine_name}.local."
         )
 
     def start(self):
