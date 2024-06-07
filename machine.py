@@ -1,32 +1,31 @@
-import os
-import threading
 import asyncio
-import time
-import json
 import hashlib
-
-from packaging import version
+import json
+import os
+import random
+import threading
+import time
 
 from config import *
-
-from esp_serial.data import SensorData, ShotData, ButtonEventData, MachineStatus, ButtonEventEnum, ESPInfo
-from esp_serial.connection.usb_serial_connection import USBSerialConnection
+from esp_serial.connection.emulator_serial_connection import \
+    EmulatorSerialConnection
 from esp_serial.connection.fika_serial_connection import FikaSerialConnection
-from esp_serial.connection.emulator_serial_connection import EmulatorSerialConnection
+from esp_serial.connection.usb_serial_connection import USBSerialConnection
+from esp_serial.data import (ButtonEventData, ButtonEventEnum, ESPInfo,
+                             MachineStatus, SensorData, ShotData)
 from esp_serial.esp_tool_wrapper import ESPToolWrapper
-
-from shot_manager import ShotManager
+from log import MeticulousLogger
+from notifications import (Notification, NotificationManager,
+                           NotificationResponse)
+from packaging import version
 from shot_debug_manager import ShotDebugManager
-
+from shot_manager import ShotManager
 from sounds import SoundPlayer, Sounds
 
-from notifications import NotificationManager, Notification, NotificationResponse
-
-from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
 
 # can be from [FIKA, USB, EMULATOR / EMULATION]
-BACKEND = os.getenv("BACKEND", 'FIKA').upper()
+BACKEND = os.getenv("BACKEND", "FIKA").upper()
 
 
 class Machine:
@@ -54,13 +53,23 @@ class Machine:
     def init(sio):
         Machine._sio = sio
         Machine.firmware_available = Machine._parseVersionString(
-            ESPToolWrapper.get_version_from_firmware())
+            ESPToolWrapper.get_version_from_firmware()
+        )
 
         if Machine._connection is not None:
             logger.warning("Machine.init was called twice!")
             return
 
-        match(BACKEND):
+        # FIXME!
+        if not MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]:
+            MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER] = int(
+                random.random() * 999999
+            )
+            colors = ["black", "white", "pink"]
+            MeticulousConfig[CONFIG_SYSTEM][MACHINE_COLOR] = random.choice(colors)
+            MeticulousConfig.save()
+
+        match (BACKEND):
             case "USB":
                 Machine._connection = USBSerialConnection("/dev/ttyUSB0")
             case "EMULATOR" | "EMULATION":
