@@ -164,7 +164,6 @@ send_data_thread = None
 
 async def live():
 
-    process_started = False
     SAMPLE_TIME = 0.1
     elapsed_time = 0
     i = 0

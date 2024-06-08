@@ -13,6 +13,8 @@ from bless import (  # type: ignore
     GATTAttributePermissions,
 )
 
+from dbus_next.errors import DBusError
+
 from wifi import WifiManager
 from config import *
 from hostname import HostnameManager
@@ -117,8 +119,11 @@ class GATTServer:
             self.trigger.clear()
 
             def run_loop(loop):
-                asyncio.set_event_loop(loop)
-                loop.run_until_complete(self._ble_gatt_server_loop())
+                try:
+                    asyncio.set_event_loop(loop)
+                    loop.run_until_complete(self._ble_gatt_server_loop())
+                except Exception as e:
+                    logger.error(f"BLE loop failed. {e}")
 
             self.loopThread = Thread(target=run_loop, args=(self.loop,))
             self.loopThread.start()
@@ -158,12 +163,15 @@ class GATTServer:
             return
 
         # Power on the hci device if it is powered off
-        interface = self.bless_gatt_server.adapter.get_interface(
-            "org.bluez.Adapter1")
-        powered = await interface.get_powered()
-        if not powered:
-            logger.info("bluetooth device is not powered, powering now!")
-            await interface.set_powered(True)
+        try:
+            interface = self.bless_gatt_server.adapter.get_interface(
+                "org.bluez.Adapter1")
+            powered = await interface.get_powered()
+            if not powered:
+                logger.info("bluetooth device is not powered, powering now!")
+                await interface.set_powered(True)
+        except DBusError as e:
+            raise Exception(f"Failed to power device. DBusError: {e}")
 
         # Init and start GATT
         await self.bless_gatt_server.add_gatt(GATTServer._build_gatt())
