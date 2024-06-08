@@ -165,6 +165,7 @@ class MachineState():
     PURGE = "purge"
     HOME = "home"
     BREWING = "brewing"
+    ERROR = "error" # so far unused
 
 
 @dataclass
