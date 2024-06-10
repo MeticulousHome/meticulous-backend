@@ -41,6 +41,7 @@ class SaveProfileHandler(BaseHandler):
 
             self.set_status(400)
             self.write(errors)
+            logger.debug(data)
             return
         except Exception as e:
             self.set_status(400)
