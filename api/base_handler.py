@@ -19,8 +19,10 @@ class BaseHandler(tornado.web.RequestHandler):
             {"error": error, "details": error_details}
         )
 
-    def options(self):
-        pass
+    def options(self, *args, **kwargs):
+        # No body for OPTIONS requests
+        self.set_status(204)
+        self.finish()
 
     def prepare(self):
 
