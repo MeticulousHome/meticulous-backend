@@ -8,10 +8,17 @@ class BaseHandler(tornado.web.RequestHandler):
     def set_default_headers(self):
         # FIXME: I know this is not great, you know this isn't great. What shall we do about this?
         self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "*")
+        self.set_header("Access-Control-Expose-Headers", "*")
+
         self.set_header('Content-type', 'application/json')
         self.set_header('Access-Control-Allow-Methods',
                         'GET,POST,OPTIONS,DELETE')
         self.set_header('Access-Control-Allow-Headers', 'content-type')
+        # We hate caching!
+        self.set_header('Cache-Control', 'no-cache')
+        self.set_header('Pragma', 'no-cache')
+        self.set_header('Expires', '0')
 
     def report_error(self, error_code, error: str, error_details=None):
         self.set_status(error_code)
