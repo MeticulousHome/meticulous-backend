@@ -277,8 +277,12 @@ class ProfileManager:
         if errors is not None:
             raise errors
 
-        preprocessed_profile = ProfilePreprocessor.processVariables(data)
-
+        try:
+            preprocessed_profile = ProfilePreprocessor.processVariables(data)
+        except Exception as err:
+            logger.info(f"Profile variables could not be processed: {err.__class__.__name__}: {err}")
+            raise err
+    
         logger.info(
             f"Streaming JSON to ESP32: click_to_start={click_to_start} click_to_purge={click_to_purge} data={json.dumps(preprocessed_profile)}")
 
@@ -428,9 +432,16 @@ class ProfileManager:
         return hash_md5.hexdigest()
 
     def validate_profile(data):
+        
+        try:
+            ProfilePreprocessor.processVariables(data)
+        except Exception as err:
+            logger.info(f"Profile variables could not be processed: {err.__class__.__name__}: {err}")
+            return err
+        
         if not ProfileManager._schema:
             logger.warning("No schema available, not validating")
-            return True
+            return None
 
         logger.info(f"validating profile: {data['id']}")
         try:
@@ -442,4 +453,5 @@ class ProfileManager:
                 logger.error(f"Schema path: {list(error.schema_path)}")
                 logger.error(f"Message: {error.message}")
             return err
+    
         return None
