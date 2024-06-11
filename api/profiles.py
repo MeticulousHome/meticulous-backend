@@ -10,7 +10,7 @@ from .machine import Machine
 
 from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
-
+from profile_preprocessor import UndefinedVariableException, VariableTypeException, FormatException
 
 class ListHandler(BaseHandler):
     def get(self):
@@ -96,7 +96,11 @@ class LoadProfileHandler(BaseHandler):
                 profile = ProfileManager.send_profile_to_esp32(data)
             except jsonschema.exceptions.ValidationError as err:
                 errors = {"status": "error", "error": f"JSON validation error: {err.message}"}
-
+                self.set_status(400)
+                self.write(errors)
+                return
+            except (UndefinedVariableException, VariableTypeException, FormatException) as err:
+                errors = {"status": "error", "error": f"variable error: {err.__class__.__name__}:{err}"}
                 self.set_status(400)
                 self.write(errors)
                 return
