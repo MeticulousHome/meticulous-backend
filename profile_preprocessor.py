@@ -1,9 +1,9 @@
-import os
-from jsonschema import validate, ValidationError
 import json
+import os
+from copy import deepcopy
 
 from config import CONFIG_PATH
-
+from jsonschema import ValidationError, validate
 from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -83,7 +83,9 @@ class ProfilePreprocessor:
         return value_or_variable
 
     @staticmethod
-    def processVariables(profile):
+    def processVariables(in_profile):
+        profile = deepcopy(in_profile)
+
         # Map of variables for quick lookup
         variables_map = {
             var['key']: (var['value'], var['type']) for var in profile.get('variables', [])
