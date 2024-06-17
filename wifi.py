@@ -185,9 +185,14 @@ class WifiManager():
             target_network_ssid = None
 
         target_timeout = time.time() + timeout
+        retries = 0
         while time.time() < target_timeout:
-            logger.info(
-                f"Requesting scan results: Time left: {target_timeout - time.time()}s")
+            if retries < 3:
+                logger.info(
+                    f"Requesting scan results: Time left: {target_timeout - time.time()}s")
+            elif retries == 3:
+                logger.info("Scans returning very fast, stopping logging")
+
             wifis = []
             try:
                 wifis = nmcli.device.wifi()
@@ -201,6 +206,10 @@ class WifiManager():
 
             if len(wifis) > 0:
                 break
+            retries += 1
+
+
+        logger.info(f"Scanning finished after {retries}")
 
         WifiManager._known_wifis = wifis
         return wifis
