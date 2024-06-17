@@ -218,6 +218,8 @@ class Machine:
 
                     if old_status == MachineStatus.IDLE and not Machine.is_idle:
                         ShotDebugManager.start()
+                        if is_heating or is_preparing or is_retracting:
+                            time_passed = 0
 
                     if Machine.is_idle and old_status != MachineStatus.IDLE:
                         SoundPlayer.play_event_sound(Sounds.IDLE)
@@ -237,9 +239,6 @@ class Machine:
 
                     if (old_status == MachineStatus.HEATING and not is_heating):
                         SoundPlayer.play_event_sound(Sounds.HEATING_END)
-
-                    if is_heating or is_preparing or is_retracting:
-                        time_passed = 0
 
                     if (time_flag):
                         time_passed = int(
