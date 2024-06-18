@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   backend:
     build:
@@ -10,9 +8,11 @@ services:
       - 8080:8080
     expose:
       - 8080
+    user: "${USER_ID:-root}:${GROUP_ID:-0}"
     environment:
       - BACKEND=emulation
       - EMULATION_SPEED=100
+      - CONFIG_PATH=/app/config
       - LOG_PATH=/app/logs
       - PROFILE_PATH=/app/profiles
       - HISTOR_PATH=/app/shots
