@@ -17,6 +17,8 @@ python-engineio==4.6.1
 python-socketio==5.8.0
 python-xlib==0.33
 six==1.16.0
+SQLAlchemy==2.0.30
+sqlite-zstd @ git+https://github.com/phiresky/sqlite-zstd.git@a484d2e735c49c5a74b566b46d984bd978e70c4d#subdirectory=python
 tornado==6.3.3
 zeroconf==0.131.0
 zstandard==0.22.0
