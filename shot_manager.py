@@ -2,6 +2,7 @@ import json
 import os
 import threading
 import time
+import uuid
 from datetime import datetime
 
 import zstandard as zstd
@@ -20,6 +21,7 @@ class Shot:
         self.profile = None
         self.profile_name = None
         self.startTime = time.time()
+        self.id = str(uuid.uuid4())
 
     def addSensorData(self, sensorData: SensorData):
         if len(self.shotData) > 0:
@@ -27,8 +29,9 @@ class Shot:
             self.shotData[-1]["sensors"] = dict(sensorData.__dict__)
 
     def addShotData(self, shotData: ShotData):
-        from machine import Machine
         from profile import ProfileManager
+
+        from machine import Machine
 
         if self.profile_name is None and shotData.profile is not None:
 
@@ -75,6 +78,7 @@ class Shot:
             ),
             "profile_name": self.profile_name,
             "data": self.shotData,
+            "id": self.id,
         }
         # empty dictionary evaluate to false
         if bool(self.profile):
