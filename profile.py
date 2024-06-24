@@ -168,6 +168,8 @@ class ProfileManager:
                 logger.warning(
                     "The string is neither a relative URL nor a valid data URI with base64 payload.")
                 pass
+        elif not data["display"]["image"].startswith("/api/v1/profile/image"):
+            data["display"]["image"] = "/api/v1/profile/image/" + data["display"]["image"]
 
     def save_profile(data,
                      set_last_changed: bool = False,
@@ -250,6 +252,8 @@ class ProfileManager:
 
         if "id" not in data:
             data["id"] = str(uuid.uuid4())
+
+        ProfileManager.handle_image(data)
 
         logger.info(f"Recieved data: {data} {type(data)}")
 
