@@ -1,7 +1,10 @@
 FROM python:3.12-bullseye
 
 RUN apt update
+RUN apt dist-upgrade -y
 RUN apt install -y libcairo2-dev libxt-dev libgirepository1.0-dev libgstreamer1.0-dev
+
+ENV PATH=/root/.cargo/bin:$PATH
 
 ENV VIRTUAL_ENV=/opt/venv
 RUN python3 -m venv $VIRTUAL_ENV
