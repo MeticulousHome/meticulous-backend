@@ -1,0 +1,7 @@
+# .dockerignore
+userdata
+userdata.img
+profiles
+logs
+images/profile-images
+config
