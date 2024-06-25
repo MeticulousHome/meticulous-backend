@@ -364,7 +364,7 @@ class Machine:
         logger.info(f"JSON Hash: {json_hash}")
 
         start = time.time()
-        Machine.write("hash ".encode("utf-8"))
+        Machine.write("hash,".encode("utf-8"))
         Machine.write(json_hash.encode("utf-8"))
         Machine.write("\x03".encode("utf-8"))
         Machine.write(json_data.encode("utf-8"))
