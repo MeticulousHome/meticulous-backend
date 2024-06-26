@@ -10,6 +10,7 @@ nmcli
 psutil
 packaging==23.2
 pyImprov>=0.1.0
+playsound @ git+https://github.com/taconi/playsound.git@92385c78ec05c2fc3afad1afc5edc9d1282aa1e5
 pypng==0.20220715.0
 PyQRCode==1.2.1
 pyserial==3.5
