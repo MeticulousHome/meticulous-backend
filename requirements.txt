@@ -1,5 +1,5 @@
 bidict==0.22.1
-bless @ git+https://github.com/Mimoja/bless@master
+bless>=0.2.6
 coloredlogs
 datauri
 esptool==4.6.2
@@ -9,7 +9,7 @@ netaddr==0.9.0
 nmcli
 psutil
 packaging==23.2
-pyImprov @ git+https://github.com/Mimoja/pyImprov@main
+pyImprov>=0.1.0
 pypng==0.20220715.0
 PyQRCode==1.2.1
 pyserial==3.5
