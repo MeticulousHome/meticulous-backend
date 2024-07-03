@@ -15,8 +15,6 @@ import socketio
 from config import *
 from log import MeticulousLogger
 from machine import Machine
-from modes.italian_1_0.italian_1_0 import (convert_italian_json,
-                                           generate_italian_1_0)
 from profile_converter.profile_converter import ComplexProfileConverter
 from profile_preprocessor import ProfilePreprocessor
 
@@ -255,25 +253,6 @@ class ProfileManager:
         ProfileManager.handle_image(data)
 
         logger.info(f"Recieved data: {data} {type(data)}")
-
-        profile_legacy_kind = data.get('kind', None)
-        logger.info(f"profile_legacy_kind {profile_legacy_kind}")
-
-        if profile_legacy_kind and profile_legacy_kind == "italian_1_0":
-            logger.info("loading italian profile")
-            data["automatic_purge"] = not click_to_purge
-            data["preheat"] = click_to_start
-            logger.info(data)
-            json_result = convert_italian_json(data)
-            converter = ComplexProfileConverter(
-                click_to_start, click_to_purge, 1000, 7000, json_result)
-            profile = converter.get_profile()
-            Machine.send_json_with_hash(profile)
-
-            ProfileManager._set_last_profile(json_result)
-            ProfileManager._emit_profile_event(PROFILE_EVENT.LOAD, data["id"])
-
-            return data
 
         logger.info("processing simplified profile")
         errors = ProfileManager.validate_profile(data)

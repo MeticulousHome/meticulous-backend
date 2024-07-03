@@ -1,5 +1,3 @@
-from modes.italian_1_0.italian_1_0 import generate_italian_1_0
-from modes.dashboard_1_0.dashboard_1_0 import generate_dashboard_1_0
 from tornado.options import define, options, parse_command_line
 import socketio
 import tornado.log
