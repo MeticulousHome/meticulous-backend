@@ -159,8 +159,7 @@ class ProfileManager:
                     with open(os.path.join(IMAGES_PATH, filename), 'wb') as file:
                         file.write(file_content)
                         logger.info(f"File saved as {filename}")
-                        data["display"]["image"] = f"/api/v1/profile/image/{
-                            filename}"
+                        data["display"]["image"] = f"/api/v1/profile/image/{filename}"
                 except Exception as e:
                     raise Exception(f"Saving file failed: {e}")
 
