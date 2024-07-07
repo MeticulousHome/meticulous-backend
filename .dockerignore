@@ -5,3 +5,5 @@ profiles
 logs
 images/profile-images
 config
+.git
+.github*

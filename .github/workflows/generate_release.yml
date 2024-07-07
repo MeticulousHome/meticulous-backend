@@ -19,8 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with: 
+        submodules: 'true'
         token: ${{ secrets.GH_VERSIONING }}
 
     - uses: actions/setup-python@v4
