@@ -100,10 +100,10 @@ def msg(sid, noti_json):
             notification["id"], notification["response"])
 
 
-@sio.on('send_profile')
-async def forwardJSON(sid, data):
-    logger.info(json.dumps(data, indent=1, sort_keys=False))
-    await sio.emit('save_profile', data)
+@sio.on('profileHover')
+async def forwardProfileHover(sid,data):
+    logger.info(f'Hovering Profile {json.dumps(data, indent=1, sort_keys=False)}')
+    await sio.emit('profileHover', data)
 
 
 @sio.on('calibrate')  # Use when calibration it is implemented
