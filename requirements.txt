@@ -17,6 +17,7 @@ pyserial==3.5
 python-engineio==4.6.1
 python-socketio==5.8.0
 python-xlib==0.33
+sentry-sdk==2.10.0
 six==1.16.0
 tornado==6.3.3
 zeroconf==0.131.0
