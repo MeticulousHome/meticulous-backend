@@ -353,18 +353,15 @@ class Machine:
             [NotificationResponse.OK],
         )
         NotificationManager.add_notification(Machine._updateNotification)
+
         Machine._stopESPcomm = True
         error_msg = Machine._connection.sendUpdate()
         Machine._stopESPcomm = False
+
         if error_msg:
-            Machine._updateNotification = Notification(
-                f"Realtime core upgrade failed: {error_msg}. The machine will ensure a good state on next reboot. If you encounter any errors please reach out to product support!",
-                [NotificationResponse.OK],
-            )
+            Machine._updateNotification.message = f"Realtime core upgrade failed: {error_msg}. The machine will ensure a good state on next reboot. If you encounter any errors please reach out to product support!"
         else:
-            Machine._updateNotification = Notification(
-                f"Upgrade finished sucessfully!", [NotificationResponse.OK]
-            )
+            Machine._updateNotification.message = f"The realtime core was upgraded sucessfully!"
         NotificationManager.add_notification(Machine._updateNotification)
         return error_msg
 
