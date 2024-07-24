@@ -7,16 +7,20 @@ import threading
 import time
 
 from config import *
-from esp_serial.connection.emulator_serial_connection import \
-    EmulatorSerialConnection
+from esp_serial.connection.emulator_serial_connection import EmulatorSerialConnection
 from esp_serial.connection.fika_serial_connection import FikaSerialConnection
 from esp_serial.connection.usb_serial_connection import USBSerialConnection
-from esp_serial.data import (ButtonEventData, ButtonEventEnum, ESPInfo,
-                             MachineStatus, SensorData, ShotData)
+from esp_serial.data import (
+    ButtonEventData,
+    ButtonEventEnum,
+    ESPInfo,
+    MachineStatus,
+    SensorData,
+    ShotData,
+)
 from esp_serial.esp_tool_wrapper import ESPToolWrapper
 from log import MeticulousLogger
-from notifications import (Notification, NotificationManager,
-                           NotificationResponse)
+from notifications import Notification, NotificationManager, NotificationResponse
 from packaging import version
 from shot_debug_manager import ShotDebugManager
 from shot_manager import ShotManager
@@ -36,7 +40,7 @@ class Machine:
     _updateNotification = None
 
     infoReady = False
-    profileReady  = False
+    profileReady = False
 
     data_sensors: ShotData = ShotData()
     sensor_sensors: SensorData = None
@@ -77,7 +81,7 @@ class Machine:
                 Machine.emulated = True
             # Everything else is proper fika Connection
             case "FIKA" | _:
-                Machine._connection = FikaSerialConnection('/dev/ttymxc0')
+                Machine._connection = FikaSerialConnection("/dev/ttymxc0")
 
         Machine.writeStr("\x03")
         Machine.action("info")
@@ -100,16 +104,16 @@ class Machine:
         def readline(self):
             i = self.buf.find(b"\n")
             if i >= 0:
-                r = self.buf[:i+1]
-                self.buf = self.buf[i+1:]
+                r = self.buf[: i + 1]
+                self.buf = self.buf[i + 1 :]
                 return r
             while not Machine._stopESPcomm:
                 i = max(1, min(2048, self.s.in_waiting))
                 data = self.s.read(i)
                 i = data.find(b"\n")
                 if i >= 0:
-                    r = self.buf + data[:i+1]
-                    self.buf[0:] = data[i+1:]
+                    r = self.buf + data[: i + 1]
+                    self.buf[0:] = data[i + 1 :]
                     return r
                 else:
                     self.buf.extend(data)
@@ -118,7 +122,7 @@ class Machine:
     async def _read_data():
         Machine.shot_start_time = time.time()
         Machine._connection.port.reset_input_buffer()
-        Machine._connection.port.write(b'32\n')
+        Machine._connection.port.write(b"32\n")
         uart = Machine.ReadLine(Machine._connection.port)
 
         old_status = MachineStatus.IDLE
@@ -138,15 +142,17 @@ class Machine:
             if len(data) > 0:
                 # data_bit = bytes(data)
                 try:
-                    data_str = data.decode('utf-8')
+                    data_str = data.decode("utf-8")
                 except:
                     logger.info(f"decoding fails, message: {data}")
                     continue
 
-                if (old_status != MachineStatus.IDLE and data_str.startswith("Sensor")) or MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES]:
+                if (
+                    old_status != MachineStatus.IDLE and data_str.startswith("Sensor")
+                ) or MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES]:
                     logger.info(data_str.strip("\r\n"))
 
-                data_str_sensors = data_str.strip("\r\n").split(',')
+                data_str_sensors = data_str.strip("\r\n").split(",")
 
                 # potential message types
                 button_event = None
@@ -154,7 +160,10 @@ class Machine:
                 data = None
                 info = None
 
-                if data_str.startswith("rst:0x") and "boot:0x16 (SPI_FAST_FLASH_BOOT)" in data_str:
+                if (
+                    data_str.startswith("rst:0x")
+                    and "boot:0x16 (SPI_FAST_FLASH_BOOT)" in data_str
+                ):
                     Machine.reset_count += 1
                     Machine.startTime = time.time()
                     Machine.esp_info = None
@@ -163,37 +172,51 @@ class Machine:
                     Machine.profileReady = False
 
                 if Machine.reset_count >= 3:
-                    logger.warning(
-                        "The ESP seems to be resetting, sending update now")
+                    logger.warning("The ESP seems to be resetting, sending update now")
                     Machine.startUpdate()
                     Machine.reset_count = 0
 
-                if Machine.infoReady and not info_requested and Machine.esp_info is None:
+                if (
+                    Machine.infoReady
+                    and not info_requested
+                    and Machine.esp_info is None
+                ):
                     logger.info(
-                        "Machine has not provided us with a firmware version yet. Requesting now")
+                        "Machine has not provided us with a firmware version yet. Requesting now"
+                    )
                     Machine.action("info")
                     info_requested = True
 
                 if time.time() - Machine.startTime > 60 and not Machine.infoReady:
                     if MeticulousConfig[CONFIG_USER][DISALLOW_FIRMWARE_FLASHING]:
                         logger.warning(
-                            "The ESP never send an info, but user requested no updates!")
+                            "The ESP never send an info, but user requested no updates!"
+                        )
                     else:
                         logger.warning(
-                            "The ESP never send an info, flashing latest firmware to be sure")
+                            "The ESP never send an info, flashing latest firmware to be sure"
+                        )
                         Machine.startUpdate()
 
-                match(data_str_sensors):
+                match (data_str_sensors):
                     # FIXME: This should be replace in the firmware with an "Event," prefix for cleanliness
-                    case ["CCW" | "CW" | "push" | "pu_d" | "elng" | "ta_d" | "ta_l" | "strt"] as ev:
+                    case [
+                        "CCW"
+                        | "CW"
+                        | "push"
+                        | "pu_d"
+                        | "elng"
+                        | "ta_d"
+                        | "ta_l"
+                        | "strt"
+                    ] as ev:
                         button_event = ButtonEventData.from_args(ev)
                     case ["Event", *eventData]:
                         button_event = ButtonEventData.from_args(eventData)
                     case ["Data", *dataArgs]:
                         data = ShotData.from_args(dataArgs)
                     case ["Sensors", colorCodedString]:
-                        sensor = SensorData.from_color_coded_args(
-                            colorCodedString)
+                        sensor = SensorData.from_color_coded_args(colorCodedString)
                     case ["Sensors", *sensorArgs]:
                         sensor = SensorData.from_args(sensorArgs)
                     case ["ESPInfo", *infoArgs]:
@@ -208,11 +231,10 @@ class Machine:
                     is_preparing = data.status == MachineStatus.CLOSING_VALVE
                     is_heating = data.status == MachineStatus.HEATING
 
-                    if (is_preparing and data.status != old_status):
+                    if is_preparing and data.status != old_status:
                         time_flag = True
                         shot_start_time = time.time()
-                        logger.info(
-                            "shot start_time: {:.1f}".format(shot_start_time))
+                        logger.info("shot start_time: {:.1f}".format(shot_start_time))
                         ShotManager.start()
                         SoundPlayer.play_event_sound(Sounds.BREWING_START)
 
@@ -224,31 +246,32 @@ class Machine:
                     if Machine.is_idle and old_status != MachineStatus.IDLE:
                         SoundPlayer.play_event_sound(Sounds.IDLE)
 
-                    if (Machine.is_idle or is_purge or is_retracting):
+                    if Machine.is_idle or is_purge or is_retracting:
                         if time_flag == True:
                             SoundPlayer.play_event_sound(Sounds.BREWING_END)
                         time_flag = False
                         ShotManager.stop()
 
-                    if (Machine.is_idle):
+                    if Machine.is_idle:
                         ShotDebugManager.stop()
 
-                    if (is_heating and old_status != MachineStatus.HEATING):
+                    if is_heating and old_status != MachineStatus.HEATING:
                         time_passed = 0
                         SoundPlayer.play_event_sound(Sounds.HEATING_START)
 
-                    if (old_status == MachineStatus.HEATING and not is_heating):
+                    if old_status == MachineStatus.HEATING and not is_heating:
                         SoundPlayer.play_event_sound(Sounds.HEATING_END)
 
-                    if (time_flag):
-                        time_passed = int(
-                            (time.time() - shot_start_time) * 1000.0)
+                    if time_flag:
+                        time_passed = int((time.time() - shot_start_time) * 1000.0)
                         Machine.data_sensors = data.clone_with_time_and_state(
-                            time_passed, True)
+                            time_passed, True
+                        )
                         ShotManager.handleShotData(Machine.data_sensors)
                     else:
                         Machine.data_sensors = data.clone_with_time_and_state(
-                            time_passed, False)
+                            time_passed, False
+                        )
 
                     ShotDebugManager.handleShotData(Machine.data_sensors)
                     old_status = Machine.data_sensors.status
@@ -258,9 +281,8 @@ class Machine:
                     Machine.sensor_sensors = sensor
                     Machine.reset_count = 0
                     ShotDebugManager.handleSensorData(Machine.sensor_sensors)
-                    if (time_flag):
-                        ShotManager.handleSensorData(
-                            Machine.sensor_sensors)
+                    if time_flag:
+                        ShotManager.handleSensorData(Machine.sensor_sensors)
 
                 if info is not None:
                     Machine.esp_info = info
@@ -271,37 +293,64 @@ class Machine:
                         info.firmwareV
                     )
                     logger.info(
-                        f"ESPInfo running firmware version:   {Machine.firmware_running} on pinout version {Machine.esp_info.espPinout}")
+                        f"ESPInfo running firmware version:   {Machine.firmware_running} on pinout version {Machine.esp_info.espPinout}"
+                    )
                     logger.info(
-                        f"Backend available firmware version: {Machine.firmware_available}")
+                        f"Backend available firmware version: {Machine.firmware_available}"
+                    )
                     needs_update = False
-                    if Machine.firmware_available is not None and Machine.firmware_available is not None:
-                        if Machine.firmware_running["Release"] < Machine.firmware_available["Release"]:
+                    if (
+                        Machine.firmware_available is not None
+                        and Machine.firmware_available is not None
+                    ):
+                        if (
+                            Machine.firmware_running["Release"]
+                            < Machine.firmware_available["Release"]
+                        ):
                             needs_update = True
-                        if Machine.firmware_running["Release"] == Machine.firmware_available["Release"]:
-                            if Machine.firmware_running["ExtraCommits"] < Machine.firmware_available["ExtraCommits"]:
+                        if (
+                            Machine.firmware_running["Release"]
+                            == Machine.firmware_available["Release"]
+                        ):
+                            if (
+                                Machine.firmware_running["ExtraCommits"]
+                                < Machine.firmware_available["ExtraCommits"]
+                            ):
                                 needs_update = True
 
-                    if needs_update and not MeticulousConfig[CONFIG_USER][DISALLOW_FIRMWARE_FLASHING]:
+                    if (
+                        needs_update
+                        and not MeticulousConfig[CONFIG_USER][
+                            DISALLOW_FIRMWARE_FLASHING
+                        ]
+                    ):
                         info_string = f"Firmware {Machine.firmware_running.get('Release')}-{Machine.firmware_running['ExtraCommits']} is outdated, upgrading"
                         logger.info(info_string)
 
                         Machine.startUpdate()
 
                 if button_event is not None:
-                    if button_event.event is not ButtonEventEnum.ENCODER_CLOCKWISE and button_event.event is not ButtonEventEnum.ENCODER_COUNTERCLOCKWISE:
+                    if (
+                        button_event.event is not ButtonEventEnum.ENCODER_CLOCKWISE
+                        and button_event.event
+                        is not ButtonEventEnum.ENCODER_COUNTERCLOCKWISE
+                    ):
                         logger.debug(f"Button Event recieved: {button_event}")
 
                     await Machine._sio.emit("button", button_event.to_sio())
 
                 # FIXME this should be a callback to the frontends in the future
-                if button_event is not None and button_event.event is ButtonEventEnum.ENCODER_DOUBLE:
+                if (
+                    button_event is not None
+                    and button_event.event is ButtonEventEnum.ENCODER_DOUBLE
+                ):
                     logger.info("DOUBLE ENCODER, Returning to idle")
                     Machine.return_to_idle()
 
     def startUpdate():
         Machine._updateNotification = Notification(
-            "Upgrading system realtime core. This will take around 20 seconds", [NotificationResponse.OK]
+            "Upgrading system realtime core. This will take around 20 seconds",
+            [NotificationResponse.OK],
         )
         NotificationManager.add_notification(Machine._updateNotification)
         Machine._stopESPcomm = True
@@ -309,7 +358,8 @@ class Machine:
         Machine._stopESPcomm = False
         if error_msg:
             Machine._updateNotification = Notification(
-                f"Realtime core upgrade failed: {error_msg}. The machine will ensure a good state on next reboot. If you encounter any errors please reach out to product support!", [NotificationResponse.OK]
+                f"Realtime core upgrade failed: {error_msg}. The machine will ensure a good state on next reboot. If you encounter any errors please reach out to product support!",
+                [NotificationResponse.OK],
             )
         else:
             Machine._updateNotification = Notification(
@@ -319,7 +369,7 @@ class Machine:
         return error_msg
 
     def return_to_idle():
-        if (Machine.data_sensors.status != "idle"):
+        if Machine.data_sensors.status != "idle":
             Machine.action("stop")
         SoundPlayer.play_event_sound(Sounds.ABORT)
 
@@ -328,6 +378,7 @@ class Machine:
         if action_event == "start" and not Machine.profileReady:
             logger.warning("No profile loaded, sending last loaded profile to esp32")
             from profile import ProfileManager
+
             last_profile = ProfileManager.get_last_profile()
             if last_profile is None:
                 logger.error("No known last profile which could be sent to the esp32")
@@ -359,7 +410,7 @@ class Machine:
         logger.debug("JSON to stream to the machine:")
         logger.debug(json_data)
 
-        json_hash = hashlib.md5(json_data[5:-1].encode('utf-8')).hexdigest()
+        json_hash = hashlib.md5(json_data[5:-1].encode("utf-8")).hexdigest()
 
         logger.info(f"JSON Hash: {json_hash}")
 
@@ -369,13 +420,12 @@ class Machine:
         Machine.write("\x03".encode("utf-8"))
         Machine.write(json_data.encode("utf-8"))
         end = time.time()
-        time_ms = (end-start)*1000
+        time_ms = (end - start) * 1000
         if time_ms > 10:
             time_str = f"{int(time_ms)} ms"
         else:
             time_str = f"{int(time_ms*1000)} ns"
-        logger.info(
-            f"Streaming profile to ESP32 took {time_str}")
+        logger.info(f"Streaming profile to ESP32 took {time_str}")
         Machine.profileReady = True
 
     def _parseVersionString(version_str: str):
@@ -386,7 +436,7 @@ class Machine:
         if version_str is None or version_str == "":
             return None
 
-        components = version_str.strip().split('-')
+        components = version_str.strip().split("-")
         try:
             release = version.Version(components.pop(0))
             if len(components) > 0:
@@ -395,8 +445,14 @@ class Machine:
                 sha = components.pop(0)
             if len(components) > 0:
                 modifier = components.pop(0)
-            return {"Release": release, "ExtraCommits": ncommits, "SHA": sha, "Local": modifier}
+            return {
+                "Release": release,
+                "ExtraCommits": ncommits,
+                "SHA": sha,
+                "Local": modifier,
+            }
         except Exception as e:
-            logger.warning("Failed parse firmware version:",
-                           exc_info=e, stack_info=True)
+            logger.warning(
+                "Failed parse firmware version:", exc_info=e, stack_info=True
+            )
             return None
