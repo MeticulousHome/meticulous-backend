@@ -118,15 +118,17 @@ class NotificationManager:
         return False
 
     def add_notification(notification: Notification):
-        notification.acknowledged = False
-        NotificationManager._queue.put(notification)
+
         updating = False
         for idx, old_notfication in enumerate(NotificationManager.get_unacknowledged_notifications()):
             if notification.id == old_notfication.id:
                 del NotificationManager._notifications[idx]
                 updating = True
 
+        notification.acknowledged = False
         NotificationManager._notifications.append(notification)
+        NotificationManager._queue.put(notification)
+
         if not updating:
             logger.info("Notification created")
             SoundPlayer.play_event_sound(Sounds.NOTIFICATION)

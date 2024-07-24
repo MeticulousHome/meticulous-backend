@@ -37,7 +37,6 @@ class Machine:
     _thread = None
     _stopESPcomm = False
     _sio = None
-    _updateNotification = None
 
     infoReady = False
     profileReady = False
@@ -348,21 +347,22 @@ class Machine:
                     Machine.return_to_idle()
 
     def startUpdate():
-        Machine._updateNotification = Notification(
-            "Upgrading system realtime core. This will take around 20 seconds",
-            [NotificationResponse.OK],
+        updateNotification = Notification(
+            "Upgrading system realtime core. This will take around 20 seconds. The machines buttons will be disabled during the upgrade",
+            [""],
         )
-        NotificationManager.add_notification(Machine._updateNotification)
+        NotificationManager.add_notification(updateNotification)
 
         Machine._stopESPcomm = True
         error_msg = Machine._connection.sendUpdate()
         Machine._stopESPcomm = False
 
         if error_msg:
-            Machine._updateNotification.message = f"Realtime core upgrade failed: {error_msg}. The machine will ensure a good state on next reboot. If you encounter any errors please reach out to product support!"
+            updateNotification.message = f"Realtime core upgrade failed: {error_msg}. The machine will ensure a good state on next start. If you encounter any errors please reach out to product support!"
         else:
-            Machine._updateNotification.message = f"The realtime core was upgraded sucessfully!"
-        NotificationManager.add_notification(Machine._updateNotification)
+            updateNotification.message = f"The realtime core was upgraded sucessfully! Buttons will be enabled again in around 5 seconds"
+        updateNotification.respone_options = [NotificationResponse.OK]
+        NotificationManager.add_notification(updateNotification)
         return error_msg
 
     def return_to_idle():

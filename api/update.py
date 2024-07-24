@@ -3,6 +3,7 @@ from machine import Machine
 import os
 import tempfile
 import zipfile
+import threading
 
 from tornado.web import MissingArgumentError
 
@@ -63,10 +64,8 @@ class UpdateFirmwareWithZipHandler(BaseHandler):
             self.write("failure during upload")
             return
 
-        error_message = Machine.startUpdate()
-        if error_message != None:
-            self.write(f"failure during flashing: {error_message}")
-            return
+        upgradeThread = threading.Thread(target=Machine.startUpdate)
+        upgradeThread.start()
 
         self.write("success")
 

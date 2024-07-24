@@ -311,8 +311,9 @@ async def send_data():
 
         elif _input.startswith("notification"):
             notification = _input[12:]
-            noti.message = notification
-            noti.add_qrcode("Hello asjkdljlasjjkdsajkldasljkasdljk")
+            # noti.message = notification
+            # noti.add_qrcode("Hello asjkdljlasjjkdsajkldasljkasdljk")
+            noti = Notification("Upgrading system realtime core. This will take around 20 seconds", )
             NotificationManager.add_notification(noti)
         elif _input == "l" or _input == "CCW":
             await sio.emit("button", ButtonEventData.from_args(["CCW"]).to_sio())
