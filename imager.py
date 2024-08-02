@@ -79,8 +79,14 @@ class DiscImager:
                 logger.info(
                     f"\nFile '{DiscImager.src_file}' copied to '{DiscImager.dest_file}'")
 
-                subprocess.call(f"echo w | fdisk {DiscImager.dest_file}", shell=True)
-                subprocess.call(f"mkfs.ext4 {DiscImager.dest_file}p5 -F -L user")
+                try:
+                    DiscImager.notification.message = f"Fixing partition table"
+                    NotificationManager.add_notification(DiscImager.notification)
+                    subprocess.call(f"echo w | fdisk {DiscImager.dest_file}", shell=True)
+                    subprocess.call(f"mkfs.ext4 {DiscImager.dest_file}p5 -F -L user", shell=True)
+                except e:
+                    logger.warning(f"Failed to run imaging cleanup! {e}")
+                    pass
 
                 DiscImager.notification.message = f"Flashing finished. Remove the boot jumper and reset the machine"
                 DiscImager.notification.respone_options = [
