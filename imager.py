@@ -10,6 +10,7 @@ logger = MeticulousLogger.getLogger(__name__)
 
 class DiscImager:
     src_file = "/meticulous-user/emmc.img"
+    src_fallback_file = "/run/media/system/user/emmc.img"
     dest_file = "/dev/mmcblk2"
     block_size = 1024 * 1024
     copy_thread = None
@@ -17,10 +18,13 @@ class DiscImager:
 
     @staticmethod
     def flash_if_required(block_size=1024):
+        logger.info("Checking if we should image the machine!")
         DiscImager.copy_thread = None
 
         if not os.path.exists(DiscImager.dest_file):
             return
+        if os.path.isfile(DiscImager.src_fallback_file):
+            DiscImager.src_file = DiscImager.src_fallback_file
         if not os.path.isfile(DiscImager.src_file):
             return
 
