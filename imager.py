@@ -51,6 +51,13 @@ class DiscImager:
         last_reported_progress = 0.0
         if DiscImager.notification.acknowledged and DiscImager.notification.response == NotificationResponse.SKIP:
             return
+
+        try:
+
+            subprocess.call(f"umount {DiscImager.dest_file}p*", shell=True)
+        except e:
+            logger.warning(f"Failed to unmount emmc {e}")
+
         try:
             with open(DiscImager.src_file, 'rb') as src, open(DiscImager.dest_file, 'wb') as dest:
                 src_size = os.stat(DiscImager.src_file).st_size
@@ -83,6 +90,7 @@ class DiscImager:
                     DiscImager.notification.message = f"Fixing partition table"
                     NotificationManager.add_notification(DiscImager.notification)
                     subprocess.call(f"echo w | fdisk {DiscImager.dest_file}", shell=True)
+                    subprocess.call(f"umount {DiscImager.dest_file}p*",  shell=True)
                     subprocess.call(f"mkfs.ext4 {DiscImager.dest_file}p5 -F -L user", shell=True)
                 except e:
                     logger.warning(f"Failed to run imaging cleanup! {e}")
