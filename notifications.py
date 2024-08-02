@@ -120,8 +120,8 @@ class NotificationManager:
     def add_notification(notification: Notification):
 
         updating = False
-        for idx, old_notfication in enumerate(NotificationManager.get_unacknowledged_notifications()):
-            if notification.id == old_notfication.id:
+        for idx, old_notfication in enumerate(NotificationManager._notifications):
+            if notification.id == old_notfication.id and not old_notfication.acknowledged:
                 del NotificationManager._notifications[idx]
                 updating = True
 
