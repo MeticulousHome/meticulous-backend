@@ -66,8 +66,8 @@ class DiscImager:
                     copied += len(data)
                     progress = (copied / src_size) * 100
                     if progress >= last_reported_progress + 0.1:
-                        logger.info(f"Progress: {progress:.1f}%")
-                        DiscImager.notification.message = f"Progress: {progress: .1f} %"
+                        logger.info(f"Flashing Progress: {progress:.1f}%")
+                        DiscImager.notification.message = f"Flashing Progress: {progress: .1f} %"
                         NotificationManager.add_notification(
                             DiscImager.notification)
                         last_reported_progress = progress
