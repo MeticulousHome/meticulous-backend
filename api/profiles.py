@@ -26,6 +26,12 @@ class ListHandler(BaseHandler):
             response.append(p)
         self.write(json.dumps(response))
 
+class ListDefaultsHandler(BaseHandler):
+    def get(self):
+        full_profiles = self.get_argument(
+            "full", "false").lower() == "true"
+        profiles = ProfileManager.list_default_profiles()
+        self.write(json.dumps(profiles))
 
 class SaveProfileHandler(BaseHandler):
     def post(self):
@@ -178,6 +184,7 @@ class ListImagesHandler(BaseHandler):
 API.register_handler(APIVersion.V1, r"/profile/list", ListHandler),
 API.register_handler(APIVersion.V1, r"/profile/save", SaveProfileHandler),
 API.register_handler(APIVersion.V1, r"/profile/load", LoadProfileHandler),
+API.register_handler(APIVersion.V1, r"/profile/defaults", ListDefaultsHandler),
 API.register_handler(
     APIVersion.V1, r"/profile/image([/]*)", ListImagesHandler), 
 API.register_handler(
