@@ -11,4 +11,5 @@ export DEBUG=y
 export USER_SOUNDS=./sounds
 export DEFAULT_IMAGES=./images/default
 export IMAGES_PATH=./images/profile-images
+export DEFAULT_PROFILES=./default_profiles
 python3 back.py

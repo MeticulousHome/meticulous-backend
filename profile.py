@@ -25,6 +25,9 @@ IMAGES_PATH = os.getenv("IMAGES_PATH", '/meticulous-user/profile-images/')
 DEFAULT_IMAGES_PATH = os.getenv(
     "DEFAULT_IMAGES", "/opt/meticulous-backend/images/default")
 
+DEFAULT_PROFILES_PATH = os.getenv(
+    "DEFAULT_PROFILES", "/opt/meticulous-backend/default_profiles")
+
 
 class PROFILE_EVENT(Enum):
     CREATE = "create"
@@ -37,6 +40,7 @@ class PROFILE_EVENT(Enum):
 class ProfileManager:
     _known_profiles = dict()
     _known_images = []
+    _default_profiles = []
     _profile_default_images = []
     _sio: socketio.AsyncServer = None
     _loop: asyncio.AbstractEventLoop = None
@@ -68,6 +72,7 @@ class ProfileManager:
             ProfileManager._schema = json.load(schema_file)
 
         ProfileManager.refresh_image_list()
+        ProfileManager.refresh_default_profile_list()
         ProfileManager.refresh_profile_list()
         ProfileManager._delete_unused_images()
 
@@ -349,6 +354,36 @@ class ProfileManager:
             f"Refreshed profile list in {time_str} with {len(ProfileManager._known_profiles)} known profiles.")
         ProfileManager._emit_profile_event(PROFILE_EVENT.RELOAD)
 
+    def refresh_default_profile_list():
+        logger.info("Refreshing default profiles")
+        start = time.time()
+        ProfileManager._default_profiles = []
+        files = os.listdir(DEFAULT_PROFILES_PATH)
+        files.sort()
+        for filename in files:
+            if not filename.endswith('.json'):
+                continue
+
+            file_path = os.path.join(DEFAULT_PROFILES_PATH, filename)
+            with open(file_path, 'r') as f:
+                try:
+                    profile = json.load(f)
+                except json.decoder.JSONDecodeError as error:
+                    logger.warning(
+                        f"Could not decode default profile {f.name}: {error}")
+                    continue
+                logger.info("Found default profile: "+ filename)
+                ProfileManager._default_profiles.append(profile)
+
+        end = time.time()
+        time_ms = (end-start)*1000
+        if time_ms > 10:
+            time_str = f"{int(time_ms)} ms"
+        else:
+            time_str = f"{int(time_ms*1000)} ns"
+        logger.info(
+            f"Refreshed default profile list in {time_str} with {len(ProfileManager._default_profiles)} known profiles.")
+
     def refresh_image_list():
         logger.info("Refreshing default image list")
         ProfileManager._profile_default_images = []
@@ -402,6 +437,9 @@ class ProfileManager:
 
     def list_profiles():
         return ProfileManager._known_profiles
+
+    def list_default_profiles():
+        return ProfileManager._default_profiles
 
     def get_last_profile():
         return MeticulousConfig[CONFIG_PROFILES][PROFILE_LAST]

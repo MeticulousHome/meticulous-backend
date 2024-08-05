@@ -22,9 +22,11 @@ services:
       - PORT=8080
       - DEFAULT_IMAGES=/app/images/default
       - IMAGES_PATH=/app/images/profile-images
+      - DEFAULT_PROFILES=/app/default_profiles
     volumes:
       - ./config:/app/config
       - ./logs:/app/logs
       - ./profiles:/app/profiles
       - ./shots:/app/history
       - ./images:/app/images
+      - ./default_profiles:/app/default_profiles
