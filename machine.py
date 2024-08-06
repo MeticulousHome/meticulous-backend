@@ -6,7 +6,18 @@ import random
 import threading
 import time
 
-from config import *
+from packaging import version
+
+from config import (
+    CONFIG_LOGGING,
+    CONFIG_SYSTEM,
+    CONFIG_USER,
+    DISALLOW_FIRMWARE_FLASHING,
+    LOGGING_SENSOR_MESSAGES,
+    MACHINE_COLOR,
+    MACHINE_SERIAL_NUMBER,
+    MeticulousConfig,
+)
 from esp_serial.connection.emulator_serial_connection import EmulatorSerialConnection
 from esp_serial.connection.fika_serial_connection import FikaSerialConnection
 from esp_serial.connection.usb_serial_connection import USBSerialConnection
@@ -21,7 +32,6 @@ from esp_serial.data import (
 from esp_serial.esp_tool_wrapper import ESPToolWrapper
 from log import MeticulousLogger
 from notifications import Notification, NotificationManager, NotificationResponse
-from packaging import version
 from shot_debug_manager import ShotDebugManager
 from shot_manager import ShotManager
 from sounds import SoundPlayer, Sounds
@@ -118,7 +128,7 @@ class Machine:
                     self.buf.extend(data)
             return self.buf
 
-    async def _read_data():
+    async def _read_data():  # noqa: C901
         Machine.shot_start_time = time.time()
         Machine._connection.port.reset_input_buffer()
         Machine._connection.port.write(b"32\n")
@@ -142,7 +152,7 @@ class Machine:
                 # data_bit = bytes(data)
                 try:
                     data_str = data.decode("utf-8")
-                except:
+                except Exception:
                     logger.info(f"decoding fails, message: {data}")
                     continue
 
@@ -246,7 +256,7 @@ class Machine:
                         SoundPlayer.play_event_sound(Sounds.IDLE)
 
                     if Machine.is_idle or is_purge or is_retracting:
-                        if time_flag == True:
+                        if time_flag is True:
                             SoundPlayer.play_event_sound(Sounds.BREWING_END)
                         time_flag = False
                         ShotManager.stop()
@@ -360,7 +370,7 @@ class Machine:
         if error_msg:
             updateNotification.message = f"Realtime core upgrade failed: {error_msg}. The machine will ensure a good state on next start. If you encounter any errors please reach out to product support!"
         else:
-            updateNotification.message = f"The realtime core was upgraded sucessfully! Buttons will be enabled again in around 5 seconds"
+            updateNotification.message = "The realtime core was upgraded sucessfully! Buttons will be enabled again in around 5 seconds"
         updateNotification.respone_options = [NotificationResponse.OK]
         NotificationManager.add_notification(updateNotification)
         return error_msg
@@ -374,7 +384,7 @@ class Machine:
         logger.info(f"sending action,{action_event}")
         if action_event == "start" and not Machine.profileReady:
             logger.warning("No profile loaded, sending last loaded profile to esp32")
-            from profile import ProfileManager
+            from profiles import ProfileManager
 
             last_profile = ProfileManager.get_last_profile()
             if last_profile is None:

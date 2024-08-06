@@ -1,7 +1,6 @@
 import json
 from io import BytesIO
 import zipfile
-import os
 
 from .base_handler import BaseHandler
 from .api import API, APIVersion

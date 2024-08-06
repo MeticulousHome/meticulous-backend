@@ -199,13 +199,12 @@ class ESPToolWrapper:
             image = LoadFirmwareImage(
                 "esp32s3", os.path.join(UPDATE_PATH, "esp32-s3", "firmware.bin")
             )
-        except:
+        except Exception:
             return None
 
         app_desc = None
         for idx, seg in enumerate(image.segments, start=1):
             segs = seg.get_memory_type(image)
-            seg_name = ", ".join(segs)
             if "DROM" in segs:
                 app_desc = seg.data[:256]
 
@@ -225,7 +224,7 @@ class ESPToolWrapper:
             ) = struct.unpack(APP_DESC_STRUCT_FMT, app_desc)
 
             if magic_word == 0xABCD5432:
-                logger.info(f"On-disk firmware file:")
+                logger.info("On-disk firmware file:")
                 logger.info(f'Project name: {project_name.decode("utf-8")}')
                 logger.info(f'App version: {version.decode("utf-8")}')
                 logger.info(

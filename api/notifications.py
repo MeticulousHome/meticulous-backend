@@ -1,4 +1,3 @@
-import tornado.web
 import json
 from notifications import NotificationManager
 from .base_handler import BaseHandler

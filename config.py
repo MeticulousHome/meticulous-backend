@@ -1,4 +1,3 @@
-from typing import Any
 import yaml
 import os
 import asyncio
@@ -26,9 +25,6 @@ CONFIG_PROFILES = "profiles"
 #
 # SYSTEM config
 #
-# GATT configuration
-GATT_DEFAULT_NAME = "MeticulousEspresso"
-GATT_NAME = "gatt_device_name"
 
 # HTTP Authentication configuration
 HTTP_AUTH_KEY = "auth_key"

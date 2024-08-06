@@ -1,6 +1,5 @@
 import json
 
-import tornado.web
 from config import CONFIG_USER, MeticulousConfig
 
 from .base_handler import BaseHandler
@@ -15,7 +14,7 @@ class SettingsHandler(BaseHandler):
     def get(self, setting_name=None):
         if setting_name:
             setting = MeticulousConfig[CONFIG_USER].get(setting_name)
-            if setting != None:
+            if setting is not None:
                 response = {setting_name: setting}
                 self.write(json.dumps(response))
             else:
@@ -55,7 +54,7 @@ class SettingsHandler(BaseHandler):
                 MeticulousConfig.load()
                 return
             setting = MeticulousConfig[CONFIG_USER].get(setting_name)
-            if setting != None:
+            if setting is not None:
                 MeticulousConfig[CONFIG_USER][setting_name] = value
             else:
                 self.set_status(404)

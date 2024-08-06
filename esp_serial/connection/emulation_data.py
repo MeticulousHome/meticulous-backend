@@ -9,16 +9,16 @@ Success in initializing ADC 1
 Success in initializing ADC 2
 Success in initializing ADC 3
 Success in initializing the ADC's
-Frequency: 
+Frequency:
 100
-Real frequency: 
+Real frequency:
 50
-Delay time: 
+Delay time:
 30
 (I) Scale factor is already set to: 900.00
 
 Getting current
-Actual current: 
+Actual current:
 6.71
 voltage level set for 240
 Voltage level set to 240

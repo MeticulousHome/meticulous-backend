@@ -1,6 +1,14 @@
-import tornado.web
 import json
-from config import *
+from config import (
+    MeticulousConfig,
+    CONFIG_WIFI,
+    WIFI_MODE,
+    WIFI_MODE_AP,
+    WIFI_MODE_CLIENT,
+    WIFI_AP_NAME,
+    WIFI_AP_PASSWORD,
+    WIFI_KNOWN_WIFIS,
+)
 from .wifi import WiFiConfig, WiFiQRHandler, WifiManager
 from .api import API, APIVersion
 from .base_handler import BaseHandler
@@ -81,12 +89,12 @@ class WiFiConfigHandler(BaseHandler):
             return self.get()
         except json.JSONDecodeError as e:
             self.set_status(400)
-            self.write(f"Invalid JSON")
+            self.write("Invalid JSON")
             logger.warning(f"Failed to parse passed JSON: {e}", stack_info=False)
 
         except Exception as e:
             self.set_status(400)
-            self.write(f"Failed to write config")
+            self.write("Failed to write config")
             logger.warning(
                 "Failed to accept passed config: ", exc_info=e, stack_info=True
             )

@@ -1,7 +1,6 @@
 import sys
 import re
 from datetime import datetime
-import json
 
 
 def main(ref, pr_comments, version_bump_type):

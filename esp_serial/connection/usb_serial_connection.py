@@ -1,10 +1,11 @@
 from .serial_connection import SerialConnection
-import serial, serial.tools.list_ports
+import serial
+import serial.tools.list_ports
 
+from esptool.reset import HardReset, ClassicReset, DEFAULT_RESET_DELAY
 from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
-from esptool.reset import HardReset, ClassicReset, DEFAULT_RESET_DELAY
 
 
 class USBSerialConnection(SerialConnection):
@@ -20,7 +21,7 @@ class USBSerialConnection(SerialConnection):
             HardReset(self.port)
 
     def connect(self, device=None):
-        if device == None:
+        if device is None:
             device = []
             ports = serial.tools.list_ports.comports()
             for port, desc, hwid in sorted(ports):

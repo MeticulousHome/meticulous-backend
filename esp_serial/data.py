@@ -134,7 +134,7 @@ class ESPInfo:
         try:
             # This used to be the fan status. To not break on old firmware we check parseability
             espPinout = int(args[1])
-        except:
+        except Exception:
             pass
         try:
             info = ESPInfo(args[0], espPinout, float(args[2]))
@@ -192,12 +192,12 @@ class ShotData:
         try:
             s = args[4].strip("\r\n")
             status = s
-        except:
+        except Exception:
             status = None
 
         try:
             profile = args[5].strip("\r\n")
-        except:
+        except Exception:
             profile = None
 
         state = MachineState.IDLE

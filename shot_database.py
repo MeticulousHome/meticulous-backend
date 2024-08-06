@@ -168,7 +168,7 @@ class ShotDataBase:
                     """
                 SELECT zstd_enable_transparent('{
                     "table": "history",
-                    "column": "data", 
+                    "column": "data",
                     "compression_level": 19,
                     "dict_chooser": "''a''"
                 }')

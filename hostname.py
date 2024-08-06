@@ -2,7 +2,6 @@ import subprocess
 import random
 
 from config import CONFIG_SYSTEM, MeticulousConfig, DEVICE_IDENTIFIER
-from typing import Optional
 from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)

@@ -8,11 +8,19 @@ import uuid
 from enum import Enum
 from typing import Optional, Set
 from urllib.parse import urlparse
-
+import random
 import datauri
 import jsonschema
 import socketio
-from config import *
+from config import (
+    MeticulousConfig,
+    CONFIG_USER,
+    CONFIG_PROFILES,
+    PROFILE_AUTO_PURGE,
+    PROFILE_AUTO_START,
+    PROFILE_LAST,
+)
+import asyncio
 from log import MeticulousLogger
 from machine import Machine
 from profile_converter.profile_converter import ComplexProfileConverter

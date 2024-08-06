@@ -55,7 +55,7 @@ class RaucManager:
             logger.info("Starting update_OS.sh script")
 
             # Start the script without waiting for it to complete
-            process = subprocess.Popen(
+            process = subprocess.Popen(  # noqa: F841
                 ["./update_OS.sh"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,

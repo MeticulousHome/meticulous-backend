@@ -1,4 +1,3 @@
-import json
 import os
 import time
 import zstandard as zstd
@@ -8,9 +7,8 @@ import csv
 from datetime import datetime
 
 from esp_serial.data import SensorData, ShotData
-from datetime import datetime
 
-from config import *
+from config import MeticulousConfig, CONFIG_USER, DEBUG_SHOT_DATA
 
 from log import MeticulousLogger
 

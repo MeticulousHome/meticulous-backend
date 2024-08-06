@@ -1,4 +1,3 @@
-import time
 from enum import Enum, auto
 import os
 import json
@@ -89,7 +88,7 @@ class SoundPlayer:
             with open(config_path) as f:
                 json.load(f)
                 return True
-        except:
+        except Exception:
             logger.info(f"'{subfolder_path}' has no config.json")
             pass
         return False
@@ -131,7 +130,7 @@ class SoundPlayer:
             theme_config_file = open(os.path.join(theme_folder, "config.json"))
             theme_config = json.load(theme_config_file)
             return theme_config
-        except:
+        except Exception:
             return {}
 
     @staticmethod

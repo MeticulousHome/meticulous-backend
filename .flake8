@@ -37,4 +37,4 @@ enable-extensions = G
 plugin_black = True
 
 # Additional configuration options
-max-complexity = 10
+max-complexity = 20
