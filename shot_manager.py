@@ -181,6 +181,8 @@ class ShotManager:
                     dbEntry = shot_data
                     dbEntry["file"] = str(file_path)
                     ShotDataBase.insert_history(shot_data)
+                    ShotManager._last_shot = None
+                    ShotManager.getLastShot()
                 except Exception as e:
                     logger.error(f"Failed to insert shot into sqlite: {e}")
                     logger.error(traceback.format_exc())
@@ -217,7 +219,6 @@ class ShotManager:
             compresson_thread.start()
 
             # Shift and clear shot handles after saving
-            ShotManager._last_shot = None
             ShotManager._current_shot = None
 
 
