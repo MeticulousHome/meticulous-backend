@@ -73,9 +73,7 @@ class Shot:
 
     def to_json(self):
         shot_dict = {
-            "time": datetime.fromtimestamp(self.startTime).strftime(
-                "%Y_%m_%d_%H_%M_%S"
-            ),
+            "time": self.startTime,
             "profile_name": self.profile_name,
             "data": self.shotData,
             "id": self.id,
