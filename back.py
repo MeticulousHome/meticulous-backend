@@ -23,39 +23,44 @@ if BACKEND == "FIKA":
 else:
     print("Skipping Sentry initialization")
 
-from tornado.options import define, options, parse_command_line
-import socketio
-import tornado.log
-import tornado.web
-import tornado.ioloop
-import threading
-import time
-import json
-import os
-import os.path
-import version as backend
-import subprocess
-import asyncio
+from tornado.options import parse_command_line  # noqa: E402
+import socketio  # noqa: E402
+import tornado.log  # noqa: E402
+import tornado.web  # noqa: E402
+import tornado.ioloop  # noqa: E402
+import threading  # noqa: E402
+import time  # noqa: E402
+import json  # noqa: E402
+import os  # noqa: E402
+import os.path  # noqa: E402
+import version as backend  # noqa: E402
+import subprocess  # noqa: E402
+import asyncio  # noqa: E402
 
-from esp_serial.data import ButtonEventData
+from esp_serial.data import ButtonEventData  # noqa: E402
 
-from ble_gatt import GATTServer
-from wifi import WifiManager
-from notifications import Notification, NotificationManager, NotificationResponse
-from profile import ProfileManager
-from hostname import HostnameManager
-from config import *
-from machine import Machine, MachineStatus
-from sounds import SoundPlayer
-from imager import DiscImager
-from shot_manager import ShotManager
-from esp_serial.connection.emulation_data import EmulationData
+from ble_gatt import GATTServer  # noqa: E402
+from wifi import WifiManager  # noqa: E402
+from notifications import Notification, NotificationManager  # noqa: E402
+from profiles import ProfileManager  # noqa: E402
+from hostname import HostnameManager  # noqa: E402
+from config import (  # noqa: E402
+    MeticulousConfig,
+    CONFIG_LOGGING,
+    LOGGING_SENSOR_MESSAGES,
+)
+from machine import Machine  # noqa: E402
+from sounds import SoundPlayer  # noqa: E402
+from imager import DiscImager  # noqa: E402
+from shot_manager import ShotManager  # noqa: E402
+from esp_serial.connection.emulation_data import EmulationData  # noqa: E402
 
-from api.api import API
-from api.emulation import register_emulation_handlers
-from api.web_ui import WEB_UI_HANDLER
+from api.api import API  # noqa: E402
+from api.emulation import register_emulation_handlers  # noqa: E402
+from api.web_ui import WEB_UI_HANDLER  # noqa: E402
 
-from log import MeticulousLogger
+from log import MeticulousLogger  # noqa: E402
+
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -73,7 +78,7 @@ def gatherVersionInfo():
     software_info["backendV"] = backend.VERSION
 
     # #OBTENEMOS SU VERSION USANDO LOS COMANDOS DPKG y GREP
-    command = f"dpkg --list | grep meticulous-ui"
+    command = "dpkg --list | grep meticulous-ui"
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
     try:
         lcd_version = result.stdout.split()[2]
@@ -118,7 +123,7 @@ def msg(sid, data):
 
 
 @sio.on("notification")
-def msg(sid, noti_json):
+def notification(sid, noti_json):
     notification = json.loads(noti_json)
     if "id" in notification and "response" in notification:
         NotificationManager.acknowledge_notification(
@@ -133,55 +138,12 @@ async def forwardProfileHover(sid, data):
 
 
 @sio.on("calibrate")  # Use when calibration it is implemented
-def msg(sid, data=True):
+def calibrate(sid, data=True):
     know_weight = "100.0"
     current_weight = Machine.data_sensors.weight
     data = "calibration" + "," + know_weight + "," + str(current_weight)
     _input = "action," + data + "\x03"
     Machine.write(str.encode(_input))
-
-
-@sio.on("feed_profile")
-async def feed_profile(sid, data):
-    logger.info(f"Received JSON: {data}")  # Print the received JSON data
-    # Deserialize the JSON
-    obj = json.loads(data)
-    # Extract and print the value of "kind"
-    kind_value = obj.get("kind", None)
-    if kind_value:
-        if kind_value == "italian_1_0":
-            logger.info("Is Italian 1.0")
-            json_result = generate_italian_1_0(obj)  # <class 'str'>
-            logger.info(json_result)
-            obj_json = json.loads(json_result)  # <class 'dict'>
-            Machine.send_json_with_hash(obj_json)
-            await asyncio.sleep(5)
-            _input = "action," + "start" + "\x03"
-            Machine.write(str.encode(_input))
-
-        if kind_value == "dashboard_1_0":
-            logger.info("Is Dashboard 1.0")
-            action_value = obj.get("action", None)
-            if action_value == "to_play":
-                json_result = generate_dashboard_1_0(obj)  # <class 'str'>
-                logger.info(json_result)
-                obj_json = json.loads(json_result)  # <class 'dict'>
-                Machine.send_json_with_hash(obj_json)
-                await asyncio.sleep(5)
-                _input = "action," + "start" + "\x03"
-                Machine.write(str.encode(_input))
-                logger.info("Se envio start")
-            elif action_value == "save_in_dial":
-                # The following remove the property "action" from the json_data
-                obj.pop("action")
-                # emit the event to save the profile using "save_in_dial" event
-                logger.info("Se envio save_in_dial: ", obj)
-                await sio.emit("save_in_dial", json.dumps(obj))
-
-        if kind_value == "spring_1_0":
-            logger.info("Spring 1.0")
-    else:
-        print("The 'kind' key is not present in the received JSON.")
 
 
 send_data_thread = None
@@ -231,7 +193,9 @@ async def live():
         await sio.emit("status", machine_status)
 
         if Machine.sensor_sensors is not None:
-            water_status_dict = Machine.sensor_sensors.to_sio_water_status()
+            water_status_dict = (  # noqa: F841
+                Machine.sensor_sensors.to_sio_water_status()
+            )
             # water_status_value = water_status_dict["water_status"]
             # await sio.emit("water_status", water_status_value)
 
@@ -261,7 +225,7 @@ def send_data_loop():
     loop.close()
 
 
-async def send_data():
+async def send_data():  # noqa: C901
     noti = Notification("", ["Ok", "Not okay"])
     while True:
         print("> ", end="")
@@ -281,16 +245,6 @@ async def send_data():
         elif _input == "hide":
             MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES] = False
             MeticulousConfig.save()
-
-        elif _input == "json":
-            with open("fika.json", "r") as openfile:
-                json_file = json.load(openfile)
-                # json_data = json.dumps(json_file, indent=1, sort_keys=False)
-                # logger.info(json_data)
-                Machine.send_json_with_hash(json_file)
-                json_data = ""
-                json_file = ""
-
         elif (
             _input == "tare"
             or _input == "stop"
@@ -332,7 +286,7 @@ async def send_data():
             # noti.message = notification
             # noti.add_qrcode("Hello asjkdljlasjjkdsajkldasljkasdljk")
             noti = Notification(
-                "Upgrading system realtime core. This will take around 20 seconds",
+                notification,
             )
             NotificationManager.add_notification(noti)
         elif _input == "l" or _input == "CCW":

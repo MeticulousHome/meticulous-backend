@@ -12,7 +12,7 @@ import zstandard as zstd
 from esp_serial.connection.emulation_data import EmulationData
 from esp_serial.data import SensorData, ShotData
 from log import MeticulousLogger
-from shot_database import ShotDataBase, SearchParams, SearchOrder, SearchOrderBy
+from shot_database import ShotDataBase, SearchParams, SearchOrder
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class Shot:
             self.shotData[-1]["sensors"] = dict(sensorData.__dict__)
 
     def addShotData(self, shotData: ShotData):
-        from profile import ProfileManager
+        from profiles import ProfileManager
 
         from machine import Machine
 
@@ -223,7 +223,7 @@ class ShotManager:
 def test():
     ShotManager.init()
     ShotManager.start()
-    from profile import ProfileManager
+    from profiles import ProfileManager
 
     dummyShotData = ShotData(
         pressure=0.0,

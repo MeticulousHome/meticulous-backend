@@ -5,7 +5,7 @@ import psutil
 import time
 from threading import Thread
 
-from improv import *
+from improv import ImprovUUID, ImprovState, ImprovProtocol
 from bless import (  # type: ignore
     BlessServer,
     BlessGATTCharacteristic,
@@ -16,10 +16,9 @@ from bless import (  # type: ignore
 from dbus_next.errors import DBusError
 
 from wifi import WifiManager
-from config import *
 from hostname import HostnameManager
 from notifications import NotificationManager, Notification, NotificationResponse
-
+import os
 from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -37,10 +36,6 @@ class GATTServer:
     A class representing a BLE (Bluetooth Low Energy) GATT (Generic Attribute Profile) Server
     for Wi-Fi provisioning purposes. This server allows a BLE client to interact with the server
     to perform tasks like scanning for Wi-Fi networks and connecting to them.
-
-    Attributes:
-        GATT_NAME (str): The name of the GATT server. It defaults to 'MeticulousEspresso' or
-                         can be set via the GATT_NAME environment variable.
 
     Methods:
         getServer() -> GATTServer:
@@ -112,7 +107,7 @@ class GATTServer:
         return self.loopThread.is_alive()
 
     def start(self):
-        logger.info(f"Starting BLE GATT Server")
+        logger.info("Starting BLE GATT Server")
 
         if not self.is_running():
             self.trigger.clear()
@@ -134,7 +129,7 @@ class GATTServer:
         logger.info("Stopping BLE GATT Server")
         self.loop.call_soon_threadsafe(self.trigger.set)
 
-    async def _ble_gatt_server_loop(self):
+    async def _ble_gatt_server_loop(self):  # noqa: C901
         # FIXME remove once migrated away from the variscite-wifi.service towards
         # proper sdio power sequencing
         # After boot we need to was 10 or so seconds for the variscite wifi service
@@ -155,7 +150,7 @@ class GATTServer:
 
         try:
             await self.bless_gatt_server.setup_task
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             logger.warning("Could not initialize the BLE gatt interface. Bailing out!")
             return
 
@@ -347,7 +342,7 @@ class GATTServer:
             ) = GATTServer.getServer().improv_server.handle_write(
                 characteristic.uuid, value
             )
-            if target_uuid != None and target_values != None:
+            if target_uuid is not None and target_values is not None:
                 for value in target_values:
                     logger.debug(f"Setting {ImprovUUID(target_uuid)} to {value}")
                     GATTServer.getServer().bless_gatt_server.get_characteristic(

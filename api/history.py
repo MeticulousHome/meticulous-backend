@@ -6,7 +6,6 @@ import tornado.web
 import zstandard as zstd
 from pydantic import ValidationError
 
-from config import *
 from log import MeticulousLogger
 from shot_database import SearchParams, ShotDataBase
 from shot_debug_manager import DEBUG_HISTORY_PATH

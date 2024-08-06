@@ -39,19 +39,19 @@ class API:
 
     @classmethod
     def get_routes(cls):
-        from . import action as _
-        from . import history as _
-        from . import notifications as _
-        from . import profiles as _
-        from . import settings as _
-        from . import update as _
-        from . import wifi as _
-        from . import update_os as _
-        from . import sounds as _
-        from . import machine as _
+        from . import action as _action  # noqa
+        from . import history as _history  # noqa
+        from . import notifications as _noti  # noqa
+        from . import profiles as _profiles  # noqa
+        from . import settings as _settings  # noqa
+        from . import update as _update  # noqa
+        from . import wifi as _wifi  # noqa
+        from . import update_os as _update  # noqa
+        from . import sounds as _sounds  # noqa
+        from . import machine as _machine  # noqa
 
         routes = []
-        logger.info(f"API Routes registered:")
+        logger.info("API Routes registered:")
         for version, paths in cls._versions.items():
             version_path = f"/api/{version.name.lower()}"
             logger.info(f"  {version_path}")

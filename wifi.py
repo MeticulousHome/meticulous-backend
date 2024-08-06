@@ -1,5 +1,13 @@
-from config import MeticulousConfig
-from config import *
+from config import (
+    MeticulousConfig,
+    CONFIG_WIFI,
+    WIFI_AP_NAME,
+    WIFI_AP_PASSWORD,
+    WIFI_KNOWN_WIFIS,
+    WIFI_MODE,
+    WIFI_MODE_AP,
+    WIFI_MODE_CLIENT,
+)
 
 from netaddr import IPAddress, IPNetwork
 from typing import List
@@ -76,7 +84,7 @@ class WifiManager:
         try:
             nmcli.device.show_all()
         except Exception as e:
-            logger.warning("Networking unavailable!")
+            logger.warning(f"Networking unavailable! {e}")
             WifiManager._networking_available = False
 
         config = WifiManager.getCurrentConfig()
@@ -173,7 +181,7 @@ class WifiManager:
 
         for dev in nmcli.device():
             if dev.device_type == "wifi" and dev.connection == WifiManager._conname:
-                logger.info(f"Stopping Hotspot")
+                logger.info("Stopping Hotspot")
                 try:
                     nmcli.connection.down(WifiManager._conname)
                 except Exception as e:
@@ -207,7 +215,7 @@ class WifiManager:
                 )
                 wifis = []
 
-            if target_network_ssid != None:
+            if target_network_ssid is not None:
                 wifis = [w for w in wifis if w.ssid == target_network_ssid]
 
             if len(wifis) > 0:

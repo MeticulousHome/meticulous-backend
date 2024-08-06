@@ -2,9 +2,18 @@ import json
 import pyqrcode
 import io
 
-from config import *
+from config import (
+    MeticulousConfig,
+    CONFIG_WIFI,
+    WIFI_AP_NAME,
+    WIFI_AP_PASSWORD,
+    WIFI_KNOWN_WIFIS,
+    WIFI_MODE,
+    WIFI_MODE_AP,
+    WIFI_MODE_CLIENT,
+)
 from wifi import WifiManager
-from ble_gatt import GATTServer, PORT
+from ble_gatt import PORT
 
 from .base_handler import BaseHandler
 from .api import API, APIVersion
@@ -104,12 +113,12 @@ class WiFiConfigHandler(BaseHandler):
             return self.get()
         except json.JSONDecodeError as e:
             self.set_status(400)
-            self.write(f"Invalid JSON")
+            self.write("Invalid JSON")
             logger.warning(f"Failed to parse passed JSON: {e}", stack_info=False)
 
         except Exception as e:
             self.set_status(400)
-            self.write(f"Failed to write config")
+            self.write("Failed to write config")
             logger.warning(
                 "Failed to accept passed config: ", exc_info=e, stack_info=True
             )
@@ -145,7 +154,7 @@ class WiFiListHandler(BaseHandler):
             self.write(response)
         except Exception as e:
             self.set_status(400)
-            self.write(f"Failed to fetch wifi list")
+            self.write("Failed to fetch wifi list")
             logger.warning(
                 "Failed to fetch / format wifi list: ", exc_info=e, stack_info=True
             )

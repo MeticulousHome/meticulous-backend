@@ -1,5 +1,6 @@
 from ..esp_tool_wrapper import ESPToolWrapper
-import serial, serial.tools.list_ports
+import serial
+import serial.tools.list_ports
 
 from log import MeticulousLogger
 
@@ -28,7 +29,7 @@ class SerialConnection:
         logger.info("An ESP32 is connected")
 
     def available(self):
-        return self.port != None and self.connected
+        return self.port is not None and self.connected
 
     def connect(self, devices):
         if not isinstance(devices, list):

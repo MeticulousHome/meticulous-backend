@@ -60,7 +60,7 @@ class DiscImager:
         try:
 
             subprocess.call(f"umount {DiscImager.dest_file}p*", shell=True)
-        except e:
+        except Exception as e:
             logger.warning(f"Failed to unmount emmc {e}")
 
         try:
@@ -101,7 +101,7 @@ class DiscImager:
                 )
 
                 try:
-                    DiscImager.notification.message = f"Fixing partition table"
+                    DiscImager.notification.message = "Fixing partition table"
                     NotificationManager.add_notification(DiscImager.notification)
                     subprocess.call(
                         f"echo w | fdisk {DiscImager.dest_file}", shell=True
@@ -110,12 +110,12 @@ class DiscImager:
                     subprocess.call(
                         f"mkfs.ext4 {DiscImager.dest_file}p5 -F -L user", shell=True
                     )
-                except e:
+                except Exception as e:
                     logger.warning(f"Failed to run imaging cleanup! {e}")
                     pass
 
                 DiscImager.notification.message = (
-                    f"Flashing finished. Remove the boot jumper and reset the machine"
+                    "Flashing finished. Remove the boot jumper and reset the machine"
                 )
                 DiscImager.notification.respone_options = [NotificationResponse.OK]
 

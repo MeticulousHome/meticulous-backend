@@ -6,10 +6,12 @@ import pyqrcode
 import io
 import queue
 import threading
+import asyncio
+from datetime import datetime
 
 from sounds import SoundPlayer, Sounds
 
-from config import *
+from config import MeticulousConfig, CONFIG_SYSTEM, NOTIFICATION_KEEPALIVE
 
 from log import MeticulousLogger
 
@@ -61,7 +63,7 @@ class Notification:
             background=[0xFF, 0xFF, 0xFF, 0xFF],
         )
 
-        prefix = f"data:image/png;base64,"
+        prefix = "data:image/png;base64,"
         self.image = prefix + base64.b64encode(buffer.getvalue()).decode("utf-8")
 
     def acknowledge(self, response):

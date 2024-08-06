@@ -1,6 +1,5 @@
-from config import *
-from hostname import HostnameManager
 import zeroconf
+import os
 
 from log import MeticulousLogger
 
@@ -85,7 +84,7 @@ class ZeroConfAnnouncement:
                 )
 
             return
-        except zeroconf.NonUniqueNameException as e:
+        except zeroconf.NonUniqueNameException:
             logger.warning(
                 f"zeroconf failed to start on port {PORT} error='NonUniqueNameException'"
             )
@@ -94,13 +93,13 @@ class ZeroConfAnnouncement:
         if self.met_service_info is not None:
             # Unregister the service
             self.zeroconf.unregister_service(self.met_service_info)
-            print(f"zeroconf meticulous stopped")
+            logger.info("zeroconf meticulous stopped")
             self.met_service_info = None
 
         if self.http_service_info is not None:
             # Unregister the service
             self.zeroconf.unregister_service(self.http_service_info)
-            print(f"zeroconf http stopped")
+            logger.info("zeroconf http stopped")
             self.http_service_info = None
 
     def restart(self):

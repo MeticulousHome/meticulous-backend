@@ -1,21 +1,22 @@
+import json
+from datetime import datetime, timezone
+
 import jsonschema
 import tornado
-from datetime import datetime, timezone
-import json
-from typing import Optional
-from profile import ProfileManager, IMAGES_PATH
-from .base_handler import BaseHandler
-from .api import API, APIVersion
-from .machine import Machine
 
 from log import MeticulousLogger
-
-logger = MeticulousLogger.getLogger(__name__)
 from profile_preprocessor import (
+    FormatException,
     UndefinedVariableException,
     VariableTypeException,
-    FormatException,
 )
+from profiles import IMAGES_PATH, ProfileManager
+
+from .api import API, APIVersion
+from .base_handler import BaseHandler
+from .machine import Machine
+
+logger = MeticulousLogger.getLogger(__name__)
 
 
 class ListHandler(BaseHandler):
@@ -34,7 +35,6 @@ class ListHandler(BaseHandler):
 
 class ListDefaultsHandler(BaseHandler):
     def get(self):
-        full_profiles = self.get_argument("full", "false").lower() == "true"
         profiles = ProfileManager.list_default_profiles()
         self.write(json.dumps(profiles))
 
