@@ -10,7 +10,7 @@ from config import *
 from log import MeticulousLogger
 from shot_database import SearchParams, ShotDataBase
 from shot_debug_manager import DEBUG_HISTORY_PATH
-from shot_manager import HISTORY_PATH
+from shot_manager import ShotManager, HISTORY_PATH
 
 from .api import API, APIVersion
 from .base_handler import BaseHandler
@@ -92,8 +92,17 @@ class ProfileSearchHandler(BaseHandler):
         profiles = ShotDataBase.autocomplete_profile_name(query)
         self.write({"profiles": profiles})
 
+class CurrentShotHandler(BaseHandler):
+    def get(self):
+        current = ShotManager.getCurrentShot()
+        self.write(json.dumps(current))
 
-class ProfileHandler(BaseHandler):
+class LastShotHandler(BaseHandler):
+    def get(self):
+        last = ShotManager.getLastShot()
+        self.write(json.dumps(last))
+
+class HistoryHandler(BaseHandler):
     def post(self):
         try:
             data = json.loads(self.request.body)
@@ -113,7 +122,10 @@ class ProfileHandler(BaseHandler):
 
 
 API.register_handler(APIVersion.V1, r"/history/search", ProfileSearchHandler),
-API.register_handler(APIVersion.V1, r"/history", ProfileHandler),
+API.register_handler(APIVersion.V1, r"/history/current", CurrentShotHandler),
+API.register_handler(APIVersion.V1, r"/history/last", LastShotHandler),
+
+API.register_handler(APIVersion.V1, r"/history", HistoryHandler),
 
 API.register_handler(
     APIVersion.V1,
