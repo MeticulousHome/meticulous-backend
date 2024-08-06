@@ -3,10 +3,12 @@ from hostname import HostnameManager
 import zeroconf
 
 from log import MeticulousLogger
+
 logger = MeticulousLogger.getLogger(__name__)
 
 # FIXME: remove once the tornado server logic moved to its own file
-PORT = int(os.getenv("PORT", '8080'))
+PORT = int(os.getenv("PORT", "8080"))
+
 
 class ZeroConfAnnouncement:
     def __init__(self, config_function) -> None:
@@ -15,8 +17,9 @@ class ZeroConfAnnouncement:
         self.met_service_info = None
         self.network_config = None
         self.config_function = config_function
-        self.zeroconf = zeroconf.Zeroconf(interfaces=zeroconf.InterfaceChoice.All, ip_version=zeroconf.IPVersion.All)
-
+        self.zeroconf = zeroconf.Zeroconf(
+            interfaces=zeroconf.InterfaceChoice.All, ip_version=zeroconf.IPVersion.All
+        )
 
     def _createServiceConfig(self):
         self.network_config = self.config_function()
@@ -35,12 +38,12 @@ class ZeroConfAnnouncement:
             port=PORT,
             # We can announce arbitrary information here (e.g. version numbers or features or state)
             properties={
-                'server_name': machine_name,
-                'ips': ips,
-                'domain': self.network_config.domains,
-                'machine_name': machine_name
+                "server_name": machine_name,
+                "ips": ips,
+                "domain": self.network_config.domains,
+                "machine_name": machine_name,
             },
-            server=f"{machine_name}.local."
+            server=f"{machine_name}.local.",
         )
 
         self.met_service_info = zeroconf.ServiceInfo(
@@ -50,12 +53,12 @@ class ZeroConfAnnouncement:
             port=PORT,
             # We can announce arbitrary information here (e.g. version numbers or features or state)
             properties={
-                'server_name': machine_name,
-                'ips': ips,
-                'domain': self.network_config.domains,
-                'machine_name': machine_name
+                "server_name": machine_name,
+                "ips": ips,
+                "domain": self.network_config.domains,
+                "machine_name": machine_name,
             },
-            server=f"{machine_name}.local."
+            server=f"{machine_name}.local.",
         )
 
     def start(self):
@@ -66,25 +69,26 @@ class ZeroConfAnnouncement:
             self._createServiceConfig()
             if self.http_service_info is not None:
                 self.zeroconf.register_service(
-                    self.http_service_info, allow_name_change=True)
-                logger.info(
-                    f"zeroconf service http announced on port {PORT}")
+                    self.http_service_info, allow_name_change=True
+                )
+                logger.info(f"zeroconf service http announced on port {PORT}")
             else:
-                logger.warning(
-                    "Could not fetch machine informations for http zeroconf")
+                logger.warning("Could not fetch machine informations for http zeroconf")
             if self.met_service_info is not None:
                 self.zeroconf.register_service(
-                    self.met_service_info, allow_name_change=True)
-                logger.info(
-                    f"zeroconf service meticulous announced on port {PORT}")
+                    self.met_service_info, allow_name_change=True
+                )
+                logger.info(f"zeroconf service meticulous announced on port {PORT}")
             else:
                 logger.warning(
-                    "Could not fetch machine informations for meticulous zeroconf")
+                    "Could not fetch machine informations for meticulous zeroconf"
+                )
 
             return
         except zeroconf.NonUniqueNameException as e:
             logger.warning(
-                f"zeroconf failed to start on port {PORT} error='NonUniqueNameException'")
+                f"zeroconf failed to start on port {PORT} error='NonUniqueNameException'"
+            )
 
     def stop(self):
         if self.met_service_info is not None:

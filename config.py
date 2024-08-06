@@ -10,10 +10,11 @@ from datetime import datetime
 from mergedeep import merge
 
 from log import MeticulousLogger
+
 # We are doing from config import * a lot and this will also import the logger...
 _config_logger = MeticulousLogger.getLogger(__name__)
 
-CONFIG_PATH = os.getenv("CONFIG_PATH", '/meticulous-user/config')
+CONFIG_PATH = os.getenv("CONFIG_PATH", "/meticulous-user/config")
 
 # Config Compontents
 CONFIG_LOGGING = "logging"
@@ -71,7 +72,7 @@ PROFILE_AUTO_START = "auto_start_shot"
 PROFILE_AUTO_START_DEFAULT = True
 PROFILE_AUTO_PURGE = "auto_purge_after_shot"
 PROFILE_AUTO_PURGE_DEFAULT = True
-PROFILE_AUTO_PREHEAT = 'auto_preheat'
+PROFILE_AUTO_PREHEAT = "auto_preheat"
 PROFILE_AUTO_PREHEAT_DEFAULT = 0
 
 
@@ -98,7 +99,7 @@ WIFI_AP_PASSWORD = "APPassword"
 # Could be out of string.ascii_letters, string.digits, string.punctuation
 wifi_allowed_characters = string.digits
 
-WIFI_DEFAULT_AP_PASSWORD = ''.join(random.choices(wifi_allowed_characters, k=12))
+WIFI_DEFAULT_AP_PASSWORD = "".join(random.choices(wifi_allowed_characters, k=12))
 
 WIFI_KNOWN_WIFIS = "KnownWifis"
 WIFI_DEFAULT_KNOWN_WIFIS = dict()
@@ -113,9 +114,7 @@ PROFILE_DEFAULT_LAST = None
 DefaultConfiguration_V1 = {
     # Only needs to be incremented in case of incompatible restructurings
     "version": 1,
-    CONFIG_LOGGING: {
-        LOGGING_SENSOR_MESSAGES: LOGGING_DEFAULT_SENSOR_MESSAGES
-    },
+    CONFIG_LOGGING: {LOGGING_SENSOR_MESSAGES: LOGGING_DEFAULT_SENSOR_MESSAGES},
     CONFIG_SYSTEM: {
         HTTP_AUTH_KEY: HTTP_DEFAULT_AUTH_KEY,
         HTTP_ALLOWED_NETWORKS: HTTP_DEFAULT_ALLOWED_NETWORKS,
@@ -131,17 +130,15 @@ DefaultConfiguration_V1 = {
         DEBUG_SHOT_DATA: DEBUG_SHOT_DATA_DEFAULT,
         PROFILE_AUTO_START: PROFILE_AUTO_START_DEFAULT,
         PROFILE_AUTO_PURGE: PROFILE_AUTO_PURGE_DEFAULT,
-        PROFILE_AUTO_PREHEAT: PROFILE_AUTO_PREHEAT_DEFAULT
+        PROFILE_AUTO_PREHEAT: PROFILE_AUTO_PREHEAT_DEFAULT,
     },
     CONFIG_WIFI: {
         WIFI_MODE: WIFI_MODE_AP,
         WIFI_AP_NAME: WIFI_DEFAULT_AP_NAME,
         WIFI_AP_PASSWORD: WIFI_DEFAULT_AP_PASSWORD,
-        WIFI_KNOWN_WIFIS: WIFI_DEFAULT_KNOWN_WIFIS
+        WIFI_KNOWN_WIFIS: WIFI_DEFAULT_KNOWN_WIFIS,
     },
-    CONFIG_PROFILES : {
-        PROFILE_LAST: PROFILE_DEFAULT_LAST
-    }
+    CONFIG_PROFILES: {PROFILE_LAST: PROFILE_DEFAULT_LAST},
 }
 
 
@@ -186,15 +183,15 @@ class MeticulousConfigDict(dict):
         ext = self.__path.suffix
         if ext not in [".yml", ".yaml"]:
             raise ValueError(
-                f"Invalid Extension provided! YAML (yml / yaml) expected, {ext} found")
+                f"Invalid Extension provided! YAML (yml / yaml) expected, {ext} found"
+            )
 
         self.load()
 
         _config_logger.info("Config initialized")
 
-        cs = yaml.dump(
-            self.copy(),  default_flow_style=False, allow_unicode=True)
-        for line in cs.split('\n'):
+        cs = yaml.dump(self.copy(), default_flow_style=False, allow_unicode=True)
+        for line in cs.split("\n"):
             _config_logger.debug(f"CONF: {line}")
 
     # FIXME: Remove once the socket IO server lives in its own file
@@ -215,15 +212,20 @@ class MeticulousConfigDict(dict):
                     disk_version = disk_config.get("version")
                     if disk_version is not None and disk_version > self["version"]:
                         _config_logger.warning(
-                            "Config on disk is newer than this software")
+                            "Config on disk is newer than this software"
+                        )
                     merge(self, disk_config)
                     _config_logger.info("Successfully loaded config from disk")
                     self.__configError = False
                 except Exception as e:
                     _config_logger.warning(f"Failed to load config: {e}")
                     basename, extension = os.path.splitext(self.__path)
-                    backup_path = basename + "_broken_" + \
-                        datetime.now().strftime("%Y_%m_%d_%H_%M_%S") + extension
+                    backup_path = (
+                        basename
+                        + "_broken_"
+                        + datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+                        + extension
+                    )
                     os.rename(self.__path, backup_path)
                     self.__configError = True
                 self.save()
@@ -231,12 +233,14 @@ class MeticulousConfigDict(dict):
     def save(self):
         Path(self.__path).parent.mkdir(parents=True, exist_ok=True)
         with open(self.__path, "w") as f:
-            yaml.dump(
-                self.copy(), f, default_flow_style=False, allow_unicode=True)
+            yaml.dump(self.copy(), f, default_flow_style=False, allow_unicode=True)
 
         if self.__sio:
-            loop = asyncio.get_event_loop() if asyncio.get_event_loop(
-            ).is_running() else asyncio.new_event_loop()
+            loop = (
+                asyncio.get_event_loop()
+                if asyncio.get_event_loop().is_running()
+                else asyncio.new_event_loop()
+            )
             asyncio.set_event_loop(loop)
 
             async def sendSettingsNotification():
@@ -248,5 +252,6 @@ class MeticulousConfigDict(dict):
                 asyncio.create_task(sendSettingsNotification())
 
 
-MeticulousConfig = MeticulousConfigDict(os.path.join(
-    CONFIG_PATH, "config.yml"), DefaultConfiguration_V1)
+MeticulousConfig = MeticulousConfigDict(
+    os.path.join(CONFIG_PATH, "config.yml"), DefaultConfiguration_V1
+)

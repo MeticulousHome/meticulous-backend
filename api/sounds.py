@@ -10,6 +10,7 @@ from sounds import SoundPlayer, USER_SOUNDS
 from config import MeticulousConfig, CONFIG_SYSTEM, SOUNDS_THEME
 
 from log import MeticulousLogger
+
 logger = MeticulousLogger.getLogger(__name__)
 
 
@@ -19,22 +20,17 @@ class PlaySoundHandler(BaseHandler):
             self.finish()
         else:
             self.set_status(404)
-            self.write(
-                {"error": "sound not found", "details": sound})
+            self.write({"error": "sound not found", "details": sound})
 
 
 class ListSoundsHandler(BaseHandler):
     def get(self):
-        self.write(json.dumps(
-            [f"{key}" for key in SoundPlayer.get_theme().keys()]
-        ))
+        self.write(json.dumps([f"{key}" for key in SoundPlayer.get_theme().keys()]))
 
 
 class ListThemesHandler(BaseHandler):
     def get(self):
-        self.write(json.dumps(
-            [f"{theme}" for theme in SoundPlayer.availableThemes()]
-        ))
+        self.write(json.dumps([f"{theme}" for theme in SoundPlayer.availableThemes()]))
 
 
 class GetThemeHandler(BaseHandler):
@@ -51,33 +47,35 @@ class SetThemeHandler(BaseHandler):
             self.finish()
         else:
             self.set_status(404)
-            self.write(
-                {"error": "theme not found", "details": theme})
+            self.write({"error": "theme not found", "details": theme})
 
 
 class UploadThemeHandler(BaseHandler):
     def post(self):
 
         # Ensure there is a file in the request
-        if 'file' not in self.request.files:
+        if "file" not in self.request.files:
             self.set_status(400)
-            self.write(
-                {"error": "invalid zip", "details": "file not found in request"})
+            self.write({"error": "invalid zip", "details": "file not found in request"})
             return
 
-        fileinfo = self.request.files['file'][0]
-        zip_bytes = BytesIO(fileinfo['body'])
+        fileinfo = self.request.files["file"][0]
+        zip_bytes = BytesIO(fileinfo["body"])
 
         try:
-            with zipfile.ZipFile(zip_bytes, 'r') as zip_ref:
+            with zipfile.ZipFile(zip_bytes, "r") as zip_ref:
                 # Validate the structure of the zip file
                 root_folders = {
-                    name.split(
-                        '/')[0] for name in zip_ref.namelist() if '/' in name}
+                    name.split("/")[0] for name in zip_ref.namelist() if "/" in name
+                }
                 if len(root_folders) != 1:
                     self.set_status(400)
                     self.write(
-                        {"error": "invalid zip", "details": "Zip must contain exactly one folder at the root."})
+                        {
+                            "error": "invalid zip",
+                            "details": "Zip must contain exactly one folder at the root.",
+                        }
+                    )
                     return
 
                 root_folder = root_folders.pop()
@@ -85,13 +83,17 @@ class UploadThemeHandler(BaseHandler):
                 if not has_config:
                     self.set_status(400)
                     self.write(
-                        {"error": "invalid zip", "details": "No config.json found in the root folder."})
+                        {
+                            "error": "invalid zip",
+                            "details": "No config.json found in the root folder.",
+                        }
+                    )
                     return
 
                 # Check for subfolders and validate config.json
                 for name in zip_ref.namelist():
 
-                    if name.endswith('config.json'):
+                    if name.endswith("config.json"):
                         config_data = zip_ref.read(name)
                         try:
                             # parse to check valid JSON
@@ -99,7 +101,11 @@ class UploadThemeHandler(BaseHandler):
                         except json.JSONDecodeError:
                             self.set_status(400)
                             self.write(
-                                {"error": "invalid zip", "details": "config.json is not valid JSON."})
+                                {
+                                    "error": "invalid zip",
+                                    "details": "config.json is not valid JSON.",
+                                }
+                            )
                             return
 
                 # Extraction destination
@@ -111,8 +117,7 @@ class UploadThemeHandler(BaseHandler):
             self.write("Zip file uploaded and unpacked successfully.")
         except zipfile.BadZipFile:
             self.set_status(400)
-            self.write(
-                {"error": "invalid zip", "details": "zip file corrupted"})
+            self.write({"error": "invalid zip", "details": "zip file corrupted"})
         except ValueError as e:
             self.set_status(400)
             self.write({"error": "invalid zip", "details": str(e)})
@@ -123,13 +128,8 @@ class UploadThemeHandler(BaseHandler):
 
 
 API.register_handler(APIVersion.V1, r"/sounds/play/(.*)", PlaySoundHandler),
-API.register_handler(APIVersion.V1, r"/sounds/list",
-                     ListSoundsHandler),
-API.register_handler(APIVersion.V1, r"/sounds/theme/list",
-                     ListThemesHandler),
-API.register_handler(APIVersion.V1, r"/sounds/theme/get",
-                     GetThemeHandler),
-API.register_handler(APIVersion.V1, r"/sounds/theme/set/(.*)",
-                     SetThemeHandler),
-API.register_handler(APIVersion.V1, r"/sounds/theme/upload",
-                     UploadThemeHandler),
+API.register_handler(APIVersion.V1, r"/sounds/list", ListSoundsHandler),
+API.register_handler(APIVersion.V1, r"/sounds/theme/list", ListThemesHandler),
+API.register_handler(APIVersion.V1, r"/sounds/theme/get", GetThemeHandler),
+API.register_handler(APIVersion.V1, r"/sounds/theme/set/(.*)", SetThemeHandler),
+API.register_handler(APIVersion.V1, r"/sounds/theme/upload", UploadThemeHandler),

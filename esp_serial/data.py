@@ -4,6 +4,7 @@ import re
 import math
 
 from log import MeticulousLogger
+
 logger = MeticulousLogger.getLogger(__name__)
 
 colorSensorRegex = None
@@ -14,6 +15,7 @@ def safeFloat(val):
     if math.isnan(convert):
         return 0
     return convert
+
 
 @dataclass
 class SensorData:
@@ -45,7 +47,7 @@ class SensorData:
             startColor = "\033\\[1;(31|32|33|34|35|36)m"
             endColor = "\033\\[0m"
             colorSensorRegex = re.compile(f"{startColor} [a-z0-9_]*{endColor}")
-        colorSeperatedArgs = colorSensorRegex.sub(',', colorSeperatedArgs)
+        colorSeperatedArgs = colorSensorRegex.sub(",", colorSeperatedArgs)
         args = colorSeperatedArgs.split(",")
         if args[0] == "":
             args = args[1:]
@@ -53,9 +55,9 @@ class SensorData:
 
     def from_args(args):
         try:
-            
+
             if len(args) > 18:
-                water_status = args[18].lower() == 'true'
+                water_status = args[18].lower() == "true"
             else:
                 water_status = False
 
@@ -94,7 +96,7 @@ class SensorData:
             "t_bar_md": self.bar_mid_down,
             "t_bar_down": self.bar_down,
             "t_tube": self.tube,
-            "t_valv": self.valve
+            "t_valv": self.valve,
         }
 
     def to_sio_communication(self):
@@ -103,7 +105,7 @@ class SensorData:
             "a_0": self.adc_0,
             "a_1": self.adc_1,
             "a_2": self.adc_2,
-            "a_3": self.adc_3
+            "a_3": self.adc_3,
         }
 
     def to_sio_actuators(self):
@@ -112,18 +114,17 @@ class SensorData:
             "m_spd": self.motor_speed,
             "m_pwr": self.motor_power,
             "m_cur": self.motor_current,
-            "bh_pwr": self.bandheater_power
+            "bh_pwr": self.bandheater_power,
         }
-    
+
     def to_sio_water_status(self):
-        return {
-            "water_status": self.water_status
-        }
+        return {"water_status": self.water_status}
 
 
 @dataclass
 class ESPInfo:
     """Class respresenting the current ESPs firmware and status"""
+
     firmwareV: str = "0.0.0"
     espPinout: int = 0
     mainVoltage: float = 0.0
@@ -149,8 +150,9 @@ class ESPInfo:
             "mainVoltage": self.mainVoltage,
         }
 
+
 # From ESP32 to backend
-class MachineStatus():
+class MachineStatus:
     # Enum representing the events from the machine
     IDLE = "idle"
     HEATING = "heating"
@@ -158,14 +160,15 @@ class MachineStatus():
     RETRACTING = "retracting"
     CLOSING_VALVE = "closing valve"
     HOME = "Home"
-    
+
+
 # Backend outwards
-class MachineState():
+class MachineState:
     IDLE = "idle"
     PURGE = "purge"
     HOME = "home"
     BREWING = "brewing"
-    ERROR = "error" # so far unused
+    ERROR = "error"  # so far unused
 
 
 @dataclass
@@ -176,15 +179,15 @@ class ShotData:
     flow: float = 0.0
     weight: float = 0.0
     temperature: float = 20.0
-    status: str = "" # Represented as "name" over socket.io
+    status: str = ""  # Represented as "name" over socket.io
     profile: str = ""
     time: int = -1
     state: str = ""
-    is_extracting : bool = False
+    is_extracting: bool = False
 
     def clone_with_time_and_state(self, shot_start_time, is_brewing):
         return replace(self, time=shot_start_time, is_extracting=is_brewing)
-    
+
     def from_args(args):
         try:
             s = args[4].strip("\r\n")
@@ -199,20 +202,25 @@ class ShotData:
 
         state = MachineState.IDLE
         if profile is not None:
-            if profile not in [MachineStatus.IDLE, MachineStatus.PURGE, MachineStatus.HOME]:
+            if profile not in [
+                MachineStatus.IDLE,
+                MachineStatus.PURGE,
+                MachineStatus.HOME,
+            ]:
                 state = MachineState.BREWING
             else:
                 state = profile.lower()
 
         try:
-            data = ShotData(float(args[0]),
-                            float(args[1]),
-                            float(args[2]),
-                            float(args[3]),
-                            status,
-                            profile,
-                            state=state
-                            )
+            data = ShotData(
+                float(args[0]),
+                float(args[1]),
+                float(args[2]),
+                float(args[3]),
+                status,
+                profile,
+                state=state,
+            )
         except Exception as e:
             logger.warning(f"Failed to parse ShotData: {args}", exc_info=e)
             return None
@@ -231,7 +239,7 @@ class ShotData:
             "time": self.time,
             "profile": self.profile,
             "state": self.state,
-            "extracting": self.is_extracting
+            "extracting": self.is_extracting,
         }
         return data
 
@@ -272,8 +280,8 @@ class ButtonEventEnum(Enum):
             "ta_sl": "TARE_SUPER_LONG",
             "strt": "CONTEXT",
             "cntx": "CONTEXT",
-            "encoder_button_pressed" : "ENCODER_PRESSED",
-            "encoder_button_released" : "ENCODER_RELEASED",
+            "encoder_button_pressed": "ENCODER_PRESSED",
+            "encoder_button_released": "ENCODER_RELEASED",
         }
 
         if event_lookup.get(type_str) is not None:
@@ -302,8 +310,9 @@ class ButtonEventData:
             except ValueError:
                 pass
 
-            event = ButtonEventData(ButtonEventEnum.from_str(
-                args[0]), time_since_last_event)
+            event = ButtonEventData(
+                ButtonEventEnum.from_str(args[0]), time_since_last_event
+            )
         except Exception as e:
             logger.warning(f"Failed to parse EncoderEventData: {args}", exc_info=e)
             return None

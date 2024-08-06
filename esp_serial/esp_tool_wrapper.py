@@ -11,7 +11,7 @@ from log import MeticulousLogger
 from esptool.bin_image import LoadFirmwareImage
 import struct
 
-UPDATE_PATH = os.getenv("UPDATE_PATH", '/opt/meticulous-firmware')
+UPDATE_PATH = os.getenv("UPDATE_PATH", "/opt/meticulous-firmware")
 
 """
 ESPTool uses print() to log to stdout.
@@ -25,7 +25,7 @@ class FikaSupportedESP32(Enum):
     ESP32S1 = auto()
     ESP32S3 = auto()
 
-    def fromString(chip: str) -> Optional['FikaSupportedESP32']:
+    def fromString(chip: str) -> Optional["FikaSupportedESP32"]:
         if chip.upper() in ["ESP32", "ESP32S1", "ESP32-S1"]:
             return FikaSupportedESP32.ESP32S1
         if chip.upper() in ["ESP32S3", "ESP32-S3"]:
@@ -43,8 +43,11 @@ class ESPToolLogger:
             if len(msg) > 0:
                 logger.log(self.level, msg)
 
-    def flush(self): pass
-    def isatty(self): return False
+    def flush(self):
+        pass
+
+    def isatty(self):
+        return False
 
 
 esp_tool_logger = ESPToolLogger()
@@ -54,15 +57,15 @@ class ESPToolArgs:
     default_esp32_s1_flash_mapping = [
         [0x1000, "bootloader.bin"],
         [0x8000, "partitions.bin"],
-        [0xe000, "boot_app0.bin"],
-        [0x10000, "firmware.bin"]
+        [0xE000, "boot_app0.bin"],
+        [0x10000, "firmware.bin"],
     ]
 
     default_esp32_s3_flash_mapping = [
         [0x0000, "bootloader.bin"],
         [0x8000, "partitions.bin"],
-        [0xe000, "boot_app0.bin"],
-        [0x10000, "firmware.bin"]
+        [0xE000, "boot_app0.bin"],
+        [0x10000, "firmware.bin"],
     ]
 
     def __init__(self):
@@ -91,13 +94,15 @@ class ESPToolArgs:
             self.chip = "esp32s3"
 
         try:
-            self.addr_filename = [[partition[0], open(os.path.join(
-                firmware_path, partition[1]), 'rb')] for partition in mapping]
+            self.addr_filename = [
+                [partition[0], open(os.path.join(firmware_path, partition[1]), "rb")]
+                for partition in mapping
+            ]
         except FileNotFoundError as e:
             logger.error(f"Failed to load firmware from disk: {e}")
 
 
-class ESPToolWrapper():
+class ESPToolWrapper:
     CONFIG_BAUD = 921600
 
     @staticmethod
@@ -155,21 +160,18 @@ class ESPToolWrapper():
 
         try:
             logger.info(
-                f"Changing baud from {initial_baudrate} to {ESPToolWrapper.CONFIG_BAUD}")
+                f"Changing baud from {initial_baudrate} to {ESPToolWrapper.CONFIG_BAUD}"
+            )
             esp.change_baud(ESPToolWrapper.CONFIG_BAUD)
         except esptool.NotImplementedInROMError:
-            logger.warning(
-                "ROM doesn't support changing baud rate. "
-            )
+            logger.warning("ROM doesn't support changing baud rate. ")
 
         args = ESPToolArgs()
         # If we end up supporting  more chips this should be converted to a match, for now this is easier
         if CHIP == FikaSupportedESP32.ESP32S3:
-            args.loadFlashMapping(CHIP,
-                                  ESPToolArgs.default_esp32_s3_flash_mapping)
+            args.loadFlashMapping(CHIP, ESPToolArgs.default_esp32_s3_flash_mapping)
         elif CHIP == FikaSupportedESP32.ESP32S1:
-            args.loadFlashMapping(CHIP,
-                                  ESPToolArgs.default_esp32_s1_flash_mapping)
+            args.loadFlashMapping(CHIP, ESPToolArgs.default_esp32_s1_flash_mapping)
         else:
             logger.error("Invalid CHIP for flash mapping!")
             return None
@@ -195,7 +197,8 @@ class ESPToolWrapper():
         # ESP32-S3 is the default for customer hardware, everything else will be custom anyways
         try:
             image = LoadFirmwareImage(
-                "esp32s3", os.path.join(UPDATE_PATH, "esp32-s3", "firmware.bin"))
+                "esp32s3", os.path.join(UPDATE_PATH, "esp32-s3", "firmware.bin")
+            )
         except:
             return None
 
@@ -226,7 +229,8 @@ class ESPToolWrapper():
                 logger.info(f'Project name: {project_name.decode("utf-8")}')
                 logger.info(f'App version: {version.decode("utf-8")}')
                 logger.info(
-                    f'Compile time: {date.decode("utf-8")} {time.decode("utf-8")}')
+                    f'Compile time: {date.decode("utf-8")} {time.decode("utf-8")}'
+                )
                 logger.info(f'ESP-IDF: {idf_ver.decode("utf-8")}')
                 logger.info(f"Secure version: {secure_version}")
                 return version.decode("utf-8").strip(" \x00\t")

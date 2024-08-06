@@ -212,9 +212,7 @@ class ShotManager:
 
             compresson_thread = threading.Thread(
                 target=write_current_shot,
-                args=(
-                    shot_data,
-                ),
+                args=(shot_data,),
             )
             compresson_thread.start()
 

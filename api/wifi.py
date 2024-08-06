@@ -10,6 +10,7 @@ from .base_handler import BaseHandler
 from .api import API, APIVersion
 
 from log import MeticulousLogger
+
 logger = MeticulousLogger.getLogger(__name__)
 
 
@@ -24,9 +25,9 @@ class WiFiConfig:
 
     @classmethod
     def from_json(cls, json_data):
-        mode = json_data.get('mode')
-        apName = json_data.get('apName')
-        apPassword = json_data.get('apPassword')
+        mode = json_data.get("mode")
+        apName = json_data.get("apName")
+        apPassword = json_data.get("apPassword")
         return cls(mode, apName, apPassword)
 
     def to_json(self):
@@ -58,9 +59,13 @@ class WiFiQRHandler(BaseHandler):
         buffer = io.BytesIO()
 
         qr = pyqrcode.create(qr_contents)
-        qr.png(buffer, scale=8, quiet_zone=2,
-               module_color=[0x00, 0x00, 0x00, 0xFF],
-               background=[0xFF, 0xFF, 0xFF, 0xFF],)
+        qr.png(
+            buffer,
+            scale=8,
+            quiet_zone=2,
+            module_color=[0x00, 0x00, 0x00, 0xFF],
+            background=[0xFF, 0xFF, 0xFF, 0xFF],
+        )
 
         self.set_header("Content-Type", "image/png")
         self.write(buffer.getvalue())
@@ -74,7 +79,7 @@ class WiFiConfigHandler(BaseHandler):
         wifi_config = {
             "config": WiFiConfig(mode, apName, apPassword).to_json(),
             "status": WifiManager.getCurrentConfig().to_json(),
-            "known_wifis": MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS]
+            "known_wifis": MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS],
         }
         self.write(json.dumps(wifi_config))
 
@@ -100,14 +105,14 @@ class WiFiConfigHandler(BaseHandler):
         except json.JSONDecodeError as e:
             self.set_status(400)
             self.write(f"Invalid JSON")
-            logger.warning(
-                f"Failed to parse passed JSON: {e}", stack_info=False)
+            logger.warning(f"Failed to parse passed JSON: {e}", stack_info=False)
 
         except Exception as e:
             self.set_status(400)
             self.write(f"Failed to write config")
-            logger.warning("Failed to accept passed config: ",
-                           exc_info=e, stack_info=True)
+            logger.warning(
+                "Failed to accept passed config: ", exc_info=e, stack_info=True
+            )
 
 
 class WiFiListHandler(BaseHandler):
@@ -117,7 +122,11 @@ class WiFiListHandler(BaseHandler):
             for s in WifiManager.scanForNetworks():
                 if s.ssid is not None and s.ssid != "":
                     formated: dict = {
-                        "ssid": s.ssid, "signal": s.signal, "rate": s.rate, "in_use": s.in_use}
+                        "ssid": s.ssid,
+                        "signal": s.signal,
+                        "rate": s.rate,
+                        "in_use": s.in_use,
+                    }
                     exists = networks.get(s.ssid)
                     # Make sure the network in use is always listed
                     if exists is None or s.in_use:
@@ -129,23 +138,25 @@ class WiFiListHandler(BaseHandler):
                             continue
                         if s.signal > exists["signal"]:
                             networks[s.ssid] = formated
-            response = sorted(networks.values(),
-                              key=lambda x: x["signal"], reverse=True)
+            response = sorted(
+                networks.values(), key=lambda x: x["signal"], reverse=True
+            )
             response = json.dumps(response)
             self.write(response)
         except Exception as e:
             self.set_status(400)
             self.write(f"Failed to fetch wifi list")
-            logger.warning("Failed to fetch / format wifi list: ",
-                           exc_info=e, stack_info=True)
+            logger.warning(
+                "Failed to fetch / format wifi list: ", exc_info=e, stack_info=True
+            )
 
 
 class WiFiConnectHandler(BaseHandler):
     def post(self):
         try:
             data = json.loads(self.request.body)
-            ssid = data['ssid']
-            password = data['password']
+            ssid = data["ssid"]
+            password = data["password"]
 
             success = WifiManager.connectToWifi(ssid, password)
 
@@ -153,12 +164,10 @@ class WiFiConnectHandler(BaseHandler):
                 self.write({"status": "ok"})
             else:
                 self.set_status(400)
-                self.write(
-                    {"status": "error", "error": "failed to conect to wifi"})
+                self.write({"status": "error", "error": "failed to conect to wifi"})
         except Exception as e:
             self.set_status(400)
-            self.write(
-                {"status": "error", "error": f"failed to conect to wifi: {e}"})
+            self.write({"status": "error", "error": f"failed to conect to wifi: {e}"})
             logger.warning("Failed to connect: ", exc_info=e, stack_info=True)
 
 
@@ -166,7 +175,7 @@ class WiFiDeleteHandler(BaseHandler):
     def post(self):
         try:
             data = json.loads(self.request.body)
-            ssid = data['ssid']
+            ssid = data["ssid"]
 
             if ssid in MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS]:
                 del MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS][ssid]
@@ -175,11 +184,11 @@ class WiFiDeleteHandler(BaseHandler):
             else:
                 self.set_status(400)
                 self.write(
-                    {"status": "error", "error": "failed to delete unknown wifi"})
+                    {"status": "error", "error": "failed to delete unknown wifi"}
+                )
         except Exception as e:
             self.set_status(400)
-            self.write(
-                {"status": "error", "error": f"failed to delete wifi: {e}"})
+            self.write({"status": "error", "error": f"failed to delete wifi: {e}"})
             logger.warning("Failed to connect: ", exc_info=e, stack_info=True)
 
 

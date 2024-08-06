@@ -15,4 +15,3 @@ elif os.environ.get("EN_PIN_HIGH") == "1":
 else:
     GPIO.output(25, 0)
     print("EN_PIN_HIGH = 0 por default")
-

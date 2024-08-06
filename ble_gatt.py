@@ -29,7 +29,7 @@ if sys.platform in ["darwin", "win32"]:
     raise ValueError("Cannot run on non-linux platforms")
 
 # FIXME Remove once the tornado server logic is in its own class
-PORT = int(os.getenv("PORT", '8080'))
+PORT = int(os.getenv("PORT", "8080"))
 
 
 class GATTServer:
@@ -80,8 +80,7 @@ class GATTServer:
         self.auth_notification: Notification = None
 
         def _exception_handler(loop, context):
-            logger.exception("GATT Server crashed!",
-                             exc_info=context, stack_info=True)
+            logger.exception("GATT Server crashed!", exc_info=context, stack_info=True)
             GATTServer.getServer().stop()
 
         self.loop.set_exception_handler(_exception_handler)
@@ -150,22 +149,21 @@ class GATTServer:
             await asyncio.sleep(uptime_missing)
 
         if self.bless_gatt_server is None:
-            self.bless_gatt_server = BlessServer(
-                name=self.gatt_name, loop=self.loop)
+            self.bless_gatt_server = BlessServer(name=self.gatt_name, loop=self.loop)
             self.bless_gatt_server.read_request_func = GATTServer.read_request
             self.bless_gatt_server.write_request_func = GATTServer.write_request
 
         try:
             await self.bless_gatt_server.setup_task
         except FileNotFoundError as e:
-            logger.warning(
-                "Could not initialize the BLE gatt interface. Bailing out!")
+            logger.warning("Could not initialize the BLE gatt interface. Bailing out!")
             return
 
         # Power on the hci device if it is powered off
         try:
             interface = self.bless_gatt_server.adapter.get_interface(
-                "org.bluez.Adapter1")
+                "org.bluez.Adapter1"
+            )
             powered = await interface.get_powered()
             if not powered:
                 logger.info("bluetooth device is not powered, powering now!")
@@ -190,8 +188,7 @@ class GATTServer:
         except KeyboardInterrupt:
             logger.info("KeyboardInterrupt: Shutting Down")
         except Exception as e:
-            logger.exception("GATT Server Crashed",
-                             exc_info=e, stack_info=True)
+            logger.exception("GATT Server Crashed", exc_info=e, stack_info=True)
             raise
         logger.info("GATT Server stopped")
 
@@ -199,9 +196,7 @@ class GATTServer:
         gatt: Dict = {
             ImprovUUID.SERVICE_UUID.value: {
                 GATTServer.MACHINE_IDENT_UUID: {
-                    "Properties": (
-                        GATTCharacteristicProperties.read
-                    ),
+                    "Properties": (GATTCharacteristicProperties.read),
                     "Permissions": (
                         GATTAttributePermissions.readable
                         | GATTAttributePermissions.writeable
@@ -284,8 +279,11 @@ class GATTServer:
 
         # Only create a new notification if we dont have one already. In that case: update it
         if self.auth_notification is None or self.auth_notification.acknowledged:
-            self.auth_notification = Notification(notification, [
-                                                  NotificationResponse.YES, NotificationResponse.NO], callback=response_callback)
+            self.auth_notification = Notification(
+                notification,
+                [NotificationResponse.YES, NotificationResponse.NO],
+                callback=response_callback,
+            )
 
         NotificationManager.add_notification(self.auth_notification)
 
@@ -308,7 +306,9 @@ class GATTServer:
 
         self.send_authentication_notification()
 
-    def machine_service_read_request(characteristic: BlessGATTCharacteristic) -> bytearray:
+    def machine_service_read_request(
+        characteristic: BlessGATTCharacteristic,
+    ) -> bytearray:
 
         config = WifiManager.getCurrentConfig()
         current_response = HostnameManager.generateDeviceName() + ","
@@ -349,8 +349,7 @@ class GATTServer:
             )
             if target_uuid != None and target_values != None:
                 for value in target_values:
-                    logger.debug(
-                        f"Setting {ImprovUUID(target_uuid)} to {value}")
+                    logger.debug(f"Setting {ImprovUUID(target_uuid)} to {value}")
                     GATTServer.getServer().bless_gatt_server.get_characteristic(
                         target_uuid,
                     ).value = value

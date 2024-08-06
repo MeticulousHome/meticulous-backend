@@ -6,6 +6,7 @@ import subprocess
 from notifications import NotificationManager, Notification, NotificationResponse
 
 from log import MeticulousLogger
+
 logger = MeticulousLogger.getLogger(__name__)
 
 
@@ -32,8 +33,7 @@ class DiscImager:
             return
 
         logger.info("Starting to image emmc")
-        DiscImager.copy_thread = threading.Thread(
-            target=DiscImager.copy_file)
+        DiscImager.copy_thread = threading.Thread(target=DiscImager.copy_file)
         DiscImager.copy_thread.start()
 
     @staticmethod
@@ -42,14 +42,19 @@ class DiscImager:
         waitTime = 10
         time.sleep(waitTime)
 
-        DiscImager.notification = Notification(f"Starting to image emmc in {waitTime} seconds", [
-                                               NotificationResponse.OK, NotificationResponse.SKIP])
+        DiscImager.notification = Notification(
+            f"Starting to image emmc in {waitTime} seconds",
+            [NotificationResponse.OK, NotificationResponse.SKIP],
+        )
         DiscImager.notification.image = DiscImager.notification_image
         NotificationManager.add_notification(DiscImager.notification)
         DiscImager.notification.respone_options = [NotificationResponse.ABORT]
         time.sleep(waitTime)
         last_reported_progress = 0.0
-        if DiscImager.notification.acknowledged and DiscImager.notification.response == NotificationResponse.SKIP:
+        if (
+            DiscImager.notification.acknowledged
+            and DiscImager.notification.response == NotificationResponse.SKIP
+        ):
             return
 
         try:
@@ -59,14 +64,21 @@ class DiscImager:
             logger.warning(f"Failed to unmount emmc {e}")
 
         try:
-            with open(DiscImager.src_file, 'rb') as src, open(DiscImager.dest_file, 'wb') as dest:
+            with open(DiscImager.src_file, "rb") as src, open(
+                DiscImager.dest_file, "wb"
+            ) as dest:
                 src_size = os.stat(DiscImager.src_file).st_size
                 copied = 0
 
                 while True:
-                    if DiscImager.notification.acknowledged and DiscImager.notification.response == NotificationResponse.ABORT:
+                    if (
+                        DiscImager.notification.acknowledged
+                        and DiscImager.notification.response
+                        == NotificationResponse.ABORT
+                    ):
                         NotificationManager.add_notification(
-                            Notification("Flashing Aborted"))
+                            Notification("Flashing Aborted")
+                        )
                         return
 
                     data = src.read(DiscImager.block_size)
@@ -78,29 +90,35 @@ class DiscImager:
                     progress = (copied / src_size) * 100
                     if progress >= last_reported_progress + 0.1:
                         logger.info(f"Flashing Progress: {progress:.1f}%")
-                        DiscImager.notification.message = f"Flashing Progress: {progress: .1f} %"
-                        NotificationManager.add_notification(
-                            DiscImager.notification)
+                        DiscImager.notification.message = (
+                            f"Flashing Progress: {progress: .1f} %"
+                        )
+                        NotificationManager.add_notification(DiscImager.notification)
                         last_reported_progress = progress
 
                 logger.info(
-                    f"\nFile '{DiscImager.src_file}' copied to '{DiscImager.dest_file}'")
+                    f"\nFile '{DiscImager.src_file}' copied to '{DiscImager.dest_file}'"
+                )
 
                 try:
                     DiscImager.notification.message = f"Fixing partition table"
                     NotificationManager.add_notification(DiscImager.notification)
-                    subprocess.call(f"echo w | fdisk {DiscImager.dest_file}", shell=True)
-                    subprocess.call(f"umount {DiscImager.dest_file}p*",  shell=True)
-                    subprocess.call(f"mkfs.ext4 {DiscImager.dest_file}p5 -F -L user", shell=True)
+                    subprocess.call(
+                        f"echo w | fdisk {DiscImager.dest_file}", shell=True
+                    )
+                    subprocess.call(f"umount {DiscImager.dest_file}p*", shell=True)
+                    subprocess.call(
+                        f"mkfs.ext4 {DiscImager.dest_file}p5 -F -L user", shell=True
+                    )
                 except e:
                     logger.warning(f"Failed to run imaging cleanup! {e}")
                     pass
 
-                DiscImager.notification.message = f"Flashing finished. Remove the boot jumper and reset the machine"
-                DiscImager.notification.respone_options = [
-                    NotificationResponse.OK]
+                DiscImager.notification.message = (
+                    f"Flashing finished. Remove the boot jumper and reset the machine"
+                )
+                DiscImager.notification.respone_options = [NotificationResponse.OK]
 
-                NotificationManager.add_notification(
-                    DiscImager.notification)
+                NotificationManager.add_notification(DiscImager.notification)
         except IOError as e:
             logger.info(f"Error: {e.strerror}")

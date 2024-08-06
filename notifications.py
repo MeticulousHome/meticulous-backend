@@ -27,7 +27,13 @@ class NotificationResponse:
 
 class Notification:
 
-    def __init__(self, message, responses=[NotificationResponse.OK], image=None, callback: callable = None):
+    def __init__(
+        self,
+        message,
+        responses=[NotificationResponse.OK],
+        image=None,
+        callback: callable = None,
+    ):
         self.id = str(uuid.uuid4())
         self.message = message
         self.respone_options = responses
@@ -39,22 +45,24 @@ class Notification:
         self.timestamp = datetime.now()
 
     def add_image(self, filename):
-        ext = filename.split('.')[-1]
-        prefix = f'data:image/{ext};base64,'
-        with open(filename, 'rb') as f:
+        ext = filename.split(".")[-1]
+        prefix = f"data:image/{ext};base64,"
+        with open(filename, "rb") as f:
             img = f.read()
-        self.image = prefix + base64.b64encode(img).decode('utf-8')
+        self.image = prefix + base64.b64encode(img).decode("utf-8")
 
     def add_qrcode(self, qrcontents):
         buffer = io.BytesIO()
         qr = pyqrcode.create(qrcontents)
-        qr.png(buffer, scale=6,
-               module_color=[0x00, 0x00, 0x00, 0xFF],
-               background=[0xFF, 0xFF, 0xFF, 0xFF])
+        qr.png(
+            buffer,
+            scale=6,
+            module_color=[0x00, 0x00, 0x00, 0xFF],
+            background=[0xFF, 0xFF, 0xFF, 0xFF],
+        )
 
-        prefix = f'data:image/png;base64,'
-        self.image = prefix + \
-            base64.b64encode(buffer.getvalue()).decode('utf-8')
+        prefix = f"data:image/png;base64,"
+        self.image = prefix + base64.b64encode(buffer.getvalue()).decode("utf-8")
 
     def acknowledge(self, response):
         self.acknowledged = True
@@ -64,13 +72,15 @@ class Notification:
             self.callback()
 
     def to_json(self):
-        return json.dumps({
-            "id": self.id,
-            "message": self.message,
-            "image": self.image,
-            "responses": [x for x in self.respone_options],
-            "timestamp": self.timestamp.isoformat()
-        })
+        return json.dumps(
+            {
+                "id": self.id,
+                "message": self.message,
+                "image": self.image,
+                "responses": [x for x in self.respone_options],
+                "timestamp": self.timestamp.isoformat(),
+            }
+        )
 
 
 class NotificationManager:
@@ -82,7 +92,8 @@ class NotificationManager:
     def init(sio):
         NotificationManager._sio = sio
         NotificationManager._thread = threading.Thread(
-            target=NotificationManager._notification_loop)
+            target=NotificationManager._notification_loop
+        )
         NotificationManager._thread.start()
 
     def _notification_loop():
@@ -90,6 +101,7 @@ class NotificationManager:
         This function runs an asyncio event loop in a new process.
         It continuously checks for new items in the queue and processes them.
         """
+
         async def process_queue():
             while True:
                 try:
@@ -100,7 +112,9 @@ class NotificationManager:
                     await asyncio.sleep(0.1)
                 else:
                     # Emit the notification over socketIO as json
-                    await NotificationManager._sio.emit("notification", notification.to_json())
+                    await NotificationManager._sio.emit(
+                        "notification", notification.to_json()
+                    )
                     logger.info(f"send notification: {notification.to_json()}")
 
         # Create and run the asyncio event loop
@@ -121,7 +135,10 @@ class NotificationManager:
 
         updating = False
         for idx, old_notfication in enumerate(NotificationManager._notifications):
-            if notification.id == old_notfication.id and not old_notfication.acknowledged:
+            if (
+                notification.id == old_notfication.id
+                and not old_notfication.acknowledged
+            ):
                 del NotificationManager._notifications[idx]
                 updating = True
 
@@ -147,5 +164,7 @@ class NotificationManager:
         ttl = MeticulousConfig[CONFIG_SYSTEM][NOTIFICATION_KEEPALIVE]
         current_time = time.time()
         NotificationManager._notifications = [
-            n for n in NotificationManager._notifications if not n.acknowledged or (current_time - n.acknowledged_timestamp) < ttl
+            n
+            for n in NotificationManager._notifications
+            if not n.acknowledged or (current_time - n.acknowledged_timestamp) < ttl
         ]

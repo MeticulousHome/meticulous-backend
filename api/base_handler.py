@@ -11,20 +11,17 @@ class BaseHandler(tornado.web.RequestHandler):
         self.set_header("Access-Control-Allow-Headers", "*")
         self.set_header("Access-Control-Expose-Headers", "*")
 
-        self.set_header('Content-type', 'application/json')
-        self.set_header('Access-Control-Allow-Methods',
-                        'GET,POST,OPTIONS,DELETE')
-        self.set_header('Access-Control-Allow-Headers', 'content-type')
+        self.set_header("Content-type", "application/json")
+        self.set_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS,DELETE")
+        self.set_header("Access-Control-Allow-Headers", "content-type")
         # We hate caching!
-        self.set_header('Cache-Control', 'no-cache')
-        self.set_header('Pragma', 'no-cache')
-        self.set_header('Expires', '0')
+        self.set_header("Cache-Control", "no-cache")
+        self.set_header("Pragma", "no-cache")
+        self.set_header("Expires", "0")
 
     def report_error(self, error_code, error: str, error_details=None):
         self.set_status(error_code)
-        self.write(
-            {"error": error, "details": error_details}
-        )
+        self.write({"error": error, "details": error_details})
 
     def options(self, *args, **kwargs):
         # No body for OPTIONS requests
@@ -42,16 +39,30 @@ class BaseHandler(tornado.web.RequestHandler):
         if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP:
             return
 
-        allowed_networks = [IPNetwork(
-            x) for x in MeticulousConfig[CONFIG_SYSTEM][SYSTEM_ALLOWED_NETWORKS_NAME]]
+        allowed_networks = [
+            IPNetwork(x)
+            for x in MeticulousConfig[CONFIG_SYSTEM][SYSTEM_ALLOWED_NETWORKS_NAME]
+        ]
 
         # TODO test me well!
-        if len([network for network in allowed_networks if self.request.remote_ip in network]) > 0:
+        if (
+            len(
+                [
+                    network
+                    for network in allowed_networks
+                    if self.request.remote_ip in network
+                ]
+            )
+            > 0
+        ):
             return
 
         # Validate the X-Authorized header
         x_authorized = self.request.headers.get("X-Authorized")
-        if not x_authorized or x_authorized != MeticulousConfig[CONFIG_SYSTEM][SYSTEM_AUTH_KEY_NAME]:
+        if (
+            not x_authorized
+            or x_authorized != MeticulousConfig[CONFIG_SYSTEM][SYSTEM_AUTH_KEY_NAME]
+        ):
             self.set_status(401)
             self.finish("Unauthorized: Missing X-Authorized header")
             return
