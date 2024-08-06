@@ -7,6 +7,11 @@ fika.json
 dashboard.json
 fika.json
 modes/dashboard_1_0/parameters.json
+history
+config
+shots
+profiles
+images/profile-images
 
 !**/__pycache__/
 
