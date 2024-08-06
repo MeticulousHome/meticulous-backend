@@ -13,9 +13,22 @@ import sqlalchemy
 import sqlite_zstd
 import zstandard as zstd
 from pydantic import BaseModel, Field
-from sqlalchemy import (JSON, Column, DateTime, Float, ForeignKey, Integer,
-                        MetaData, String, Table, Text, asc, create_engine,
-                        delete, desc)
+from sqlalchemy import (
+    JSON,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    Text,
+    asc,
+    create_engine,
+    delete,
+    desc,
+)
 from sqlalchemy import event as sqlEvent
 from sqlalchemy import func, insert, or_, select, text
 from sqlalchemy.orm import sessionmaker

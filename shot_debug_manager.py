@@ -16,8 +16,7 @@ from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
 
-DEBUG_HISTORY_PATH = os.getenv(
-    "DEBUG_HISTORY_PATH", '/meticulous-user/history/debug')
+DEBUG_HISTORY_PATH = os.getenv("DEBUG_HISTORY_PATH", "/meticulous-user/history/debug")
 
 
 class DebugData:
@@ -40,7 +39,7 @@ class DebugData:
             "time": shotData.time,
             "profile_time": time.time() - self.startTime,
             "status": shotData.status,
-            "profile": shotData.profile
+            "profile": shotData.profile,
         }
         self.shotData.append(formated_data)
 
@@ -55,6 +54,7 @@ class DebugData:
         allFields = shotFields + sensorFields + classFields
 
         import io
+
         output = io.StringIO()
         writer = csv.DictWriter(output, fieldnames=allFields)
         writer.writeheader()
@@ -64,7 +64,7 @@ class DebugData:
                 "startTime": self.startTime,
             }
             for sensor_field in shotFields + sensorFields:
-                row[sensor_field] = shotSample.get(sensor_field, '')
+                row[sensor_field] = shotSample.get(sensor_field, "")
             writer.writerow(row)
         result = output.getvalue()
         output.close()
@@ -106,7 +106,7 @@ class ShotDebugManager:
             os.makedirs(folder_path, exist_ok=True)
 
             # Prepare the file path
-            formatted_time = start.strftime('%H:%M:%S')
+            formatted_time = start.strftime("%H:%M:%S")
             file_name = f"{formatted_time}.debug.csv.zst"
             file_path = os.path.join(folder_path, file_name)
 
@@ -121,12 +121,11 @@ class ShotDebugManager:
                     with cctx.stream_writer(file) as compressor:
                         compressor.write(data_json.encode("utf-8"))
                 time_ms = (time.time() - start) * 1000
-                logger.info(
-                    f"Writing debug csv to disc took {time_ms} ms"
-                )
+                logger.info(f"Writing debug csv to disc took {time_ms} ms")
 
             compresson_thread = threading.Thread(
-                target=compress_current_data, args=(csv_data,))
+                target=compress_current_data, args=(csv_data,)
+            )
             compresson_thread.start()
 
             # Clear tracking data after saving

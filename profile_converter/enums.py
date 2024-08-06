@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 # Enumerations for the different types of controllers for easy access, validation and maintenance
 class ReferenceType(Enum):
     TIME = "time"
@@ -8,45 +9,55 @@ class ReferenceType(Enum):
     CURVE = "curve"
     CONTROL = "control"
 
+
 class PressureAlgorithmType(Enum):
     PID_V1 = "pid v1"
     PID_V2 = "pid v2"
-    
+
+
 class TemperatureAlgorithmType(Enum):
     WATER = "water"
     CYLINDER = "cylinder"
     TUBE = "tube"
     PLUNGER = "plunger"
     STABLE = "stable"
-    
+
+
 class PowerAlgorithmType(Enum):
     SPRING = "spring"
-    
+
+
 class FlowAlgorithmType(Enum):
     PID_V1 = "pid v1"
-    
+
+
 class WeightAlgorithmType(Enum):
-    PID_V1 = "pid v1"    
-    
+    PID_V1 = "pid v1"
+
+
 class SpeedAlgorithmType(Enum):
     EASE_IN = "ease-in"
     FAST = "fast"
 
+
 class CurveInterpolationType(Enum):
     LINEAR = "linear"
     CATMULL = "catmull"
-    
+
+
 class MessageType(Enum):
     NO_WATER = "no water"
     REMOVE_CUP = "remove cup"
     PURGE = "purge"
     START_CLICK = "start click"
     PURGE_CLICK = "purge click"
-    
+
+
 class DirectionType(Enum):
     FORWARD = "forward"
     BACKWARD = "backward"
-    
+
+
 class AlgorithmType(Enum):
     PRESSURE = "pressure"
     POWER = "power"
@@ -54,7 +65,8 @@ class AlgorithmType(Enum):
     FLOW = "flow"
     WEIGHT = "weight"
     SPEED = "speed"
-    
+
+
 class ControllerType(Enum):
     POWER = "power"
     FLOW = "flow"
@@ -65,8 +77,10 @@ class ControllerType(Enum):
     TARE = "tare"
     MESSAGE = "message"
     END = "end"
-    
+
+
 #! Triggers type dictionaries.
+
 
 class TriggerType(Enum):
     PISTON_POSITION = "piston_position_trigger"
@@ -82,7 +96,8 @@ class TriggerType(Enum):
     PRESSURE = "pressure"
     TEMPERATURE = "temperature"
     POWER = "power"
-    
+
+
 class SourceType(Enum):
     FLOW = "flow"
     PRESSURE = "pressure"
@@ -94,12 +109,14 @@ class SourceType(Enum):
     TEMPERATURE = "temperature"
     BUTTON = "button"
     GESTURE = "button_gesture"
-    
+
+
 class ButtonSourceType(Enum):
     START = "start"
     TARE = "tare"
     ENCODER = "encoder"
     ENCODER_BUTTON = "encoder button"
+
 
 class ButtonGestureSourceType(Enum):
     SINGLE = "single"
@@ -109,14 +126,16 @@ class ButtonGestureSourceType(Enum):
     PRESSED = "pressed"
     RELEASED = "released"
     LONG = "long"
-    
+
+
 class TemperatureSourceType(Enum):
     TUBE = "tube"
     CYLINDER = "cylinder"
     PLUNGER = "plunger"
     WATER = "water"
     CYLINDER_AVERAGE = "cylinder average"
-    
+
+
 class TriggerOperatorType(Enum):
     GREATER_THAN = "greater_than"
     LESS_THAN = "less_than"

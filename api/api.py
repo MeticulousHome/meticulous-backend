@@ -23,10 +23,13 @@ class APIVersion(Enum):
         return mapping.get(version_str.lower(), None)
 
 
-class API():
+class API:
     # Initialize _versions with all versions up to the latest
-    _versions = {version: {} for version in APIVersion if version.value <=
-                 APIVersion.latest_version().value}
+    _versions = {
+        version: {}
+        for version in APIVersion
+        if version.value <= APIVersion.latest_version().value
+    }
 
     @classmethod
     def register_handler(cls, r_version: APIVersion, r_path: str, r_handler, **kwargs):
@@ -46,6 +49,7 @@ class API():
         from . import update_os as _
         from . import sounds as _
         from . import machine as _
+
         routes = []
         logger.info(f"API Routes registered:")
         for version, paths in cls._versions.items():

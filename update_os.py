@@ -6,10 +6,13 @@ from queue import Queue
 
 logger = MeticulousLogger.getLogger(__name__)
 
+
 @dataclass
 class RaucInfo:
     """Class representing the rauc information output."""
+
     output: str
+
 
 class RaucManager:
     """Manager class to handle rauc operations."""
@@ -19,15 +22,19 @@ class RaucManager:
     @staticmethod
     def get_rauc_status():
         try:
-            result = subprocess.run(["rauc", "status"], stdout=subprocess.PIPE, text=True)
+            result = subprocess.run(
+                ["rauc", "status"], stdout=subprocess.PIPE, text=True
+            )
             output = result.stdout
 
             notification = Notification(
                 "RAUC status information retrieved successfully",
-                [NotificationResponse.OK]
+                [NotificationResponse.OK],
             )
             NotificationManager.add_notification(notification)
-            logger.info("Notification sent: RAUC status information retrieved successfully")
+            logger.info(
+                "Notification sent: RAUC status information retrieved successfully"
+            )
 
             return RaucInfo(output=output)
         except Exception as e:
@@ -40,10 +47,7 @@ class RaucManager:
             # Notify that the update process has started
             start_message = "Update process has started."
             RaucManager.update_messages.put(start_message)
-            notification = Notification(
-                start_message,
-                [NotificationResponse.OK]
-            )
+            notification = Notification(start_message, [NotificationResponse.OK])
             NotificationManager.add_notification(notification)
             logger.info("Notification sent: Update process has started.")
 
@@ -56,7 +60,7 @@ class RaucManager:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                cwd="/home"
+                cwd="/home",
             )
 
             # Log that the script has been started
@@ -74,8 +78,8 @@ class RaucManager:
             messages.append(RaucManager.update_messages.get())
         return RaucInfo(output="\n".join(messages))
 
+
 # Example use within the module
 if __name__ == "__main__":
     current_rauc_info = RaucManager.get_rauc_status()
     print(current_rauc_info.output)  # Directly print the output
-

@@ -6,7 +6,13 @@ from playsound import playsound
 import subprocess
 
 from log import MeticulousLogger
-from config import MeticulousConfig, CONFIG_USER, CONFIG_SYSTEM, SOUNDS_THEME, SOUNDS_ENABLED
+from config import (
+    MeticulousConfig,
+    CONFIG_USER,
+    CONFIG_SYSTEM,
+    SOUNDS_THEME,
+    SOUNDS_ENABLED,
+)
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -26,7 +32,7 @@ class Sounds(Enum):
 
 
 class SoundPlayer:
-    SUPPORTED_FORMATS = ['.mp3', '.wav', '.ogg', '.flac']
+    SUPPORTED_FORMATS = [".mp3", ".wav", ".ogg", ".flac"]
     DEFAULT_THEME_NAME = "default"
     KNOWN_THEMES = {}
 
@@ -37,7 +43,7 @@ class SoundPlayer:
     def init(emulation=False, play_startup_sound=True):
         if not emulation:
             # Set the output pin for the IMX som
-            command = ['gpioset', 'gpiochip4', '25=1']
+            command = ["gpioset", "gpiochip4", "25=1"]
             subprocess.run(command)
 
         # Theme detection
@@ -53,7 +59,8 @@ class SoundPlayer:
 
         SoundPlayer.KNOWN_THEMES = themes
         SoundPlayer.DEFAULT_THEME_CONFIG = SoundPlayer._load_theme(
-            SoundPlayer.DEFAULT_THEME_NAME)
+            SoundPlayer.DEFAULT_THEME_NAME
+        )
 
         SoundPlayer.set_theme(MeticulousConfig[CONFIG_SYSTEM][SOUNDS_THEME])
         if play_startup_sound:
@@ -121,7 +128,7 @@ class SoundPlayer:
 
         try:
             theme_folder = SoundPlayer.availableThemes()[theme_name]
-            theme_config_file = open(os.path.join(theme_folder, 'config.json'))
+            theme_config_file = open(os.path.join(theme_folder, "config.json"))
             theme_config = json.load(theme_config_file)
             return theme_config
         except:
@@ -138,9 +145,11 @@ class SoundPlayer:
             return True
 
         # Just in case we have a stale mapping
-        if SoundPlayer.CURRENT_THEME_NAME != MeticulousConfig[CONFIG_SYSTEM][SOUNDS_THEME]:
-            SoundPlayer.set_theme(
-                MeticulousConfig[CONFIG_SYSTEM][SOUNDS_THEME])
+        if (
+            SoundPlayer.CURRENT_THEME_NAME
+            != MeticulousConfig[CONFIG_SYSTEM][SOUNDS_THEME]
+        ):
+            SoundPlayer.set_theme(MeticulousConfig[CONFIG_SYSTEM][SOUNDS_THEME])
 
         if sound_name not in SoundPlayer.CURRENT_THEME_CONFIG:
             logger.info("Sound not found")

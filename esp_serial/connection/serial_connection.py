@@ -2,17 +2,17 @@ from ..esp_tool_wrapper import ESPToolWrapper
 import serial, serial.tools.list_ports
 
 from log import MeticulousLogger
+
 logger = MeticulousLogger.getLogger(__name__)
 
 try:
     if "serialization" in serial.__doc__ and "deserialization" in serial.__doc__:
-        raise ImportError(
-            "The backend depends on pyserial which conflicts serial"
-        )
+        raise ImportError("The backend depends on pyserial which conflicts serial")
 except TypeError:
     pass  # __doc__ returns None for pyserial
 
-class SerialConnection():
+
+class SerialConnection:
     BAUDRATE = 115200
     CONNECT_TIMEOUT = 2
 
@@ -36,16 +36,20 @@ class SerialConnection():
 
         logger.debug(f"All serial devices to test: {devices}")
         for port in devices:
-            logger.info(f"Testing connect to {port}");
+            logger.info(f"Testing connect to {port}")
             try:
-                ser = serial.Serial(port, baudrate=SerialConnection.BAUDRATE, timeout=SerialConnection.CONNECT_TIMEOUT)
+                ser = serial.Serial(
+                    port,
+                    baudrate=SerialConnection.BAUDRATE,
+                    timeout=SerialConnection.CONNECT_TIMEOUT,
+                )
                 # FIXME In back.py:
                 # Read one byte or wait until timeout above is reached
                 # This test assues an existing firmware
                 self.device = port
                 self.port = ser
                 self.connected = True
-                logger.info(f"Successfully connected to {port}");
+                logger.info(f"Successfully connected to {port}")
                 return port
 
             except (OSError, serial.SerialException) as e:

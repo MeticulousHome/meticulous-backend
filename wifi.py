@@ -15,18 +15,20 @@ import threading
 from hostname import HostnameManager
 
 from log import MeticulousLogger
+
 logger = MeticulousLogger.getLogger(__name__)
 
 nmcli.disable_use_sudo()
 nmcli.set_lang("C.UTF-8")
 
 # Should be something like "192.168.2.123/24,MyHostname"
-ZEROCONF_OVERWRITE = os.getenv("ZEROCONF_OVERWRITE", '')
+ZEROCONF_OVERWRITE = os.getenv("ZEROCONF_OVERWRITE", "")
 
 
 @dataclass
-class WifiSystemConfig():
+class WifiSystemConfig:
     """Class Representing the current network configuration"""
+
     connected: bool
     connection_name: str
     gateway: IPAddress
@@ -49,14 +51,14 @@ class WifiSystemConfig():
             "ips": [ip.ip.format() for ip in self.ips],
             "dns": [dns.format() for dns in self.dns],
             "mac": self.mac,
-            "hostname": self.hostname
+            "hostname": self.hostname,
         }
 
     def is_hotspot(self):
         return self.connection_name == WifiManager._conname
 
 
-class WifiManager():
+class WifiManager:
     _known_wifis = []
     _thread = None
     # Internal name used by network manager to refer to the AP configuration
@@ -66,9 +68,10 @@ class WifiManager():
 
     def init():
         logger.info("Wifi initializing")
-        if ZEROCONF_OVERWRITE != '':
+        if ZEROCONF_OVERWRITE != "":
             logger.info(
-                f"Overwriting network configuration due to ZEROCONF_OVERWRITE={ZEROCONF_OVERWRITE}")
+                f"Overwriting network configuration due to ZEROCONF_OVERWRITE={ZEROCONF_OVERWRITE}"
+            )
 
         try:
             nmcli.device.show_all()
@@ -99,7 +102,8 @@ class WifiManager():
         if WifiManager._zeroconf is None:
             logger.info("Creating Zeroconf Object")
             WifiManager._zeroconf = ZeroConfAnnouncement(
-                config_function=WifiManager.getCurrentConfig)
+                config_function=WifiManager.getCurrentConfig
+            )
 
         # Without networking we have no chance starting the wifi or getting the creads
         if WifiManager._networking_available:
@@ -109,14 +113,13 @@ class WifiManager():
             else:
                 WifiManager.stopHotspot()
 
-            WifiManager._thread = threading.Thread(
-                target=WifiManager.tryAutoConnect)
+            WifiManager._thread = threading.Thread(target=WifiManager.tryAutoConnect)
             WifiManager._thread.start()
 
         WifiManager._zeroconf.start()
 
     def tryAutoConnect():
-        while (True):
+        while True:
             time.sleep(10)
 
             if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP:
@@ -133,7 +136,8 @@ class WifiManager():
                 if network.ssid in previousNetworks:
                     logger.info(f"Found known WIFI {network.ssid}. Connecting")
                     success = WifiManager.connectToWifi(
-                        ssid=network.ssid, password=previousNetworks[network.ssid])
+                        ssid=network.ssid, password=previousNetworks[network.ssid]
+                    )
                     if success:
                         break
 
@@ -157,7 +161,7 @@ class WifiManager():
             nmcli.device.wifi_hotspot(
                 con_name=WifiManager._conname,
                 ssid=MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME],
-                password=MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
+                password=MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD],
             )
         except Exception as e:
             logger.error(f"Starting hotspot failed: {e}")
@@ -168,7 +172,7 @@ class WifiManager():
             return
 
         for dev in nmcli.device():
-            if dev.device_type == 'wifi' and dev.connection == WifiManager._conname:
+            if dev.device_type == "wifi" and dev.connection == WifiManager._conname:
                 logger.info(f"Stopping Hotspot")
                 try:
                     nmcli.connection.down(WifiManager._conname)
@@ -189,7 +193,8 @@ class WifiManager():
         while time.time() < target_timeout:
             if retries < 3:
                 logger.info(
-                    f"Requesting scan results: Time left: {target_timeout - time.time()}s")
+                    f"Requesting scan results: Time left: {target_timeout - time.time()}s"
+                )
             elif retries == 3:
                 logger.info("Scans returning very fast, stopping logging")
 
@@ -198,7 +203,8 @@ class WifiManager():
                 wifis = nmcli.device.wifi()
             except Exception as e:
                 logger.info(
-                    f"Failed to scan for wifis: {e}, retrying if timeout is not reached")
+                    f"Failed to scan for wifis: {e}, retrying if timeout is not reached"
+                )
                 wifis = []
 
             if target_network_ssid != None:
@@ -207,7 +213,6 @@ class WifiManager():
             if len(wifis) > 0:
                 break
             retries += 1
-
 
         logger.info(f"Scanning finished after {retries}")
 
@@ -220,8 +225,7 @@ class WifiManager():
 
         logger.info(f"Connecting to wifi: {ssid}")
 
-        networks = WifiManager.scanForNetworks(
-            timeout=30, target_network_ssid=ssid)
+        networks = WifiManager.scanForNetworks(timeout=30, target_network_ssid=ssid)
         logger.info(networks)
         if len(networks) > 0:
             if len([x for x in networks if x.in_use]) > 0:
@@ -236,9 +240,9 @@ class WifiManager():
                 logger.info(f"Failed to connect to wifi: {e}")
                 return False
             logger.info(
-                "Connection should be established, checking if a network is marked in-use")
-            networks = WifiManager.scanForNetworks(
-                timeout=10, target_network_ssid=ssid)
+                "Connection should be established, checking if a network is marked in-use"
+            )
+            networks = WifiManager.scanForNetworks(timeout=10, target_network_ssid=ssid)
             if len([x for x in networks if x.in_use]) > 0:
                 logger.info("Successfully connected")
                 WifiManager._zeroconf.restart()
@@ -268,11 +272,21 @@ class WifiManager():
         dns: list[IPAddress] = [IPAddress("8.8.8.8")]
         mac: str = "AA:BB:CC:FF:FF:FF"
         domains: list[str] = []
-        return WifiSystemConfig(connected, connection_name, gateway, routes, ips, dns, mac, hostname, domains)
+        return WifiSystemConfig(
+            connected,
+            connection_name,
+            gateway,
+            routes,
+            ips,
+            dns,
+            mac,
+            hostname,
+            domains,
+        )
 
     def getCurrentConfig() -> WifiSystemConfig:
 
-        if ZEROCONF_OVERWRITE != '':
+        if ZEROCONF_OVERWRITE != "":
             return WifiManager.mockCurrentConfig()
 
         connected: bool = False
@@ -286,10 +300,12 @@ class WifiManager():
         hostname: str = socket.gethostname()
 
         if not WifiManager._networking_available:
-            return WifiSystemConfig(connected, connection_name, gateway, routes, ips, dns, mac, hostname)
+            return WifiSystemConfig(
+                connected, connection_name, gateway, routes, ips, dns, mac, hostname
+            )
 
         for dev in nmcli.device():
-            if dev.device_type == 'wifi':
+            if dev.device_type == "wifi":
                 config = nmcli.device.show(dev.device)
                 if dev.state == "connected":
                     connected = True
@@ -319,4 +335,14 @@ class WifiManager():
                 elif mac == "" and config.get("GENERAL.HWADDR"):
                     mac = config.get("GENERAL.HWADDR")
 
-        return WifiSystemConfig(connected, connection_name, gateway, routes, ips, dns, mac, hostname, domains)
+        return WifiSystemConfig(
+            connected,
+            connection_name,
+            gateway,
+            routes,
+            ips,
+            dns,
+            mac,
+            hostname,
+            domains,
+        )

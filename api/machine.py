@@ -9,6 +9,7 @@ from wifi import WifiManager
 from .api import API, APIVersion
 from .base_handler import BaseHandler
 from config import MeticulousConfig, CONFIG_SYSTEM, MACHINE_COLOR, MACHINE_SERIAL_NUMBER
+
 logger = MeticulousLogger.getLogger(__name__)
 
 
@@ -27,7 +28,7 @@ class MachineInfoHandler(BaseHandler):
 
         if MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER] is not None:
             response["serial"] = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
-            
+
         if MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER] is not None:
             response["color"] = MeticulousConfig[CONFIG_SYSTEM][MACHINE_COLOR]
 
@@ -42,5 +43,4 @@ class MachineResetHandler(BaseHandler):
 
 
 API.register_handler(APIVersion.V1, r"/machine", MachineInfoHandler)
-API.register_handler(
-    APIVersion.V1, r"/machine/factory_reset", MachineResetHandler)
+API.register_handler(APIVersion.V1, r"/machine/factory_reset", MachineResetHandler)

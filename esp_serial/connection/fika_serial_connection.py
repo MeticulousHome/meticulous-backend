@@ -5,20 +5,25 @@ import serial
 import serial.tools.list_ports
 
 from log import MeticulousLogger
+
 logger = MeticulousLogger.getLogger(__name__)
 
 try:
     if "serialization" in serial.__doc__ and "deserialization" in serial.__doc__:
-        raise ImportError(
-            "The backend depends on pyserial which conflicts serial"
-        )
+        raise ImportError("The backend depends on pyserial which conflicts serial")
 except TypeError:
     pass  # __doc__ returns None for pyserial
 
 
 class FikaSerialConnection(SerialConnection):
     class PinConfig:
-        def __init__(self, chip, pin, alias: str = None, direction=gpiod.line_request.DIRECTION_OUTPUT) -> None:
+        def __init__(
+            self,
+            chip,
+            pin,
+            alias: str = None,
+            direction=gpiod.line_request.DIRECTION_OUTPUT,
+        ) -> None:
             self.chip = chip
             self.pin = pin
             self.alias = alias
@@ -32,15 +37,19 @@ class FikaSerialConnection(SerialConnection):
 
     # Fika V3+ pinconfig
     DEFAULT_PINS = [
-        PinConfig(4,  9, ENABLE_PIN),
-        PinConfig(0,  7, ESP_ENABLE_PIN),
-        PinConfig(0,  8, BOOT_PIN),
-        PinConfig(3, 26, BUFFER_PIN)
+        PinConfig(4, 9, ENABLE_PIN),
+        PinConfig(0, 7, ESP_ENABLE_PIN),
+        PinConfig(0, 8, BOOT_PIN),
+        PinConfig(3, 26, BUFFER_PIN),
     ]
 
     def __init__(self, device, pins: [PinConfig] = DEFAULT_PINS) -> None:
-        self.mapping = {FikaSerialConnection.ENABLE_PIN: None, FikaSerialConnection.ESP_ENABLE_PIN: None,
-                        FikaSerialConnection.BOOT_PIN: None, FikaSerialConnection.BUFFER_PIN: None}
+        self.mapping = {
+            FikaSerialConnection.ENABLE_PIN: None,
+            FikaSerialConnection.ESP_ENABLE_PIN: None,
+            FikaSerialConnection.BOOT_PIN: None,
+            FikaSerialConnection.BUFFER_PIN: None,
+        }
         self.pins = {}
         self._requestPins(pins)
         # SerialConnection connects on init, therefore we do it last
@@ -74,10 +83,10 @@ class FikaSerialConnection(SerialConnection):
             pin.set_value(level)
 
     def _setBootPin(self, state):
-            self._setOutputPin(FikaSerialConnection.BOOT_PIN, state)
+        self._setOutputPin(FikaSerialConnection.BOOT_PIN, state)
 
     def _setResetPin(self, state):
-            self._setOutputPin(FikaSerialConnection.ESP_ENABLE_PIN, state)
+        self._setOutputPin(FikaSerialConnection.ESP_ENABLE_PIN, state)
 
     def reset(self, bootloader=False, sleep=0.1, bootloader_sleep=0.1):
         logger.info(f"Resetting ESP32, bootloder = {bootloader}")

@@ -92,15 +92,18 @@ class ProfileSearchHandler(BaseHandler):
         profiles = ShotDataBase.autocomplete_profile_name(query)
         self.write({"profiles": profiles})
 
+
 class CurrentShotHandler(BaseHandler):
     def get(self):
         current = ShotManager.getCurrentShot()
         self.write(json.dumps(current))
 
+
 class LastShotHandler(BaseHandler):
     def get(self):
         last = ShotManager.getLastShot()
         self.write(json.dumps(last))
+
 
 class HistoryHandler(BaseHandler):
     def post(self):
@@ -118,7 +121,6 @@ class HistoryHandler(BaseHandler):
 
         results = ShotDataBase.search_history(params)
         self.write({"history": results})
-
 
 
 API.register_handler(APIVersion.V1, r"/history/search", ProfileSearchHandler),
