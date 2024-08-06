@@ -1,17 +1,19 @@
-import os
 import json
+import os
 
 import tornado
 import tornado.web
 import zstandard as zstd
+from pydantic import ValidationError
+
+from config import *
 from log import MeticulousLogger
+from shot_database import SearchParams, ShotDataBase
 from shot_debug_manager import DEBUG_HISTORY_PATH
 from shot_manager import HISTORY_PATH
 
-from config import *
-
-from .base_handler import BaseHandler
 from .api import API, APIVersion
+from .base_handler import BaseHandler
 
 logger = MeticulousLogger.getLogger(__name__)
 last_version_path = f"/api/{APIVersion.latest_version().name.lower()}"
@@ -31,7 +33,9 @@ class ZstdHistoryHandler(tornado.web.StaticFileHandler):
             # If it's a directory, show the JSON listing
             return await self.list_directory(full_path)
         elif not os.path.exists(full_path) or not os.path.isfile(full_path):
-            logger.info(f"File doesn't exist: {full_path}, checking if it exists compressed")
+            logger.info(
+                f"File doesn't exist: {full_path}, checking if it exists compressed"
+            )
 
             if os.path.exists(compressed_path) and os.path.isfile(compressed_path):
                 logger.info("File exists compressed instead")
@@ -41,7 +45,8 @@ class ZstdHistoryHandler(tornado.web.StaticFileHandler):
             # If the path doesn't exist or isn't a file, raise a 404 error
             self.set_status(404)
             self.write(
-                {"status": "error", "error": "history entry not found", "path": path})
+                {"status": "error", "error": "history entry not found", "path": path}
+            )
             return
         elif full_path.endswith(".zst"):
             logger.info("dealing")
@@ -56,7 +61,7 @@ class ZstdHistoryHandler(tornado.web.StaticFileHandler):
 
     async def serve_zstd_file(self, full_path):
         logger.info(f"Serving File: {full_path}")
-        with open(full_path, 'rb') as compressed_file:
+        with open(full_path, "rb") as compressed_file:
             decompressor = zstd.ZstdDecompressor()
             decompressed_content = decompressor.stream_reader(compressed_file)
             self.set_header("Content-Type", "application/json")
@@ -73,21 +78,61 @@ class ZstdHistoryHandler(tornado.web.StaticFileHandler):
         files_info = []
         for f in files:
             file_path = f
-            files_info.append({"name": f.rstrip('.zst'), "url": file_path})
+            files_info.append({"name": f.rstrip(".zst"), "url": file_path})
 
         self.set_header("Content-Type", "application/json")
         self.write(json.dumps(files_info))
         self.finish()
 
 
-API.register_handler(APIVersion.V1, r'/history/debug',
-                     tornado.web.RedirectHandler, url=f"{last_version_path}/history/debug/"),
+class ProfileSearchHandler(BaseHandler):
+    def get(self):
+        query = self.get_argument("query", "")
+        # Logic to fetch profiles based on name_prefix
+        profiles = ShotDataBase.autocomplete_profile_name(query)
+        self.write({"profiles": profiles})
 
-API.register_handler(APIVersion.V1, r'/history/debug/(.*)',
-                     ZstdHistoryHandler, path=DEBUG_HISTORY_PATH),
 
-API.register_handler(APIVersion.V1, r'/history',
-                     tornado.web.RedirectHandler, url=f"{last_version_path}/history/"),
+class ProfileHandler(BaseHandler):
+    def post(self):
+        try:
+            data = json.loads(self.request.body)
+            params = SearchParams(**data)
+        except json.JSONDecodeError:
+            self.set_status(400)
+            self.write({"error": "Invalid JSON"})
+            return
+        except ValidationError as e:
+            self.set_status(422)
+            self.write(e.json())
+            return
 
-API.register_handler(APIVersion.V1, r'/history/(.*)',
-                     ZstdHistoryHandler, path=HISTORY_PATH),
+        results = ShotDataBase.search_history(params)
+        self.write({"history": results})
+
+
+
+API.register_handler(APIVersion.V1, r"/history/search", ProfileSearchHandler),
+API.register_handler(APIVersion.V1, r"/history", ProfileHandler),
+
+API.register_handler(
+    APIVersion.V1,
+    r"/history/debug",
+    tornado.web.RedirectHandler,
+    url=f"{last_version_path}/history/debug/",
+),
+
+API.register_handler(
+    APIVersion.V1, r"/history/debug/(.*)", ZstdHistoryHandler, path=DEBUG_HISTORY_PATH
+),
+
+API.register_handler(
+    APIVersion.V1,
+    r"/history/files",
+    tornado.web.RedirectHandler,
+    url=f"{last_version_path}/history/files/",
+),
+
+API.register_handler(
+    APIVersion.V1, r"/history/files/(.*)", ZstdHistoryHandler, path=HISTORY_PATH
+),
