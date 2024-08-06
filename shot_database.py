@@ -1,7 +1,6 @@
 import json
 import os
 import sqlite3
-import traceback
 import uuid
 from datetime import datetime
 from enum import Enum
@@ -11,7 +10,6 @@ from typing import List, Optional
 import pytz
 import sqlalchemy
 import sqlite_zstd
-import zstandard as zstd
 from pydantic import BaseModel, Field
 from sqlalchemy import (
     JSON,
@@ -155,10 +153,6 @@ class ShotDataBase:
         except sqlite3.DatabaseError as e:
             logger.warning("Database error: %s", e)
             ShotDataBase.handle_error(e)
-
-        # Read all existing shots from disk
-        base_directory = "history/shots"
-        ShotDataBase.scan_and_process_files(base_directory)
 
     @staticmethod
     def enable_compression(connection):
@@ -548,42 +542,3 @@ class ShotDataBase:
                 )
 
             return results
-
-    def decompress_zst_file(zst_file_path):
-        with open(zst_file_path, "rb") as compressed_file:
-            decompressor = zstd.ZstdDecompressor()
-            decompressed_content = decompressor.stream_reader(compressed_file)
-            return decompressed_content.read()
-
-    def process_json_data(json_data):
-        data = json.loads(json_data)
-
-        if "last_changed" not in data:
-            data["last_changed"] = 0
-
-        # You can add more processing logic here if needed
-        return data
-
-    def scan_and_process_files(base_directory):
-        for root, dirs, files in os.walk(base_directory):
-            for file in files:
-                if file.endswith(".json.zst"):
-                    file_path = os.path.join(root, file)
-                    try:
-                        decompressed_data = ShotDataBase.decompress_zst_file(file_path)
-                        json_data = decompressed_data.decode("utf-8")
-                        data = ShotDataBase.process_json_data(json_data)
-                        logger.warning(f"Processed data from {file_path}:")
-                        data["file"] = file_path
-                        try:
-                            ShotDataBase.insert_history(data)
-                        except Exception as e:
-                            logger.error(
-                                f"Error inserting shot from file {file_path}: {e.__class__.__name__} {e}",
-                                stack_info=True,
-                            )
-                            logger.warning(traceback.format_exc())
-                    except Exception as e:
-                        logger.error(
-                            f"Error processing file {file_path}: {e.__class__.__name__} {e}"
-                        )
