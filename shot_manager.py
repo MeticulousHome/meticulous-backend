@@ -12,7 +12,7 @@ import zstandard as zstd
 from esp_serial.connection.emulation_data import EmulationData
 from esp_serial.data import SensorData, ShotData
 from log import MeticulousLogger
-from shot_database import ShotDataBase
+from shot_database import ShotDataBase, SearchParams, SearchOrder, SearchOrderBy
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -115,32 +115,63 @@ class ShotManager:
             ShotManager._current_shot.addShotData(shotData)
 
     @staticmethod
+    def _timestampToFilePaths(timestamp: float):
+        start = datetime.fromtimestamp(timestamp)
+        folder_name = Path(start.strftime("%Y-%m-%d"))
+
+        formatted_time = start.strftime("%H:%M:%S")
+        file_name = f"{formatted_time}.shot.json.zst"
+
+        file_path = folder_name.joinpath(file_name)
+
+        return (folder_name, file_path)
+
+    @staticmethod
     def getCurrentShot():
-        return ShotManager._current_shot
+        if not ShotManager._current_shot:
+            return None
+
+        formated_profile = {
+            "db_key": None,
+        }
+        if ShotManager._current_shot.profile:
+            profile = ShotManager._current_shot.profile
+            formated_profile = {**formated_profile, **profile}
+
+        (_folder_name, file_path) = ShotManager._timestampToFilePaths(
+            ShotManager._current_shot.startTime
+        )
+
+        current_formated_shot = {
+            "db_key": None,
+            "file": str(file_path),
+            **ShotManager._current_shot.to_json(),
+            "profile": formated_profile,
+        }
+
+        return current_formated_shot
 
     @staticmethod
     def getLastShot():
         if not ShotManager._last_shot:
-            ShotDataBase.search_history
+            results = ShotDataBase.search_history(
+                SearchParams(sort=SearchOrder.descending, max_results=1)
+            )
+            if len(results) > 0:
+                ShotManager._last_shot = results[0]
         return ShotManager._last_shot
 
     @staticmethod
     def stop():
         if ShotManager._current_shot is not None:
-            # Determine the folder path based on the shot start
-            start = datetime.fromtimestamp(ShotManager._current_shot.startTime)
-
-            folder_name = start.now().strftime("%Y-%m-%d")
-
-            # Prepare the file path
-            formatted_time = start.strftime("%H:%M:%S")
-            file_name = f"{formatted_time}.shot.json.zst"
 
             shot_data = ShotManager._current_shot.to_json()
 
-            def write_current_shot(shot_data, folder_name, file_name):
-                folder_path = SHOT_PATH.joinpath(folder_name)
-                file_path = folder_path.joinpath(file_name)
+            def write_current_shot(shot_data):
+                # Determine the paths based on the shot start
+                (folder_name, file_path) = ShotManager._timestampToFilePaths(
+                    shot_data["time"]
+                )
 
                 # Add to SQLite database, it will compress automatically
                 logger.info("Adding shot to sqlite database")
@@ -163,9 +194,9 @@ class ShotManager:
 
                 try:
                     # Create the folder if it does not exist
-                    os.makedirs(folder_path, exist_ok=True)
+                    os.makedirs(SHOT_PATH.joinpath(folder_name), exist_ok=True)
                     data_json = json.dumps(shot_data, ensure_ascii=False)
-                    with open(file_path.resolve(), "wb") as file:
+                    with open(SHOT_PATH.joinpath(file_path), "wb") as file:
                         cctx = zstd.ZstdCompressor(level=22)
                         with cctx.stream_writer(file) as compressor:
                             compressor.write(data_json.encode("utf-8"))
@@ -181,33 +212,35 @@ class ShotManager:
                 target=write_current_shot,
                 args=(
                     shot_data,
-                    folder_name,
-                    file_name,
                 ),
             )
             compresson_thread.start()
 
             # Shift and clear shot handles after saving
-            ShotManager._last_shot = ShotManager._current_shot
+            ShotManager._last_shot = None
             ShotManager._current_shot = None
+
 
 def test():
     ShotManager.init()
     ShotManager.start()
     from profile import ProfileManager
+
     dummyShotData = ShotData(
-            pressure=0.0,
-            flow=1.0,
-            weight=2.0,
-            temperature=3.0,
-            status="closing valve",
-            time=100,
-            state="brewing",
-            profile=ProfileManager.get_last_profile()["profile"]["name"],
-            is_extracting=True)
+        pressure=0.0,
+        flow=1.0,
+        weight=2.0,
+        temperature=3.0,
+        status="closing valve",
+        time=100,
+        state="brewing",
+        profile=ProfileManager.get_last_profile()["profile"]["name"],
+        is_extracting=True,
+    )
     ShotManager.handleShotData(dummyShotData)
-    logger.warning(json.dumps(ShotManager._current_shot.to_json()))
+    logger.info(json.dumps(ShotManager._current_shot.to_json()))
     ShotManager.stop()
+
 
 if __name__ == "__main__":
     test()

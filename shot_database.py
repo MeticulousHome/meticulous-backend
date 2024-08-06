@@ -1,42 +1,43 @@
 import json
-import logging
 import os
 import sqlite3
 import traceback
 import uuid
 from datetime import datetime
-from pathlib import Path
 from enum import Enum
+from pathlib import Path
+from typing import List, Optional
 
 import pytz
 import sqlalchemy
 import sqlite_zstd
 import zstandard as zstd
-from sqlalchemy import (JSON, Column, DateTime, Float, ForeignKey, Integer,
-                        String, Table, Text, create_engine, delete)
-from sqlalchemy import event as sqlEvent
-from sqlalchemy import func, insert, MetaData, or_, select, text, desc, asc
-from sqlalchemy.orm import sessionmaker
 from pydantic import BaseModel, Field
-from typing import List, Optional
-from datetime import datetime
+from sqlalchemy import (JSON, Column, DateTime, Float, ForeignKey, Integer,
+                        MetaData, String, Table, Text, asc, create_engine,
+                        delete, desc)
+from sqlalchemy import event as sqlEvent
+from sqlalchemy import func, insert, or_, select, text
+from sqlalchemy.orm import sessionmaker
+
+from log import MeticulousLogger
 
 HISTORY_PATH = os.getenv("HISTORY_PATH", "/meticulous-user/history")
 DATABASE_FILE = "history.sqlite"
 ABSOLUTE_DATABASE_FILE = Path(HISTORY_PATH).joinpath(DATABASE_FILE).resolve()
 DATABASE_URL = f"sqlite:///{ABSOLUTE_DATABASE_FILE}"
 
-import coloredlogs
-coloredlogs.install(level="DEBUG")
+logger = MeticulousLogger.getLogger(__name__)
 
 
 class SearchOrder(str, Enum):
-    ascending = 'desc'
-    descending = 'asc'
+    ascending = "asc"
+    descending = "desc"
 
-class SearchGroupBy(str, Enum):
-    date = "date",
-    profile = "profile",
+
+class SearchOrderBy(str, Enum):
+    date = ("date",)
+    profile = ("profile",)
 
 
 class SearchParams(BaseModel):
@@ -44,9 +45,10 @@ class SearchParams(BaseModel):
     ids: List[int] = Field(default_factory=list)
     start_date: Optional[float] = None
     end_date: Optional[float] = None
-    order_by: List[SearchGroupBy] = [SearchGroupBy.date]
+    order_by: List[SearchOrderBy] = [SearchOrderBy.date]
     sort: SearchOrder = SearchOrder.descending
     max_results: int = 20
+
 
 class ShotDataBase:
     engine = None
@@ -90,6 +92,7 @@ class ShotDataBase:
     @staticmethod
     def init():
 
+        os.makedirs(HISTORY_PATH, exist_ok=True)
         # Initialize database connection
         ShotDataBase.engine = create_engine(
             DATABASE_URL, echo=True, connect_args={"check_same_thread": False}
@@ -103,7 +106,6 @@ class ShotDataBase:
             dbapi_connection.execute("PRAGMA synchronous=EXTRA;")
             # We want to compress the tables for the shot data and therefore need sqlite_zstd
             sqlite_zstd.load(dbapi_connection)
-
 
         sqlEvent.listen(ShotDataBase.engine, "connect", setupDatabase)
         ShotDataBase.session = sessionmaker(bind=ShotDataBase.engine)
@@ -138,7 +140,7 @@ class ShotDataBase:
 
                 ShotDataBase.enable_compression(connection)
         except sqlite3.DatabaseError as e:
-            logging.warning("Database error: %s", e)
+            logger.warning("Database error: %s", e)
             ShotDataBase.handle_error(e)
 
         # Read all existing shots from disk
@@ -165,27 +167,27 @@ class ShotDataBase:
             if "is already enabled for compression" in str(e):
                 pass
             else:
-                logging.error("Failure during compression setup: " + str(e))
+                logger.error("Failure during compression setup: " + str(e))
                 raise e
 
         # Verify the compression
         verify = connection.execute(text("PRAGMA table_info(history)"))
         results = verify.fetchall()
         for row in results:
-            logging.warning(dict(row._mapping))
+            logger.warning(dict(row._mapping))
 
     @staticmethod
     def handle_error(e):
         if "database disk image is malformed" in str(e):
-            logging.warning("Database corrupted, reinitializing by deleteing...")
+            logger.warning("Database corrupted, reinitializing by deleteing...")
             ShotDataBase.delete_and_rebuild()
         elif "unable to open database file" in str(e):
-            logging.warning(
+            logger.warning(
                 "Cannot open database file, attempting to delete and completely rebuild the ShotDataBase..."
             )
             ShotDataBase.delete_and_rebuild()
         else:
-            logging.error("Unhandled database error: %s", e)
+            logger.error("Unhandled database error: %s", e)
 
     @staticmethod
     def delete_and_rebuild():
@@ -196,14 +198,14 @@ class ShotDataBase:
             # Delete the database file
             if os.path.exists(DATABASE_FILE):
                 os.remove(DATABASE_FILE)
-                logging.info("Database file deleted successfully.")
+                logger.info("Database file deleted successfully.")
 
             # Recreate the entire database
             ShotDataBase.init()
         except sqlite3.DatabaseError as e:
-            logging.error("Failed to completely rebuild the database: %s", e)
+            logger.error("Failed to completely rebuild the database: %s", e)
         except OSError as e:
-            logging.error("Failed to delete the database file: %s", e)
+            logger.error("Failed to delete the database file: %s", e)
 
     @staticmethod
     def profile_exists(profile_data):
@@ -255,7 +257,7 @@ class ShotDataBase:
         existing_profile = ShotDataBase.profile_exists(profile_data)
 
         if existing_profile:
-            logging.debug(
+            logger.debug(
                 f"Profile with id {profile_data['id']}, name {profile_data['name']}, and author_id {profile_data['author_id']} already exists."
             )
             return existing_profile[0]
@@ -314,7 +316,7 @@ class ShotDataBase:
         existing_history = ShotDataBase.history_exists(entry)
 
         if existing_history:
-            logging.debug(f"History entry with file {entry['file']} already exists.")
+            logger.debug(f"History entry with file {entry['file']} already exists.")
             return existing_history[0]
 
         profile_data = entry["profile"]
@@ -383,9 +385,7 @@ class ShotDataBase:
                     connection.execute(del_stage_fts_stmt)
 
     @staticmethod
-    def search_history(
-        params: SearchParams
-    ):
+    def search_history(params: SearchParams):
         stmt = (
             select(
                 *[c.label(f"history_{c.name}") for c in ShotDataBase.history_table.c],
@@ -439,10 +439,10 @@ class ShotDataBase:
 
         order_by = []
         for ordering in params.order_by:
-            if ordering == SearchGroupBy.date:
+            if ordering == SearchOrderBy.date:
                 order_by.append(ShotDataBase.history_table.c.time)
-            elif ordering == SearchGroupBy.profile:
-               order_by.append(ShotDataBase.history_table.c.profile_name)
+            elif ordering == SearchOrderBy.profile:
+                order_by.append(ShotDataBase.history_table.c.profile_name)
 
         order_by.append(ShotDataBase.history_table.c.id)
 
@@ -487,9 +487,8 @@ class ShotDataBase:
 
                 parsed_results.append(history)
 
-            logging.warning(f"total results = {len(parsed_results)}")
+            logger.warning(f"total results = {len(parsed_results)}")
             return parsed_results
-
 
     @staticmethod
     def autocomplete_profile_name(prefix):
@@ -561,17 +560,17 @@ class ShotDataBase:
                         decompressed_data = ShotDataBase.decompress_zst_file(file_path)
                         json_data = decompressed_data.decode("utf-8")
                         data = ShotDataBase.process_json_data(json_data)
-                        logging.warning(f"Processed data from {file_path}:")
+                        logger.warning(f"Processed data from {file_path}:")
                         data["file"] = file_path
                         try:
                             ShotDataBase.insert_history(data)
                         except Exception as e:
-                            logging.warning(
+                            logger.error(
                                 f"Error inserting shot from file {file_path}: {e.__class__.__name__} {e}",
                                 stack_info=True,
                             )
-                            logging.warning(traceback.format_exc())
+                            logger.warning(traceback.format_exc())
                     except Exception as e:
-                        logging.warning(
+                        logger.error(
                             f"Error processing file {file_path}: {e.__class__.__name__} {e}"
                         )
