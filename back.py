@@ -47,6 +47,7 @@ from config import *
 from machine import Machine, MachineStatus
 from sounds import SoundPlayer
 from imager import DiscImager
+from shot_manager import ShotManager
 from esp_serial.connection.emulation_data import EmulationData
 
 from api.api import API
@@ -353,6 +354,7 @@ def main():
     WifiManager.init()
     NotificationManager.init(sio)
     ProfileManager.init(sio)
+    ShotManager.init()
     SoundPlayer.init(emulation=Machine.emulated)
     MeticulousConfig.setSIO(sio)
 
