@@ -189,6 +189,21 @@ class ProfileManager:
                 "/api/v1/profile/image/" + data["display"]["image"]
             )
 
+    def generate_ramdom_accent_color():
+        color = random.randrange(0, 2**24)
+
+        hex_color = hex(color)
+
+        std_color = "#" + hex_color[2:]
+
+        return std_color
+
+    def handle_accent_color(data):
+        if "accentColor" not in data["display"] or data["display"]["accentColor"] == "":
+            data["display"][
+                "accentColor"
+            ] = ProfileManager.generate_ramdom_accent_color()
+
     def save_profile(
         data,
         set_last_changed: bool = False,
@@ -203,6 +218,8 @@ class ProfileManager:
             data["display"] = {}
 
         ProfileManager.handle_image(data)
+
+        ProfileManager.handle_accent_color(data)
 
         name = f'{data["id"]}.json'
 
