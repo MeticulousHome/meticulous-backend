@@ -15,7 +15,7 @@ services:
       - CONFIG_PATH=/app/config
       - LOG_PATH=/app/logs
       - PROFILE_PATH=/app/profiles
-      - HISTORY_PATH=/app/history/shots
+      - HISTORY_PATH=/app/history
       - DEBUG_HISTORY_PATH=/app/history/debug
       - UPDATE_PATH=/tmp/firmware
       - ZEROCONF_OVERWRITE=192.168.2.11/24,Mimoja-Datenschleuder
@@ -27,6 +27,6 @@ services:
       - ./config:/app/config
       - ./logs:/app/logs
       - ./profiles:/app/profiles
-      - ./shots:/app/history
+      - ./history:/app/history
       - ./images:/app/images
       - ./default_profiles:/app/default_profiles
