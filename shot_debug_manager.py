@@ -17,7 +17,7 @@ from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
 
 DEBUG_HISTORY_PATH = os.getenv(
-    "DEBUG_HISTORY_PATH", '/meticulous-user/debug_data')
+    "DEBUG_HISTORY_PATH", '/meticulous-user/history/debug')
 
 
 class DebugData:

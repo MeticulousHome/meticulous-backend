@@ -4,16 +4,20 @@ import threading
 import time
 import uuid
 from datetime import datetime
+from pathlib import Path
 
 import zstandard as zstd
+
 from esp_serial.connection.emulation_data import EmulationData
 from esp_serial.data import SensorData, ShotData
 from log import MeticulousLogger
+from shot_database import ShotDataBase
 
 logger = MeticulousLogger.getLogger(__name__)
 
 HISTORY_PATH = os.getenv("HISTORY_PATH", "/meticulous-user/history")
-
+SHOT_FOLDER = "shots"
+SHOT_PATH = Path(HISTORY_PATH).joinpath(SHOT_FOLDER).resolve()
 
 class Shot:
     def __init__(self) -> None:
@@ -108,7 +112,7 @@ class ShotManager:
             start = datetime.fromtimestamp(ShotManager._current_shot.startTime)
 
             folder_name = start.now().strftime("%Y-%m-%d")
-            folder_path = os.path.join(HISTORY_PATH, folder_name)
+            folder_path = os.path.join(SHOT_PATH, folder_name)
 
             # Create the folder if it does not exist
             os.makedirs(folder_path, exist_ok=True)
