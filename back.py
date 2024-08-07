@@ -134,7 +134,7 @@ def notification(sid, noti_json):
 @sio.on("profileHover")
 async def forwardProfileHover(sid, data):
     logger.info(f"Hovering Profile {json.dumps(data, indent=1, sort_keys=False)}")
-    await sio.emit("profileHover", data)
+    await sio.emit("profileHover", data, skip_sid=sid)
 
 
 @sio.on("calibrate")  # Use when calibration it is implemented
