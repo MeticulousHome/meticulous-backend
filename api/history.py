@@ -121,6 +121,13 @@ class HistoryHandler(BaseHandler):
         results = ShotDataBase.search_history(params)
         self.write({"history": results})
 
+    def get(self):
+        # get all entries
+        params = SearchParams(dump_data=False, max_results=-1)
+
+        results = ShotDataBase.search_history(params)
+        self.write({"history": results})
+
 
 API.register_handler(APIVersion.V1, r"/history/search", ProfileSearchHandler),
 API.register_handler(APIVersion.V1, r"/history/current", CurrentShotHandler),
