@@ -59,6 +59,7 @@ class SearchParams(BaseModel):
     order_by: List[SearchOrderBy] = [SearchOrderBy.date]
     sort: SearchOrder = SearchOrder.descending
     max_results: int = 20
+    dump_data = True
 
 
 class ShotDataBase:
@@ -458,13 +459,17 @@ class ShotDataBase:
         else:
             stmt = stmt.order_by(*[desc(order_column) for order_column in order_by])
 
-        stmt = stmt.limit(params.max_results)
+        if params.max_results > 0:
+            stmt = stmt.limit(params.max_results)
 
         with ShotDataBase.engine.connect() as connection:
             results = connection.execute(stmt)
             parsed_results = []
             for row in results:
                 row_dict = dict(row._mapping)
+                data = None
+                if params.dump_data:
+                    data = json.loads(row_dict.pop("history_data"))
 
                 profile = {
                     "id": row_dict.pop("profile_id"),
@@ -486,9 +491,7 @@ class ShotDataBase:
                     "time": datetime.timestamp(row_dict.pop("history_time")),
                     "file": row_dict.pop("history_file"),
                     "name": row_dict.pop("history_profile_name"),
-                    "data": json.loads(row_dict["history_data"]),
-                    # "profile_id": row_dict.pop("history_profile_id"),
-                    # "profile_db_key": row_dict.pop("history_profile_key"),
+                    "data": data,
                     "profile": profile,
                 }
 
