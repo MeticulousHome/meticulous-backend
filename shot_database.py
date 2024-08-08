@@ -152,7 +152,7 @@ class ShotDataBase:
 
                 ShotDataBase.enable_compression(connection)
         except sqlite3.DatabaseError as e:
-            logger.warning("Database error: %s", e)
+            logger.error("Database error: %s", e)
             ShotDataBase.handle_error(e)
 
     @staticmethod
@@ -178,19 +178,13 @@ class ShotDataBase:
                 logger.error("Failure during compression setup: " + str(e))
                 raise e
 
-        # Verify the compression
-        verify = connection.execute(text("PRAGMA table_info(history)"))
-        results = verify.fetchall()
-        for row in results:
-            logger.warning(dict(row._mapping))
-
     @staticmethod
     def handle_error(e):
         if "database disk image is malformed" in str(e):
-            logger.warning("Database corrupted, reinitializing by deleteing...")
+            logger.error("Database corrupted, reinitializing by deleteing...")
             ShotDataBase.delete_and_rebuild()
         elif "unable to open database file" in str(e):
-            logger.warning(
+            logger.error(
                 "Cannot open database file, attempting to delete and completely rebuild the ShotDataBase..."
             )
             ShotDataBase.delete_and_rebuild()
@@ -497,7 +491,7 @@ class ShotDataBase:
 
                 parsed_results.append(history)
 
-            logger.warning(f"total results = {len(parsed_results)}")
+            logger.info(f"shot database query returned {len(parsed_results)} results")
             return parsed_results
 
     @staticmethod
