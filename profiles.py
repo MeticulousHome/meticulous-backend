@@ -194,7 +194,7 @@ class ProfileManager:
 
         hex_color = hex(color)
 
-        std_color = "#" + hex_color[2:]
+        std_color = "#" + hex_color[2:].zfill(6)
 
         return std_color
 
