@@ -53,7 +53,7 @@ class DiscImager:
 
     @staticmethod
     def copy_file():
-        DiscImager.notification = Notification()
+        DiscImager.notification = Notification("")
         DiscImager.notification.image = DiscImager.notification_image
 
         waitTime = 10
