@@ -59,7 +59,7 @@ class SearchParams(BaseModel):
     order_by: List[SearchOrderBy] = [SearchOrderBy.date]
     sort: SearchOrder = SearchOrder.descending
     max_results: int = 20
-    dump_data = True
+    dump_data: bool = True
 
 
 class ShotDataBase:
