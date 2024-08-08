@@ -129,9 +129,16 @@ class HistoryHandler(BaseHandler):
         self.write({"history": results})
 
 
+class StatisticsHandler(BaseHandler):
+    def get(self):
+        results = ShotDataBase.statistics()
+        self.write(results)
+
+
 API.register_handler(APIVersion.V1, r"/history/search", ProfileSearchHandler),
 API.register_handler(APIVersion.V1, r"/history/current", CurrentShotHandler),
 API.register_handler(APIVersion.V1, r"/history/last", LastShotHandler),
+API.register_handler(APIVersion.V1, r"/history/stats", StatisticsHandler),
 
 API.register_handler(APIVersion.V1, r"/history", HistoryHandler),
 

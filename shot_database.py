@@ -28,7 +28,7 @@ from sqlalchemy import (
     desc,
 )
 from sqlalchemy import event as sqlEvent
-from sqlalchemy import func, insert, or_, select, text
+from sqlalchemy import func, insert, or_, select, text, distinct
 from sqlalchemy.orm import sessionmaker
 
 from log import MeticulousLogger
@@ -545,3 +545,36 @@ class ShotDataBase:
                 )
 
             return results
+
+    @staticmethod
+    def statistics():
+        with ShotDataBase.session() as session:
+            stmt = (
+                select(
+                    ShotDataBase.history_table.c.profile_name.label("profile_name"),
+                    func.count(ShotDataBase.history_table.c.profile_name).label(
+                        "profile_count"
+                    ),
+                    func.count(distinct(ShotDataBase.history_table.c.profile_id)).label(
+                        "profile_versions"
+                    ),
+                )
+                .group_by(
+                    ShotDataBase.history_table.c.profile_name,
+                )
+                .order_by(func.count("profile_count").desc())
+            )
+            results = session.execute(stmt)
+            total_shots = 0
+            parsed_results = []
+            for row in results:
+                row_dict = dict(row._mapping)
+                profile = {
+                    "name": row_dict.pop("profile_name"),
+                    "count": row_dict.pop("profile_count"),
+                    "profileVersions": row_dict.pop("profile_versions"),
+                }
+                total_shots += profile["count"]
+
+                parsed_results.append(profile)
+            return {"totalSavedShots": total_shots, "byProfile": parsed_results}
