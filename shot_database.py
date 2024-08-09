@@ -117,7 +117,7 @@ class ShotDataBase:
             dbapi_connection.execute("PRAGMA journal_mode=WAL;")
             dbapi_connection.execute("PRAGMA synchronous=EXTRA;")
             # We want to compress the tables for the shot data and therefore need sqlite_zstd
-            # sqlite_zstd.load(dbapi_connection)
+            sqlite_zstd.load(dbapi_connection)
 
         sqlEvent.listen(ShotDataBase.engine, "connect", setupDatabase)
         ShotDataBase.session = sessionmaker(bind=ShotDataBase.engine)
@@ -150,7 +150,7 @@ class ShotDataBase:
                     autoload_with=ShotDataBase.engine,
                 )
 
-                # ShotDataBase.enable_compression(connection)
+                ShotDataBase.enable_compression(connection)
         except sqlite3.DatabaseError as e:
             logger.error("Database error: %s", e)
             ShotDataBase.handle_error(e)
