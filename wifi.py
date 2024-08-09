@@ -309,7 +309,15 @@ class WifiManager:
 
         if not WifiManager._networking_available:
             return WifiSystemConfig(
-                connected, connection_name, gateway, routes, ips, dns, mac, hostname
+                connected,
+                connection_name,
+                gateway,
+                routes,
+                ips,
+                dns,
+                mac,
+                hostname,
+                domains,
             )
 
         for dev in nmcli.device():
