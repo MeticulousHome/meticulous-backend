@@ -34,7 +34,7 @@ class SensorData:
     motor_power: float = 0.0
     motor_current: float = 0.0
     bandheater_power: float = 0.0
-    preassure_sensor: float = 0.0
+    pressure_sensor: float = 0.0
     adc_0: float = 0.0
     adc_1: float = 0.0
     adc_2: float = 0.0
@@ -75,7 +75,7 @@ class SensorData:
                 motor_power=safeFloat(args[10]),
                 motor_current=safeFloat(args[11]),
                 bandheater_power=safeFloat(args[12]),
-                preassure_sensor=safeFloat(args[13]),
+                pressure_sensor=safeFloat(args[13]),
                 adc_0=safeFloat(args[14]),
                 adc_1=safeFloat(args[15]),
                 adc_2=safeFloat(args[16]),
@@ -101,7 +101,7 @@ class SensorData:
 
     def to_sio_communication(self):
         return {
-            "p": self.preassure_sensor,
+            "p": self.pressure_sensor,
             "a_0": self.adc_0,
             "a_1": self.adc_1,
             "a_2": self.adc_2,
