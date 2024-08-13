@@ -21,6 +21,33 @@ document.addEventListener('DOMContentLoaded', function () {
     initGraph('adcGraph', ['adc0_rate', 'adc1_rate', 'adc2_rate', 'adc3_rate', 'pressureSensor_rate']);
     initGraph('miscGraph', ['pressureSensor_pressure', 'flowSensor_flow', 'loadcell_weight', 'display_temp']);
 
+    const therm_up = document.getElementById('therm_up');
+    const therm_midUp = document.getElementById('therm_midUp');
+    const therm_midDown = document.getElementById('therm_midDown');
+    const therm_down = document.getElementById('therm_down');
+    const therm_ext1 = document.getElementById('therm_external1');
+    const therm_ext2 = document.getElementById('therm_external2');
+    const therm_tube = document.getElementById('therm_tube');
+    const therm_valve = document.getElementById('therm_valve');
+
+    const motor_position = document.getElementById('motor_position');
+    const motor_speed = document.getElementById('motor_speed');
+    const motor_power = document.getElementById('motor_power');
+    const motor_current = document.getElementById('motor_current');
+    const bandHeater_power = document.getElementById('bandHeater_power');
+
+    const adc0_rate = document.getElementById('adc0_rate');
+    const adc1_rate = document.getElementById('adc1_rate');
+    const adc2_rate = document.getElementById('adc2_rate');
+    const adc3_rate = document.getElementById('adc3_rate');
+    const pressureSensor_rate = document.getElementById('pressureSensor_rate');
+
+
+    const misc_pressure = document.getElementById('misc_pressure');
+    const misc_temperature = document.getElementById('misc_temperature');
+    const misc_flow = document.getElementById('misc_flow');
+    const misc_weight = document.getElementById('misc_weight');
+
     window.thermistorData = {
         labels: [],
         data: {
@@ -79,6 +106,10 @@ document.addEventListener('DOMContentLoaded', function () {
             loadcell_weight: data.sensors.w,
             display_temp: data.sensors.t,
         });
+        misc_pressure.innerText = data.sensors.p;
+        misc_flow.innerText = data.sensors.f;
+        misc_temperature.innerText = data.sensors.t;
+        misc_weight.innerText = data.sensors.w;
         if (isGraphing) {
             updateGraph('miscGraph', window.miscData);
         }
@@ -97,6 +128,16 @@ document.addEventListener('DOMContentLoaded', function () {
             tube: data.t_tube,
             valve: data.t_valv
         })
+
+        therm_up.innerText = data.t_bar_up;
+        therm_midUp.innerText = data.t_bar_mu;
+        therm_midDown.innerText = data.t_bar_md;
+        therm_down.innerText = data.t_bar_down;
+        therm_ext1.innerText = data.t_ext_1;
+        therm_ext2.innerText = data.t_ext_2;
+        therm_tube.innerText = data.t_tube;
+        therm_valve.innerText = data.t_valv;
+
         if (isGraphing) {
             updateGraph('thermistorGraph', window.thermistorData);
         }
@@ -114,6 +155,13 @@ document.addEventListener('DOMContentLoaded', function () {
             ],
             pressureSensor: { "rate": data.p }
         }
+
+        adc0_rate.innerText = data.a_0;
+        adc1_rate.innerText = data.a_1;
+        adc2_rate.innerText = data.a_2;
+        adc3_rate.innerText = data.a_3;
+        pressureSensor_rate.innerText = data.p;
+
         updateGraphData(window.adcData, currentTime, extractAdcRates(new_data));
         if (isGraphing) {
             updateGraph('adcGraph', window.adcData);
@@ -130,6 +178,13 @@ document.addEventListener('DOMContentLoaded', function () {
             current: data.m_cur,
             bandHeater_power: data.bh_pwr,
         })
+
+        motor_position.innerText = data.m_pos;
+        motor_current.innerText = data.m_cur;
+        motor_speed.innerText = data.m_spd;
+        motor_power.innerText = data.m_pwr;
+        bandHeater_power.innerText = data.bh_pwr;
+
         if (isGraphing) {
             updateGraph('actuatorGraph', window.actuatorData);
         }

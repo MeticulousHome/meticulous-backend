@@ -15,9 +15,4 @@ WEB_UI_HANDLER = [
             "path": os.path.dirname(__file__) + "/web_ui",
         },
     ),
-    (
-        r"/(.*)",
-        tornado.web.StaticFileHandler,
-        {"default_filename": "index.html", "path": "/opt/meticulous-dashboard/"},
-    ),
 ]

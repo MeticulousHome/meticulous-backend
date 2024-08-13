@@ -5,6 +5,7 @@
     width: 90%;
     margin: 20px auto;
 }
+
 .graph-container {
     width: 100%;
 }
@@ -14,23 +15,50 @@
     padding-top: 1em;
 }
 
-button
-{
- border: 0;
- background: var(--color-goldenrod);
- color: 1F2029;
- box-shadow: none;
- border-radius: 3px;
- padding: 12px;
- margin: 5px;
+button {
+    border: 0;
+    background: var(--color-goldenrod);
+    color: #1F2029;
+    box-shadow: none;
+    border-radius: 3px;
+    padding: 12px;
+    margin: 5px;
 }
 
 canvas {
     width: 100%;
     height: auto;
 }
+
 .graph-container h2 {
-    color: var(--color-light); 
-    font-family: var(--font-montserrat), sans-serif; 
-    font-weight: 600; 
+    color: var(--color-light);
+    font-family: var(--font-montserrat), sans-serif;
+    font-weight: 600;
+}
+
+.dataTable {
+    display: grid;
+    justify-content: flex-start;
+    margin: auto;
+    flex-wrap: wrap;
+    max-width: 800px;
+}
+
+.data {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: row;
+}
+
+.data div {
+    color: var(--color-light);
+}
+
+.dataTitle {
+    padding-right: 7px;
+}
+
+.dataEntry {
+    padding-right: 10px;
+    width: 45px;
 }
