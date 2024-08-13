@@ -14,11 +14,13 @@ import jsonschema
 import socketio
 from config import (
     MeticulousConfig,
+    CONFIG_SYSTEM,
     CONFIG_USER,
     CONFIG_PROFILES,
     PROFILE_AUTO_PURGE,
     PROFILE_AUTO_START,
     PROFILE_LAST,
+    ALLOW_LEGACY_JSON
 )
 import asyncio
 from log import MeticulousLogger
@@ -284,9 +286,16 @@ class ProfileManager:
         return profile
 
     def send_profile_to_esp32(data):
+        if MeticulousConfig[CONFIG_SYSTEM][ALLOW_LEGACY_JSON] and data.get("legacy",) == "true":
+            Machine.send_json_with_hash(data)
+            return data
+        
+        if data.get("legacy") is None:
+            logger.info("Legacy JSON is not allowed. Please enable it in the settings if you want it.")
+        
         click_to_start = not MeticulousConfig[CONFIG_USER][PROFILE_AUTO_START]
         click_to_purge = not MeticulousConfig[CONFIG_USER][PROFILE_AUTO_PURGE]
-
+        
         if "id" not in data:
             data["id"] = str(uuid.uuid4())
 
