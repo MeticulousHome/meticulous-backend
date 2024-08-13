@@ -42,20 +42,18 @@ canvas {
     margin: auto;
     flex-wrap: wrap;
     max-width: 800px;
+    grid-column-start: 1;
+    grid-column-end: 8;
 }
 
-.data {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-}
 
-.data div {
+.dataTable div {
     color: var(--color-light);
 }
 
 .dataTitle {
     padding-right: 7px;
+
 }
 
 .dataEntry {
