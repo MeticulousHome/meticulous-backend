@@ -2,6 +2,7 @@ import yaml
 import os
 import asyncio
 import string
+import sentry_sdk
 import random
 
 from pathlib import Path
@@ -190,6 +191,8 @@ class MeticulousConfigDict(dict):
         for line in cs.split("\n"):
             _config_logger.debug(f"CONF: {line}")
 
+        sentry_sdk.set_context("config", self.copy())
+
     # FIXME: Remove once the socket IO server lives in its own file
     def setSIO(self, sio):
         self.__sio = sio
@@ -227,6 +230,8 @@ class MeticulousConfigDict(dict):
                 self.save()
 
     def save(self):
+        sentry_sdk.set_context("config", self.copy())
+
         Path(self.__path).parent.mkdir(parents=True, exist_ok=True)
         with open(self.__path, "w") as f:
             yaml.dump(self.copy(), f, default_flow_style=False, allow_unicode=True)
