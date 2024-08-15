@@ -1,66 +1,40 @@
-import sentry_sdk
-from sentry_sdk.integrations.asyncio import AsyncioIntegration
-
+from tornado.options import parse_command_line
+import socketio
+import tornado.log
+import tornado.web
+import tornado.ioloop
+import threading
+import time
+import json
 import os
+import os.path
+import version as backend
+import subprocess
+import asyncio
 
-BACKEND = os.getenv("BACKEND", "FIKA").upper()
+from esp_serial.data import ButtonEventData
 
-if BACKEND == "FIKA":
-    print("Initializing sentry")
-    sentry_sdk.init(
-        dsn="https://0b7872daf08aae52a8d654472bc8bb26@o4506723336060928.ingest.us.sentry.io/4507635208224768",
-        # Set traces_sample_rate to 1.0 to capture 100%
-        # of transactions for performance monitoring.
-        traces_sample_rate=1.0,
-        # Set profiles_sample_rate to 1.0 to profile 100%
-        # of sampled transactions.
-        # We recommend adjusting this value in production.
-        profiles_sample_rate=0.0,
-        integrations=[
-            AsyncioIntegration(),
-        ],
-    )
-else:
-    print("Skipping Sentry initialization")
-
-from tornado.options import parse_command_line  # noqa: E402
-import socketio  # noqa: E402
-import tornado.log  # noqa: E402
-import tornado.web  # noqa: E402
-import tornado.ioloop  # noqa: E402
-import threading  # noqa: E402
-import time  # noqa: E402
-import json  # noqa: E402
-import os  # noqa: E402
-import os.path  # noqa: E402
-import version as backend  # noqa: E402
-import subprocess  # noqa: E402
-import asyncio  # noqa: E402
-
-from esp_serial.data import ButtonEventData  # noqa: E402
-
-from ble_gatt import GATTServer  # noqa: E402
-from wifi import WifiManager  # noqa: E402
-from notifications import Notification, NotificationManager  # noqa: E402
-from profiles import ProfileManager  # noqa: E402
-from hostname import HostnameManager  # noqa: E402
-from config import (  # noqa: E402
+from ble_gatt import GATTServer
+from wifi import WifiManager
+from notifications import Notification, NotificationManager
+from profiles import ProfileManager
+from hostname import HostnameManager
+from config import (
     MeticulousConfig,
     CONFIG_LOGGING,
     LOGGING_SENSOR_MESSAGES,
 )
-from machine import Machine  # noqa: E402
-from sounds import SoundPlayer  # noqa: E402
-from imager import DiscImager  # noqa: E402
-from shot_manager import ShotManager  # noqa: E402
-from esp_serial.connection.emulation_data import EmulationData  # noqa: E402
+from machine import Machine
+from sounds import SoundPlayer
+from imager import DiscImager
+from shot_manager import ShotManager
+from esp_serial.connection.emulation_data import EmulationData
 
-from api.api import API  # noqa: E402
-from api.emulation import register_emulation_handlers  # noqa: E402
-from api.web_ui import WEB_UI_HANDLER  # noqa: E402
+from api.api import API
+from api.emulation import register_emulation_handlers
+from api.web_ui import WEB_UI_HANDLER
 
-from log import MeticulousLogger  # noqa: E402
-
+from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -358,11 +332,3 @@ def main():
 
     DiscImager.flash_if_required()
     tornado.ioloop.IOLoop.current().start()
-
-
-if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        logger.exception("main() failed", exc_info=e, stack_info=True)
-        exit(1)
