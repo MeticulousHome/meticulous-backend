@@ -128,11 +128,7 @@ class WifiManager:
         WifiManager._zeroconf.start()
 
     def tryAutoConnect():
-        loop = (
-            asyncio.get_event_loop()
-            if asyncio.get_event_loop().is_running()
-            else asyncio.new_event_loop()
-        )
+        loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         while True:
             time.sleep(10)
