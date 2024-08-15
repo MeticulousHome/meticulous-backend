@@ -138,6 +138,7 @@ class Machine:
         time_flag = False
         info_requested = False
         time_passed = 0
+        emulated_firmware = False
 
         logger.info("Starting to listen for esp32 messages")
         Machine.startTime = time.time()
@@ -301,12 +302,14 @@ class Machine:
                     Machine.firmware_running = Machine._parseVersionString(
                         info.firmwareV
                     )
-                    logger.info(
-                        f"ESPInfo running firmware version:   {Machine.firmware_running} on pinout version {Machine.esp_info.espPinout}"
-                    )
-                    logger.info(
-                        f"Backend available firmware version: {Machine.firmware_available}"
-                    )
+                    if not emulated_firmware:
+                        logger.info(
+                            f"ESPInfo running firmware version:   {Machine.firmware_running} on pinout version {Machine.esp_info.espPinout}"
+                        )
+                        logger.info(
+                            f"Backend available firmware version: {Machine.firmware_available}"
+                        )
+                        emulated_firmware = Machine.emulated
                     needs_update = False
                     if (
                         Machine.firmware_available is not None
