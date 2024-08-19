@@ -75,7 +75,7 @@ class ShotDataBase:
         Column("id", String, nullable=False),
         Column("author", Text),
         Column("author_id", Text),
-        Column("display_image", Text),
+        Column("display", JSON),
         Column("final_weight", Integer),
         Column("last_changed", Float),
         Column("name", Text),
@@ -214,6 +214,7 @@ class ShotDataBase:
         stages_json = json.dumps(profile_data["stages"])
         variables_json = json.dumps(profile_data["variables"])
         previous_authors_json = json.dumps(profile_data["previous_authors"])
+        display_json = json.dumps(profile_data["previous_authors"])
 
         query = (
             select(ShotDataBase.profile_table.c.key)
@@ -221,8 +222,8 @@ class ShotDataBase:
             .where(ShotDataBase.profile_table.c.author == profile_data["author"])
             .where(ShotDataBase.profile_table.c.author_id == profile_data["author_id"])
             .where(
-                ShotDataBase.profile_table.c.display_image
-                == profile_data["display"]["image"]
+                func.json_extract(ShotDataBase.profile_table.c.display, "$")
+                == func.json_extract(display_json, "$")
             )
             .where(
                 ShotDataBase.profile_table.c.final_weight
@@ -269,7 +270,7 @@ class ShotDataBase:
                     id=profile_data["id"],
                     author=profile_data["author"],
                     author_id=profile_data["author_id"],
-                    display_image=profile_data["display"]["image"],
+                    display=profile_data["display"],
                     final_weight=profile_data["final_weight"],
                     last_changed=profile_data.get("last_changed", 0),
                     name=profile_data["name"],
@@ -470,7 +471,7 @@ class ShotDataBase:
                     "db_key": row_dict.pop("profile_key"),
                     "author": row_dict.pop("profile_author"),
                     "author_id": row_dict.pop("profile_author_id"),
-                    "display_image": row_dict.pop("profile_display_image"),
+                    "display": row_dict.pop("profile_display"),
                     "final_weight": row_dict.pop("profile_final_weight"),
                     "last_changed": row_dict.pop("profile_last_changed"),
                     "name": row_dict.pop("profile_name"),
