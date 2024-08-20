@@ -1,15 +1,14 @@
-import os
-import time
-import zstandard as zstd
-import threading
 import csv
-
+import io
+import os
+import threading
+import time
 from datetime import datetime
 
+import zstandard as zstd
+
+from config import CONFIG_USER, DEBUG_SHOT_DATA, MeticulousConfig
 from esp_serial.data import SensorData, ShotData
-
-from config import MeticulousConfig, CONFIG_USER, DEBUG_SHOT_DATA
-
 from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -47,11 +46,9 @@ class DebugData:
 
         shotFields = list(emptyShot.__dict__.keys())
         sensorFields = list(emptySensors.__dict__.keys())
-        classFields = ["startTime"]
+        classFields = ["startTime", "profile_time"]
 
         allFields = shotFields + sensorFields + classFields
-
-        import io
 
         output = io.StringIO()
         writer = csv.DictWriter(output, fieldnames=allFields)
@@ -60,6 +57,7 @@ class DebugData:
         for shotSample in self.shotData:
             row = {
                 "startTime": self.startTime,
+                "profile_ms": round(shotSample["profile_time"] * 1000),
             }
             for sensor_field in shotFields + sensorFields:
                 row[sensor_field] = shotSample.get(sensor_field, "")
@@ -96,7 +94,8 @@ class ShotDebugManager:
     def stop():
         if ShotDebugManager._current_data is not None:
             # Determine the folder path based on the current date
-            start = datetime.fromtimestamp(ShotDebugManager._current_data.startTime)
+            start_timestamp = ShotDebugManager._current_data.startTime
+            start = datetime.fromtimestamp(start_timestamp)
             folder_name = start.strftime("%Y-%m-%d")
             folder_path = os.path.join(DEBUG_HISTORY_PATH, folder_name)
 
@@ -113,7 +112,7 @@ class ShotDebugManager:
             def compress_current_data(data_json):
                 # Compress and write the shot to disk
                 logger.info("Writing and compressing debug file")
-                start = time.time()
+                start = start_timestamp
                 with open(file_path, "wb") as file:
                     cctx = zstd.ZstdCompressor(level=22)
                     with cctx.stream_writer(file) as compressor:
