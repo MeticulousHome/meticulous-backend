@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from log import MeticulousLogger
 from shot_database import SearchParams, ShotDataBase
 from shot_debug_manager import DEBUG_HISTORY_PATH
-from shot_manager import ShotManager, HISTORY_PATH
+from shot_manager import ShotManager, SHOT_PATH
 
 from .api import API, APIVersion
 from .base_handler import BaseHandler
@@ -63,7 +63,11 @@ class ZstdHistoryHandler(tornado.web.StaticFileHandler):
         with open(full_path, "rb") as compressed_file:
             decompressor = zstd.ZstdDecompressor()
             decompressed_content = decompressor.stream_reader(compressed_file)
-            self.set_header("Content-Type", "application/json")
+            logger.warning(full_path)
+            if full_path.endswith(".csv.zst"):
+                self.set_header("Content-Type", "text/csv")
+            else:
+                self.set_header("Content-Type", "application/json")
             self.write(decompressed_content.read())
             self.finish()
 
@@ -161,5 +165,5 @@ API.register_handler(
 ),
 
 API.register_handler(
-    APIVersion.V1, r"/history/files/(.*)", ZstdHistoryHandler, path=HISTORY_PATH
+    APIVersion.V1, r"/history/files/(.*)", ZstdHistoryHandler, path=SHOT_PATH
 ),
