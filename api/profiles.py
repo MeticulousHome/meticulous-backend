@@ -15,11 +15,7 @@ from profiles import IMAGES_PATH, ProfileManager
 from .api import API, APIVersion
 from .base_handler import BaseHandler
 from .machine import Machine
-from config import (
-    MeticulousConfig,
-    CONFIG_SYSTEM,
-    ALLOW_LEGACY_JSON
-)
+from config import MeticulousConfig, CONFIG_SYSTEM, ALLOW_LEGACY_JSON
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -121,7 +117,6 @@ class LoadProfileHandler(BaseHandler):
 
             logger.warning(f"Parsed data: {data}")
 
-
             try:
                 profile = ProfileManager.send_profile_to_esp32(data)
             except jsonschema.exceptions.ValidationError as err:
@@ -152,36 +147,37 @@ class LoadProfileHandler(BaseHandler):
                 "Failed to execute profile in place:", exc_info=e, stack_info=True
             )
 
+
 class LegacyProfileHandler(BaseHandler):
-   def post(self):
-       if not Machine.is_idle:
-           self.set_status(409)
-           self.write({"status": "error", "error": "machine is busy"})
-           return
-       try:
-           data = json.loads(self.request.body)
-           try:
-               Machine.send_json_with_hash(data)
-           except (
-               UndefinedVariableException,
-               VariableTypeException,
-               FormatException,
-           ) as err:
-               errors = {
-                   "status": "error",
-                   "error": f"variable error: {err.__class__.__name__}:{err}",
-               }
-               self.set_status(400)
-               self.write(errors)
-               return
-           self.write({"name": data["name"], "id": data["id"]})
-       except Exception as e:
-           self.set_status(400)
-           self.write({"status": "error", "error": f"failed to load profile {e}"})
-           logger.warning(
-               "Failed to execute profile in place:", exc_info=e, stack_info=True
-           )
-        
+    def post(self):
+        if not Machine.is_idle:
+            self.set_status(409)
+            self.write({"status": "error", "error": "machine is busy"})
+            return
+        try:
+            data = json.loads(self.request.body)
+            try:
+                Machine.send_json_with_hash(data)
+            except (
+                UndefinedVariableException,
+                VariableTypeException,
+                FormatException,
+            ) as err:
+                errors = {
+                    "status": "error",
+                    "error": f"variable error: {err.__class__.__name__}:{err}",
+                }
+                self.set_status(400)
+                self.write(errors)
+                return
+            self.write({"name": data["name"], "id": data["id"]})
+        except Exception as e:
+            self.set_status(400)
+            self.write({"status": "error", "error": f"failed to load profile {e}"})
+            logger.warning(
+                "Failed to execute profile in place:", exc_info=e, stack_info=True
+            )
+
 
 class GetProfileHandler(BaseHandler):
     def get(self, profile_id):
