@@ -46,7 +46,7 @@ class DebugData:
 
         shotFields = list(emptyShot.__dict__.keys())
         sensorFields = list(emptySensors.__dict__.keys())
-        classFields = ["startTime", "profile_time"]
+        classFields = ["startTime", "profile_ms"]
 
         allFields = shotFields + sensorFields + classFields
 
