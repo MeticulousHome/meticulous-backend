@@ -173,23 +173,6 @@ class ShotManager:
                     shot_data["time"]
                 )
 
-                # Add to SQLite database, it will compress automatically
-                logger.info("Adding shot to sqlite database")
-                start = time.time()
-
-                try:
-                    dbEntry = shot_data
-                    dbEntry["file"] = str(file_path)
-                    ShotDataBase.insert_history(shot_data)
-                    ShotManager._last_shot = None
-                    ShotManager.getLastShot()
-                except Exception as e:
-                    logger.error(f"Failed to insert shot into sqlite: {e}")
-                    logger.error(traceback.format_exc())
-                else:
-                    time_ms = (time.time() - start) * 1000
-                    logger.info(f"Ingesting shot into sqlite took {time_ms} ms")
-
                 # Compress and write the shot to disk
                 logger.info("Writing and compressing shot file")
                 start = time.time()
@@ -206,9 +189,27 @@ class ShotManager:
                 except Exception as e:
                     logger.error(f"Failed to write shotfile to disk: {e}")
                     logger.error(traceback.format_exc())
+                    return
                 else:
                     time_ms = (time.time() - start) * 1000
                     logger.info(f"Writing json to disc took {time_ms} ms")
+
+                # Add to SQLite database, it will compress automatically
+                logger.info("Adding shot to sqlite database")
+                start = time.time()
+
+                try:
+                    dbEntry = shot_data
+                    dbEntry["file"] = str(file_path)
+                    ShotDataBase.insert_history(shot_data)
+                    ShotManager._last_shot = None
+                    ShotManager.getLastShot()
+                except Exception as e:
+                    logger.error(f"Failed to insert shot into sqlite: {e}")
+                    logger.error(traceback.format_exc())
+                else:
+                    time_ms = (time.time() - start) * 1000
+                    logger.info(f"Ingesting shot into sqlite took {time_ms} ms")
 
             compresson_thread = threading.Thread(
                 target=write_current_shot,

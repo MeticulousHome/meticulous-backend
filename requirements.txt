@@ -22,7 +22,6 @@ pytz>=2024.1
 sentry-sdk==2.10.0
 six==1.16.0
 SQLAlchemy==2.0.30
-sqlite-zstd-build>=0.3.2
 tornado==6.3.3
 zeroconf==0.131.0
 zstandard==0.22.0

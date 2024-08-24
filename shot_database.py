@@ -8,8 +8,7 @@ from pathlib import Path
 from typing import List, Optional
 
 import pytz
-import sqlalchemy
-import sqlite_zstd
+import zstandard as zstd
 from pydantic import BaseModel, Field
 from sqlalchemy import (
     JSON,
@@ -26,9 +25,10 @@ from sqlalchemy import (
     create_engine,
     delete,
     desc,
+    distinct,
 )
 from sqlalchemy import event as sqlEvent
-from sqlalchemy import func, insert, or_, select, text, distinct
+from sqlalchemy import func, insert, or_, select, text
 from sqlalchemy.orm import sessionmaker
 
 from log import MeticulousLogger
@@ -90,12 +90,11 @@ class ShotDataBase:
         metadata,
         Column("id", Integer, primary_key=True, autoincrement=True),
         Column("uuid", Text, nullable=True),
-        Column("file", Text, nullable=True),
+        Column("file", Text, nullable=False),
         Column("time", DateTime, nullable=False),
         Column("profile_name", Text, nullable=False),
         Column("profile_id", String, nullable=False),
         Column("profile_key", Integer, ForeignKey("profile.key"), nullable=False),
-        Column("data", Text, nullable=False),
     )
 
     stage_fts_table = None
@@ -116,8 +115,9 @@ class ShotDataBase:
             dbapi_connection.execute("PRAGMA auto_vacuum=full;")
             dbapi_connection.execute("PRAGMA journal_mode=WAL;")
             dbapi_connection.execute("PRAGMA synchronous=EXTRA;")
-            # We want to compress the tables for the shot data and therefore need sqlite_zstd
-            sqlite_zstd.load(dbapi_connection)
+            maxJournalBytes = 1024 * 1024 * 1  # 1MB
+            dbapi_connection.execute(f"PRAGMA journal_size_limit = {maxJournalBytes};")
+            dbapi_connection.execute("PRAGMA wal_checkpoint(TRUNCATE);")
 
         sqlEvent.listen(ShotDataBase.engine, "connect", setupDatabase)
         ShotDataBase.session = sessionmaker(bind=ShotDataBase.engine)
@@ -150,33 +150,9 @@ class ShotDataBase:
                     autoload_with=ShotDataBase.engine,
                 )
 
-                ShotDataBase.enable_compression(connection)
         except sqlite3.DatabaseError as e:
             logger.error("Database error: %s", e)
             ShotDataBase.handle_error(e)
-
-    @staticmethod
-    def enable_compression(connection):
-        try:
-            connection.execute(
-                text(
-                    """
-                SELECT zstd_enable_transparent('{
-                    "table": "history",
-                    "column": "data",
-                    "compression_level": 19,
-                    "dict_chooser": "''a''"
-                }')
-                """
-                )
-            )
-            connection.execute(text("SELECT zstd_incremental_maintenance(60, 0.5)"))
-        except sqlalchemy.exc.OperationalError as e:
-            if "is already enabled for compression" in str(e):
-                pass
-            else:
-                logger.error("Failure during compression setup: " + str(e))
-                raise e
 
     @staticmethod
     def handle_error(e):
@@ -338,7 +314,6 @@ class ShotDataBase:
                     profile_name=entry["profile_name"],
                     profile_id=profile_data["id"],
                     profile_key=profile_key,
-                    data=json.dumps(entry["data"]),
                 )
                 connection.execute(ins_stmt)
 
@@ -464,7 +439,17 @@ class ShotDataBase:
                 row_dict = dict(row._mapping)
                 data = None
                 if params.dump_data:
-                    data = json.loads(row_dict.pop("history_data"))
+                    from shot_manager import SHOT_PATH
+
+                    file_entry = row_dict.pop("history_file")
+                    data_file = Path(SHOT_PATH).joinpath(file_entry)
+                    with open(data_file, "rb") as compressed_file:
+                        decompressor = zstd.ZstdDecompressor()
+                        decompressed_content = decompressor.stream_reader(
+                            compressed_file
+                        )
+                        file_contents = json.loads(decompressed_content.read())
+                        data = file_contents.get("data")
 
                 profile = {
                     "id": row_dict.pop("profile_id"),
@@ -484,7 +469,7 @@ class ShotDataBase:
                     "id": row_dict.pop("history_uuid"),
                     "db_key": row_dict.pop("history_id"),
                     "time": datetime.timestamp(row_dict.pop("history_time")),
-                    "file": row_dict.pop("history_file"),
+                    "file": file_entry,
                     "name": row_dict.pop("history_profile_name"),
                     "data": data,
                     "profile": profile,
