@@ -16,7 +16,7 @@ from .api import API, APIVersion
 from .base_handler import BaseHandler
 from .machine import Machine
 from config import MeticulousConfig, CONFIG_SYSTEM, ALLOW_LEGACY_JSON
-from emulation import LEGACY_DUMMY_PROFILE
+from .emulation import LEGACY_DUMMY_PROFILE
 
 logger = MeticulousLogger.getLogger(__name__)
 
