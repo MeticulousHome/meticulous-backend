@@ -15,7 +15,7 @@ from profiles import IMAGES_PATH, ProfileManager
 from .api import API, APIVersion
 from .base_handler import BaseHandler
 from .machine import Machine
-from config import MeticulousConfig, CONFIG_SYSTEM, ALLOW_LEGACY_JSON
+from config import MeticulousConfig, CONFIG_USER, ALLOW_LEGACY_JSON
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -150,6 +150,10 @@ class LoadProfileHandler(BaseHandler):
 
 class LegacyProfileHandler(BaseHandler):
     def post(self):
+        if not MeticulousConfig[CONFIG_USER][ALLOW_LEGACY_JSON]:
+            self.set_status(403)
+            return
+
         if not Machine.is_idle:
             self.set_status(409)
             self.write({"status": "error", "error": "machine is busy"})
@@ -266,5 +270,4 @@ API.register_handler(
 ),
 API.register_handler(APIVersion.V1, r"/profile/changes", ChangesHandler),
 API.register_handler(APIVersion.V1, r"/profile/last", LastProfileHandler),
-if MeticulousConfig[CONFIG_SYSTEM][ALLOW_LEGACY_JSON]:
-    API.register_handler(APIVersion.V1, r"/profile/legacy", LegacyProfileHandler),
+API.register_handler(APIVersion.V1, r"/profile/legacy", LegacyProfileHandler),
