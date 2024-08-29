@@ -48,6 +48,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const misc_flow = document.getElementById('misc_flow');
     const misc_weight = document.getElementById('misc_weight');
 
+
+    const misc_name = document.getElementById('misc_name');
+    const misc_time = document.getElementById('misc_time');
+    const misc_profile = document.getElementById('misc_profile');
+    const misc_state = document.getElementById('misc_state');
+    const misc_extracting = document.getElementById('misc_extracting');
+
     window.thermistorData = {
         labels: [],
         data: {
@@ -110,6 +117,13 @@ document.addEventListener('DOMContentLoaded', function () {
         misc_flow.innerText = data.sensors.f;
         misc_temperature.innerText = data.sensors.t;
         misc_weight.innerText = data.sensors.w;
+
+        misc_name.innerText = data.name;
+        misc_time.innerText = data.time;
+        misc_profile.innerText = data.profile;
+        misc_state.innerText = data.state;
+        misc_extracting.innerText = data.extracting;
+
         if (isGraphing) {
             updateGraph('miscGraph', window.miscData);
         }
