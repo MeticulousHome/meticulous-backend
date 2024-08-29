@@ -166,6 +166,10 @@ class ShotManager:
         if ShotManager._current_shot is not None:
 
             shot_data = ShotManager._current_shot.to_json()
+            if shot_data.get("profile") is None:
+                from profiles import ProfileManager
+
+                shot_data["profile"] = ProfileManager.get_last_profile()
 
             def write_current_shot(shot_data):
                 # Determine the paths based on the shot start
