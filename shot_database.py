@@ -188,9 +188,9 @@ class ShotDataBase:
     @staticmethod
     def profile_exists(profile_data):
         stages_json = json.dumps(profile_data.get("stages", []))
-        variables_json = json.dumps(profile_data("variables", []))
-        previous_authors_json = json.dumps(profile_data("previous_authors", []))
-        display_json = json.dumps(profile_data("previous_authors", []))
+        variables_json = json.dumps(profile_data.get("variables", []))
+        previous_authors_json = json.dumps(profile_data.get("previous_authors", []))
+        display_json = json.dumps(profile_data.get("previous_authors", []))
 
         query = (
             select(ShotDataBase.profile_table.c.key)
