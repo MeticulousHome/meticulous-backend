@@ -187,10 +187,10 @@ class ShotDataBase:
 
     @staticmethod
     def profile_exists(profile_data):
-        stages_json = json.dumps(profile_data["stages"])
-        variables_json = json.dumps(profile_data["variables"])
-        previous_authors_json = json.dumps(profile_data["previous_authors"])
-        display_json = json.dumps(profile_data["previous_authors"])
+        stages_json = json.dumps(profile_data.get("stages", []))
+        variables_json = json.dumps(profile_data("variables", []))
+        previous_authors_json = json.dumps(profile_data("previous_authors", []))
+        display_json = json.dumps(profile_data("previous_authors", []))
 
         query = (
             select(ShotDataBase.profile_table.c.key)
@@ -254,9 +254,9 @@ class ShotDataBase:
                     last_changed=profile_data.get("last_changed", 0),
                     name=profile_data["name"],
                     temperature=profile_data["temperature"],
-                    stages=profile_data["stages"],
-                    variables=profile_data["variables"],
-                    previous_authors=profile_data["previous_authors"],
+                    stages=profile_data.get("stages", []),
+                    variables=profile_data.get("variables", []),
+                    previous_authors=profile_data.get("previous_authors", []),
                 )
                 result = connection.execute(ins_stmt)
                 profile_key = result.inserted_primary_key[0]
