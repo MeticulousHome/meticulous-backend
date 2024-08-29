@@ -105,7 +105,7 @@ class WifiManager:
                 HostnameManager.setHostname(new_hostname)
 
         ap_name = HostnameManager.generateDeviceName()
-        MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME] = ap_name
+        MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME] = ap_name[:31]
         MeticulousConfig.save()
 
         if WifiManager._zeroconf is None:
