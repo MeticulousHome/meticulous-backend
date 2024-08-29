@@ -130,3 +130,30 @@ def register_emulation_handlers():
     API.register_handler(APIVersion.V1, r"/wifi/list", WiFiListHandler),
     API.register_handler(APIVersion.V1, r"/wifi/connect", WiFiConnectHandler),
     API.register_handler(APIVersion.V1, r"/wifi/config/qr.png", WiFiQRHandler),
+
+
+LEGACY_DUMMY_PROFILE = {
+    "id": "0eddc1d9-aa2e-404b-a209-e7e76c9552bc",
+    "name": "LEGACY JSON PLACEHOLDER",
+    "author": "",
+    "author_id": "00000000-0000-0000-0000-000000000000",
+    "previous_authors": [{"name": "", "author_id": "", "profile_id": ""}],
+    "temperature": 88,
+    "final_weight": 36,
+    "display": {
+        "image": "/api/v1/profile/image/f98ff6e029e70ee9a99565796615d55c.png",
+        "accentColor": "#42a59d",
+    },
+    "variables": [],
+    "last_changed": 1723127046.5605135,
+    "stages": [
+        {
+            "key": "206c654b-5766-4ebb-a4bc-dcafa5aacd8b",
+            "name": "EMPTY FLOW STAGE",
+            "type": "flow",
+            "dynamics": {"points": [[0, 0]], "over": "time", "interpolation": "linear"},
+            "exit_triggers": [],
+            "limits": [],
+        }
+    ],
+}
