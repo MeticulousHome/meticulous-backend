@@ -157,9 +157,7 @@ class Machine:
                     logger.info(f"decoding fails, message: {data}")
                     continue
 
-                if (
-                    old_status != MachineStatus.IDLE and data_str.startswith("Sensor")
-                ) or MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES]:
+                if MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES]:
                     logger.info(data_str.strip("\r\n"))
 
                 data_str_sensors = data_str.strip("\r\n").split(",")
