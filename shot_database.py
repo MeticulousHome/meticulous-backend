@@ -233,6 +233,9 @@ class ShotDataBase:
 
     @staticmethod
     def insert_profile(profile_data):
+        if profile_data is None:
+            return -1
+
         existing_profile = ShotDataBase.profile_exists(profile_data)
 
         if existing_profile:
@@ -298,7 +301,7 @@ class ShotDataBase:
             logger.debug(f"History entry with file {entry['file']} already exists.")
             return existing_history[0]
 
-        profile_data = entry["profile"]
+        profile_data = entry.get("profile")
         profile_key = ShotDataBase.insert_profile(profile_data)
         with ShotDataBase.engine.connect() as connection:
             with connection.begin():
