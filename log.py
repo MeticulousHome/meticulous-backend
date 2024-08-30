@@ -15,8 +15,6 @@ logging.basicConfig()
 
 
 class MeticulousLogger:
-    _rh = None
-    _f = None
     _sh = None
 
     FORCE_STDOUT_LOG = os.getenv("FORCE_STDOUT_LOG", "False").lower() in (
@@ -24,11 +22,6 @@ class MeticulousLogger:
         "1",
         "y",
     )
-
-    def setFileLogLevel(level):
-        if MeticulousLogger._rh is None:
-            MeticulousLogger._createHandler()
-        MeticulousLogger._rh.setLevel(level)
 
     # Callback when a new log is created
     def cb_logname(name):
@@ -42,20 +35,6 @@ class MeticulousLogger:
         os.remove(source)
 
     def _createHandler():
-        MB = 1024 * 1024
-        # Create directory for the logfiles if it doesn't exist
-        os.makedirs(LOG_PATH, exist_ok=True)
-        logfilePath = os.path.join(LOG_PATH, "backend.log")
-
-        MeticulousLogger._rh = logging.handlers.RotatingFileHandler(
-            logfilePath, maxBytes=200 * MB, backupCount=10
-        )
-        MeticulousLogger._rh.rotator = MeticulousLogger.cb_logrotate
-        MeticulousLogger._rh.namer = MeticulousLogger.cb_logname
-
-        MeticulousLogger._f = logging.Formatter(logformat)
-        MeticulousLogger._rh.setFormatter(MeticulousLogger._f)
-        MeticulousLogger._rh.doRollover()
         MeticulousLogger._sh = logging.StreamHandler()
 
     def getLogger(name):
@@ -63,8 +42,7 @@ class MeticulousLogger:
             MeticulousLogger._createHandler()
 
         logger = logging.getLogger(name=name)
-        if MeticulousLogger._rh not in logger.handlers:
-            logger.addHandler(MeticulousLogger._rh)
+
         # This will lead to double logging on some systems, so it is disabled by default
         if (
             MeticulousLogger.FORCE_STDOUT_LOG
