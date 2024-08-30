@@ -119,6 +119,7 @@ class ShotDebugManager:
                         compressor.write(data_json.encode("utf-8"))
                 time_ms = (time.time() - start) * 1000
                 logger.info(f"Writing debug csv to disc took {time_ms} ms")
+                data_json = None
 
             compresson_thread = threading.Thread(
                 target=compress_current_data, args=(csv_data,)
