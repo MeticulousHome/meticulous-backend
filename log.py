@@ -38,7 +38,7 @@ class MeticulousLogger:
         MeticulousLogger._sh = logging.StreamHandler()
 
     def getLogger(name):
-        if MeticulousLogger._rh is None:
+        if MeticulousLogger._sh is None:
             MeticulousLogger._createHandler()
 
         logger = logging.getLogger(name=name)
