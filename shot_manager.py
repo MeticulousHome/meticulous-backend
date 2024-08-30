@@ -191,10 +191,12 @@ class ShotManager:
                         cctx = zstd.ZstdCompressor(level=22)
                         with cctx.stream_writer(file) as compressor:
                             compressor.write(data_json.encode("utf-8"))
+                    data_json = None
 
                 except Exception as e:
                     logger.error(f"Failed to write shotfile to disk: {e}")
                     logger.error(traceback.format_exc())
+                    shot_data = None
                     return
                 else:
                     time_ms = (time.time() - start) * 1000
@@ -216,6 +218,7 @@ class ShotManager:
                 else:
                     time_ms = (time.time() - start) * 1000
                     logger.info(f"Ingesting shot into sqlite took {time_ms} ms")
+                shot_data = None
 
             compresson_thread = threading.Thread(
                 target=write_current_shot,
@@ -224,6 +227,7 @@ class ShotManager:
             compresson_thread.start()
 
             # Shift and clear shot handles after saving
+            ShotManager._current_shot.profile = None
             ShotManager._current_shot = None
 
 
