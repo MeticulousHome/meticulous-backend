@@ -114,7 +114,7 @@ class ShotDebugManager:
                 logger.info("Writing and compressing debug file")
                 start = start_timestamp
                 with open(file_path, "wb") as file:
-                    cctx = zstd.ZstdCompressor(level=22)
+                    cctx = zstd.ZstdCompressor(level=8)
                     with cctx.stream_writer(file) as compressor:
                         compressor.write(data_json.encode("utf-8"))
                 time_ms = (time.time() - start) * 1000
