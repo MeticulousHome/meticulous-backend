@@ -112,7 +112,7 @@ class ShotDebugManager:
             def compress_current_data(data_json):
                 # Compress and write the shot to disk
                 logger.info("Writing and compressing debug file")
-                start = start_timestamp
+                start = time.time()
                 with open(file_path, "wb") as file:
                     cctx = zstd.ZstdCompressor(level=8)
                     with cctx.stream_writer(file) as compressor:
