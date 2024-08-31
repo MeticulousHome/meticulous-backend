@@ -1,5 +1,5 @@
 import os
-import threading
+from named_thread import NamedThread
 import time
 import subprocess
 import json
@@ -48,7 +48,7 @@ class DiscImager:
             return
 
         logger.info("Starting to image emmc")
-        DiscImager.copy_thread = threading.Thread(target=DiscImager.copy_file)
+        DiscImager.copy_thread = NamedThread("DiscImager", target=DiscImager.copy_file)
         DiscImager.copy_thread.start()
 
     @staticmethod

@@ -3,13 +3,14 @@ import socketio
 import tornado.log
 import tornado.web
 import tornado.ioloop
-import threading
+from named_thread import NamedThread
 import time
 import json
 import os
 import os.path
 import version as backend
 import subprocess
+import pyprctl
 import asyncio
 
 from esp_serial.data import ButtonEventData
@@ -124,7 +125,6 @@ send_data_thread = None
 
 
 async def live():
-
     SAMPLE_TIME = 0.1
     elapsed_time = 0
     i = 0
@@ -289,16 +289,17 @@ async def send_data():  # noqa: C901
 
 
 def main():
-    global data_thread
     global send_data_thread
     parse_command_line()
+
+    pyprctl.set_name("Main")
 
     gatherVersionInfo()
 
     HostnameManager.init()
     Machine.init(sio)
 
-    send_data_thread = threading.Thread(target=send_data_loop)
+    send_data_thread = NamedThread("SendSocketIO", target=send_data_loop)
     send_data_thread.start()
 
     GATTServer.getServer().start()

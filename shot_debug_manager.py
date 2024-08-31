@@ -1,7 +1,7 @@
 import csv
 import io
 import os
-import threading
+from named_thread import NamedThread
 import time
 from datetime import datetime
 
@@ -121,8 +121,8 @@ class ShotDebugManager:
                 logger.info(f"Writing debug csv to disc took {time_ms} ms")
                 data_json = None
 
-            compresson_thread = threading.Thread(
-                target=compress_current_data, args=(csv_data,)
+            compresson_thread = NamedThread(
+                "DebugShotCompr", target=compress_current_data, args=(csv_data,)
             )
             compresson_thread.start()
 
