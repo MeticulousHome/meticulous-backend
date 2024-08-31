@@ -5,10 +5,8 @@ import os
 import random
 from named_thread import NamedThread
 import time
-import version as backendVersion
 
 from packaging import version
-import subprocess
 
 from config import (
     CONFIG_LOGGING,
@@ -21,7 +19,6 @@ from config import (
     MeticulousConfig,
 )
 from esp_serial.connection.emulator_serial_connection import EmulatorSerialConnection
-from esp_serial.connection.emulation_data import EmulationData
 from esp_serial.connection.fika_serial_connection import FikaSerialConnection
 from esp_serial.connection.usb_serial_connection import USBSerialConnection
 from esp_serial.data import (
@@ -33,7 +30,6 @@ from esp_serial.data import (
     ShotData,
 )
 from esp_serial.esp_tool_wrapper import ESPToolWrapper
-
 from log import MeticulousLogger
 from notifications import Notification, NotificationManager, NotificationResponse
 from shot_debug_manager import ShotDebugManager
@@ -44,25 +40,6 @@ logger = MeticulousLogger.getLogger(__name__)
 
 # can be from [FIKA, USB, EMULATOR / EMULATION]
 BACKEND = os.getenv("BACKEND", "FIKA").upper()
-
-
-def gatherSoftwareVersionInfo():
-    software_info = {}
-    software_info["name"] = "Meticulous Espresso"
-    software_info["backendV"] = backendVersion.VERSION
-
-    # #OBTENEMOS SU VERSION USANDO LOS COMANDOS DPKG y GREP
-    command = "dpkg --list | grep meticulous-ui"
-    result = subprocess.run(command, shell=True, capture_output=True, text=True)
-    try:
-        lcd_version = result.stdout.split()[2]
-    except IndexError:
-        logger.warning("LCD DialApp is not installed")
-        lcd_version = "0.0.0"
-
-    software_info["lcdV"] = lcd_version
-
-    return software_info
 
 
 class Machine:
@@ -83,7 +60,6 @@ class Machine:
     firmware_available = None
     firmware_running = None
     startTime = None
-    software_info = gatherSoftwareVersionInfo()
 
     is_idle = True
 
@@ -308,7 +284,6 @@ class Machine:
                     ShotDebugManager.handleShotData(Machine.data_sensors)
                     old_status = Machine.data_sensors.status
                     Machine.infoReady = True
-                    await Machine.emitStatus({**Machine.data_sensors.to_sio()})
 
                 if sensor is not None:
                     Machine.sensor_sensors = sensor
@@ -316,22 +291,9 @@ class Machine:
                     ShotDebugManager.handleSensorData(Machine.sensor_sensors)
                     if time_flag:
                         ShotManager.handleSensorData(Machine.sensor_sensors)
-                    await Machine._sio.emit(
-                        "sensors", Machine.sensor_sensors.to_sio_temperatures()
-                    )
-                    await Machine._sio.emit(
-                        "comunication", Machine.sensor_sensors.to_sio_communication()
-                    )
-                    await Machine._sio.emit(
-                        "actuators", Machine.sensor_sensors.to_sio_actuators()
-                    )
 
                 if info is not None:
                     Machine.esp_info = info
-                    await Machine._sio.emit(
-                        "info", {**Machine.software_info, **Machine.esp_info.to_sio()}
-                    )
-
                     Machine.reset_count = 0
                     Machine.infoReady = True
                     info_requested = False
@@ -394,33 +356,6 @@ class Machine:
                 ):
                     logger.info("DOUBLE ENCODER, Returning to idle")
                     Machine.return_to_idle()
-
-    async def emitStatus(statusDict):
-        from profiles import ProfileManager
-
-        # We can enrich the machines functionality from within the backend
-        # as we know which profile was last loaded
-        last_profile_entry = ProfileManager.get_last_profile()
-        if last_profile_entry:
-            profile = last_profile_entry["profile"]
-
-            # In emulation mode the machine is unaware of its profile so we trick it here
-            if (
-                Machine.emulated
-                and statusDict["profile"] == EmulationData.PROFILE_PLACEHOLDER
-            ):
-                if Machine.profileReady:
-                    statusDict["profile"] = profile["name"]
-                else:
-                    statusDict["profile"] = "default"
-
-            statusDict["loaded_profile"] = profile["name"]
-            statusDict["id"] = profile["id"]
-        else:
-            statusDict["loaded_profile"] = None
-            statusDict["id"] = None
-
-        await Machine._sio.emit("status", statusDict)
 
     def startUpdate():
         updateNotification = Notification(
