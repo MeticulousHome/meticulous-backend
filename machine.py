@@ -3,7 +3,7 @@ import hashlib
 import json
 import os
 import random
-import threading
+from named_thread import NamedThread
 import time
 
 from packaging import version
@@ -102,7 +102,7 @@ class Machine:
             loop.run_until_complete(Machine._read_data())
             loop.close()
 
-        Machine._thread = threading.Thread(target=startLoop)
+        Machine._thread = NamedThread("MachineSerial", target=startLoop)
         Machine._thread.start()
 
     class ReadLine:

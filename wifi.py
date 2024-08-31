@@ -18,7 +18,7 @@ import nmcli
 import time
 import socket
 import os
-import threading
+from named_thread import NamedThread
 import asyncio
 
 from hostname import HostnameManager
@@ -122,7 +122,9 @@ class WifiManager:
             else:
                 WifiManager.stopHotspot()
 
-            WifiManager._thread = threading.Thread(target=WifiManager.tryAutoConnect)
+            WifiManager._thread = NamedThread(
+                "WifiAutoConnect", target=WifiManager.tryAutoConnect
+            )
             WifiManager._thread.start()
 
         WifiManager._zeroconf.start()

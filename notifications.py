@@ -5,12 +5,11 @@ import base64
 import pyqrcode
 import io
 import queue
-import threading
 import asyncio
 from datetime import datetime
 
 from sounds import SoundPlayer, Sounds
-
+from named_thread import NamedThread
 from config import MeticulousConfig, CONFIG_SYSTEM, NOTIFICATION_KEEPALIVE
 
 from log import MeticulousLogger
@@ -93,8 +92,8 @@ class NotificationManager:
 
     def init(sio):
         NotificationManager._sio = sio
-        NotificationManager._thread = threading.Thread(
-            target=NotificationManager._notification_loop
+        NotificationManager._thread = NamedThread(
+            "NotifyLoop", target=NotificationManager._notification_loop
         )
         NotificationManager._thread.start()
 

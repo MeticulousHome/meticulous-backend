@@ -1,6 +1,6 @@
 from .serial_connection import SerialConnection
 from unittest.mock import MagicMock
-import threading
+from named_thread import NamedThread
 import time
 import os
 import pty
@@ -26,7 +26,7 @@ class EmulatorSerialConnection(SerialConnection):
         super().__init__(os.ttyname(self.us))
         self.line_counter = 0
         self.flasher = MagicMock()
-        self.send_data_thread = threading.Thread(target=self.send_data)
+        self.send_data_thread = NamedThread("EmulationData", target=self.send_data)
         self.send_data_thread.start()
 
     def send_data(self):

@@ -3,7 +3,7 @@ from machine import Machine
 import os
 import tempfile
 import zipfile
-import threading
+from named_thread import NamedThread
 
 from tornado.web import MissingArgumentError
 
@@ -69,7 +69,7 @@ class UpdateFirmwareWithZipHandler(BaseHandler):
             self.write("failure during upload")
             return
 
-        upgradeThread = threading.Thread(target=Machine.startUpdate)
+        upgradeThread = NamedThread("FWUpgrade", target=Machine.startUpdate)
         upgradeThread.start()
 
         self.write("success")
