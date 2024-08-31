@@ -123,6 +123,81 @@ def calibrate(sid, data=True):
 send_data_thread = None
 
 
+async def live():
+    SAMPLE_TIME = 0.1
+    elapsed_time = 0
+    i = 0
+    _time = time.time()
+    logger.info("Starting to emit machine data")
+
+    # Store previous value of 'auto_preheat' to detect changes
+    # previous_auto_preheat = MeticulousConfig[CONFIG_USER].get('auto_preheat', None)
+
+    while True:
+
+        elapsed_time = time.time() - _time
+        if elapsed_time > 2 and not Machine.infoReady:
+            _time = time.time()
+            Machine.action("info")
+
+        machine_status = {**Machine.data_sensors.to_sio()}
+        # We can enrich the machines functionality from within the backend
+        # as we know which profile was last loaded
+        last_profile_entry = ProfileManager.get_last_profile()
+        if last_profile_entry:
+            profile = last_profile_entry["profile"]
+
+            # In emulation mode the machine is unaware of its profile so we trick it here
+            if (
+                Machine.emulated
+                and machine_status["profile"] == EmulationData.PROFILE_PLACEHOLDER
+            ):
+                if Machine.profileReady:
+                    machine_status["profile"] = profile["name"]
+                else:
+                    machine_status["profile"] = "default"
+
+            machine_status["loaded_profile"] = profile["name"]
+            machine_status["id"] = profile["id"]
+        else:
+            machine_status["loaded_profile"] = None
+            machine_status["id"] = None
+
+        await sio.emit("status", machine_status)
+
+        if Machine.sensor_sensors is not None:
+            water_status_dict = (  # noqa: F841
+                Machine.sensor_sensors.to_sio_water_status()
+            )
+            # water_status_value = water_status_dict["water_status"]
+            # await sio.emit("water_status", water_status_value)
+
+        if Machine.sensor_sensors is not None:
+            await sio.emit("sensors", Machine.sensor_sensors.to_sio_temperatures())
+            await sio.emit(
+                "comunication", Machine.sensor_sensors.to_sio_communication()
+            )
+            await sio.emit("actuators", Machine.sensor_sensors.to_sio_actuators())
+        if Machine.esp_info is not None:
+            await sio.emit("info", {**software_info, **Machine.esp_info.to_sio()})
+
+        # current_auto_preheat = MeticulousConfig[CONFIG_USER].get('auto_preheat')
+        # if current_auto_preheat != previous_auto_preheat:
+        #     Machine.write(str.encode("action,auto_preheat,"+str(current_auto_preheat)+"\x03"))
+        #     previous_auto_preheat = current_auto_preheat
+
+        await sio.sleep(SAMPLE_TIME)
+        i = i + 1
+
+
+def send_data_loop():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    loop.run_until_complete(send_data())
+    loop.close()
+
+
 async def send_data():  # noqa: C901
     noti = Notification("", ["Ok", "Not okay"])
     while True:
@@ -212,14 +287,6 @@ async def send_data():  # noqa: C901
             )
 
 
-def send_data_loop():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    loop.run_until_complete(send_data())
-    loop.close()
-
-
 def main():
     global send_data_thread
     parse_command_line()
@@ -260,6 +327,8 @@ def main():
     )
 
     app.listen(PORT)
+
+    sio.start_background_task(live)
 
     DiscImager.flash_if_required()
     tornado.ioloop.IOLoop.current().start()
