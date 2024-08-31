@@ -1,7 +1,8 @@
 from enum import Enum, auto
 import os
 import json
-from playsound import playsound
+
+# from playsound import playsound
 import subprocess
 
 from log import MeticulousLogger

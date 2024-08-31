@@ -59,7 +59,6 @@ def gatherSoftwareVersionInfo():
     except IndexError:
         logger.warning("LCD DialApp is not installed")
         lcd_version = "0.0.0"
-    infoSolicited = True
 
     software_info["lcdV"] = lcd_version
 

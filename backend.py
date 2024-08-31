@@ -29,7 +29,6 @@ from machine import Machine
 from sounds import SoundPlayer
 from imager import DiscImager
 from shot_manager import ShotManager
-from esp_serial.connection.emulation_data import EmulationData
 
 from api.api import API
 from api.emulation import register_emulation_handlers
