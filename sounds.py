@@ -167,7 +167,10 @@ class SoundPlayer:
         logger.info(f"Playing {sound_name} from {file_path}")
 
         try:
-            playsound(file_path, block=False)
+            logger.warning(
+                f"No playing sound {file_path}. All sounds are disable to debug memory leaks!"
+            )
+            # playsound(file_path, block=False)
         except Exception as e:
             logger.exception(f"Failed to play sound: {e}")
             return False
