@@ -2,7 +2,7 @@ import hashlib
 import json
 import os
 import shutil
-import threading
+from named_thread import NamedThread
 import time
 import uuid
 from enum import Enum
@@ -54,7 +54,7 @@ class ProfileManager:
     _profile_default_images = []
     _sio: socketio.AsyncServer = None
     _loop: asyncio.AbstractEventLoop = None
-    _thread: threading.Thread = None
+    _thread: NamedThread = None
     _last_profile_changes = []
     _schema = None
 
@@ -67,7 +67,7 @@ class ProfileManager:
             asyncio.set_event_loop(ProfileManager._loop)
             ProfileManager._loop.run_forever()
 
-        ProfileManager._thread = threading.Thread(target=start_event_loop)
+        ProfileManager._thread = NamedThread("ProfileManager", target=start_event_loop)
         ProfileManager._thread.start()
 
         if not os.path.exists(PROFILE_PATH):

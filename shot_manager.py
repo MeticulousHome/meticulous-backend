@@ -1,6 +1,6 @@
 import json
 import os
-import threading
+from named_thread import NamedThread
 import time
 import traceback
 import uuid
@@ -220,7 +220,8 @@ class ShotManager:
                     logger.info(f"Ingesting shot into sqlite took {time_ms} ms")
                 shot_data = None
 
-            compresson_thread = threading.Thread(
+            compresson_thread = NamedThread(
+                "ShotCompr",
                 target=write_current_shot,
                 args=(shot_data,),
             )
