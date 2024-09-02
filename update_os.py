@@ -60,7 +60,7 @@ class RaucManager:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                cwd="/home",
+                cwd="/opt",
             )
 
             # Log that the script has been started
