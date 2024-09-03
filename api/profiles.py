@@ -151,6 +151,10 @@ class LoadProfileHandler(BaseHandler):
 
 class LegacyProfileHandler(BaseHandler):
     def post(self):
+        if not MeticulousConfig[CONFIG_SYSTEM][ALLOW_LEGACY_JSON]:
+            self.set_status(404)
+            return
+
         if not Machine.is_idle:
             self.set_status(409)
             self.write({"status": "error", "error": "machine is busy"})
@@ -269,5 +273,4 @@ API.register_handler(
 ),
 API.register_handler(APIVersion.V1, r"/profile/changes", ChangesHandler),
 API.register_handler(APIVersion.V1, r"/profile/last", LastProfileHandler),
-if MeticulousConfig[CONFIG_SYSTEM][ALLOW_LEGACY_JSON]:
-    API.register_handler(APIVersion.V1, r"/profile/legacy", LegacyProfileHandler),
+API.register_handler(APIVersion.V1, r"/profile/legacy", LegacyProfileHandler),
