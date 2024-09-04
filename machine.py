@@ -51,7 +51,9 @@ class Machine:
     infoReady = False
     profileReady = False
 
-    data_sensors: ShotData = ShotData()
+    data_sensors: ShotData = ShotData(
+        state=MachineStatus.IDLE, status=MachineStatus.IDLE, profile=MachineStatus.IDLE
+    )
     sensor_sensors: SensorData = None
     esp_info = None
     reset_count = 0
