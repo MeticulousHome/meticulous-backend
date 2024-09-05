@@ -15,7 +15,7 @@ from profiles import IMAGES_PATH, ProfileManager
 from .api import API, APIVersion
 from .base_handler import BaseHandler
 from .machine import Machine
-from config import MeticulousConfig, CONFIG_SYSTEM, ALLOW_LEGACY_JSON, CONFIG_USER
+from config import MeticulousConfig, ALLOW_LEGACY_JSON, CONFIG_USER
 from .emulation import LEGACY_DUMMY_PROFILE
 
 logger = MeticulousLogger.getLogger(__name__)
