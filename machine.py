@@ -16,6 +16,7 @@ from config import (
     LOGGING_SENSOR_MESSAGES,
     MACHINE_COLOR,
     MACHINE_SERIAL_NUMBER,
+    MACHINE_HEAT_ON_BOOT,
     MeticulousConfig,
 )
 from esp_serial.connection.emulator_serial_connection import EmulatorSerialConnection
@@ -137,6 +138,7 @@ class Machine:
         uart = Machine.ReadLine(Machine._connection.port)
 
         old_status = MachineStatus.IDLE
+        old_ready = False
         time_flag = False
         info_requested = False
         time_passed = 0
@@ -233,6 +235,8 @@ class Machine:
                         info = ESPInfo.from_args(infoArgs)
                     case [*_]:
                         logger.info(data_str.strip("\r\n"))
+
+                old_ready = Machine.infoReady
 
                 if data is not None:
                     Machine.is_idle = data.status == MachineStatus.IDLE
@@ -358,6 +362,16 @@ class Machine:
                 ):
                     logger.info("DOUBLE ENCODER, Returning to idle")
                     Machine.return_to_idle()
+
+                if (
+                    not old_ready
+                    and Machine.infoReady
+                    and MeticulousConfig[CONFIG_USER][MACHINE_HEAT_ON_BOOT]
+                ):
+                    if Machine.data_sensors.status == MachineStatus.IDLE:
+                        logger.info("Tell the machine to preheat")
+                        logger.warning("NOT IMPLEMENTED YET")
+                        # Machine.action("preheat")
 
     def startUpdate():
         updateNotification = Notification(
