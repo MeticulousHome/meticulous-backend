@@ -1,25 +1,27 @@
-from typing import Dict, Optional
-import sys
 import asyncio
-import psutil
+import os
+import sys
 import time
 from threading import Thread
+from typing import Dict, Optional
 
-from improv import ImprovUUID, ImprovState, ImprovProtocol
-from bless import (  # type: ignore
-    BlessServer,
+import psutil
+from bless import BlessServer  # type: ignore
+from bless import (
     BlessGATTCharacteristic,
-    GATTCharacteristicProperties,
     GATTAttributePermissions,
+    GATTCharacteristicProperties,
 )
-
+from bless.backends.bluezdbus.dbus.advertisement import BlueZLEAdvertisement, Type
+from dbus_next import Variant
 from dbus_next.errors import DBusError
+from improv import ImprovProtocol, ImprovState, ImprovUUID
 
-from wifi import WifiManager
+from config import CONFIG_WIFI, WIFI_MODE, WIFI_MODE_AP, MeticulousConfig
 from hostname import HostnameManager
-from notifications import NotificationManager, Notification, NotificationResponse
-import os
 from log import MeticulousLogger
+from notifications import Notification, NotificationManager, NotificationResponse
+from wifi import WifiManager
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -71,6 +73,7 @@ class GATTServer:
 
     def __init__(self):
         self.trigger = asyncio.Event()
+        self.update_trigger = asyncio.Event()
         self.loop = asyncio.new_event_loop()
         self.auth_notification: Notification = None
 
@@ -94,6 +97,7 @@ class GATTServer:
         self.bless_gatt_server = None
         self.loopThread = None
         logger.info(f"BLE init called. Name={self.gatt_name}")
+        self.manufacturer_data = self._build_manufacturer_data()
 
     def getServer():
         if GATTServer._singletonServer is None:
@@ -115,7 +119,9 @@ class GATTServer:
             def run_loop(loop):
                 try:
                     asyncio.set_event_loop(loop)
-                    loop.run_until_complete(self._ble_gatt_server_loop())
+                    loop.create_task(self._update_data_loop())
+                    loop.create_task(self._ble_gatt_server_loop())
+                    loop.run_forever()
                 except Exception as e:
                     logger.error(f"BLE loop failed. {e}")
 
@@ -128,6 +134,59 @@ class GATTServer:
     def stop(self):
         logger.info("Stopping BLE GATT Server")
         self.loop.call_soon_threadsafe(self.trigger.set)
+
+    def update_advertisement(self):
+        # Update advertisement
+
+        logger.warning("Updating advertisement")
+        self.manufacturer_data = self._build_manufacturer_data()
+        self.loop.call_soon_threadsafe(self.update_trigger.set)
+
+    def _build_manufacturer_data(self):
+        config = WifiManager.getCurrentConfig()
+        current_response = bytearray()
+
+        if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP:
+            current_response += bytearray([0x02])
+        elif config.connected:
+            current_response += bytearray([0x01])
+        else:
+            current_response += bytearray([0x00])
+
+        for ip in config.ips:
+            if ip.ip.version == 4:
+                current_response += ip.ip.packed
+
+        return bytes(current_response[:27])
+
+    async def _update_data_loop(self):
+        logger.warning("Starting update data loop")
+        self.update_trigger.clear()
+        while True:
+            await self.update_trigger.wait()
+            self.update_trigger.clear()
+
+            logger.warning(f"in loop: {self.manufacturer_data}")
+            # self.manufacturer_data = b"000000000000000000000000000"
+
+            advertisement = self.bless_gatt_server.app.advertisements.pop()
+            iface = self.bless_gatt_server.adapter.get_interface(
+                "org.bluez.LEAdvertisingManager1"
+            )
+            newAdvertisement = BlueZLEAdvertisement(
+                Type.PERIPHERAL, 0, self.bless_gatt_server.app
+            )
+
+            await iface.call_unregister_advertisement(advertisement.path)  # type: ignore
+            self.bless_gatt_server.bus.unexport(advertisement.path, advertisement)
+
+            newAdvertisement._manufacturer_data = {
+                0xFFFF: Variant("ay", self.manufacturer_data),
+            }
+            self.bless_gatt_server.app.advertisements.append(newAdvertisement)
+
+            self.bless_gatt_server.bus.export(newAdvertisement.path, newAdvertisement)
+            await iface.call_register_advertisement(newAdvertisement.path, {})
 
     async def _ble_gatt_server_loop(self):  # noqa: C901
         # FIXME remove once migrated away from the variscite-wifi.service towards
@@ -175,6 +234,7 @@ class GATTServer:
 
         try:
             logger.info("GATT Server started")
+            self.update_trigger.set()
             self.trigger.clear()
             await self.trigger.wait()
             logger.debug("GATT loop exiting")
@@ -301,7 +361,7 @@ class GATTServer:
 
         self.send_authentication_notification()
 
-    def machine_service_read_request(
+    def machine_ident_read_request(
         characteristic: BlessGATTCharacteristic,
     ) -> bytearray:
 
@@ -310,7 +370,10 @@ class GATTServer:
         current_response += config.hostname + ","
         current_response += "black" + ","
         current_response += "v10.1.0" + ","
-        current_response += "103"
+        current_response += "103" + ","
+        current_response += "1," if config.connected else "0,"
+        current_response += config.connection_name + ","
+        current_response += ", ".join(list(map(lambda ip: str(ip.ip), config.ips)))
         return bytearray(current_response.encode())
 
     def read_request(characteristic: BlessGATTCharacteristic, **kwargs) -> bytearray:
@@ -322,7 +385,7 @@ class GATTServer:
             pass
         if characteristic.service_uuid == ImprovUUID.SERVICE_UUID.value:
             if characteristic.uuid == GATTServer.MACHINE_IDENT_UUID:
-                value = GATTServer.machine_service_read_request(characteristic)
+                value = GATTServer.machine_ident_read_request(characteristic)
             else:
                 GATTServer.getServer().updateAuthentication()
                 value = GATTServer.getServer().improv_server.handle_read(
