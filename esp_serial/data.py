@@ -29,6 +29,7 @@ class SensorData:
     bar_down: float = 0.0
     tube: float = 0.0
     valve: float = 0.0
+    LAM_temp: float = 0.0
     motor_position: float = 0.0
     motor_speed: float = 0.0
     motor_power: float = 0.0
@@ -57,8 +58,8 @@ class SensorData:
     def from_args(args):
         try:
 
-            if len(args) > 19:
-                water_status = args[19].lower() == "true"
+            if len(args) > 20:
+                water_status = args[20].lower() == "true"
             else:
                 water_status = False
 
@@ -71,17 +72,18 @@ class SensorData:
                 bar_down=safeFloat(args[5]),
                 tube=safeFloat(args[6]),
                 valve=safeFloat(args[7]),
-                motor_position=safeFloat(args[8]),
-                motor_speed=safeFloat(args[9]),
-                motor_power=safeFloat(args[10]),
-                motor_current=safeFloat(args[11]),
-                bandheater_current=safeFloat(args[12]),
-                bandheater_power=safeFloat(args[13]),
-                pressure_sensor=safeFloat(args[14]),
-                adc_0=safeFloat(args[15]),
-                adc_1=safeFloat(args[16]),
-                adc_2=safeFloat(args[17]),
-                adc_3=safeFloat(args[18]),
+                LAM_temp=safeFloat(args[8]),
+                motor_position=safeFloat(args[9]),
+                motor_speed=safeFloat(args[10]),
+                motor_power=safeFloat(args[11]),
+                motor_current=safeFloat(args[12]),
+                bandheater_current=safeFloat(args[13]),
+                bandheater_power=safeFloat(args[14]),
+                pressure_sensor=safeFloat(args[15]),
+                adc_0=safeFloat(args[16]),
+                adc_1=safeFloat(args[17]),
+                adc_2=safeFloat(args[18]),
+                adc_3=safeFloat(args[19]),
                 water_status=water_status,
             )
         except Exception as e:
@@ -99,6 +101,7 @@ class SensorData:
             "t_bar_down": self.bar_down,
             "t_tube": self.tube,
             "t_valv": self.valve,
+            "LAM_temp": self.LAM_temp,
         }
 
     def to_sio_communication(self):
