@@ -34,6 +34,7 @@ class SensorData:
     motor_power: float = 0.0
     motor_current: float = 0.0
     bandheater_power: float = 0.0
+    bandheater_current: float = 0.0
     pressure_sensor: float = 0.0
     adc_0: float = 0.0
     adc_1: float = 0.0
@@ -56,8 +57,8 @@ class SensorData:
     def from_args(args):
         try:
 
-            if len(args) > 18:
-                water_status = args[18].lower() == "true"
+            if len(args) > 19:
+                water_status = args[19].lower() == "true"
             else:
                 water_status = False
 
@@ -74,12 +75,13 @@ class SensorData:
                 motor_speed=safeFloat(args[9]),
                 motor_power=safeFloat(args[10]),
                 motor_current=safeFloat(args[11]),
-                bandheater_power=safeFloat(args[12]),
-                pressure_sensor=safeFloat(args[13]),
-                adc_0=safeFloat(args[14]),
-                adc_1=safeFloat(args[15]),
-                adc_2=safeFloat(args[16]),
-                adc_3=safeFloat(args[17]),
+                bandheater_current=safeFloat(args[12]),
+                bandheater_power=safeFloat(args[13]),
+                pressure_sensor=safeFloat(args[14]),
+                adc_0=safeFloat(args[15]),
+                adc_1=safeFloat(args[16]),
+                adc_2=safeFloat(args[17]),
+                adc_3=safeFloat(args[18]),
                 water_status=water_status,
             )
         except Exception as e:
@@ -115,6 +117,7 @@ class SensorData:
             "m_pwr": self.motor_power,
             "m_cur": self.motor_current,
             "bh_pwr": self.bandheater_power,
+            "bh_cur": self.bandheater_current,
         }
 
     def to_sio_water_status(self):
