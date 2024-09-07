@@ -328,11 +328,17 @@ class Machine:
                             Machine.firmware_running["Release"]
                             == Machine.firmware_available["Release"]
                         ):
-                            if (
-                                Machine.firmware_running["ExtraCommits"]
-                                < Machine.firmware_available["ExtraCommits"]
-                            ):
-                                needs_update = True
+                            try:
+                                running_extra = int(
+                                    Machine.firmware_running["ExtraCommits"]
+                                )
+                                available_extra = int(
+                                    Machine.firmware_available["ExtraCommits"]
+                                )
+                                if running_extra < available_extra:
+                                    needs_update = True
+                            except Exception:
+                                pass
 
                     if (
                         needs_update
