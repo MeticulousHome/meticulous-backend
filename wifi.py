@@ -155,6 +155,8 @@ class WifiManager:
                         break
 
     def resetWifiMode():
+        from ble_gatt import GATTServer
+
         # Without networking we have no chance starting the wifi or getting the creads
         if WifiManager._networking_available:
             # start AP if needed
@@ -164,6 +166,7 @@ class WifiManager:
                 WifiManager.stopHotspot()
                 WifiManager.scanForNetworks(timeout=1)
                 WifiManager._zeroconf.restart()
+            GATTServer.getServer().update_advertisement()
 
     def startHotspot():
         if not WifiManager._networking_available:
@@ -233,6 +236,8 @@ class WifiManager:
         return wifis
 
     def connectToWifi(ssid: str, password: str):
+        from ble_gatt import GATTServer
+
         if not WifiManager._networking_available:
             return False
 
@@ -244,6 +249,7 @@ class WifiManager:
             if len([x for x in networks if x.in_use]) > 0:
                 logger.info("Already connected")
                 WifiManager._zeroconf.restart()
+                GATTServer.getServer().update_advertisement()
                 return True
 
             logger.info("Target network online, connecting now")
@@ -251,6 +257,7 @@ class WifiManager:
                 nmcli.device.wifi_connect(ssid, password)
             except Exception as e:
                 logger.info(f"Failed to connect to wifi: {e}")
+                GATTServer.getServer().update_advertisement()
                 return False
             logger.info(
                 "Connection should be established, checking if a network is marked in-use"
@@ -261,9 +268,10 @@ class WifiManager:
                 WifiManager._zeroconf.restart()
                 MeticulousConfig[CONFIG_WIFI][WIFI_MODE] = WIFI_MODE_CLIENT
                 WifiManager.rememberWifi(ssid, password)
-
+                GATTServer.getServer().update_advertisement()
                 return True
         logger.info("Target network was not found, no connection established")
+        GATTServer.getServer().update_advertisement()
         return False
 
     def rememberWifi(name, password):
