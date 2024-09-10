@@ -441,10 +441,11 @@ class ShotDataBase:
             for row in results:
                 row_dict = dict(row._mapping)
                 data = None
+                file_entry = row_dict.pop("history_file")
+
                 if params.dump_data:
                     from shot_manager import SHOT_PATH
 
-                    file_entry = row_dict.pop("history_file")
                     data_file = Path(SHOT_PATH).joinpath(file_entry)
                     with open(data_file, "rb") as compressed_file:
                         decompressor = zstd.ZstdDecompressor()
