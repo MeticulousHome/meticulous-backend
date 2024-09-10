@@ -218,22 +218,22 @@ class ShotData:
         aux_controller_kind = None
         aux_setpoint = 0.0
         is_aux_controller_active = False
-        try:
-            main_controller_kind = args[6].strip("\r\n")
-            if main_controller_kind == "none":
-                main_controller_kind = None
-            else:
-                main_controller_kind = ControlTypes(main_controller_kind)
-            main_setpoint = float(args[7].strip("\r\n"))
-            aux_controller_kind = args[8].strip("\r\n")
-            if aux_controller_kind == "none":
-                aux_controller_kind = None
-            else:
-                aux_controller_kind = ControlTypes(aux_controller_kind)
-            aux_setpoint = float(args[9].strip("\r\n"))
-            is_aux_controller_active = args[10].strip("\r\n") == "true"
-        except Exception:
-            pass
+        if len(args) > 10:
+            try:
+                main_controller_kind = args[6].strip("\r\n")
+                if main_controller_kind == "none":
+                    main_controller_kind = None
+
+                main_setpoint = float(args[7].strip("\r\n"))
+                aux_controller_kind = args[8].strip("\r\n")
+                if aux_controller_kind == "none":
+                    aux_controller_kind = None
+
+                aux_setpoint = float(args[9].strip("\r\n"))
+                is_aux_controller_active = args[10].strip("\r\n") == "true"
+            except Exception as e:
+                logger.warning(f"Failed to parse ShotData: {args}", exc_info=e)
+                pass
 
         state = MachineState.IDLE
         if profile is not None:
@@ -269,6 +269,7 @@ class ShotData:
 
     def to_sio(self):
         setpoints = {}
+
         if self.main_controller_kind is not None:
             setpoints[self.main_controller_kind] = self.main_setpoint
             setpoints["active"] = self.main_controller_kind

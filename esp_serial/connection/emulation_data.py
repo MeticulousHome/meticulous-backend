@@ -811,978 +811,978 @@ Data,0.00,9.97,-2.89,85.48,closing valve,mimoja
 Sensors,[1;31m ex1[0m179.71[1;31m ex2[0m188.20[1;32m up[0m83.24[1;32m mup[0m85.87[1;32m mdn[0m85.58[1;32m dn[0m84.52[1;32m tube[0m84.95[1;33m valv[0m62.53[1;34m pos[0m13.69[1;34m speed[0m5.03[1;36m m_pow[0m70.25[1;36m current[0m1.54[1;36m bh_pow[0m9.58[1;35m p_r[0m112[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
 INFO: [PressureValueTrigger] Trigger Activated Pressure Value - source: Pressure Raw Sensor Read: 0.287284 > Value: 0.200000
 INFO: Moving from Node: 302 to: 303
-Data,0.00,9.87,-2.89,91.08,preinfusion,mimoja
+Data,0.00,9.87,-2.89,91.08,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m179.71[1;31m ex2[0m188.08[1;32m up[0m83.24[1;32m mup[0m85.82[1;32m mdn[0m85.53[1;32m dn[0m84.47[1;32m tube[0m84.89[1;33m valv[0m62.59[1;34m pos[0m14.34[1;34m speed[0m4.86[1;36m m_pow[0m59.53[1;36m current[0m1.71[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,0.00,9.33,-2.89,91.22,preinfusion,mimoja
+Data,0.00,9.33,-2.89,91.22,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m179.71[1;31m ex2[0m187.96[1;32m up[0m83.24[1;32m mup[0m85.78[1;32m mdn[0m85.48[1;32m dn[0m84.42[1;32m tube[0m84.84[1;33m valv[0m62.66[1;34m pos[0m14.71[1;34m speed[0m2.37[1;36m m_pow[0m44.87[1;36m current[0m1.20[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,0.00,8.86,-2.89,91.34,preinfusion,mimoja
+Data,0.00,8.86,-2.89,91.34,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m179.60[1;31m ex2[0m187.84[1;32m up[0m83.20[1;32m mup[0m85.68[1;32m mdn[0m85.43[1;32m dn[0m84.37[1;32m tube[0m84.79[1;33m valv[0m62.72[1;34m pos[0m15.11[1;34m speed[0m2.89[1;36m m_pow[0m41.28[1;36m current[0m1.04[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,0.00,8.37,-2.89,91.44,preinfusion,mimoja
+Data,0.00,8.37,-2.89,91.44,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m179.50[1;31m ex2[0m187.72[1;32m up[0m83.06[1;32m mup[0m85.58[1;32m mdn[0m85.24[1;32m dn[0m84.28[1;32m tube[0m84.69[1;33m valv[0m62.81[1;34m pos[0m15.46[1;34m speed[0m2.73[1;36m m_pow[0m43.72[1;36m current[0m1.53[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,0.32,7.80,-2.89,91.53,preinfusion,mimoja
+Data,0.32,7.80,-2.89,91.53,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m179.40[1;31m ex2[0m187.72[1;32m up[0m82.96[1;32m mup[0m85.48[1;32m mdn[0m85.19[1;32m dn[0m84.23[1;32m tube[0m84.64[1;33m valv[0m62.84[1;34m pos[0m15.80[1;34m speed[0m2.45[1;36m m_pow[0m41.29[1;36m current[0m1.25[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,0.33,7.31,-2.75,91.60,preinfusion,mimoja
+Data,0.33,7.31,-2.75,91.60,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m179.40[1;31m ex2[0m187.72[1;32m up[0m82.92[1;32m mup[0m85.43[1;32m mdn[0m85.14[1;32m dn[0m84.18[1;32m tube[0m84.57[1;33m valv[0m62.88[1;34m pos[0m16.14[1;34m speed[0m2.53[1;36m m_pow[0m38.28[1;36m current[0m1.15[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,0.34,6.78,-2.75,91.66,preinfusion,mimoja
+Data,0.34,6.78,-2.75,91.66,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m179.30[1;31m ex2[0m187.72[1;32m up[0m82.87[1;32m mup[0m85.29[1;32m mdn[0m85.05[1;32m dn[0m84.09[1;32m tube[0m84.45[1;33m valv[0m62.94[1;34m pos[0m16.46[1;34m speed[0m2.45[1;36m m_pow[0m39.30[1;36m current[0m1.24[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,0.35,6.22,-2.75,91.71,preinfusion,mimoja
+Data,0.35,6.22,-2.75,91.71,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m179.30[1;31m ex2[0m187.60[1;32m up[0m82.82[1;32m mup[0m85.24[1;32m mdn[0m85.00[1;32m dn[0m84.04[1;32m tube[0m84.40[1;33m valv[0m62.97[1;34m pos[0m16.76[1;34m speed[0m2.18[1;36m m_pow[0m38.57[1;36m current[0m1.30[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,0.36,5.73,-2.63,91.75,preinfusion,mimoja
+Data,0.36,5.73,-2.63,91.75,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m179.30[1;31m ex2[0m187.48[1;32m up[0m82.78[1;32m mup[0m85.19[1;32m mdn[0m84.95[1;32m dn[0m83.99[1;32m tube[0m84.35[1;33m valv[0m62.97[1;34m pos[0m17.07[1;34m speed[0m2.49[1;36m m_pow[0m36.39[1;36m current[0m1.19[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,0.37,5.20,-2.63,91.78,preinfusion,mimoja
+Data,0.37,5.20,-2.63,91.78,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m179.30[1;31m ex2[0m187.36[1;32m up[0m82.73[1;32m mup[0m85.09[1;32m mdn[0m84.90[1;32m dn[0m83.99[1;32m tube[0m84.25[1;33m valv[0m63.03[1;34m pos[0m17.37[1;34m speed[0m2.34[1;36m m_pow[0m37.73[1;36m current[0m1.18[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,0.38,4.67,-2.63,91.81,preinfusion,mimoja
+Data,0.38,4.67,-2.63,91.81,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m179.09[1;31m ex2[0m187.24[1;32m up[0m82.59[1;32m mup[0m85.00[1;32m mdn[0m84.80[1;32m dn[0m83.90[1;32m tube[0m84.20[1;33m valv[0m63.06[1;34m pos[0m17.66[1;34m speed[0m2.18[1;36m m_pow[0m35.94[1;36m current[0m1.24[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,0.36,4.62,-2.63,91.83,preinfusion,mimoja
+Data,0.36,4.62,-2.63,91.83,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m178.99[1;31m ex2[0m187.24[1;32m up[0m82.55[1;32m mup[0m84.95[1;32m mdn[0m84.71[1;32m dn[0m83.85[1;32m tube[0m84.15[1;33m valv[0m63.13[1;34m pos[0m17.95[1;34m speed[0m2.18[1;36m m_pow[0m36.93[1;36m current[0m1.39[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,0.35,4.47,-2.74,91.85,preinfusion,mimoja
+Data,0.35,4.47,-2.74,91.85,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m178.89[1;31m ex2[0m187.24[1;32m up[0m82.46[1;32m mup[0m84.95[1;32m mdn[0m84.66[1;32m dn[0m83.80[1;32m tube[0m84.10[1;33m valv[0m63.13[1;34m pos[0m18.25[1;34m speed[0m2.26[1;36m m_pow[0m36.65[1;36m current[0m1.16[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,0.33,4.37,-2.74,91.87,preinfusion,mimoja
+Data,0.33,4.37,-2.74,91.87,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m178.89[1;31m ex2[0m187.00[1;32m up[0m82.41[1;32m mup[0m84.85[1;32m mdn[0m84.52[1;32m dn[0m83.76[1;32m tube[0m84.00[1;33m valv[0m63.13[1;34m pos[0m18.55[1;34m speed[0m2.30[1;36m m_pow[0m37.49[1;36m current[0m1.17[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,0.32,4.31,-2.74,91.88,preinfusion,mimoja
+Data,0.32,4.31,-2.74,91.88,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m178.89[1;31m ex2[0m186.88[1;32m up[0m82.37[1;32m mup[0m84.76[1;32m mdn[0m84.52[1;32m dn[0m83.71[1;32m tube[0m83.95[1;33m valv[0m63.10[1;34m pos[0m18.82[1;34m speed[0m2.18[1;36m m_pow[0m36.71[1;36m current[0m1.33[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,0.31,4.21,-2.74,91.89,preinfusion,mimoja
+Data,0.31,4.21,-2.74,91.89,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m178.78[1;31m ex2[0m186.76[1;32m up[0m82.32[1;32m mup[0m84.66[1;32m mdn[0m84.47[1;32m dn[0m83.66[1;32m tube[0m83.91[1;33m valv[0m63.13[1;34m pos[0m19.10[1;34m speed[0m2.18[1;36m m_pow[0m36.78[1;36m current[0m1.24[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,0.32,4.15,-2.74,91.90,preinfusion,mimoja
+Data,0.32,4.15,-2.74,91.90,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m178.68[1;31m ex2[0m186.76[1;32m up[0m82.32[1;32m mup[0m84.61[1;32m mdn[0m84.42[1;32m dn[0m83.62[1;32m tube[0m83.81[1;33m valv[0m63.19[1;34m pos[0m19.39[1;34m speed[0m2.18[1;36m m_pow[0m38.25[1;36m current[0m1.26[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,0.33,4.16,-2.74,91.90,preinfusion,mimoja
+Data,0.33,4.16,-2.74,91.90,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m178.48[1;31m ex2[0m186.76[1;32m up[0m82.18[1;32m mup[0m84.47[1;32m mdn[0m84.33[1;32m dn[0m83.57[1;32m tube[0m83.76[1;33m valv[0m63.22[1;34m pos[0m19.68[1;34m speed[0m2.22[1;36m m_pow[0m35.98[1;36m current[0m1.24[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,0.33,4.11,-2.74,91.91,preinfusion,mimoja
+Data,0.33,4.11,-2.74,91.91,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m178.48[1;31m ex2[0m186.76[1;32m up[0m82.18[1;32m mup[0m84.42[1;32m mdn[0m84.28[1;32m dn[0m83.52[1;32m tube[0m83.71[1;33m valv[0m63.22[1;34m pos[0m19.97[1;34m speed[0m2.22[1;36m m_pow[0m35.85[1;36m current[0m1.07[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,0.34,4.07,-2.74,91.92,preinfusion,mimoja
+Data,0.34,4.07,-2.74,91.92,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m178.48[1;31m ex2[0m186.65[1;32m up[0m82.09[1;32m mup[0m84.37[1;32m mdn[0m84.23[1;32m dn[0m83.48[1;32m tube[0m83.67[1;33m valv[0m63.22[1;34m pos[0m20.27[1;34m speed[0m2.18[1;36m m_pow[0m36.95[1;36m current[0m1.24[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,0.35,4.05,-2.74,91.92,preinfusion,mimoja
+Data,0.35,4.05,-2.74,91.92,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m178.38[1;31m ex2[0m186.41[1;32m up[0m82.00[1;32m mup[0m84.28[1;32m mdn[0m84.09[1;32m dn[0m83.48[1;32m tube[0m83.57[1;33m valv[0m63.19[1;34m pos[0m20.54[1;34m speed[0m2.14[1;36m m_pow[0m36.40[1;36m current[0m1.24[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.36,4.06,-2.74,91.92,preinfusion,mimoja
+Data,0.36,4.06,-2.74,91.92,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m178.28[1;31m ex2[0m186.30[1;32m up[0m81.91[1;32m mup[0m84.18[1;32m mdn[0m84.04[1;32m dn[0m83.48[1;32m tube[0m83.53[1;33m valv[0m63.19[1;34m pos[0m20.84[1;34m speed[0m2.26[1;36m m_pow[0m34.99[1;36m current[0m1.21[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.37,4.04,-2.74,91.93,preinfusion,mimoja
+Data,0.37,4.04,-2.74,91.93,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m178.18[1;31m ex2[0m186.30[1;32m up[0m81.86[1;32m mup[0m84.09[1;32m mdn[0m83.99[1;32m dn[0m83.48[1;32m tube[0m83.48[1;33m valv[0m63.19[1;34m pos[0m21.13[1;34m speed[0m2.22[1;36m m_pow[0m35.44[1;36m current[0m1.18[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.39,4.03,-2.74,91.93,preinfusion,mimoja
+Data,0.39,4.03,-2.74,91.93,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m177.98[1;31m ex2[0m186.30[1;32m up[0m81.77[1;32m mup[0m83.99[1;32m mdn[0m83.95[1;32m dn[0m83.38[1;32m tube[0m83.38[1;33m valv[0m63.25[1;34m pos[0m21.41[1;34m speed[0m2.14[1;36m m_pow[0m35.78[1;36m current[0m1.19[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.42,4.02,-2.74,91.93,preinfusion,mimoja
+Data,0.42,4.02,-2.74,91.93,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m177.88[1;31m ex2[0m186.30[1;32m up[0m81.73[1;32m mup[0m83.99[1;32m mdn[0m83.90[1;32m dn[0m83.34[1;32m tube[0m83.34[1;33m valv[0m63.25[1;34m pos[0m21.68[1;34m speed[0m2.10[1;36m m_pow[0m35.98[1;36m current[0m1.32[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.46,4.03,-2.74,91.93,preinfusion,mimoja
+Data,0.46,4.03,-2.74,91.93,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m177.78[1;31m ex2[0m186.18[1;32m up[0m81.68[1;32m mup[0m83.99[1;32m mdn[0m83.85[1;32m dn[0m83.29[1;32m tube[0m83.30[1;33m valv[0m63.29[1;34m pos[0m21.98[1;34m speed[0m2.26[1;36m m_pow[0m37.05[1;36m current[0m1.23[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.49,4.03,-2.74,91.93,preinfusion,mimoja
+Data,0.49,4.03,-2.74,91.93,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m177.68[1;31m ex2[0m186.06[1;32m up[0m81.64[1;32m mup[0m83.95[1;32m mdn[0m83.76[1;32m dn[0m83.24[1;32m tube[0m83.26[1;33m valv[0m63.29[1;34m pos[0m22.27[1;34m speed[0m2.22[1;36m m_pow[0m36.25[1;36m current[0m1.19[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.52,4.02,-2.74,91.94,preinfusion,mimoja
+Data,0.52,4.02,-2.74,91.94,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m177.78[1;31m ex2[0m185.83[1;32m up[0m81.55[1;32m mup[0m83.80[1;32m mdn[0m83.66[1;32m dn[0m83.24[1;32m tube[0m83.18[1;33m valv[0m63.29[1;34m pos[0m22.55[1;34m speed[0m2.14[1;36m m_pow[0m35.96[1;36m current[0m1.24[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.55,4.00,-2.74,91.94,preinfusion,mimoja
+Data,0.55,4.00,-2.74,91.94,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m177.78[1;31m ex2[0m185.83[1;32m up[0m81.50[1;32m mup[0m83.71[1;32m mdn[0m83.62[1;32m dn[0m83.24[1;32m tube[0m83.13[1;33m valv[0m63.25[1;34m pos[0m22.82[1;34m speed[0m2.10[1;36m m_pow[0m37.21[1;36m current[0m1.31[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.56,4.01,-2.74,91.94,preinfusion,mimoja
+Data,0.56,4.01,-2.74,91.94,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m177.78[1;31m ex2[0m185.83[1;32m up[0m81.41[1;32m mup[0m83.66[1;32m mdn[0m83.57[1;32m dn[0m83.24[1;32m tube[0m83.09[1;33m valv[0m63.29[1;34m pos[0m23.10[1;34m speed[0m2.22[1;36m m_pow[0m38.80[1;36m current[0m1.31[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.57,4.01,-2.74,91.94,preinfusion,mimoja
+Data,0.57,4.01,-2.74,91.94,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m177.68[1;31m ex2[0m185.72[1;32m up[0m81.28[1;32m mup[0m83.57[1;32m mdn[0m83.48[1;32m dn[0m83.20[1;32m tube[0m82.99[1;33m valv[0m63.32[1;34m pos[0m23.40[1;34m speed[0m2.18[1;36m m_pow[0m37.81[1;36m current[0m1.31[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.58,4.00,-2.74,91.94,preinfusion,mimoja
+Data,0.58,4.00,-2.74,91.94,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m177.58[1;31m ex2[0m185.60[1;32m up[0m81.23[1;32m mup[0m83.52[1;32m mdn[0m83.43[1;32m dn[0m83.15[1;32m tube[0m82.95[1;33m valv[0m63.35[1;34m pos[0m23.69[1;34m speed[0m2.18[1;36m m_pow[0m36.22[1;36m current[0m1.29[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.59,3.99,-2.74,91.94,preinfusion,mimoja
+Data,0.59,3.99,-2.74,91.94,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m177.48[1;31m ex2[0m185.49[1;32m up[0m81.23[1;32m mup[0m83.48[1;32m mdn[0m83.38[1;32m dn[0m83.10[1;32m tube[0m82.90[1;33m valv[0m63.35[1;34m pos[0m23.97[1;34m speed[0m2.18[1;36m m_pow[0m37.52[1;36m current[0m1.34[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.60,3.98,-2.94,91.94,preinfusion,mimoja
+Data,0.60,3.98,-2.94,91.94,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m177.38[1;31m ex2[0m185.49[1;32m up[0m81.19[1;32m mup[0m83.38[1;32m mdn[0m83.34[1;32m dn[0m83.06[1;32m tube[0m82.81[1;33m valv[0m63.32[1;34m pos[0m24.25[1;34m speed[0m2.14[1;36m m_pow[0m39.13[1;36m current[0m1.44[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.60,4.00,-2.94,91.94,preinfusion,mimoja
+Data,0.60,4.00,-2.94,91.94,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m177.28[1;31m ex2[0m185.37[1;32m up[0m81.10[1;32m mup[0m83.29[1;32m mdn[0m83.24[1;32m dn[0m83.06[1;32m tube[0m82.77[1;33m valv[0m63.32[1;34m pos[0m24.54[1;34m speed[0m2.22[1;36m m_pow[0m36.03[1;36m current[0m1.17[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.59,4.00,-2.94,91.94,preinfusion,mimoja
+Data,0.59,4.00,-2.94,91.94,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m177.28[1;31m ex2[0m185.37[1;32m up[0m81.06[1;32m mup[0m83.24[1;32m mdn[0m83.24[1;32m dn[0m83.01[1;32m tube[0m82.73[1;33m valv[0m63.32[1;34m pos[0m24.83[1;34m speed[0m2.26[1;36m m_pow[0m36.49[1;36m current[0m1.25[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.58,3.99,-2.94,91.94,preinfusion,mimoja
+Data,0.58,3.99,-2.94,91.94,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m177.28[1;31m ex2[0m185.26[1;32m up[0m81.06[1;32m mup[0m83.20[1;32m mdn[0m83.20[1;32m dn[0m82.96[1;32m tube[0m82.69[1;33m valv[0m63.32[1;34m pos[0m25.13[1;34m speed[0m2.18[1;36m m_pow[0m37.17[1;36m current[0m1.23[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.57,3.99,-2.94,91.94,preinfusion,mimoja
+Data,0.57,3.99,-2.94,91.94,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m177.08[1;31m ex2[0m185.03[1;32m up[0m80.92[1;32m mup[0m83.06[1;32m mdn[0m83.10[1;32m dn[0m82.87[1;32m tube[0m82.62[1;33m valv[0m63.35[1;34m pos[0m25.40[1;34m speed[0m2.10[1;36m m_pow[0m36.60[1;36m current[0m1.41[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.56,4.00,-2.94,91.95,preinfusion,mimoja
+Data,0.56,4.00,-2.94,91.95,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m176.98[1;31m ex2[0m184.91[1;32m up[0m80.88[1;32m mup[0m82.96[1;32m mdn[0m83.06[1;32m dn[0m82.87[1;32m tube[0m82.57[1;33m valv[0m63.35[1;34m pos[0m25.70[1;34m speed[0m2.22[1;36m m_pow[0m35.60[1;36m current[0m1.23[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.56,4.00,-2.79,91.94,preinfusion,mimoja
+Data,0.56,4.00,-2.79,91.94,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m176.89[1;31m ex2[0m184.91[1;32m up[0m80.79[1;32m mup[0m82.92[1;32m mdn[0m83.01[1;32m dn[0m82.87[1;32m tube[0m82.52[1;33m valv[0m63.38[1;34m pos[0m25.99[1;34m speed[0m2.26[1;36m m_pow[0m37.05[1;36m current[0m1.32[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.57,4.01,-2.79,91.95,preinfusion,mimoja
+Data,0.57,4.01,-2.79,91.95,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m176.89[1;31m ex2[0m184.91[1;32m up[0m80.74[1;32m mup[0m82.87[1;32m mdn[0m82.92[1;32m dn[0m82.87[1;32m tube[0m82.42[1;33m valv[0m63.38[1;34m pos[0m26.27[1;34m speed[0m2.18[1;36m m_pow[0m36.44[1;36m current[0m1.17[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.58,3.98,-2.79,91.96,preinfusion,mimoja
+Data,0.58,3.98,-2.79,91.96,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m176.79[1;31m ex2[0m184.91[1;32m up[0m80.66[1;32m mup[0m82.87[1;32m mdn[0m82.87[1;32m dn[0m82.87[1;32m tube[0m82.39[1;33m valv[0m63.38[1;34m pos[0m26.55[1;34m speed[0m2.10[1;36m m_pow[0m36.54[1;36m current[0m1.32[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.60,3.99,-2.95,91.96,preinfusion,mimoja
+Data,0.60,3.99,-2.95,91.96,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m176.69[1;31m ex2[0m184.80[1;32m up[0m80.61[1;32m mup[0m82.82[1;32m mdn[0m82.87[1;32m dn[0m82.87[1;32m tube[0m82.36[1;33m valv[0m63.35[1;34m pos[0m26.84[1;34m speed[0m2.18[1;36m m_pow[0m37.98[1;36m current[0m1.31[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.63,4.00,-2.95,91.95,preinfusion,mimoja
+Data,0.63,4.00,-2.95,91.95,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m176.59[1;31m ex2[0m184.69[1;32m up[0m80.57[1;32m mup[0m82.78[1;32m mdn[0m82.87[1;32m dn[0m82.87[1;32m tube[0m82.33[1;33m valv[0m63.38[1;34m pos[0m27.11[1;34m speed[0m2.18[1;36m m_pow[0m36.40[1;36m current[0m1.28[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.67,3.99,-2.95,91.96,preinfusion,mimoja
+Data,0.67,3.99,-2.95,91.96,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m176.49[1;31m ex2[0m184.46[1;32m up[0m80.48[1;32m mup[0m82.64[1;32m mdn[0m82.78[1;32m dn[0m82.87[1;32m tube[0m82.28[1;33m valv[0m63.44[1;34m pos[0m27.40[1;34m speed[0m2.18[1;36m m_pow[0m36.81[1;36m current[0m1.28[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.71,3.96,-3.10,91.97,preinfusion,mimoja
+Data,0.71,3.96,-3.10,91.97,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m176.49[1;31m ex2[0m184.46[1;32m up[0m80.44[1;32m mup[0m82.59[1;32m mdn[0m82.73[1;32m dn[0m82.87[1;32m tube[0m82.25[1;33m valv[0m63.48[1;34m pos[0m27.69[1;34m speed[0m2.10[1;36m m_pow[0m37.78[1;36m current[0m1.21[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.75,3.95,-3.10,91.98,preinfusion,mimoja
+Data,0.75,3.95,-3.10,91.98,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m176.40[1;31m ex2[0m184.35[1;32m up[0m80.39[1;32m mup[0m82.55[1;32m mdn[0m82.69[1;32m dn[0m82.87[1;32m tube[0m82.22[1;33m valv[0m63.48[1;34m pos[0m27.97[1;34m speed[0m2.10[1;36m m_pow[0m37.98[1;36m current[0m1.36[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.79,3.97,-3.20,91.98,preinfusion,mimoja
+Data,0.79,3.97,-3.20,91.98,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m176.20[1;31m ex2[0m184.12[1;32m up[0m80.30[1;32m mup[0m82.50[1;32m mdn[0m82.69[1;32m dn[0m82.87[1;32m tube[0m82.14[1;33m valv[0m63.51[1;34m pos[0m28.26[1;34m speed[0m2.18[1;36m m_pow[0m38.08[1;36m current[0m1.27[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.80,3.96,-3.30,91.98,preinfusion,mimoja
+Data,0.80,3.96,-3.30,91.98,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m176.11[1;31m ex2[0m184.01[1;32m up[0m80.26[1;32m mup[0m82.46[1;32m mdn[0m82.69[1;32m dn[0m82.87[1;32m tube[0m82.12[1;33m valv[0m63.54[1;34m pos[0m28.55[1;34m speed[0m2.14[1;36m m_pow[0m37.03[1;36m current[0m1.36[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.82,3.93,-3.30,91.98,preinfusion,mimoja
+Data,0.82,3.93,-3.30,91.98,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m176.11[1;31m ex2[0m184.01[1;32m up[0m80.22[1;32m mup[0m82.41[1;32m mdn[0m82.64[1;32m dn[0m82.87[1;32m tube[0m82.10[1;33m valv[0m63.57[1;34m pos[0m28.82[1;34m speed[0m2.10[1;36m m_pow[0m37.68[1;36m current[0m1.41[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.83,3.91,-3.30,91.98,preinfusion,mimoja
+Data,0.83,3.91,-3.30,91.98,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m176.11[1;31m ex2[0m184.01[1;32m up[0m80.17[1;32m mup[0m82.37[1;32m mdn[0m82.64[1;32m dn[0m82.87[1;32m tube[0m82.05[1;33m valv[0m63.60[1;34m pos[0m29.09[1;34m speed[0m2.06[1;36m m_pow[0m39.11[1;36m current[0m1.56[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.83,3.94,-3.30,91.98,preinfusion,mimoja
+Data,0.83,3.94,-3.30,91.98,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m176.01[1;31m ex2[0m183.90[1;32m up[0m80.08[1;32m mup[0m82.27[1;32m mdn[0m82.59[1;32m dn[0m82.96[1;32m tube[0m82.03[1;33m valv[0m63.63[1;34m pos[0m29.37[1;34m speed[0m2.26[1;36m m_pow[0m36.64[1;36m current[0m1.40[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.82,3.95,-3.30,91.98,preinfusion,mimoja
+Data,0.82,3.95,-3.30,91.98,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m176.01[1;31m ex2[0m183.79[1;32m up[0m80.04[1;32m mup[0m82.23[1;32m mdn[0m82.59[1;32m dn[0m83.01[1;32m tube[0m82.00[1;33m valv[0m63.63[1;34m pos[0m29.66[1;34m speed[0m2.22[1;36m m_pow[0m38.00[1;36m current[0m1.39[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.81,3.96,-3.30,92.00,preinfusion,mimoja
+Data,0.81,3.96,-3.30,92.00,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m175.91[1;31m ex2[0m183.68[1;32m up[0m79.95[1;32m mup[0m82.18[1;32m mdn[0m82.55[1;32m dn[0m83.10[1;32m tube[0m81.99[1;33m valv[0m63.63[1;34m pos[0m29.94[1;34m speed[0m2.18[1;36m m_pow[0m37.86[1;36m current[0m1.31[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.80,3.95,-3.30,92.03,preinfusion,mimoja
+Data,0.80,3.95,-3.30,92.03,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m175.82[1;31m ex2[0m183.45[1;32m up[0m79.87[1;32m mup[0m82.05[1;32m mdn[0m82.50[1;32m dn[0m83.20[1;32m tube[0m81.95[1;33m valv[0m63.67[1;34m pos[0m30.23[1;34m speed[0m2.14[1;36m m_pow[0m38.51[1;36m current[0m1.39[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.80,3.96,-3.30,91.99,preinfusion,mimoja
+Data,0.80,3.96,-3.30,91.99,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m175.72[1;31m ex2[0m183.34[1;32m up[0m79.82[1;32m mup[0m82.00[1;32m mdn[0m82.50[1;32m dn[0m83.24[1;32m tube[0m81.94[1;33m valv[0m63.70[1;34m pos[0m30.51[1;34m speed[0m2.22[1;36m m_pow[0m38.43[1;36m current[0m1.38[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.81,3.99,-3.42,92.03,preinfusion,mimoja
+Data,0.81,3.99,-3.42,92.03,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m175.72[1;31m ex2[0m183.23[1;32m up[0m79.78[1;32m mup[0m81.96[1;32m mdn[0m82.50[1;32m dn[0m83.29[1;32m tube[0m81.92[1;33m valv[0m63.73[1;34m pos[0m30.80[1;34m speed[0m2.22[1;36m m_pow[0m37.49[1;36m current[0m1.38[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.83,4.00,-3.42,92.03,preinfusion,mimoja
+Data,0.83,4.00,-3.42,92.03,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m175.53[1;31m ex2[0m183.12[1;32m up[0m79.69[1;32m mup[0m81.91[1;32m mdn[0m82.50[1;32m dn[0m83.43[1;32m tube[0m81.89[1;33m valv[0m63.79[1;34m pos[0m31.09[1;34m speed[0m2.22[1;36m m_pow[0m37.47[1;36m current[0m1.35[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.87,4.01,-3.42,92.05,preinfusion,mimoja
+Data,0.87,4.01,-3.42,92.05,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m175.43[1;31m ex2[0m183.12[1;32m up[0m79.65[1;32m mup[0m81.86[1;32m mdn[0m82.55[1;32m dn[0m83.57[1;32m tube[0m81.88[1;33m valv[0m63.83[1;34m pos[0m31.38[1;34m speed[0m2.10[1;36m m_pow[0m37.84[1;36m current[0m1.30[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.91,4.01,-3.42,92.04,preinfusion,mimoja
+Data,0.91,4.01,-3.42,92.04,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m175.34[1;31m ex2[0m183.01[1;32m up[0m79.61[1;32m mup[0m81.82[1;32m mdn[0m82.59[1;32m dn[0m83.66[1;32m tube[0m81.89[1;33m valv[0m63.86[1;34m pos[0m31.65[1;34m speed[0m2.06[1;36m m_pow[0m38.75[1;36m current[0m1.47[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,0.96,4.02,-3.42,92.05,preinfusion,mimoja
+Data,0.96,4.02,-3.42,92.05,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m175.24[1;31m ex2[0m182.79[1;32m up[0m79.52[1;32m mup[0m81.77[1;32m mdn[0m82.69[1;32m dn[0m83.85[1;32m tube[0m81.91[1;33m valv[0m63.92[1;34m pos[0m31.94[1;34m speed[0m2.10[1;36m m_pow[0m37.32[1;36m current[0m1.30[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,1.00,4.00,-3.42,92.00,preinfusion,mimoja
+Data,1.00,4.00,-3.42,92.00,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m175.15[1;31m ex2[0m182.68[1;32m up[0m79.48[1;32m mup[0m81.77[1;32m mdn[0m82.73[1;32m dn[0m83.90[1;32m tube[0m81.93[1;33m valv[0m63.99[1;34m pos[0m32.22[1;34m speed[0m2.14[1;36m m_pow[0m38.11[1;36m current[0m1.38[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,1.04,3.98,-3.42,92.02,preinfusion,mimoja
+Data,1.04,3.98,-3.42,92.02,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m175.05[1;31m ex2[0m182.68[1;32m up[0m79.48[1;32m mup[0m81.73[1;32m mdn[0m82.78[1;32m dn[0m83.99[1;32m tube[0m81.95[1;33m valv[0m64.02[1;34m pos[0m32.50[1;34m speed[0m2.06[1;36m m_pow[0m38.09[1;36m current[0m1.39[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,1.06,3.94,-3.42,92.00,preinfusion,mimoja
+Data,1.06,3.94,-3.42,92.00,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m174.96[1;31m ex2[0m182.47[1;32m up[0m79.43[1;32m mup[0m81.64[1;32m mdn[0m82.87[1;32m dn[0m84.18[1;32m tube[0m81.99[1;33m valv[0m64.08[1;34m pos[0m32.77[1;34m speed[0m1.98[1;36m m_pow[0m38.50[1;36m current[0m1.43[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,1.05,3.96,-3.53,92.01,preinfusion,mimoja
+Data,1.05,3.96,-3.53,92.01,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m174.96[1;31m ex2[0m182.36[1;32m up[0m79.39[1;32m mup[0m81.59[1;32m mdn[0m82.92[1;32m dn[0m84.28[1;32m tube[0m82.00[1;33m valv[0m64.11[1;34m pos[0m33.05[1;34m speed[0m2.18[1;36m m_pow[0m39.33[1;36m current[0m1.49[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,1.05,3.97,-3.53,92.02,preinfusion,mimoja
+Data,1.05,3.97,-3.53,92.02,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m174.96[1;31m ex2[0m182.25[1;32m up[0m79.35[1;32m mup[0m81.59[1;32m mdn[0m82.96[1;32m dn[0m84.37[1;32m tube[0m82.02[1;33m valv[0m64.18[1;34m pos[0m33.35[1;34m speed[0m2.18[1;36m m_pow[0m39.69[1;36m current[0m1.43[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,1.05,3.94,-3.53,92.02,preinfusion,mimoja
+Data,1.05,3.94,-3.53,92.02,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m174.86[1;31m ex2[0m182.25[1;32m up[0m79.26[1;32m mup[0m81.59[1;32m mdn[0m83.06[1;32m dn[0m84.47[1;32m tube[0m82.06[1;33m valv[0m64.24[1;34m pos[0m33.62[1;34m speed[0m2.06[1;36m m_pow[0m39.22[1;36m current[0m1.44[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,1.05,3.93,-3.64,92.04,preinfusion,mimoja
+Data,1.05,3.93,-3.64,92.04,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m174.67[1;31m ex2[0m182.14[1;32m up[0m79.17[1;32m mup[0m81.50[1;32m mdn[0m83.20[1;32m dn[0m84.66[1;32m tube[0m82.08[1;33m valv[0m64.24[1;34m pos[0m33.89[1;34m speed[0m2.10[1;36m m_pow[0m39.06[1;36m current[0m1.52[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,1.05,3.93,-3.64,92.06,preinfusion,mimoja
+Data,1.05,3.93,-3.64,92.06,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m174.58[1;31m ex2[0m182.03[1;32m up[0m79.13[1;32m mup[0m81.46[1;32m mdn[0m83.29[1;32m dn[0m84.76[1;32m tube[0m82.10[1;33m valv[0m64.27[1;34m pos[0m34.16[1;34m speed[0m2.14[1;36m m_pow[0m40.43[1;36m current[0m1.58[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,1.10,3.95,-3.64,91.99,preinfusion,mimoja
+Data,1.10,3.95,-3.64,91.99,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m174.58[1;31m ex2[0m181.92[1;32m up[0m79.09[1;32m mup[0m81.41[1;32m mdn[0m83.34[1;32m dn[0m84.85[1;32m tube[0m82.13[1;33m valv[0m64.31[1;34m pos[0m34.44[1;34m speed[0m2.14[1;36m m_pow[0m38.52[1;36m current[0m1.40[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,1.15,3.95,-3.76,92.02,preinfusion,mimoja
+Data,1.15,3.95,-3.76,92.02,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m174.39[1;31m ex2[0m181.60[1;32m up[0m79.00[1;32m mup[0m81.41[1;32m mdn[0m83.57[1;32m dn[0m85.09[1;32m tube[0m82.17[1;33m valv[0m64.43[1;34m pos[0m34.72[1;34m speed[0m2.10[1;36m m_pow[0m38.65[1;36m current[0m1.39[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,1.19,3.95,-3.63,92.07,preinfusion,mimoja
+Data,1.19,3.95,-3.63,92.07,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m174.30[1;31m ex2[0m181.50[1;32m up[0m78.96[1;32m mup[0m81.41[1;32m mdn[0m83.66[1;32m dn[0m85.19[1;32m tube[0m82.20[1;33m valv[0m64.47[1;34m pos[0m35.00[1;34m speed[0m2.06[1;36m m_pow[0m38.60[1;36m current[0m1.57[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,1.24,3.95,-3.63,92.12,preinfusion,mimoja
+Data,1.24,3.95,-3.63,92.12,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m174.20[1;31m ex2[0m181.39[1;32m up[0m78.96[1;32m mup[0m81.41[1;32m mdn[0m83.76[1;32m dn[0m85.29[1;32m tube[0m82.24[1;33m valv[0m64.53[1;34m pos[0m35.26[1;34m speed[0m2.03[1;36m m_pow[0m39.53[1;36m current[0m1.56[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,1.27,3.99,-3.63,92.14,preinfusion,mimoja
+Data,1.27,3.99,-3.63,92.14,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m174.20[1;31m ex2[0m181.28[1;32m up[0m78.88[1;32m mup[0m81.41[1;32m mdn[0m83.90[1;32m dn[0m85.43[1;32m tube[0m82.33[1;33m valv[0m64.56[1;34m pos[0m35.54[1;34m speed[0m2.14[1;36m m_pow[0m38.59[1;36m current[0m1.49[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,1.27,3.98,-3.63,92.05,preinfusion,mimoja
+Data,1.27,3.98,-3.63,92.05,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m174.11[1;31m ex2[0m181.18[1;32m up[0m78.83[1;32m mup[0m81.41[1;32m mdn[0m83.99[1;32m dn[0m85.53[1;32m tube[0m82.36[1;33m valv[0m64.63[1;34m pos[0m35.82[1;34m speed[0m2.10[1;36m m_pow[0m38.74[1;36m current[0m1.47[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,1.27,3.97,-3.77,92.06,preinfusion,mimoja
+Data,1.27,3.97,-3.77,92.06,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m174.02[1;31m ex2[0m181.07[1;32m up[0m78.79[1;32m mup[0m81.41[1;32m mdn[0m84.09[1;32m dn[0m85.63[1;32m tube[0m82.40[1;33m valv[0m64.66[1;34m pos[0m36.10[1;34m speed[0m2.10[1;36m m_pow[0m39.18[1;36m current[0m1.58[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,1.27,3.97,-3.77,92.04,preinfusion,mimoja
+Data,1.27,3.97,-3.77,92.04,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m173.92[1;31m ex2[0m180.96[1;32m up[0m78.75[1;32m mup[0m81.37[1;32m mdn[0m84.14[1;32m dn[0m85.73[1;32m tube[0m82.43[1;33m valv[0m64.73[1;34m pos[0m36.37[1;34m speed[0m2.06[1;36m m_pow[0m39.55[1;36m current[0m1.59[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,1.28,3.99,-3.87,92.13,preinfusion,mimoja
+Data,1.28,3.99,-3.87,92.13,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m173.74[1;31m ex2[0m180.75[1;32m up[0m78.66[1;32m mup[0m81.32[1;32m mdn[0m84.28[1;32m dn[0m85.92[1;32m tube[0m82.48[1;33m valv[0m64.79[1;34m pos[0m36.64[1;34m speed[0m2.14[1;36m m_pow[0m40.52[1;36m current[0m1.51[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,1.34,3.97,-3.99,92.13,preinfusion,mimoja
+Data,1.34,3.97,-3.99,92.13,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m173.64[1;31m ex2[0m180.65[1;32m up[0m78.62[1;32m mup[0m81.32[1;32m mdn[0m84.37[1;32m dn[0m86.02[1;32m tube[0m82.51[1;33m valv[0m64.82[1;34m pos[0m36.91[1;34m speed[0m2.02[1;36m m_pow[0m39.60[1;36m current[0m1.59[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,1.39,3.97,-3.99,92.08,preinfusion,mimoja
+Data,1.39,3.97,-3.99,92.08,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m173.55[1;31m ex2[0m180.54[1;32m up[0m78.62[1;32m mup[0m81.37[1;32m mdn[0m84.52[1;32m dn[0m86.12[1;32m tube[0m82.54[1;33m valv[0m64.86[1;34m pos[0m37.17[1;34m speed[0m2.06[1;36m m_pow[0m39.51[1;36m current[0m1.58[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,1.44,3.95,-4.10,92.11,preinfusion,mimoja
+Data,1.44,3.95,-4.10,92.11,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m173.46[1;31m ex2[0m180.33[1;32m up[0m78.62[1;32m mup[0m81.41[1;32m mdn[0m84.76[1;32m dn[0m86.27[1;32m tube[0m82.63[1;33m valv[0m64.95[1;34m pos[0m37.44[1;34m speed[0m2.02[1;36m m_pow[0m40.36[1;36m current[0m1.65[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,1.47,3.93,-4.10,92.15,preinfusion,mimoja
+Data,1.47,3.93,-4.10,92.15,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m173.37[1;31m ex2[0m180.23[1;32m up[0m78.62[1;32m mup[0m81.41[1;32m mdn[0m84.85[1;32m dn[0m86.37[1;32m tube[0m82.68[1;33m valv[0m64.99[1;34m pos[0m37.69[1;34m speed[0m1.90[1;36m m_pow[0m40.07[1;36m current[0m1.64[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,1.50,3.94,-3.97,92.10,preinfusion,mimoja
+Data,1.50,3.94,-3.97,92.10,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m173.27[1;31m ex2[0m180.12[1;32m up[0m78.58[1;32m mup[0m81.37[1;32m mdn[0m84.90[1;32m dn[0m86.42[1;32m tube[0m82.74[1;33m valv[0m65.02[1;34m pos[0m37.97[1;34m speed[0m2.10[1;36m m_pow[0m39.53[1;36m current[0m1.60[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,1.51,3.93,-3.97,92.10,preinfusion,mimoja
+Data,1.51,3.93,-3.97,92.10,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m173.18[1;31m ex2[0m180.12[1;32m up[0m78.53[1;32m mup[0m81.37[1;32m mdn[0m85.00[1;32m dn[0m86.47[1;32m tube[0m82.78[1;33m valv[0m65.05[1;34m pos[0m38.24[1;34m speed[0m2.13[1;36m m_pow[0m42.22[1;36m current[0m1.57[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,1.52,3.91,-3.97,92.06,preinfusion,mimoja
+Data,1.52,3.91,-3.97,92.06,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m173.00[1;31m ex2[0m179.92[1;32m up[0m78.45[1;32m mup[0m81.37[1;32m mdn[0m85.14[1;32m dn[0m86.62[1;32m tube[0m82.84[1;33m valv[0m65.15[1;34m pos[0m38.50[1;34m speed[0m1.98[1;36m m_pow[0m41.80[1;36m current[0m1.64[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,1.55,3.90,-4.08,92.15,preinfusion,mimoja
+Data,1.55,3.90,-4.08,92.15,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m172.91[1;31m ex2[0m179.81[1;32m up[0m78.41[1;32m mup[0m81.41[1;32m mdn[0m85.24[1;32m dn[0m86.72[1;32m tube[0m82.86[1;33m valv[0m65.21[1;34m pos[0m38.77[1;34m speed[0m1.98[1;36m m_pow[0m41.10[1;36m current[0m1.68[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,1.61,3.86,-4.08,92.10,preinfusion,mimoja
+Data,1.61,3.86,-4.08,92.10,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m172.82[1;31m ex2[0m179.60[1;32m up[0m78.37[1;32m mup[0m81.41[1;32m mdn[0m85.34[1;32m dn[0m86.82[1;32m tube[0m82.89[1;33m valv[0m65.25[1;34m pos[0m39.05[1;34m speed[0m2.06[1;36m m_pow[0m42.20[1;36m current[0m1.73[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,1.67,3.84,-4.08,92.04,preinfusion,mimoja
+Data,1.67,3.84,-4.08,92.04,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m172.73[1;31m ex2[0m179.40[1;32m up[0m78.32[1;32m mup[0m81.41[1;32m mdn[0m85.53[1;32m dn[0m86.97[1;32m tube[0m82.96[1;33m valv[0m65.31[1;34m pos[0m39.31[1;34m speed[0m1.98[1;36m m_pow[0m40.88[1;36m current[0m1.62[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,1.71,3.85,-4.23,92.11,preinfusion,mimoja
+Data,1.71,3.85,-4.23,92.11,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m172.63[1;31m ex2[0m179.19[1;32m up[0m78.32[1;32m mup[0m81.41[1;32m mdn[0m85.68[1;32m dn[0m87.02[1;32m tube[0m83.00[1;33m valv[0m65.34[1;34m pos[0m39.59[1;34m speed[0m2.02[1;36m m_pow[0m40.87[1;36m current[0m1.61[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,1.75,3.84,-4.39,92.08,preinfusion,mimoja
+Data,1.75,3.84,-4.39,92.08,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m172.54[1;31m ex2[0m179.19[1;32m up[0m78.32[1;32m mup[0m81.46[1;32m mdn[0m85.78[1;32m dn[0m87.12[1;32m tube[0m83.04[1;33m valv[0m65.38[1;34m pos[0m39.85[1;34m speed[0m2.02[1;36m m_pow[0m42.19[1;36m current[0m1.73[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,1.78,3.84,-4.39,92.06,preinfusion,mimoja
+Data,1.78,3.84,-4.39,92.06,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m172.36[1;31m ex2[0m179.09[1;32m up[0m78.28[1;32m mup[0m81.55[1;32m mdn[0m86.02[1;32m dn[0m87.32[1;32m tube[0m83.14[1;33m valv[0m65.48[1;34m pos[0m40.11[1;34m speed[0m1.98[1;36m m_pow[0m42.92[1;36m current[0m1.76[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,1.82,3.89,-4.39,92.03,preinfusion,mimoja
+Data,1.82,3.89,-4.39,92.03,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m172.27[1;31m ex2[0m179.09[1;32m up[0m78.28[1;32m mup[0m81.59[1;32m mdn[0m86.12[1;32m dn[0m87.42[1;32m tube[0m83.20[1;33m valv[0m65.51[1;34m pos[0m40.38[1;34m speed[0m2.10[1;36m m_pow[0m42.51[1;36m current[0m1.76[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,1.87,3.87,-4.39,92.00,preinfusion,mimoja
+Data,1.87,3.87,-4.39,92.00,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m172.18[1;31m ex2[0m178.99[1;32m up[0m78.24[1;32m mup[0m81.59[1;32m mdn[0m86.22[1;32m dn[0m87.52[1;32m tube[0m83.26[1;33m valv[0m65.57[1;34m pos[0m40.64[1;34m speed[0m1.98[1;36m m_pow[0m42.15[1;36m current[0m1.66[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,1.91,3.88,-4.39,91.98,preinfusion,mimoja
+Data,1.91,3.88,-4.39,91.98,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m172.00[1;31m ex2[0m178.68[1;32m up[0m78.20[1;32m mup[0m81.59[1;32m mdn[0m86.47[1;32m dn[0m87.68[1;32m tube[0m83.37[1;33m valv[0m65.67[1;34m pos[0m40.90[1;34m speed[0m2.06[1;36m m_pow[0m42.43[1;36m current[0m1.78[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,1.96,3.89,-4.49,91.95,preinfusion,mimoja
+Data,1.96,3.89,-4.49,91.95,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m171.91[1;31m ex2[0m178.58[1;32m up[0m78.15[1;32m mup[0m81.64[1;32m mdn[0m86.62[1;32m dn[0m87.73[1;32m tube[0m83.42[1;33m valv[0m65.74[1;34m pos[0m41.16[1;34m speed[0m2.02[1;36m m_pow[0m43.90[1;36m current[0m1.86[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,2.02,3.88,-4.49,91.93,preinfusion,mimoja
+Data,2.02,3.88,-4.49,91.93,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m171.82[1;31m ex2[0m178.38[1;32m up[0m78.15[1;32m mup[0m81.68[1;32m mdn[0m86.77[1;32m dn[0m87.78[1;32m tube[0m83.46[1;33m valv[0m65.77[1;34m pos[0m41.42[1;34m speed[0m1.90[1;36m m_pow[0m42.31[1;36m current[0m1.84[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,2.07,3.92,-4.49,91.90,preinfusion,mimoja
+Data,2.07,3.92,-4.49,91.90,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m171.73[1;31m ex2[0m178.28[1;32m up[0m78.15[1;32m mup[0m81.73[1;32m mdn[0m86.92[1;32m dn[0m87.88[1;32m tube[0m83.51[1;33m valv[0m65.84[1;34m pos[0m41.70[1;34m speed[0m2.06[1;36m m_pow[0m43.70[1;36m current[0m1.79[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,2.10,3.93,-4.61,91.87,preinfusion,mimoja
+Data,2.10,3.93,-4.61,91.87,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m171.55[1;31m ex2[0m177.98[1;32m up[0m78.11[1;32m mup[0m81.82[1;32m mdn[0m87.07[1;32m dn[0m88.09[1;32m tube[0m83.63[1;33m valv[0m65.87[1;34m pos[0m41.96[1;34m speed[0m2.02[1;36m m_pow[0m43.51[1;36m current[0m1.80[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,2.16,3.92,-4.71,91.85,preinfusion,mimoja
+Data,2.16,3.92,-4.71,91.85,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m171.46[1;31m ex2[0m177.88[1;32m up[0m78.07[1;32m mup[0m81.86[1;32m mdn[0m87.17[1;32m dn[0m88.19[1;32m tube[0m83.69[1;33m valv[0m65.90[1;34m pos[0m42.22[1;34m speed[0m1.94[1;36m m_pow[0m43.77[1;36m current[0m1.86[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,2.23,3.93,-4.84,91.82,preinfusion,mimoja
+Data,2.23,3.93,-4.84,91.82,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m171.38[1;31m ex2[0m177.78[1;32m up[0m78.03[1;32m mup[0m81.91[1;32m mdn[0m87.27[1;32m dn[0m88.29[1;32m tube[0m83.75[1;33m valv[0m65.97[1;34m pos[0m42.48[1;34m speed[0m1.98[1;36m m_pow[0m44.24[1;36m current[0m1.89[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,2.29,3.92,-5.47,91.79,preinfusion,mimoja
+Data,2.29,3.92,-5.47,91.79,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m171.29[1;31m ex2[0m177.58[1;32m up[0m77.94[1;32m mup[0m82.05[1;32m mdn[0m87.52[1;32m dn[0m88.45[1;32m tube[0m83.85[1;33m valv[0m66.10[1;34m pos[0m42.73[1;34m speed[0m1.94[1;36m m_pow[0m45.63[1;36m current[0m1.89[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,2.33,3.90,-5.75,91.77,preinfusion,mimoja
+Data,2.33,3.90,-5.75,91.77,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m171.20[1;31m ex2[0m177.48[1;32m up[0m77.99[1;32m mup[0m82.09[1;32m mdn[0m87.63[1;32m dn[0m88.50[1;32m tube[0m83.90[1;33m valv[0m66.17[1;34m pos[0m43.00[1;34m speed[0m1.98[1;36m m_pow[0m42.97[1;36m current[0m1.87[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,2.39,3.92,-6.53,91.74,preinfusion,mimoja
+Data,2.39,3.92,-6.53,91.74,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m171.11[1;31m ex2[0m177.38[1;32m up[0m77.99[1;32m mup[0m82.18[1;32m mdn[0m87.73[1;32m dn[0m88.55[1;32m tube[0m83.96[1;33m valv[0m66.20[1;34m pos[0m43.26[1;34m speed[0m2.02[1;36m m_pow[0m45.19[1;36m current[0m1.93[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,2.48,3.90,-6.97,91.71,preinfusion,mimoja
+Data,2.48,3.90,-6.97,91.71,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m170.84[1;31m ex2[0m177.18[1;32m up[0m77.99[1;32m mup[0m82.37[1;32m mdn[0m87.98[1;32m dn[0m88.71[1;32m tube[0m84.09[1;33m valv[0m66.27[1;34m pos[0m43.51[1;34m speed[0m1.86[1;36m m_pow[0m45.29[1;36m current[0m1.91[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,2.54,3.90,-7.97,91.69,preinfusion,mimoja
+Data,2.54,3.90,-7.97,91.69,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m170.76[1;31m ex2[0m177.08[1;32m up[0m77.94[1;32m mup[0m82.46[1;32m mdn[0m88.14[1;32m dn[0m88.81[1;32m tube[0m84.16[1;33m valv[0m66.33[1;34m pos[0m43.77[1;34m speed[0m1.98[1;36m m_pow[0m45.89[1;36m current[0m1.94[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,2.59,3.92,-8.41,91.66,preinfusion,mimoja
+Data,2.59,3.92,-8.41,91.66,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m170.67[1;31m ex2[0m176.98[1;32m up[0m77.94[1;32m mup[0m82.55[1;32m mdn[0m88.24[1;32m dn[0m88.87[1;32m tube[0m84.23[1;33m valv[0m66.37[1;34m pos[0m44.04[1;34m speed[0m1.98[1;36m m_pow[0m46.45[1;36m current[0m2.02[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,2.68,3.90,-9.34,91.63,preinfusion,mimoja
+Data,2.68,3.90,-9.34,91.63,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m170.41[1;31m ex2[0m176.69[1;32m up[0m77.94[1;32m mup[0m82.64[1;32m mdn[0m88.45[1;32m dn[0m89.08[1;32m tube[0m84.37[1;33m valv[0m66.43[1;34m pos[0m44.29[1;34m speed[0m1.98[1;36m m_pow[0m47.23[1;36m current[0m2.01[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,2.78,3.87,-10.55,91.61,preinfusion,mimoja
+Data,2.78,3.87,-10.55,91.61,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m170.32[1;31m ex2[0m176.59[1;32m up[0m77.94[1;32m mup[0m82.73[1;32m mdn[0m88.55[1;32m dn[0m89.13[1;32m tube[0m84.43[1;33m valv[0m66.43[1;34m pos[0m44.56[1;34m speed[0m1.86[1;36m m_pow[0m45.58[1;36m current[0m2.05[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,2.84,3.86,-11.21,91.58,preinfusion,mimoja
+Data,2.84,3.86,-11.21,91.58,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m170.15[1;31m ex2[0m176.40[1;32m up[0m77.94[1;32m mup[0m82.78[1;32m mdn[0m88.71[1;32m dn[0m89.23[1;32m tube[0m84.50[1;33m valv[0m66.50[1;34m pos[0m44.80[1;34m speed[0m1.86[1;36m m_pow[0m47.12[1;36m current[0m2.05[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,2.92,3.86,-11.83,91.55,preinfusion,mimoja
+Data,2.92,3.86,-11.83,91.55,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m170.06[1;31m ex2[0m176.30[1;32m up[0m77.94[1;32m mup[0m82.87[1;32m mdn[0m88.81[1;32m dn[0m89.29[1;32m tube[0m84.63[1;33m valv[0m66.60[1;34m pos[0m45.05[1;34m speed[0m1.84[1;36m m_pow[0m47.12[1;36m current[0m2.10[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,3.01,3.90,-13.13,91.53,preinfusion,mimoja
+Data,3.01,3.90,-13.13,91.53,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m169.71[1;31m ex2[0m175.91[1;32m up[0m77.94[1;32m mup[0m83.06[1;32m mdn[0m89.08[1;32m dn[0m89.45[1;32m tube[0m84.70[1;33m valv[0m66.67[1;34m pos[0m45.31[1;34m speed[0m2.06[1;36m m_pow[0m48.24[1;36m current[0m2.15[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,3.07,3.91,-14.33,91.50,preinfusion,mimoja
+Data,3.07,3.91,-14.33,91.50,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m169.54[1;31m ex2[0m175.82[1;32m up[0m77.94[1;32m mup[0m83.15[1;32m mdn[0m89.18[1;32m dn[0m89.50[1;32m tube[0m84.77[1;33m valv[0m66.70[1;34m pos[0m45.56[1;34m speed[0m1.98[1;36m m_pow[0m47.78[1;36m current[0m2.10[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.16,3.87,-15.04,91.47,preinfusion,mimoja
+Data,3.16,3.87,-15.04,91.47,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m169.37[1;31m ex2[0m175.62[1;32m up[0m77.94[1;32m mup[0m83.20[1;32m mdn[0m89.29[1;32m dn[0m89.55[1;32m tube[0m84.84[1;33m valv[0m66.77[1;34m pos[0m45.80[1;34m speed[0m1.82[1;36m m_pow[0m48.14[1;36m current[0m2.14[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.25,3.85,-15.74,91.45,preinfusion,mimoja
+Data,3.25,3.85,-15.74,91.45,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m169.11[1;31m ex2[0m175.43[1;32m up[0m77.94[1;32m mup[0m83.34[1;32m mdn[0m89.50[1;32m dn[0m89.66[1;32m tube[0m84.97[1;33m valv[0m66.84[1;34m pos[0m46.04[1;34m speed[0m1.78[1;36m m_pow[0m49.46[1;36m current[0m2.27[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.35,3.84,-17.19,91.42,preinfusion,mimoja
+Data,3.35,3.84,-17.19,91.42,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m169.03[1;31m ex2[0m175.24[1;32m up[0m77.94[1;32m mup[0m83.43[1;32m mdn[0m89.55[1;32m dn[0m89.71[1;32m tube[0m85.03[1;33m valv[0m66.87[1;34m pos[0m46.28[1;34m speed[0m1.82[1;36m m_pow[0m49.99[1;36m current[0m2.30[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.45,3.86,-17.88,91.40,preinfusion,mimoja
+Data,3.45,3.86,-17.88,91.40,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m168.86[1;31m ex2[0m175.05[1;32m up[0m77.94[1;32m mup[0m83.52[1;32m mdn[0m89.66[1;32m dn[0m89.82[1;32m tube[0m85.08[1;33m valv[0m66.90[1;34m pos[0m46.53[1;34m speed[0m2.02[1;36m m_pow[0m51.27[1;36m current[0m2.25[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.58,3.86,-19.34,91.37,preinfusion,mimoja
+Data,3.58,3.86,-19.34,91.37,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m168.52[1;31m ex2[0m174.67[1;32m up[0m77.94[1;32m mup[0m83.76[1;32m mdn[0m89.76[1;32m dn[0m89.98[1;32m tube[0m85.20[1;33m valv[0m67.00[1;34m pos[0m46.77[1;34m speed[0m1.90[1;36m m_pow[0m50.01[1;36m current[0m2.34[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.66,3.85,-20.20,91.34,preinfusion,mimoja
+Data,3.66,3.85,-20.20,91.34,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m168.35[1;31m ex2[0m174.48[1;32m up[0m77.99[1;32m mup[0m83.85[1;32m mdn[0m89.87[1;32m dn[0m90.03[1;32m tube[0m85.26[1;33m valv[0m67.04[1;34m pos[0m47.02[1;34m speed[0m1.76[1;36m m_pow[0m50.34[1;36m current[0m2.32[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.80,3.84,-21.97,91.32,preinfusion,mimoja
+Data,3.80,3.84,-21.97,91.32,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m168.18[1;31m ex2[0m174.30[1;32m up[0m78.03[1;32m mup[0m83.95[1;32m mdn[0m89.92[1;32m dn[0m90.03[1;32m tube[0m85.33[1;33m valv[0m67.07[1;34m pos[0m47.26[1;34m speed[0m1.78[1;36m m_pow[0m51.04[1;36m current[0m2.54[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.90,3.82,-22.87,91.29,preinfusion,mimoja
+Data,3.90,3.82,-22.87,91.29,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m167.93[1;31m ex2[0m174.11[1;32m up[0m78.07[1;32m mup[0m84.04[1;32m mdn[0m90.03[1;32m dn[0m90.09[1;32m tube[0m85.46[1;33m valv[0m67.14[1;34m pos[0m47.50[1;34m speed[0m1.82[1;36m m_pow[0m52.92[1;36m current[0m2.58[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,4.05,3.80,-24.62,91.26,preinfusion,mimoja
+Data,4.05,3.80,-24.62,91.26,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m167.51[1;31m ex2[0m173.64[1;32m up[0m78.11[1;32m mup[0m84.14[1;32m mdn[0m90.19[1;32m dn[0m90.19[1;32m tube[0m85.52[1;33m valv[0m67.17[1;34m pos[0m47.75[1;34m speed[0m1.94[1;36m m_pow[0m53.97[1;36m current[0m2.64[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,4.15,3.74,-25.44,91.24,preinfusion,mimoja
+Data,4.15,3.74,-25.44,91.24,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m167.35[1;31m ex2[0m173.55[1;32m up[0m78.11[1;32m mup[0m84.28[1;32m mdn[0m90.25[1;32m dn[0m90.19[1;32m tube[0m85.58[1;33m valv[0m67.21[1;34m pos[0m47.98[1;34m speed[0m1.66[1;36m m_pow[0m55.70[1;36m current[0m2.62[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,4.29,3.74,-27.37,91.21,preinfusion,mimoja
+Data,4.29,3.74,-27.37,91.21,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m167.10[1;31m ex2[0m173.37[1;32m up[0m78.11[1;32m mup[0m84.33[1;32m mdn[0m90.30[1;32m dn[0m90.19[1;32m tube[0m85.64[1;33m valv[0m67.24[1;34m pos[0m48.22[1;34m speed[0m1.70[1;36m m_pow[0m51.61[1;36m current[0m2.57[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,4.43,3.75,-28.42,91.19,preinfusion,mimoja
+Data,4.43,3.75,-28.42,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m166.61[1;31m ex2[0m173.00[1;32m up[0m78.15[1;32m mup[0m84.52[1;32m mdn[0m90.41[1;32m dn[0m90.19[1;32m tube[0m85.72[1;33m valv[0m67.27[1;34m pos[0m48.45[1;34m speed[0m1.82[1;36m m_pow[0m54.51[1;36m current[0m2.81[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,4.57,3.75,-30.37,91.19,preinfusion,mimoja
+Data,4.57,3.75,-30.37,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m166.36[1;31m ex2[0m172.73[1;32m up[0m78.15[1;32m mup[0m84.52[1;32m mdn[0m90.46[1;32m dn[0m90.25[1;32m tube[0m85.76[1;33m valv[0m67.31[1;34m pos[0m48.70[1;34m speed[0m1.90[1;36m m_pow[0m55.94[1;36m current[0m2.85[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,4.70,3.72,-31.42,91.19,preinfusion,mimoja
+Data,4.70,3.72,-31.42,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m166.20[1;31m ex2[0m172.45[1;32m up[0m78.20[1;32m mup[0m84.56[1;32m mdn[0m90.46[1;32m dn[0m90.25[1;32m tube[0m85.79[1;33m valv[0m67.34[1;34m pos[0m48.94[1;34m speed[0m2.02[1;36m m_pow[0m58.62[1;36m current[0m3.08[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,4.88,3.68,-33.33,91.19,preinfusion,mimoja
+Data,4.88,3.68,-33.33,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m165.80[1;31m ex2[0m172.00[1;32m up[0m78.15[1;32m mup[0m84.66[1;32m mdn[0m90.46[1;32m dn[0m90.25[1;32m tube[0m85.85[1;33m valv[0m67.41[1;34m pos[0m49.17[1;34m speed[0m1.66[1;36m m_pow[0m56.62[1;36m current[0m2.91[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,5.07,3.67,-34.43,91.19,preinfusion,mimoja
+Data,5.07,3.67,-34.43,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m165.56[1;31m ex2[0m171.82[1;32m up[0m78.15[1;32m mup[0m84.71[1;32m mdn[0m90.52[1;32m dn[0m90.25[1;32m tube[0m85.87[1;33m valv[0m67.44[1;34m pos[0m49.40[1;34m speed[0m1.74[1;36m m_pow[0m55.92[1;36m current[0m2.92[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,5.22,3.68,-36.80,91.19,preinfusion,mimoja
+Data,5.22,3.68,-36.80,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m165.32[1;31m ex2[0m171.64[1;32m up[0m78.11[1;32m mup[0m84.76[1;32m mdn[0m90.57[1;32m dn[0m90.25[1;32m tube[0m85.88[1;33m valv[0m67.48[1;34m pos[0m49.64[1;34m speed[0m1.82[1;36m m_pow[0m59.04[1;36m current[0m3.16[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,5.41,3.69,-38.03,91.19,preinfusion,mimoja
+Data,5.41,3.69,-38.03,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m165.16[1;31m ex2[0m171.38[1;32m up[0m78.15[1;32m mup[0m84.80[1;32m mdn[0m90.57[1;32m dn[0m90.25[1;32m tube[0m85.90[1;33m valv[0m67.51[1;34m pos[0m49.86[1;34m speed[0m1.82[1;36m m_pow[0m61.18[1;36m current[0m3.40[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,5.59,3.62,-40.44,91.19,preinfusion,mimoja
+Data,5.59,3.62,-40.44,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m164.68[1;31m ex2[0m170.85[1;32m up[0m78.24[1;32m mup[0m84.85[1;32m mdn[0m90.57[1;32m dn[0m90.25[1;32m tube[0m85.94[1;33m valv[0m67.55[1;34m pos[0m50.08[1;34m speed[0m1.70[1;36m m_pow[0m60.11[1;36m current[0m3.46[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,5.76,3.66,-41.67,91.19,preinfusion,mimoja
+Data,5.76,3.66,-41.67,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m164.45[1;31m ex2[0m170.58[1;32m up[0m78.28[1;32m mup[0m84.90[1;32m mdn[0m90.57[1;32m dn[0m90.30[1;32m tube[0m85.95[1;33m valv[0m67.55[1;34m pos[0m50.31[1;34m speed[0m1.82[1;36m m_pow[0m59.43[1;36m current[0m3.46[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,5.97,3.68,-44.22,91.19,preinfusion,mimoja
+Data,5.97,3.68,-44.22,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m164.13[1;31m ex2[0m170.32[1;32m up[0m78.28[1;32m mup[0m84.90[1;32m mdn[0m90.63[1;32m dn[0m90.30[1;32m tube[0m85.98[1;33m valv[0m67.58[1;34m pos[0m50.55[1;34m speed[0m1.86[1;36m m_pow[0m61.68[1;36m current[0m3.51[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,6.20,3.64,-45.58,91.19,preinfusion,mimoja
+Data,6.20,3.64,-45.58,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m163.67[1;31m ex2[0m169.80[1;32m up[0m78.28[1;32m mup[0m84.95[1;32m mdn[0m90.63[1;32m dn[0m90.30[1;32m tube[0m86.01[1;33m valv[0m67.65[1;34m pos[0m50.77[1;34m speed[0m1.62[1;36m m_pow[0m65.90[1;36m current[0m3.83[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,6.44,3.56,-48.44,91.19,preinfusion,mimoja
+Data,6.44,3.56,-48.44,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m163.44[1;31m ex2[0m169.54[1;32m up[0m78.28[1;32m mup[0m85.00[1;32m mdn[0m90.57[1;32m dn[0m90.25[1;32m tube[0m86.03[1;33m valv[0m67.68[1;34m pos[0m50.98[1;34m speed[0m1.46[1;36m m_pow[0m67.44[1;36m current[0m3.91[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,6.69,3.49,-49.84,91.19,preinfusion,mimoja
+Data,6.69,3.49,-49.84,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m163.21[1;31m ex2[0m169.37[1;32m up[0m78.28[1;32m mup[0m85.00[1;32m mdn[0m90.52[1;32m dn[0m90.25[1;32m tube[0m86.03[1;33m valv[0m67.68[1;34m pos[0m51.20[1;34m speed[0m1.50[1;36m m_pow[0m63.83[1;36m current[0m3.71[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,6.94,3.54,-52.94,91.19,preinfusion,mimoja
+Data,6.94,3.54,-52.94,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m162.90[1;31m ex2[0m169.20[1;32m up[0m78.28[1;32m mup[0m85.00[1;32m mdn[0m90.52[1;32m dn[0m90.25[1;32m tube[0m86.02[1;33m valv[0m67.72[1;34m pos[0m51.45[1;34m speed[0m1.90[1;36m m_pow[0m69.34[1;36m current[0m4.13[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,7.15,3.50,-54.53,91.19,preinfusion,mimoja
+Data,7.15,3.50,-54.53,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m162.44[1;31m ex2[0m168.77[1;32m up[0m78.28[1;32m mup[0m85.00[1;32m mdn[0m90.46[1;32m dn[0m90.25[1;32m tube[0m86.01[1;33m valv[0m67.75[1;34m pos[0m51.66[1;34m speed[0m1.50[1;36m m_pow[0m71.60[1;36m current[0m4.18[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,7.38,3.44,-58.13,91.19,preinfusion,mimoja
+Data,7.38,3.44,-58.13,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m162.21[1;31m ex2[0m168.52[1;32m up[0m78.28[1;32m mup[0m85.05[1;32m mdn[0m90.46[1;32m dn[0m90.25[1;32m tube[0m86.00[1;33m valv[0m67.78[1;34m pos[0m51.88[1;34m speed[0m1.50[1;36m m_pow[0m69.66[1;36m current[0m4.38[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 INFO: [PressureValueTrigger] Trigger Activated Pressure Value - source: Pressure Predictive Sensor Read: 8.040053 > Value: 8.000000
 INFO: Moving from Node: 303 to: 11
-Data,7.61,3.41,-60.04,91.19,preinfusion,mimoja
+Data,7.61,3.41,-60.04,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m161.99[1;31m ex2[0m168.27[1;32m up[0m78.28[1;32m mup[0m85.09[1;32m mdn[0m90.52[1;32m dn[0m90.25[1;32m tube[0m86.00[1;33m valv[0m67.82[1;34m pos[0m52.08[1;34m speed[0m1.66[1;36m m_pow[0m66.97[1;36m current[0m4.57[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,7.83,3.27,-63.40,91.19,preinfusion,mimoja
+Data,7.83,3.27,-63.40,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m161.54[1;31m ex2[0m167.76[1;32m up[0m78.28[1;32m mup[0m85.14[1;32m mdn[0m90.52[1;32m dn[0m90.25[1;32m tube[0m86.02[1;33m valv[0m67.82[1;34m pos[0m52.21[1;34m speed[0m0.91[1;36m m_pow[0m62.29[1;36m current[0m4.11[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.00,3.12,-60.76,91.19,preinfusion,mimoja
+Data,8.00,3.12,-60.76,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m161.32[1;31m ex2[0m167.51[1;32m up[0m78.28[1;32m mup[0m85.14[1;32m mdn[0m90.52[1;32m dn[0m90.19[1;32m tube[0m86.03[1;33m valv[0m67.85[1;34m pos[0m52.36[1;34m speed[0m1.07[1;36m m_pow[0m62.34[1;36m current[0m4.06[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.14,2.93,-55.60,91.19,preinfusion,mimoja
+Data,8.14,2.93,-55.60,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m161.17[1;31m ex2[0m167.27[1;32m up[0m78.32[1;32m mup[0m85.19[1;32m mdn[0m90.46[1;32m dn[0m90.19[1;32m tube[0m86.04[1;33m valv[0m67.89[1;34m pos[0m52.48[1;34m speed[0m0.95[1;36m m_pow[0m62.31[1;36m current[0m4.25[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,8.23,2.83,-55.60,91.19,preinfusion,mimoja
+Data,8.23,2.83,-55.60,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m160.72[1;31m ex2[0m166.77[1;32m up[0m78.32[1;32m mup[0m85.19[1;32m mdn[0m90.46[1;32m dn[0m90.19[1;32m tube[0m86.04[1;33m valv[0m67.96[1;34m pos[0m52.63[1;34m speed[0m1.11[1;36m m_pow[0m62.00[1;36m current[0m3.97[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,8.27,2.73,-55.70,91.19,preinfusion,mimoja
+Data,8.27,2.73,-55.70,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m160.50[1;31m ex2[0m166.53[1;32m up[0m78.32[1;32m mup[0m85.24[1;32m mdn[0m90.46[1;32m dn[0m90.25[1;32m tube[0m86.04[1;33m valv[0m67.96[1;34m pos[0m52.76[1;34m speed[0m0.87[1;36m m_pow[0m61.43[1;36m current[0m4.07[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,8.28,2.62,-55.70,91.19,preinfusion,mimoja
+Data,8.28,2.62,-55.70,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m160.21[1;31m ex2[0m166.36[1;32m up[0m78.28[1;32m mup[0m85.24[1;32m mdn[0m90.46[1;32m dn[0m90.25[1;32m tube[0m86.05[1;33m valv[0m67.99[1;34m pos[0m52.89[1;34m speed[0m0.95[1;36m m_pow[0m61.19[1;36m current[0m4.16[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,8.29,2.44,-55.21,91.19,preinfusion,mimoja
+Data,8.29,2.44,-55.21,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m159.78[1;31m ex2[0m165.96[1;32m up[0m78.32[1;32m mup[0m85.34[1;32m mdn[0m90.46[1;32m dn[0m90.19[1;32m tube[0m86.06[1;33m valv[0m68.06[1;34m pos[0m53.02[1;34m speed[0m1.03[1;36m m_pow[0m60.69[1;36m current[0m3.84[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,8.30,2.32,-55.21,91.19,preinfusion,mimoja
+Data,8.30,2.32,-55.21,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m159.56[1;31m ex2[0m165.80[1;32m up[0m78.37[1;32m mup[0m85.38[1;32m mdn[0m90.46[1;32m dn[0m90.14[1;32m tube[0m86.06[1;33m valv[0m68.06[1;34m pos[0m53.14[1;34m speed[0m0.87[1;36m m_pow[0m60.57[1;36m current[0m3.97[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,8.31,2.18,-54.92,91.19,preinfusion,mimoja
+Data,8.31,2.18,-54.92,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m159.42[1;31m ex2[0m165.56[1;32m up[0m78.37[1;32m mup[0m85.43[1;32m mdn[0m90.46[1;32m dn[0m90.09[1;32m tube[0m86.07[1;33m valv[0m68.02[1;34m pos[0m53.27[1;34m speed[0m0.87[1;36m m_pow[0m60.15[1;36m current[0m3.95[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,8.31,1.99,-54.92,91.19,preinfusion,mimoja
+Data,8.31,1.99,-54.92,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m158.99[1;31m ex2[0m165.16[1;32m up[0m78.41[1;32m mup[0m85.53[1;32m mdn[0m90.57[1;32m dn[0m90.09[1;32m tube[0m86.09[1;33m valv[0m68.02[1;34m pos[0m53.37[1;34m speed[0m0.75[1;36m m_pow[0m60.34[1;36m current[0m4.07[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.31,1.98,-54.95,91.19,preinfusion,mimoja
+Data,8.31,1.98,-54.95,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m158.77[1;31m ex2[0m164.92[1;32m up[0m78.41[1;32m mup[0m85.53[1;32m mdn[0m90.57[1;32m dn[0m90.09[1;32m tube[0m86.11[1;33m valv[0m68.06[1;34m pos[0m53.49[1;34m speed[0m0.99[1;36m m_pow[0m60.55[1;36m current[0m4.10[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.31,1.95,-54.64,91.19,preinfusion,mimoja
+Data,8.31,1.95,-54.64,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m158.56[1;31m ex2[0m164.68[1;32m up[0m78.41[1;32m mup[0m85.58[1;32m mdn[0m90.57[1;32m dn[0m90.09[1;32m tube[0m86.13[1;33m valv[0m68.09[1;34m pos[0m53.61[1;34m speed[0m0.95[1;36m m_pow[0m60.33[1;36m current[0m4.06[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.30,1.90,-54.31,91.19,preinfusion,mimoja
+Data,8.30,1.90,-54.31,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m158.35[1;31m ex2[0m164.53[1;32m up[0m78.41[1;32m mup[0m85.63[1;32m mdn[0m90.52[1;32m dn[0m90.09[1;32m tube[0m86.15[1;33m valv[0m68.09[1;34m pos[0m53.71[1;34m speed[0m0.71[1;36m m_pow[0m60.51[1;36m current[0m4.07[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.29,1.87,-54.10,91.19,preinfusion,mimoja
+Data,8.29,1.87,-54.10,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m158.00[1;31m ex2[0m164.06[1;32m up[0m78.41[1;32m mup[0m85.73[1;32m mdn[0m90.52[1;32m dn[0m90.03[1;32m tube[0m86.16[1;33m valv[0m68.09[1;34m pos[0m53.84[1;34m speed[0m1.03[1;36m m_pow[0m60.60[1;36m current[0m4.09[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.29,1.86,-53.72,91.19,preinfusion,mimoja
+Data,8.29,1.86,-53.72,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m157.79[1;31m ex2[0m163.90[1;32m up[0m78.45[1;32m mup[0m85.78[1;32m mdn[0m90.52[1;32m dn[0m90.03[1;32m tube[0m86.16[1;33m valv[0m68.09[1;34m pos[0m53.97[1;34m speed[0m0.95[1;36m m_pow[0m60.13[1;36m current[0m3.98[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.29,1.85,-53.72,91.19,preinfusion,mimoja
+Data,8.29,1.85,-53.72,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m157.58[1;31m ex2[0m163.67[1;32m up[0m78.45[1;32m mup[0m85.82[1;32m mdn[0m90.52[1;32m dn[0m90.03[1;32m tube[0m86.17[1;33m valv[0m68.09[1;34m pos[0m54.08[1;34m speed[0m0.91[1;36m m_pow[0m60.23[1;36m current[0m3.98[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.29,1.84,-53.35,91.19,preinfusion,mimoja
+Data,8.29,1.84,-53.35,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m157.23[1;31m ex2[0m163.28[1;32m up[0m78.45[1;32m mup[0m85.92[1;32m mdn[0m90.46[1;32m dn[0m90.03[1;32m tube[0m86.19[1;33m valv[0m68.09[1;34m pos[0m54.20[1;34m speed[0m0.95[1;36m m_pow[0m59.84[1;36m current[0m3.86[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.29,1.79,-53.23,91.19,preinfusion,mimoja
+Data,8.29,1.79,-53.23,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m157.02[1;31m ex2[0m163.05[1;32m up[0m78.45[1;32m mup[0m85.92[1;32m mdn[0m90.52[1;32m dn[0m90.03[1;32m tube[0m86.21[1;33m valv[0m68.09[1;34m pos[0m54.32[1;34m speed[0m0.71[1;36m m_pow[0m59.87[1;36m current[0m3.79[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,8.29,1.82,-52.96,91.19,preinfusion,mimoja
+Data,8.29,1.82,-52.96,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m156.88[1;31m ex2[0m162.82[1;32m up[0m78.49[1;32m mup[0m85.92[1;32m mdn[0m90.52[1;32m dn[0m90.03[1;32m tube[0m86.21[1;33m valv[0m68.09[1;34m pos[0m54.44[1;34m speed[0m0.99[1;36m m_pow[0m59.69[1;36m current[0m3.95[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,8.29,1.84,-52.78,91.19,preinfusion,mimoja
+Data,8.29,1.84,-52.78,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m156.47[1;31m ex2[0m162.44[1;32m up[0m78.49[1;32m mup[0m86.02[1;32m mdn[0m90.57[1;32m dn[0m90.03[1;32m tube[0m86.24[1;33m valv[0m68.09[1;34m pos[0m54.54[1;34m speed[0m0.79[1;36m m_pow[0m59.53[1;36m current[0m3.80[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,8.29,1.84,-52.47,91.19,preinfusion,mimoja
+Data,8.29,1.84,-52.47,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m156.34[1;31m ex2[0m162.29[1;32m up[0m78.53[1;32m mup[0m86.07[1;32m mdn[0m90.57[1;32m dn[0m90.03[1;32m tube[0m86.25[1;33m valv[0m68.09[1;34m pos[0m54.64[1;34m speed[0m0.83[1;36m m_pow[0m59.95[1;36m current[0m3.95[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,9.95,1.83,-52.17,91.19,preinfusion,mimoja
+Data,9.95,1.83,-52.17,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m156.13[1;31m ex2[0m162.14[1;32m up[0m78.53[1;32m mup[0m86.12[1;32m mdn[0m90.57[1;32m dn[0m90.03[1;32m tube[0m86.27[1;33m valv[0m68.09[1;34m pos[0m54.76[1;34m speed[0m0.91[1;36m m_pow[0m59.96[1;36m current[0m3.92[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,9.94,1.87,-51.76,91.19,preinfusion,mimoja
+Data,9.94,1.87,-51.76,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m156.00[1;31m ex2[0m161.91[1;32m up[0m78.58[1;32m mup[0m86.17[1;32m mdn[0m90.63[1;32m dn[0m90.03[1;32m tube[0m86.31[1;33m valv[0m68.09[1;34m pos[0m54.87[1;34m speed[0m0.85[1;36m m_pow[0m59.81[1;36m current[0m4.05[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,9.91,1.83,-51.63,91.19,preinfusion,mimoja
+Data,9.91,1.83,-51.63,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m155.73[1;31m ex2[0m161.61[1;32m up[0m78.62[1;32m mup[0m86.27[1;32m mdn[0m90.57[1;32m dn[0m90.03[1;32m tube[0m86.34[1;33m valv[0m68.09[1;34m pos[0m54.98[1;34m speed[0m0.75[1;36m m_pow[0m62.50[1;36m current[0m4.14[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,9.91,1.86,-51.14,91.19,preinfusion,mimoja
+Data,9.91,1.86,-51.14,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m155.59[1;31m ex2[0m161.46[1;32m up[0m78.62[1;32m mup[0m86.32[1;32m mdn[0m90.57[1;32m dn[0m89.98[1;32m tube[0m86.35[1;33m valv[0m68.09[1;34m pos[0m55.12[1;34m speed[0m1.07[1;36m m_pow[0m59.49[1;36m current[0m3.83[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,9.91,1.85,-51.14,91.19,preinfusion,mimoja
+Data,9.91,1.85,-51.14,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m155.46[1;31m ex2[0m161.32[1;32m up[0m78.62[1;32m mup[0m86.32[1;32m mdn[0m90.52[1;32m dn[0m89.98[1;32m tube[0m86.37[1;33m valv[0m68.13[1;34m pos[0m55.23[1;34m speed[0m0.87[1;36m m_pow[0m59.27[1;36m current[0m3.83[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.24,1.82,-50.87,91.19,preinfusion,mimoja
+Data,8.24,1.82,-50.87,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m155.19[1;31m ex2[0m160.95[1;32m up[0m78.70[1;32m mup[0m86.37[1;32m mdn[0m90.46[1;32m dn[0m89.98[1;32m tube[0m86.36[1;33m valv[0m68.13[1;34m pos[0m55.35[1;34m speed[0m0.83[1;36m m_pow[0m59.44[1;36m current[0m3.81[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.24,1.87,-50.57,91.19,preinfusion,mimoja
+Data,8.24,1.87,-50.57,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m155.05[1;31m ex2[0m160.80[1;32m up[0m78.75[1;32m mup[0m86.37[1;32m mdn[0m90.46[1;32m dn[0m89.98[1;32m tube[0m86.37[1;33m valv[0m68.16[1;34m pos[0m55.47[1;34m speed[0m0.91[1;36m m_pow[0m59.07[1;36m current[0m3.86[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.27,1.82,-50.47,91.19,preinfusion,mimoja
+Data,8.27,1.82,-50.47,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m154.86[1;31m ex2[0m160.65[1;32m up[0m78.79[1;32m mup[0m86.42[1;32m mdn[0m90.46[1;32m dn[0m89.98[1;32m tube[0m86.37[1;33m valv[0m68.16[1;34m pos[0m55.57[1;34m speed[0m0.75[1;36m m_pow[0m59.32[1;36m current[0m3.88[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.26,1.83,-50.12,91.19,preinfusion,mimoja
+Data,8.26,1.83,-50.12,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m154.52[1;31m ex2[0m160.36[1;32m up[0m78.79[1;32m mup[0m86.47[1;32m mdn[0m90.57[1;32m dn[0m89.98[1;32m tube[0m86.40[1;33m valv[0m68.27[1;34m pos[0m55.67[1;34m speed[0m0.91[1;36m m_pow[0m59.52[1;36m current[0m3.93[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.23,1.83,-49.73,91.19,preinfusion,mimoja
+Data,8.23,1.83,-49.73,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m154.39[1;31m ex2[0m160.21[1;32m up[0m78.79[1;32m mup[0m86.57[1;32m mdn[0m90.63[1;32m dn[0m90.03[1;32m tube[0m86.42[1;33m valv[0m68.27[1;34m pos[0m55.77[1;34m speed[0m0.76[1;36m m_pow[0m59.78[1;36m current[0m3.96[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.20,1.83,-49.73,91.19,preinfusion,mimoja
+Data,8.20,1.83,-49.73,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m154.33[1;31m ex2[0m160.07[1;32m up[0m78.79[1;32m mup[0m86.62[1;32m mdn[0m90.68[1;32m dn[0m90.03[1;32m tube[0m86.45[1;33m valv[0m68.30[1;34m pos[0m55.88[1;34m speed[0m0.91[1;36m m_pow[0m62.14[1;36m current[0m4.42[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.17,1.86,-49.15,91.19,preinfusion,mimoja
+Data,8.17,1.86,-49.15,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m154.19[1;31m ex2[0m159.92[1;32m up[0m78.79[1;32m mup[0m86.67[1;32m mdn[0m90.68[1;32m dn[0m90.03[1;32m tube[0m86.48[1;33m valv[0m68.30[1;34m pos[0m56.00[1;34m speed[0m0.95[1;36m m_pow[0m61.62[1;36m current[0m4.15[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.15,1.85,-49.02,91.19,preinfusion,mimoja
+Data,8.15,1.85,-49.02,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m153.93[1;31m ex2[0m159.70[1;32m up[0m78.88[1;32m mup[0m86.72[1;32m mdn[0m90.57[1;32m dn[0m89.98[1;32m tube[0m86.53[1;33m valv[0m68.30[1;34m pos[0m56.11[1;34m speed[0m0.71[1;36m m_pow[0m59.01[1;36m current[0m3.90[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.13,1.82,-48.76,91.19,preinfusion,mimoja
+Data,8.13,1.82,-48.76,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m153.80[1;31m ex2[0m159.63[1;32m up[0m78.92[1;32m mup[0m86.72[1;32m mdn[0m90.52[1;32m dn[0m89.98[1;32m tube[0m86.54[1;33m valv[0m68.27[1;34m pos[0m56.22[1;34m speed[0m0.91[1;36m m_pow[0m61.66[1;36m current[0m4.22[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.16,1.86,-48.58,91.19,preinfusion,mimoja
+Data,8.16,1.86,-48.58,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m153.67[1;31m ex2[0m159.49[1;32m up[0m78.96[1;32m mup[0m86.72[1;32m mdn[0m90.52[1;32m dn[0m89.92[1;32m tube[0m86.54[1;33m valv[0m68.30[1;34m pos[0m56.35[1;34m speed[0m1.07[1;36m m_pow[0m58.83[1;36m current[0m3.71[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.19,1.84,-48.58,91.19,preinfusion,mimoja
+Data,8.19,1.84,-48.58,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m153.48[1;31m ex2[0m159.20[1;32m up[0m78.96[1;32m mup[0m86.82[1;32m mdn[0m90.63[1;32m dn[0m89.87[1;32m tube[0m86.54[1;33m valv[0m68.33[1;34m pos[0m56.46[1;34m speed[0m0.75[1;36m m_pow[0m58.59[1;36m current[0m3.85[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.21,1.82,-48.43,91.19,preinfusion,mimoja
+Data,8.21,1.82,-48.43,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m153.35[1;31m ex2[0m159.06[1;32m up[0m78.96[1;32m mup[0m86.87[1;32m mdn[0m90.68[1;32m dn[0m89.87[1;32m tube[0m86.55[1;33m valv[0m68.37[1;34m pos[0m56.58[1;34m speed[0m0.83[1;36m m_pow[0m58.74[1;36m current[0m3.88[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.23,1.83,-48.01,91.19,preinfusion,mimoja
+Data,8.23,1.83,-48.01,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m153.35[1;31m ex2[0m158.91[1;32m up[0m78.96[1;32m mup[0m86.92[1;32m mdn[0m90.68[1;32m dn[0m89.87[1;32m tube[0m86.56[1;33m valv[0m68.37[1;34m pos[0m56.70[1;34m speed[0m0.79[1;36m m_pow[0m58.54[1;36m current[0m3.91[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.23,1.83,-47.90,91.19,preinfusion,mimoja
+Data,8.23,1.83,-47.90,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m153.28[1;31m ex2[0m158.77[1;32m up[0m78.96[1;32m mup[0m86.92[1;32m mdn[0m90.73[1;32m dn[0m89.92[1;32m tube[0m86.58[1;33m valv[0m68.37[1;34m pos[0m56.80[1;34m speed[0m0.87[1;36m m_pow[0m61.26[1;36m current[0m3.90[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.23,1.84,-47.50,91.19,preinfusion,mimoja
+Data,8.23,1.84,-47.50,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m153.15[1;31m ex2[0m158.49[1;32m up[0m79.00[1;32m mup[0m86.92[1;32m mdn[0m90.73[1;32m dn[0m89.98[1;32m tube[0m86.62[1;33m valv[0m68.44[1;34m pos[0m56.91[1;34m speed[0m0.83[1;36m m_pow[0m58.48[1;36m current[0m3.68[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.20,1.81,-47.50,91.19,preinfusion,mimoja
+Data,8.20,1.81,-47.50,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m152.96[1;31m ex2[0m158.42[1;32m up[0m79.00[1;32m mup[0m86.97[1;32m mdn[0m90.73[1;32m dn[0m90.03[1;32m tube[0m86.64[1;33m valv[0m68.44[1;34m pos[0m57.01[1;34m speed[0m0.79[1;36m m_pow[0m61.00[1;36m current[0m4.08[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.17,1.78,-47.17,91.19,preinfusion,mimoja
+Data,8.17,1.78,-47.17,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m152.83[1;31m ex2[0m158.35[1;32m up[0m79.00[1;32m mup[0m87.02[1;32m mdn[0m90.68[1;32m dn[0m90.03[1;32m tube[0m86.66[1;33m valv[0m68.47[1;34m pos[0m57.11[1;34m speed[0m0.87[1;36m m_pow[0m61.38[1;36m current[0m4.14[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.14,1.85,-46.87,91.19,preinfusion,mimoja
+Data,8.14,1.85,-46.87,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m152.57[1;31m ex2[0m158.21[1;32m up[0m79.05[1;32m mup[0m87.12[1;32m mdn[0m90.68[1;32m dn[0m90.03[1;32m tube[0m86.68[1;33m valv[0m68.47[1;34m pos[0m57.24[1;34m speed[0m0.87[1;36m m_pow[0m61.26[1;36m current[0m4.05[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.14,1.82,-46.72,91.19,preinfusion,mimoja
+Data,8.14,1.82,-46.72,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m152.51[1;31m ex2[0m158.07[1;32m up[0m79.09[1;32m mup[0m87.17[1;32m mdn[0m90.68[1;32m dn[0m89.98[1;32m tube[0m86.70[1;33m valv[0m68.54[1;34m pos[0m57.35[1;34m speed[0m0.75[1;36m m_pow[0m60.99[1;36m current[0m4.13[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.11,1.79,-46.72,91.19,preinfusion,mimoja
+Data,8.11,1.79,-46.72,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m152.38[1;31m ex2[0m157.93[1;32m up[0m79.17[1;32m mup[0m87.22[1;32m mdn[0m90.68[1;32m dn[0m89.98[1;32m tube[0m86.71[1;33m valv[0m68.54[1;34m pos[0m57.47[1;34m speed[0m0.95[1;36m m_pow[0m60.95[1;36m current[0m3.89[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.14,1.86,-46.45,91.19,preinfusion,mimoja
+Data,8.14,1.86,-46.45,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m152.25[1;31m ex2[0m157.72[1;32m up[0m79.26[1;32m mup[0m87.32[1;32m mdn[0m90.68[1;32m dn[0m89.98[1;32m tube[0m86.75[1;33m valv[0m68.54[1;34m pos[0m57.60[1;34m speed[0m0.99[1;36m m_pow[0m58.21[1;36m current[0m3.63[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.16,1.84,-46.45,91.19,preinfusion,mimoja
+Data,8.16,1.84,-46.45,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m152.13[1;31m ex2[0m157.65[1;32m up[0m79.30[1;32m mup[0m87.32[1;32m mdn[0m90.68[1;32m dn[0m90.03[1;32m tube[0m86.77[1;33m valv[0m68.58[1;34m pos[0m57.70[1;34m speed[0m0.71[1;36m m_pow[0m57.99[1;36m current[0m3.77[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.16,1.85,-46.13,91.19,preinfusion,mimoja
+Data,8.16,1.85,-46.13,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m152.06[1;31m ex2[0m157.58[1;32m up[0m79.30[1;32m mup[0m87.37[1;32m mdn[0m90.73[1;32m dn[0m90.03[1;32m tube[0m86.80[1;33m valv[0m68.58[1;34m pos[0m57.82[1;34m speed[0m0.87[1;36m m_pow[0m60.62[1;36m current[0m3.99[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.19,1.86,-45.82,91.19,preinfusion,mimoja
+Data,8.19,1.86,-45.82,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m151.87[1;31m ex2[0m157.44[1;32m up[0m79.30[1;32m mup[0m87.47[1;32m mdn[0m90.84[1;32m dn[0m90.03[1;32m tube[0m86.85[1;33m valv[0m68.65[1;34m pos[0m57.94[1;34m speed[0m0.83[1;36m m_pow[0m57.78[1;36m current[0m3.74[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.19,1.85,-45.82,91.19,preinfusion,mimoja
+Data,8.19,1.85,-45.82,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m151.81[1;31m ex2[0m157.37[1;32m up[0m79.30[1;32m mup[0m87.52[1;32m mdn[0m90.90[1;32m dn[0m90.03[1;32m tube[0m86.87[1;33m valv[0m68.61[1;34m pos[0m58.05[1;34m speed[0m0.83[1;36m m_pow[0m60.57[1;36m current[0m4.04[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.19,1.89,-45.39,91.19,preinfusion,mimoja
+Data,8.19,1.89,-45.39,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m151.75[1;31m ex2[0m157.23[1;32m up[0m79.30[1;32m mup[0m87.52[1;32m mdn[0m90.90[1;32m dn[0m90.03[1;32m tube[0m86.90[1;33m valv[0m68.65[1;34m pos[0m58.17[1;34m speed[0m0.99[1;36m m_pow[0m57.68[1;36m current[0m3.83[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.18,1.87,-45.26,91.19,preinfusion,mimoja
+Data,8.18,1.87,-45.26,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m151.68[1;31m ex2[0m157.02[1;32m up[0m79.35[1;32m mup[0m87.63[1;32m mdn[0m90.90[1;32m dn[0m90.09[1;32m tube[0m86.94[1;33m valv[0m68.71[1;34m pos[0m58.26[1;34m speed[0m0.55[1;36m m_pow[0m57.59[1;36m current[0m3.73[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.17,1.83,-45.12,91.19,preinfusion,mimoja
+Data,8.17,1.83,-45.12,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m151.56[1;31m ex2[0m156.95[1;32m up[0m79.35[1;32m mup[0m87.68[1;32m mdn[0m90.90[1;32m dn[0m90.09[1;32m tube[0m86.96[1;33m valv[0m68.75[1;34m pos[0m58.37[1;34m speed[0m0.83[1;36m m_pow[0m60.57[1;36m current[0m4.06[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.14,1.86,-44.53,91.19,preinfusion,mimoja
+Data,8.14,1.86,-44.53,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m151.43[1;31m ex2[0m156.88[1;32m up[0m79.39[1;32m mup[0m87.73[1;32m mdn[0m90.90[1;32m dn[0m90.09[1;32m tube[0m86.98[1;33m valv[0m68.78[1;34m pos[0m58.49[1;34m speed[0m0.87[1;36m m_pow[0m60.42[1;36m current[0m4.01[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.14,1.81,-44.53,91.19,preinfusion,mimoja
+Data,8.14,1.81,-44.53,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m151.37[1;31m ex2[0m156.88[1;32m up[0m79.39[1;32m mup[0m87.78[1;32m mdn[0m90.90[1;32m dn[0m90.03[1;32m tube[0m87.00[1;33m valv[0m68.78[1;34m pos[0m58.60[1;34m speed[0m0.77[1;36m m_pow[0m60.31[1;36m current[0m3.88[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.11,1.78,-43.97,91.19,preinfusion,mimoja
+Data,8.11,1.78,-43.97,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m151.25[1;31m ex2[0m156.68[1;32m up[0m79.48[1;32m mup[0m87.88[1;32m mdn[0m90.95[1;32m dn[0m90.09[1;32m tube[0m87.02[1;33m valv[0m68.78[1;34m pos[0m58.71[1;34m speed[0m0.91[1;36m m_pow[0m60.62[1;36m current[0m3.92[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.11,1.85,-43.85,91.19,preinfusion,mimoja
+Data,8.11,1.85,-43.85,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m151.18[1;31m ex2[0m156.61[1;32m up[0m79.52[1;32m mup[0m87.98[1;32m mdn[0m91.01[1;32m dn[0m90.09[1;32m tube[0m87.05[1;33m valv[0m68.82[1;34m pos[0m58.84[1;34m speed[0m1.03[1;36m m_pow[0m60.13[1;36m current[0m3.88[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.11,1.83,-43.83,91.19,preinfusion,mimoja
+Data,8.11,1.83,-43.83,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m151.12[1;31m ex2[0m156.47[1;32m up[0m79.56[1;32m mup[0m88.04[1;32m mdn[0m91.06[1;32m dn[0m90.09[1;32m tube[0m87.08[1;33m valv[0m68.82[1;34m pos[0m58.95[1;34m speed[0m0.79[1;36m m_pow[0m59.82[1;36m current[0m3.87[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.12,1.83,-43.83,91.19,preinfusion,mimoja
+Data,8.12,1.83,-43.83,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m151.00[1;31m ex2[0m156.40[1;32m up[0m79.69[1;32m mup[0m88.14[1;32m mdn[0m91.12[1;32m dn[0m90.14[1;32m tube[0m87.17[1;33m valv[0m68.89[1;34m pos[0m59.07[1;34m speed[0m0.91[1;36m m_pow[0m59.87[1;36m current[0m4.03[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.15,1.83,-43.36,91.19,preinfusion,mimoja
+Data,8.15,1.83,-43.36,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m150.93[1;31m ex2[0m156.34[1;32m up[0m79.74[1;32m mup[0m88.14[1;32m mdn[0m91.12[1;32m dn[0m90.19[1;32m tube[0m87.21[1;33m valv[0m68.89[1;34m pos[0m59.17[1;34m speed[0m0.82[1;36m m_pow[0m57.21[1;36m current[0m3.72[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.15,1.80,-43.19,91.19,preinfusion,mimoja
+Data,8.15,1.80,-43.19,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m150.81[1;31m ex2[0m156.27[1;32m up[0m79.78[1;32m mup[0m88.14[1;32m mdn[0m91.12[1;32m dn[0m90.25[1;32m tube[0m87.25[1;33m valv[0m68.92[1;34m pos[0m59.28[1;34m speed[0m0.87[1;36m m_pow[0m60.08[1;36m current[0m3.91[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.15,1.84,-42.93,91.19,preinfusion,mimoja
+Data,8.15,1.84,-42.93,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m150.75[1;31m ex2[0m156.20[1;32m up[0m79.82[1;32m mup[0m88.19[1;32m mdn[0m91.12[1;32m dn[0m90.25[1;32m tube[0m87.28[1;33m valv[0m68.92[1;34m pos[0m59.39[1;34m speed[0m0.95[1;36m m_pow[0m59.77[1;36m current[0m3.80[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.15,1.84,-42.93,91.19,preinfusion,mimoja
+Data,8.15,1.84,-42.93,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m150.68[1;31m ex2[0m156.00[1;32m up[0m79.82[1;32m mup[0m88.29[1;32m mdn[0m91.12[1;32m dn[0m90.25[1;32m tube[0m87.33[1;33m valv[0m68.99[1;34m pos[0m59.50[1;34m speed[0m0.78[1;36m m_pow[0m59.62[1;36m current[0m3.82[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.14,1.83,-42.55,91.19,preinfusion,mimoja
+Data,8.14,1.83,-42.55,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m150.62[1;31m ex2[0m155.93[1;32m up[0m79.82[1;32m mup[0m88.35[1;32m mdn[0m91.17[1;32m dn[0m90.25[1;32m tube[0m87.35[1;33m valv[0m69.03[1;34m pos[0m59.60[1;34m speed[0m0.79[1;36m m_pow[0m60.09[1;36m current[0m3.90[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.11,1.84,-42.09,91.19,preinfusion,mimoja
+Data,8.11,1.84,-42.09,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m150.56[1;31m ex2[0m155.86[1;32m up[0m79.87[1;32m mup[0m88.40[1;32m mdn[0m91.23[1;32m dn[0m90.25[1;32m tube[0m87.37[1;33m valv[0m69.06[1;34m pos[0m59.71[1;34m speed[0m0.83[1;36m m_pow[0m59.93[1;36m current[0m3.90[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.11,1.81,-41.85,91.19,preinfusion,mimoja
+Data,8.11,1.81,-41.85,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m150.44[1;31m ex2[0m155.73[1;32m up[0m79.95[1;32m mup[0m88.50[1;32m mdn[0m91.34[1;32m dn[0m90.25[1;32m tube[0m87.42[1;33m valv[0m69.06[1;34m pos[0m59.82[1;34m speed[0m0.75[1;36m m_pow[0m59.93[1;36m current[0m3.94[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.11,1.78,-41.97,91.19,preinfusion,mimoja
+Data,8.11,1.78,-41.97,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m150.38[1;31m ex2[0m155.73[1;32m up[0m80.00[1;32m mup[0m88.55[1;32m mdn[0m91.34[1;32m dn[0m90.25[1;32m tube[0m87.45[1;33m valv[0m69.06[1;34m pos[0m59.93[1;34m speed[0m0.87[1;36m m_pow[0m60.16[1;36m current[0m3.81[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.10,1.82,-41.78,91.19,preinfusion,mimoja
+Data,8.10,1.82,-41.78,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m150.31[1;31m ex2[0m155.66[1;32m up[0m80.04[1;32m mup[0m88.61[1;32m mdn[0m91.34[1;32m dn[0m90.30[1;32m tube[0m87.49[1;33m valv[0m69.10[1;34m pos[0m60.06[1;34m speed[0m1.03[1;36m m_pow[0m59.85[1;36m current[0m3.66[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.11,1.81,-41.51,91.19,preinfusion,mimoja
+Data,8.11,1.81,-41.51,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m150.19[1;31m ex2[0m155.66[1;32m up[0m80.13[1;32m mup[0m88.71[1;32m mdn[0m91.34[1;32m dn[0m90.35[1;32m tube[0m87.55[1;33m valv[0m69.17[1;34m pos[0m60.17[1;34m speed[0m0.83[1;36m m_pow[0m59.40[1;36m current[0m3.77[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.11,1.81,-41.32,91.19,preinfusion,mimoja
+Data,8.11,1.81,-41.32,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m150.19[1;31m ex2[0m155.52[1;32m up[0m80.17[1;32m mup[0m88.76[1;32m mdn[0m91.34[1;32m dn[0m90.41[1;32m tube[0m87.58[1;33m valv[0m69.20[1;34m pos[0m60.28[1;34m speed[0m0.83[1;36m m_pow[0m59.48[1;36m current[0m3.78[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,8.14,1.81,-41.14,91.19,preinfusion,mimoja
+Data,8.14,1.81,-41.14,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m150.19[1;31m ex2[0m155.46[1;32m up[0m80.17[1;32m mup[0m88.76[1;32m mdn[0m91.34[1;32m dn[0m90.35[1;32m tube[0m87.62[1;33m valv[0m69.20[1;34m pos[0m60.40[1;34m speed[0m0.82[1;36m m_pow[0m56.74[1;36m current[0m3.53[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,8.14,1.76,-41.41,91.19,preinfusion,mimoja
+Data,8.14,1.76,-41.41,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m150.19[1;31m ex2[0m155.39[1;32m up[0m80.17[1;32m mup[0m88.76[1;32m mdn[0m91.34[1;32m dn[0m90.41[1;32m tube[0m87.64[1;33m valv[0m69.24[1;34m pos[0m60.49[1;34m speed[0m0.75[1;36m m_pow[0m59.55[1;36m current[0m3.87[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,8.14,1.77,-40.69,91.19,preinfusion,mimoja
+Data,8.14,1.77,-40.69,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m150.07[1;31m ex2[0m155.26[1;32m up[0m80.26[1;32m mup[0m88.81[1;32m mdn[0m91.34[1;32m dn[0m90.35[1;32m tube[0m87.67[1;33m valv[0m69.31[1;34m pos[0m60.61[1;34m speed[0m0.91[1;36m m_pow[0m59.49[1;36m current[0m3.82[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,8.14,1.78,-40.55,91.19,preinfusion,mimoja
+Data,8.14,1.78,-40.55,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m150.01[1;31m ex2[0m155.19[1;32m up[0m80.30[1;32m mup[0m88.87[1;32m mdn[0m91.39[1;32m dn[0m90.41[1;32m tube[0m87.67[1;33m valv[0m69.34[1;34m pos[0m60.71[1;34m speed[0m0.83[1;36m m_pow[0m59.36[1;36m current[0m3.86[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,8.13,1.77,-40.26,91.19,preinfusion,mimoja
+Data,8.13,1.77,-40.26,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m149.95[1;31m ex2[0m155.19[1;32m up[0m80.35[1;32m mup[0m88.92[1;32m mdn[0m91.45[1;32m dn[0m90.41[1;32m tube[0m87.70[1;33m valv[0m69.34[1;34m pos[0m60.80[1;34m speed[0m0.79[1;36m m_pow[0m59.98[1;36m current[0m3.79[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,8.10,1.79,-40.26,91.19,preinfusion,mimoja
+Data,8.10,1.79,-40.26,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m149.82[1;31m ex2[0m155.12[1;32m up[0m80.39[1;32m mup[0m88.97[1;32m mdn[0m91.50[1;32m dn[0m90.46[1;32m tube[0m87.76[1;33m valv[0m69.34[1;34m pos[0m60.92[1;34m speed[0m0.87[1;36m m_pow[0m60.05[1;36m current[0m3.78[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,8.09,1.80,-39.69,91.19,preinfusion,mimoja
+Data,8.09,1.80,-39.69,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m149.76[1;31m ex2[0m155.06[1;32m up[0m80.44[1;32m mup[0m88.97[1;32m mdn[0m91.45[1;32m dn[0m90.46[1;32m tube[0m87.79[1;33m valv[0m69.34[1;34m pos[0m61.03[1;34m speed[0m0.91[1;36m m_pow[0m59.87[1;36m current[0m3.93[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m52[1;35m 1_r[0m52[1;35m 2_r[0m52[1;35m 3_r[0m52
-Data,8.08,1.74,-39.90,91.19,preinfusion,mimoja
+Data,8.08,1.74,-39.90,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m149.70[1;31m ex2[0m154.99[1;32m up[0m80.48[1;32m mup[0m88.97[1;32m mdn[0m91.39[1;32m dn[0m90.46[1;32m tube[0m87.81[1;33m valv[0m69.38[1;34m pos[0m61.13[1;34m speed[0m0.67[1;36m m_pow[0m60.13[1;36m current[0m4.00[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.74,-39.75,91.19,preinfusion,mimoja
+Data,8.07,1.74,-39.75,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m149.70[1;31m ex2[0m154.86[1;32m up[0m80.61[1;32m mup[0m89.02[1;32m mdn[0m91.45[1;32m dn[0m90.46[1;32m tube[0m87.83[1;33m valv[0m69.48[1;34m pos[0m61.25[1;34m speed[0m1.03[1;36m m_pow[0m60.19[1;36m current[0m3.75[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.77,-39.32,91.19,preinfusion,mimoja
+Data,8.07,1.77,-39.32,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m149.70[1;31m ex2[0m154.86[1;32m up[0m80.66[1;32m mup[0m89.08[1;32m mdn[0m91.45[1;32m dn[0m90.46[1;32m tube[0m87.85[1;33m valv[0m69.52[1;34m pos[0m61.38[1;34m speed[0m0.95[1;36m m_pow[0m59.74[1;36m current[0m3.88[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.78,-38.86,91.19,preinfusion,mimoja
+Data,8.08,1.78,-38.86,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m149.64[1;31m ex2[0m154.79[1;32m up[0m80.70[1;32m mup[0m89.13[1;32m mdn[0m91.50[1;32m dn[0m90.46[1;32m tube[0m87.87[1;33m valv[0m69.52[1;34m pos[0m61.49[1;34m speed[0m0.91[1;36m m_pow[0m59.60[1;36m current[0m3.81[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.82,-38.86,91.19,preinfusion,mimoja
+Data,8.08,1.82,-38.86,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m149.58[1;31m ex2[0m154.79[1;32m up[0m80.70[1;32m mup[0m89.18[1;32m mdn[0m91.50[1;32m dn[0m90.46[1;32m tube[0m87.93[1;33m valv[0m69.52[1;34m pos[0m61.62[1;34m speed[0m0.83[1;36m m_pow[0m59.22[1;36m current[0m3.77[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.77,-39.62,91.19,preinfusion,mimoja
+Data,8.09,1.77,-39.62,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m149.46[1;31m ex2[0m154.66[1;32m up[0m80.70[1;32m mup[0m89.18[1;32m mdn[0m91.56[1;32m dn[0m90.46[1;32m tube[0m87.95[1;33m valv[0m69.52[1;34m pos[0m61.72[1;34m speed[0m0.67[1;36m m_pow[0m59.35[1;36m current[0m3.77[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.10,1.80,-39.02,91.19,preinfusion,mimoja
+Data,8.10,1.80,-39.02,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m149.40[1;31m ex2[0m154.59[1;32m up[0m80.74[1;32m mup[0m89.18[1;32m mdn[0m91.50[1;32m dn[0m90.46[1;32m tube[0m87.96[1;33m valv[0m69.56[1;34m pos[0m61.84[1;34m speed[0m0.95[1;36m m_pow[0m59.15[1;36m current[0m3.70[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.10,1.80,-38.52,91.19,preinfusion,mimoja
+Data,8.10,1.80,-38.52,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m149.34[1;31m ex2[0m154.52[1;32m up[0m80.79[1;32m mup[0m89.18[1;32m mdn[0m91.50[1;32m dn[0m90.46[1;32m tube[0m87.97[1;33m valv[0m69.59[1;34m pos[0m61.94[1;34m speed[0m0.77[1;36m m_pow[0m59.12[1;36m current[0m3.80[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.10,1.76,-38.30,91.19,preinfusion,mimoja
+Data,8.10,1.76,-38.30,91.19,preinfusion,mimoja,Pressure,8.0,none,0.0,false,Flow,4.0,none,0.0,false
 Sensors,[1;31m ex1[0m149.28[1;31m ex2[0m154.52[1;32m up[0m80.88[1;32m mup[0m89.29[1;32m mdn[0m91.45[1;32m dn[0m90.46[1;32m tube[0m87.98[1;33m valv[0m69.63[1;34m pos[0m62.03[1;34m speed[0m0.71[1;36m m_pow[0m59.81[1;36m current[0m4.02[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 INFO: [TimerTrigger] Trigger Activated Timer Value - Timer Reference ID: 3 Elapsed Time: 30003 > Value: 30000
 INFO: Moving from Node: 11 to: 304
-Data,8.09,1.77,-38.77,91.19,infusion,mimoja
+Data,8.09,1.77,-38.77,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m149.28[1;31m ex2[0m154.52[1;32m up[0m80.92[1;32m mup[0m89.29[1;32m mdn[0m91.45[1;32m dn[0m90.46[1;32m tube[0m87.99[1;33m valv[0m69.63[1;34m pos[0m62.14[1;34m speed[0m0.95[1;36m m_pow[0m59.98[1;36m current[0m3.75[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 INFO: Trigger Activated exit trigger
 INFO: Moving from Node: 304 to: 13
-Data,8.08,1.82,-38.10,91.19,infusion,mimoja
+Data,8.08,1.82,-38.10,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m149.28[1;31m ex2[0m154.46[1;32m up[0m80.97[1;32m mup[0m89.34[1;32m mdn[0m91.39[1;32m dn[0m90.46[1;32m tube[0m88.01[1;33m valv[0m69.66[1;34m pos[0m62.25[1;34m speed[0m0.85[1;36m m_pow[0m59.81[1;36m current[0m4.01[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.81,-37.33,91.19,infusion,mimoja
+Data,8.07,1.81,-37.33,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m149.22[1;31m ex2[0m154.33[1;32m up[0m81.06[1;32m mup[0m89.34[1;32m mdn[0m91.39[1;32m dn[0m90.46[1;32m tube[0m88.04[1;33m valv[0m69.73[1;34m pos[0m62.35[1;34m speed[0m0.79[1;36m m_pow[0m60.09[1;36m current[0m3.86[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.06,1.80,-36.94,91.19,infusion,mimoja
+Data,8.06,1.80,-36.94,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m149.16[1;31m ex2[0m154.26[1;32m up[0m81.06[1;32m mup[0m89.39[1;32m mdn[0m91.45[1;32m dn[0m90.46[1;32m tube[0m88.05[1;33m valv[0m69.77[1;34m pos[0m62.47[1;34m speed[0m0.91[1;36m m_pow[0m60.09[1;36m current[0m3.71[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.06,1.81,-38.04,91.19,infusion,mimoja
+Data,8.06,1.81,-38.04,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m149.10[1;31m ex2[0m154.26[1;32m up[0m81.10[1;32m mup[0m89.39[1;32m mdn[0m91.50[1;32m dn[0m90.46[1;32m tube[0m88.06[1;33m valv[0m69.77[1;34m pos[0m62.59[1;34m speed[0m0.95[1;36m m_pow[0m59.59[1;36m current[0m3.66[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.79,-38.04,91.19,infusion,mimoja
+Data,8.07,1.79,-38.04,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m149.10[1;31m ex2[0m154.26[1;32m up[0m81.14[1;32m mup[0m89.39[1;32m mdn[0m91.50[1;32m dn[0m90.46[1;32m tube[0m88.08[1;33m valv[0m69.77[1;34m pos[0m62.70[1;34m speed[0m0.87[1;36m m_pow[0m59.52[1;36m current[0m3.77[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.86,-36.68,91.19,infusion,mimoja
+Data,8.07,1.86,-36.68,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m149.03[1;31m ex2[0m154.13[1;32m up[0m81.23[1;32m mup[0m89.39[1;32m mdn[0m91.45[1;32m dn[0m90.46[1;32m tube[0m88.12[1;33m valv[0m69.77[1;34m pos[0m62.82[1;34m speed[0m0.91[1;36m m_pow[0m59.45[1;36m current[0m3.76[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.81,-36.68,91.19,infusion,mimoja
+Data,8.08,1.81,-36.68,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m149.03[1;31m ex2[0m154.06[1;32m up[0m81.23[1;32m mup[0m89.45[1;32m mdn[0m91.39[1;32m dn[0m90.46[1;32m tube[0m88.13[1;33m valv[0m69.80[1;34m pos[0m62.94[1;34m speed[0m0.75[1;36m m_pow[0m59.07[1;36m current[0m3.76[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.82,-38.00,91.19,infusion,mimoja
+Data,8.09,1.82,-38.00,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.97[1;31m ex2[0m154.00[1;32m up[0m81.28[1;32m mup[0m89.50[1;32m mdn[0m91.34[1;32m dn[0m90.46[1;32m tube[0m88.13[1;33m valv[0m69.84[1;34m pos[0m63.05[1;34m speed[0m0.83[1;36m m_pow[0m58.94[1;36m current[0m3.67[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.85,-37.16,91.19,infusion,mimoja
+Data,8.09,1.85,-37.16,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.97[1;31m ex2[0m154.00[1;32m up[0m81.37[1;32m mup[0m89.60[1;32m mdn[0m91.34[1;32m dn[0m90.46[1;32m tube[0m88.14[1;33m valv[0m69.91[1;34m pos[0m63.17[1;34m speed[0m0.87[1;36m m_pow[0m58.68[1;36m current[0m3.64[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.10,1.79,-36.53,91.19,infusion,mimoja
+Data,8.10,1.79,-36.53,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.97[1;31m ex2[0m154.00[1;32m up[0m81.41[1;32m mup[0m89.60[1;32m mdn[0m91.34[1;32m dn[0m90.46[1;32m tube[0m88.16[1;33m valv[0m69.91[1;34m pos[0m63.27[1;34m speed[0m0.71[1;36m m_pow[0m59.11[1;36m current[0m3.74[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.79,-36.83,91.19,infusion,mimoja
+Data,8.09,1.79,-36.83,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.91[1;31m ex2[0m154.00[1;32m up[0m81.41[1;32m mup[0m89.60[1;32m mdn[0m91.39[1;32m dn[0m90.46[1;32m tube[0m88.18[1;33m valv[0m69.94[1;34m pos[0m63.38[1;34m speed[0m0.95[1;36m m_pow[0m59.23[1;36m current[0m3.66[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.83,-36.61,91.19,infusion,mimoja
+Data,8.09,1.83,-36.61,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.79[1;31m ex2[0m153.87[1;32m up[0m81.50[1;32m mup[0m89.60[1;32m mdn[0m91.45[1;32m dn[0m90.46[1;32m tube[0m88.21[1;33m valv[0m70.02[1;34m pos[0m63.49[1;34m speed[0m0.79[1;36m m_pow[0m59.15[1;36m current[0m3.68[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.79,-36.10,91.19,infusion,mimoja
+Data,8.09,1.79,-36.10,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.73[1;31m ex2[0m153.80[1;32m up[0m81.55[1;32m mup[0m89.60[1;32m mdn[0m91.45[1;32m dn[0m90.46[1;32m tube[0m88.23[1;33m valv[0m70.05[1;34m pos[0m63.58[1;34m speed[0m0.75[1;36m m_pow[0m59.48[1;36m current[0m3.93[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.78,-36.10,91.19,infusion,mimoja
+Data,8.07,1.78,-36.10,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.73[1;31m ex2[0m153.74[1;32m up[0m81.59[1;32m mup[0m89.60[1;32m mdn[0m91.39[1;32m dn[0m90.46[1;32m tube[0m88.25[1;33m valv[0m70.05[1;34m pos[0m63.70[1;34m speed[0m0.87[1;36m m_pow[0m59.55[1;36m current[0m3.81[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.79,-35.98,91.19,infusion,mimoja
+Data,8.07,1.79,-35.98,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.73[1;31m ex2[0m153.74[1;32m up[0m81.64[1;32m mup[0m89.66[1;32m mdn[0m91.34[1;32m dn[0m90.46[1;32m tube[0m88.26[1;33m valv[0m70.05[1;34m pos[0m63.83[1;34m speed[0m0.95[1;36m m_pow[0m59.11[1;36m current[0m3.71[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.76,-35.56,91.19,infusion,mimoja
+Data,8.07,1.76,-35.56,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.73[1;31m ex2[0m153.67[1;32m up[0m81.68[1;32m mup[0m89.66[1;32m mdn[0m91.34[1;32m dn[0m90.41[1;32m tube[0m88.26[1;33m valv[0m70.09[1;34m pos[0m63.93[1;34m speed[0m0.83[1;36m m_pow[0m59.16[1;36m current[0m3.74[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.80,-35.15,91.19,infusion,mimoja
+Data,8.07,1.80,-35.15,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.73[1;31m ex2[0m153.67[1;32m up[0m81.73[1;32m mup[0m89.66[1;32m mdn[0m91.34[1;32m dn[0m90.41[1;32m tube[0m88.26[1;33m valv[0m70.12[1;34m pos[0m64.05[1;34m speed[0m0.91[1;36m m_pow[0m58.91[1;36m current[0m3.88[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.80,-35.84,91.19,infusion,mimoja
+Data,8.08,1.80,-35.84,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.73[1;31m ex2[0m153.67[1;32m up[0m81.77[1;32m mup[0m89.71[1;32m mdn[0m91.34[1;32m dn[0m90.41[1;32m tube[0m88.27[1;33m valv[0m70.12[1;34m pos[0m64.16[1;34m speed[0m0.83[1;36m m_pow[0m58.63[1;36m current[0m3.68[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.79,-35.84,91.19,infusion,mimoja
+Data,8.09,1.79,-35.84,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.73[1;31m ex2[0m153.61[1;32m up[0m81.82[1;32m mup[0m89.66[1;32m mdn[0m91.34[1;32m dn[0m90.46[1;32m tube[0m88.29[1;33m valv[0m70.16[1;34m pos[0m64.28[1;34m speed[0m0.79[1;36m m_pow[0m58.66[1;36m current[0m3.80[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.80,-34.84,91.19,infusion,mimoja
+Data,8.09,1.80,-34.84,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.73[1;31m ex2[0m153.54[1;32m up[0m81.86[1;32m mup[0m89.71[1;32m mdn[0m91.39[1;32m dn[0m90.46[1;32m tube[0m88.30[1;33m valv[0m70.19[1;34m pos[0m64.39[1;34m speed[0m0.82[1;36m m_pow[0m58.52[1;36m current[0m3.61[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.75,-34.84,91.19,infusion,mimoja
+Data,8.09,1.75,-34.84,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.73[1;31m ex2[0m153.48[1;32m up[0m81.91[1;32m mup[0m89.71[1;32m mdn[0m91.39[1;32m dn[0m90.46[1;32m tube[0m88.32[1;33m valv[0m70.23[1;34m pos[0m64.48[1;34m speed[0m0.71[1;36m m_pow[0m58.81[1;36m current[0m3.86[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.74,-35.13,91.19,infusion,mimoja
+Data,8.09,1.74,-35.13,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.61[1;31m ex2[0m153.48[1;32m up[0m81.96[1;32m mup[0m89.87[1;32m mdn[0m91.39[1;32m dn[0m90.46[1;32m tube[0m88.36[1;33m valv[0m70.30[1;34m pos[0m64.59[1;34m speed[0m0.87[1;36m m_pow[0m59.10[1;36m current[0m3.78[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.76,-34.71,91.19,infusion,mimoja
+Data,8.08,1.76,-34.71,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.55[1;31m ex2[0m153.48[1;32m up[0m81.96[1;32m mup[0m89.87[1;32m mdn[0m91.34[1;32m dn[0m90.41[1;32m tube[0m88.39[1;33m valv[0m70.30[1;34m pos[0m64.70[1;34m speed[0m0.87[1;36m m_pow[0m59.04[1;36m current[0m3.59[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.74,-34.29,91.19,infusion,mimoja
+Data,8.08,1.74,-34.29,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.49[1;31m ex2[0m153.48[1;32m up[0m82.00[1;32m mup[0m89.87[1;32m mdn[0m91.34[1;32m dn[0m90.35[1;32m tube[0m88.40[1;33m valv[0m70.34[1;34m pos[0m64.80[1;34m speed[0m0.79[1;36m m_pow[0m59.30[1;36m current[0m3.80[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.73,-34.43,91.19,infusion,mimoja
+Data,8.07,1.73,-34.43,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.49[1;31m ex2[0m153.48[1;32m up[0m82.05[1;32m mup[0m89.82[1;32m mdn[0m91.34[1;32m dn[0m90.30[1;32m tube[0m88.40[1;33m valv[0m70.34[1;34m pos[0m64.91[1;34m speed[0m0.87[1;36m m_pow[0m59.51[1;36m current[0m3.74[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.06,1.76,-34.08,91.19,infusion,mimoja
+Data,8.06,1.76,-34.08,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.49[1;31m ex2[0m153.41[1;32m up[0m82.14[1;32m mup[0m89.82[1;32m mdn[0m91.34[1;32m dn[0m90.25[1;32m tube[0m88.38[1;33m valv[0m70.37[1;34m pos[0m65.04[1;34m speed[0m0.95[1;36m m_pow[0m58.92[1;36m current[0m3.48[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.06,1.73,-33.95,91.19,infusion,mimoja
+Data,8.06,1.73,-33.95,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.49[1;31m ex2[0m153.35[1;32m up[0m82.14[1;32m mup[0m89.82[1;32m mdn[0m91.34[1;32m dn[0m90.25[1;32m tube[0m88.38[1;33m valv[0m70.41[1;34m pos[0m65.14[1;34m speed[0m0.83[1;36m m_pow[0m59.01[1;36m current[0m3.79[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.74,-33.80,91.19,infusion,mimoja
+Data,8.07,1.74,-33.80,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.49[1;31m ex2[0m153.28[1;32m up[0m82.18[1;32m mup[0m89.82[1;32m mdn[0m91.28[1;32m dn[0m90.25[1;32m tube[0m88.38[1;33m valv[0m70.44[1;34m pos[0m65.26[1;34m speed[0m0.87[1;36m m_pow[0m58.89[1;36m current[0m3.61[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.75,-33.93,91.19,infusion,mimoja
+Data,8.07,1.75,-33.93,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.49[1;31m ex2[0m153.15[1;32m up[0m82.27[1;32m mup[0m89.82[1;32m mdn[0m91.17[1;32m dn[0m90.25[1;32m tube[0m88.38[1;33m valv[0m70.52[1;34m pos[0m65.37[1;34m speed[0m0.87[1;36m m_pow[0m58.50[1;36m current[0m3.68[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.08,1.76,-33.72,91.19,infusion,mimoja
+Data,8.08,1.76,-33.72,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.49[1;31m ex2[0m153.15[1;32m up[0m82.32[1;32m mup[0m89.82[1;32m mdn[0m91.17[1;32m dn[0m90.25[1;32m tube[0m88.38[1;33m valv[0m70.55[1;34m pos[0m65.46[1;34m speed[0m0.63[1;36m m_pow[0m58.17[1;36m current[0m3.33[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.08,1.81,-33.40,91.19,infusion,mimoja
+Data,8.08,1.81,-33.40,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.49[1;31m ex2[0m153.09[1;32m up[0m82.32[1;32m mup[0m89.82[1;32m mdn[0m91.17[1;32m dn[0m90.30[1;32m tube[0m88.38[1;33m valv[0m70.59[1;34m pos[0m65.57[1;34m speed[0m0.95[1;36m m_pow[0m58.61[1;36m current[0m3.70[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.07,1.77,-33.28,91.19,infusion,mimoja
+Data,8.07,1.77,-33.28,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.43[1;31m ex2[0m153.09[1;32m up[0m82.32[1;32m mup[0m89.87[1;32m mdn[0m91.17[1;32m dn[0m90.30[1;32m tube[0m88.39[1;33m valv[0m70.62[1;34m pos[0m65.67[1;34m speed[0m0.67[1;36m m_pow[0m58.69[1;36m current[0m3.78[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.06,1.75,-33.28,91.19,infusion,mimoja
+Data,8.06,1.75,-33.28,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.32[1;31m ex2[0m153.02[1;32m up[0m82.32[1;32m mup[0m89.92[1;32m mdn[0m91.12[1;32m dn[0m90.30[1;32m tube[0m88.41[1;33m valv[0m70.62[1;34m pos[0m65.76[1;34m speed[0m0.79[1;36m m_pow[0m59.24[1;36m current[0m3.77[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.07,1.76,-32.22,91.19,infusion,mimoja
+Data,8.07,1.76,-32.22,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.26[1;31m ex2[0m153.02[1;32m up[0m82.32[1;32m mup[0m89.92[1;32m mdn[0m91.12[1;32m dn[0m90.25[1;32m tube[0m88.41[1;33m valv[0m70.62[1;34m pos[0m65.88[1;34m speed[0m0.83[1;36m m_pow[0m59.33[1;36m current[0m3.70[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.07,1.69,-32.22,91.19,infusion,mimoja
+Data,8.07,1.69,-32.22,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.26[1;31m ex2[0m152.96[1;32m up[0m82.37[1;32m mup[0m89.87[1;32m mdn[0m91.12[1;32m dn[0m90.25[1;32m tube[0m88.41[1;33m valv[0m70.62[1;34m pos[0m65.97[1;34m speed[0m0.59[1;36m m_pow[0m57.22[1;36m current[0m3.66[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.08,1.62,-32.52,91.19,infusion,mimoja
+Data,8.08,1.62,-32.52,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.26[1;31m ex2[0m152.83[1;32m up[0m82.46[1;32m mup[0m89.87[1;32m mdn[0m91.12[1;32m dn[0m90.25[1;32m tube[0m88.41[1;33m valv[0m70.70[1;34m pos[0m66.06[1;34m speed[0m0.63[1;36m m_pow[0m57.92[1;36m current[0m3.72[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.08,1.61,-31.82,91.19,infusion,mimoja
+Data,8.08,1.61,-31.82,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.26[1;31m ex2[0m152.77[1;32m up[0m82.50[1;32m mup[0m89.92[1;32m mdn[0m91.12[1;32m dn[0m90.25[1;32m tube[0m88.41[1;33m valv[0m70.73[1;34m pos[0m66.17[1;34m speed[0m0.79[1;36m m_pow[0m58.25[1;36m current[0m3.60[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.63,-31.31,91.19,infusion,mimoja
+Data,8.09,1.63,-31.31,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.26[1;31m ex2[0m152.70[1;32m up[0m82.50[1;32m mup[0m89.98[1;32m mdn[0m91.12[1;32m dn[0m90.25[1;32m tube[0m88.42[1;33m valv[0m70.77[1;34m pos[0m66.29[1;34m speed[0m0.91[1;36m m_pow[0m57.91[1;36m current[0m3.60[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.61,-31.26,91.19,infusion,mimoja
+Data,8.08,1.61,-31.26,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.26[1;31m ex2[0m152.70[1;32m up[0m82.50[1;32m mup[0m90.03[1;32m mdn[0m91.12[1;32m dn[0m90.25[1;32m tube[0m88.44[1;33m valv[0m70.77[1;34m pos[0m66.40[1;34m speed[0m0.79[1;36m m_pow[0m57.99[1;36m current[0m3.62[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.63,-31.41,91.19,infusion,mimoja
+Data,8.08,1.63,-31.41,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.26[1;31m ex2[0m152.70[1;32m up[0m82.55[1;32m mup[0m90.03[1;32m mdn[0m91.12[1;32m dn[0m90.14[1;32m tube[0m88.46[1;33m valv[0m70.77[1;34m pos[0m66.51[1;34m speed[0m0.95[1;36m m_pow[0m57.91[1;36m current[0m3.49[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.61,-31.15,91.19,infusion,mimoja
+Data,8.08,1.61,-31.15,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.26[1;31m ex2[0m152.70[1;32m up[0m82.59[1;32m mup[0m90.03[1;32m mdn[0m91.12[1;32m dn[0m90.14[1;32m tube[0m88.46[1;33m valv[0m70.77[1;34m pos[0m66.61[1;34m speed[0m0.83[1;36m m_pow[0m57.69[1;36m current[0m3.69[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.64,-30.86,91.19,infusion,mimoja
+Data,8.08,1.64,-30.86,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.20[1;31m ex2[0m152.70[1;32m up[0m82.64[1;32m mup[0m90.03[1;32m mdn[0m91.12[1;32m dn[0m90.14[1;32m tube[0m88.47[1;33m valv[0m70.80[1;34m pos[0m66.72[1;34m speed[0m0.83[1;36m m_pow[0m57.64[1;36m current[0m3.52[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.66,-30.40,91.19,infusion,mimoja
+Data,8.08,1.66,-30.40,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.14[1;31m ex2[0m152.64[1;32m up[0m82.73[1;32m mup[0m90.03[1;32m mdn[0m91.12[1;32m dn[0m90.19[1;32m tube[0m88.48[1;33m valv[0m70.91[1;34m pos[0m66.83[1;34m speed[0m0.71[1;36m m_pow[0m57.44[1;36m current[0m3.58[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.61,-30.93,91.19,infusion,mimoja
+Data,8.08,1.61,-30.93,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.08[1;31m ex2[0m152.64[1;32m up[0m82.73[1;32m mup[0m90.03[1;32m mdn[0m91.12[1;32m dn[0m90.14[1;32m tube[0m88.49[1;33m valv[0m70.95[1;34m pos[0m66.92[1;34m speed[0m0.59[1;36m m_pow[0m57.75[1;36m current[0m3.76[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.07,1.64,-30.38,91.19,infusion,mimoja
+Data,8.07,1.64,-30.38,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.08[1;31m ex2[0m152.57[1;32m up[0m82.78[1;32m mup[0m90.03[1;32m mdn[0m91.06[1;32m dn[0m90.09[1;32m tube[0m88.50[1;33m valv[0m70.95[1;34m pos[0m67.02[1;34m speed[0m0.71[1;36m m_pow[0m58.30[1;36m current[0m3.75[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.07,1.68,-29.70,91.19,infusion,mimoja
+Data,8.07,1.68,-29.70,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.02[1;31m ex2[0m152.57[1;32m up[0m82.82[1;32m mup[0m90.03[1;32m mdn[0m91.01[1;32m dn[0m90.03[1;32m tube[0m88.50[1;33m valv[0m70.98[1;34m pos[0m67.13[1;34m speed[0m0.83[1;36m m_pow[0m58.25[1;36m current[0m3.60[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.06,1.66,-29.82,91.19,infusion,mimoja
+Data,8.06,1.66,-29.82,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.02[1;31m ex2[0m152.45[1;32m up[0m82.87[1;32m mup[0m90.03[1;32m mdn[0m90.90[1;32m dn[0m90.03[1;32m tube[0m88.48[1;33m valv[0m71.02[1;34m pos[0m67.24[1;34m speed[0m0.71[1;36m m_pow[0m58.37[1;36m current[0m3.72[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.05,1.62,-29.82,91.19,infusion,mimoja
+Data,8.05,1.62,-29.82,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.02[1;31m ex2[0m152.45[1;32m up[0m82.87[1;32m mup[0m89.98[1;32m mdn[0m90.90[1;32m dn[0m90.03[1;32m tube[0m88.47[1;33m valv[0m71.06[1;34m pos[0m67.35[1;34m speed[0m0.91[1;36m m_pow[0m58.53[1;36m current[0m3.71[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.05,1.67,-28.91,91.19,infusion,mimoja
+Data,8.05,1.67,-28.91,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.02[1;31m ex2[0m152.45[1;32m up[0m82.87[1;32m mup[0m89.98[1;32m mdn[0m90.90[1;32m dn[0m90.03[1;32m tube[0m88.46[1;33m valv[0m71.06[1;34m pos[0m67.48[1;34m speed[0m1.03[1;36m m_pow[0m58.10[1;36m current[0m3.51[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.05,1.63,-28.81,91.19,infusion,mimoja
+Data,8.05,1.63,-28.81,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.02[1;31m ex2[0m152.45[1;32m up[0m82.87[1;32m mup[0m89.98[1;32m mdn[0m90.90[1;32m dn[0m90.03[1;32m tube[0m88.45[1;33m valv[0m71.06[1;34m pos[0m67.59[1;34m speed[0m0.75[1;36m m_pow[0m57.71[1;36m current[0m3.66[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.06,1.64,-29.56,91.19,infusion,mimoja
+Data,8.06,1.64,-29.56,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m148.02[1;31m ex2[0m152.38[1;32m up[0m82.87[1;32m mup[0m89.98[1;32m mdn[0m90.90[1;32m dn[0m90.03[1;32m tube[0m88.44[1;33m valv[0m71.09[1;34m pos[0m67.70[1;34m speed[0m0.91[1;36m m_pow[0m57.68[1;36m current[0m3.66[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.07,1.65,-29.26,91.19,infusion,mimoja
+Data,8.07,1.65,-29.26,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.96[1;31m ex2[0m152.32[1;32m up[0m82.92[1;32m mup[0m89.98[1;32m mdn[0m90.90[1;32m dn[0m90.03[1;32m tube[0m88.44[1;33m valv[0m71.13[1;34m pos[0m67.83[1;34m speed[0m0.91[1;36m m_pow[0m57.24[1;36m current[0m3.55[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.65,-28.42,91.19,infusion,mimoja
+Data,8.08,1.65,-28.42,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.90[1;31m ex2[0m152.25[1;32m up[0m82.96[1;32m mup[0m89.87[1;32m mdn[0m90.90[1;32m dn[0m90.03[1;32m tube[0m88.45[1;33m valv[0m71.20[1;34m pos[0m67.94[1;34m speed[0m0.91[1;36m m_pow[0m57.18[1;36m current[0m3.50[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.72,-28.79,91.19,infusion,mimoja
+Data,8.09,1.72,-28.79,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.84[1;31m ex2[0m152.25[1;32m up[0m83.01[1;32m mup[0m89.87[1;32m mdn[0m90.90[1;32m dn[0m90.03[1;32m tube[0m88.45[1;33m valv[0m71.20[1;34m pos[0m68.05[1;34m speed[0m0.90[1;36m m_pow[0m56.97[1;36m current[0m3.38[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.10,1.72,-28.79,91.19,infusion,mimoja
+Data,8.10,1.72,-28.79,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.84[1;31m ex2[0m152.25[1;32m up[0m83.01[1;32m mup[0m89.82[1;32m mdn[0m90.84[1;32m dn[0m89.98[1;32m tube[0m88.45[1;33m valv[0m71.24[1;34m pos[0m68.15[1;34m speed[0m0.71[1;36m m_pow[0m56.86[1;36m current[0m3.56[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.10,1.69,-28.41,91.19,infusion,mimoja
+Data,8.10,1.69,-28.41,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.78[1;31m ex2[0m152.19[1;32m up[0m83.06[1;32m mup[0m89.82[1;32m mdn[0m90.79[1;32m dn[0m89.92[1;32m tube[0m88.43[1;33m valv[0m71.31[1;34m pos[0m68.25[1;34m speed[0m0.71[1;36m m_pow[0m57.37[1;36m current[0m3.55[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.10,1.72,-27.94,91.19,infusion,mimoja
+Data,8.10,1.72,-27.94,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.78[1;31m ex2[0m152.19[1;32m up[0m83.06[1;32m mup[0m89.82[1;32m mdn[0m90.73[1;32m dn[0m89.92[1;32m tube[0m88.42[1;33m valv[0m71.35[1;34m pos[0m68.37[1;34m speed[0m0.87[1;36m m_pow[0m57.39[1;36m current[0m3.60[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.71,-28.13,91.19,infusion,mimoja
+Data,8.09,1.71,-28.13,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.78[1;31m ex2[0m152.13[1;32m up[0m83.06[1;32m mup[0m89.82[1;32m mdn[0m90.73[1;32m dn[0m89.92[1;32m tube[0m88.40[1;33m valv[0m71.35[1;34m pos[0m68.48[1;34m speed[0m0.75[1;36m m_pow[0m57.56[1;36m current[0m3.61[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.68,-27.52,91.19,infusion,mimoja
+Data,8.08,1.68,-27.52,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.78[1;31m ex2[0m152.00[1;32m up[0m83.06[1;32m mup[0m89.82[1;32m mdn[0m90.68[1;32m dn[0m89.87[1;32m tube[0m88.38[1;33m valv[0m71.38[1;34m pos[0m68.59[1;34m speed[0m0.87[1;36m m_pow[0m57.79[1;36m current[0m3.55[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.07,1.73,-27.02,91.19,infusion,mimoja
+Data,8.07,1.73,-27.02,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.78[1;31m ex2[0m151.94[1;32m up[0m83.10[1;32m mup[0m89.82[1;32m mdn[0m90.68[1;32m dn[0m89.82[1;32m tube[0m88.37[1;33m valv[0m71.42[1;34m pos[0m68.71[1;34m speed[0m0.99[1;36m m_pow[0m57.51[1;36m current[0m3.54[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.07,1.71,-27.20,91.19,infusion,mimoja
+Data,8.07,1.71,-27.20,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.78[1;31m ex2[0m151.94[1;32m up[0m83.15[1;32m mup[0m89.82[1;32m mdn[0m90.68[1;32m dn[0m89.82[1;32m tube[0m88.37[1;33m valv[0m71.46[1;34m pos[0m68.82[1;34m speed[0m0.79[1;36m m_pow[0m57.10[1;36m current[0m3.53[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.08,1.70,-27.20,91.19,infusion,mimoja
+Data,8.08,1.70,-27.20,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.78[1;31m ex2[0m151.94[1;32m up[0m83.20[1;32m mup[0m89.82[1;32m mdn[0m90.68[1;32m dn[0m89.82[1;32m tube[0m88.36[1;33m valv[0m71.49[1;34m pos[0m68.94[1;34m speed[0m0.87[1;36m m_pow[0m57.05[1;36m current[0m3.40[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.08,1.69,-26.66,91.19,infusion,mimoja
+Data,8.08,1.69,-26.66,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.78[1;31m ex2[0m151.94[1;32m up[0m83.24[1;32m mup[0m89.82[1;32m mdn[0m90.57[1;32m dn[0m89.82[1;32m tube[0m88.37[1;33m valv[0m71.49[1;34m pos[0m69.06[1;34m speed[0m0.89[1;36m m_pow[0m56.65[1;36m current[0m3.37[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.10,1.67,-26.95,91.19,infusion,mimoja
+Data,8.10,1.67,-26.95,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.78[1;31m ex2[0m151.94[1;32m up[0m83.24[1;32m mup[0m89.82[1;32m mdn[0m90.52[1;32m dn[0m89.82[1;32m tube[0m88.37[1;33m valv[0m71.49[1;34m pos[0m69.17[1;34m speed[0m0.87[1;36m m_pow[0m56.61[1;36m current[0m3.40[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.10,1.70,-26.62,91.19,infusion,mimoja
+Data,8.10,1.70,-26.62,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.72[1;31m ex2[0m151.94[1;32m up[0m83.24[1;32m mup[0m89.82[1;32m mdn[0m90.46[1;32m dn[0m89.82[1;32m tube[0m88.37[1;33m valv[0m71.49[1;34m pos[0m69.28[1;34m speed[0m0.83[1;36m m_pow[0m56.39[1;36m current[0m3.37[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.11,1.71,-26.47,91.19,infusion,mimoja
+Data,8.11,1.71,-26.47,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.66[1;31m ex2[0m151.87[1;32m up[0m83.24[1;32m mup[0m89.82[1;32m mdn[0m90.46[1;32m dn[0m89.82[1;32m tube[0m88.34[1;33m valv[0m71.53[1;34m pos[0m69.38[1;34m speed[0m0.79[1;36m m_pow[0m56.41[1;36m current[0m3.43[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.11,1.68,-26.28,91.19,infusion,mimoja
+Data,8.11,1.68,-26.28,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.60[1;31m ex2[0m151.81[1;32m up[0m83.29[1;32m mup[0m89.76[1;32m mdn[0m90.46[1;32m dn[0m89.82[1;32m tube[0m88.34[1;33m valv[0m71.57[1;34m pos[0m69.48[1;34m speed[0m0.71[1;36m m_pow[0m56.77[1;36m current[0m3.47[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.10,1.71,-25.90,91.19,infusion,mimoja
+Data,8.10,1.71,-25.90,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.60[1;31m ex2[0m151.75[1;32m up[0m83.34[1;32m mup[0m89.76[1;32m mdn[0m90.46[1;32m dn[0m89.82[1;32m tube[0m88.33[1;33m valv[0m71.60[1;34m pos[0m69.58[1;34m speed[0m0.91[1;36m m_pow[0m56.94[1;36m current[0m3.33[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.68,-25.45,91.19,infusion,mimoja
+Data,8.09,1.68,-25.45,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.55[1;31m ex2[0m151.68[1;32m up[0m83.38[1;32m mup[0m89.71[1;32m mdn[0m90.46[1;32m dn[0m89.82[1;32m tube[0m88.34[1;33m valv[0m71.64[1;34m pos[0m69.69[1;34m speed[0m0.71[1;36m m_pow[0m57.07[1;36m current[0m3.49[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.64,-25.45,91.19,infusion,mimoja
+Data,8.08,1.64,-25.45,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.55[1;31m ex2[0m151.68[1;32m up[0m83.43[1;32m mup[0m89.76[1;32m mdn[0m90.46[1;32m dn[0m89.76[1;32m tube[0m88.34[1;33m valv[0m71.71[1;34m pos[0m69.80[1;34m speed[0m0.83[1;36m m_pow[0m57.49[1;36m current[0m3.52[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.66,-24.86,91.19,infusion,mimoja
+Data,8.07,1.66,-24.86,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.55[1;31m ex2[0m151.68[1;32m up[0m83.43[1;32m mup[0m89.71[1;32m mdn[0m90.41[1;32m dn[0m89.71[1;32m tube[0m88.35[1;33m valv[0m71.75[1;34m pos[0m69.93[1;34m speed[0m0.91[1;36m m_pow[0m57.18[1;36m current[0m3.36[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.66,-24.86,91.19,infusion,mimoja
+Data,8.07,1.66,-24.86,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.55[1;31m ex2[0m151.68[1;32m up[0m83.43[1;32m mup[0m89.76[1;32m mdn[0m90.35[1;32m dn[0m89.66[1;32m tube[0m88.34[1;33m valv[0m71.79[1;34m pos[0m70.04[1;34m speed[0m0.87[1;36m m_pow[0m56.86[1;36m current[0m3.55[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.65,-24.83,91.19,infusion,mimoja
+Data,8.07,1.65,-24.83,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.55[1;31m ex2[0m151.68[1;32m up[0m83.48[1;32m mup[0m89.71[1;32m mdn[0m90.25[1;32m dn[0m89.60[1;32m tube[0m88.31[1;33m valv[0m71.79[1;34m pos[0m70.15[1;34m speed[0m0.83[1;36m m_pow[0m56.99[1;36m current[0m3.50[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.66,-24.31,91.19,infusion,mimoja
+Data,8.07,1.66,-24.31,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.55[1;31m ex2[0m151.68[1;32m up[0m83.48[1;32m mup[0m89.71[1;32m mdn[0m90.25[1;32m dn[0m89.60[1;32m tube[0m88.29[1;33m valv[0m71.79[1;34m pos[0m70.27[1;34m speed[0m0.91[1;36m m_pow[0m56.76[1;36m current[0m3.41[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.64,-24.31,91.19,infusion,mimoja
+Data,8.08,1.64,-24.31,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.55[1;31m ex2[0m151.68[1;32m up[0m83.48[1;32m mup[0m89.66[1;32m mdn[0m90.25[1;32m dn[0m89.60[1;32m tube[0m88.28[1;33m valv[0m71.82[1;34m pos[0m70.38[1;34m speed[0m0.79[1;36m m_pow[0m56.74[1;36m current[0m3.45[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.67,-24.66,91.19,infusion,mimoja
+Data,8.08,1.67,-24.66,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.55[1;31m ex2[0m151.56[1;32m up[0m83.43[1;32m mup[0m89.60[1;32m mdn[0m90.25[1;32m dn[0m89.60[1;32m tube[0m88.25[1;33m valv[0m71.86[1;34m pos[0m70.49[1;34m speed[0m0.95[1;36m m_pow[0m56.62[1;36m current[0m3.42[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.69,-23.62,91.19,infusion,mimoja
+Data,8.08,1.69,-23.62,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.55[1;31m ex2[0m151.50[1;32m up[0m83.43[1;32m mup[0m89.60[1;32m mdn[0m90.19[1;32m dn[0m89.60[1;32m tube[0m88.24[1;33m valv[0m71.90[1;34m pos[0m70.60[1;34m speed[0m0.78[1;36m m_pow[0m56.66[1;36m current[0m3.44[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.67,-23.52,91.19,infusion,mimoja
+Data,8.08,1.67,-23.52,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.55[1;31m ex2[0m151.43[1;32m up[0m83.38[1;32m mup[0m89.60[1;32m mdn[0m90.19[1;32m dn[0m89.60[1;32m tube[0m88.23[1;33m valv[0m71.90[1;34m pos[0m70.69[1;34m speed[0m0.83[1;36m m_pow[0m57.08[1;36m current[0m3.52[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.71,-23.37,91.19,infusion,mimoja
+Data,8.07,1.71,-23.37,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.43[1;31m ex2[0m151.43[1;32m up[0m83.29[1;32m mup[0m89.60[1;32m mdn[0m90.09[1;32m dn[0m89.60[1;32m tube[0m88.20[1;33m valv[0m71.97[1;34m pos[0m70.81[1;34m speed[0m0.87[1;36m m_pow[0m57.19[1;36m current[0m3.38[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.70,-22.95,91.19,infusion,mimoja
+Data,8.07,1.70,-22.95,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.37[1;31m ex2[0m151.43[1;32m up[0m83.20[1;32m mup[0m89.60[1;32m mdn[0m90.09[1;32m dn[0m89.60[1;32m tube[0m88.18[1;33m valv[0m71.97[1;34m pos[0m70.92[1;34m speed[0m0.79[1;36m m_pow[0m56.97[1;36m current[0m3.49[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.06,1.66,-22.62,91.19,infusion,mimoja
+Data,8.06,1.66,-22.62,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.31[1;31m ex2[0m151.37[1;32m up[0m83.15[1;32m mup[0m89.55[1;32m mdn[0m90.03[1;32m dn[0m89.55[1;32m tube[0m88.16[1;33m valv[0m72.01[1;34m pos[0m71.02[1;34m speed[0m0.71[1;36m m_pow[0m57.28[1;36m current[0m3.56[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.06,1.67,-22.62,91.19,infusion,mimoja
+Data,8.06,1.67,-22.62,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.31[1;31m ex2[0m151.31[1;32m up[0m83.10[1;32m mup[0m89.50[1;32m mdn[0m90.03[1;32m dn[0m89.55[1;32m tube[0m88.13[1;33m valv[0m72.05[1;34m pos[0m71.16[1;34m speed[0m1.01[1;36m m_pow[0m57.17[1;36m current[0m3.40[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.06,1.68,-22.23,91.19,infusion,mimoja
+Data,8.06,1.68,-22.23,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.31[1;31m ex2[0m151.18[1;32m up[0m83.01[1;32m mup[0m89.39[1;32m mdn[0m90.03[1;32m dn[0m89.50[1;32m tube[0m88.06[1;33m valv[0m72.08[1;34m pos[0m71.27[1;34m speed[0m0.91[1;36m m_pow[0m56.55[1;36m current[0m3.43[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.06,1.67,-22.23,91.19,infusion,mimoja
+Data,8.06,1.67,-22.23,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.31[1;31m ex2[0m151.18[1;32m up[0m82.96[1;32m mup[0m89.39[1;32m mdn[0m90.03[1;32m dn[0m89.50[1;32m tube[0m88.03[1;33m valv[0m72.08[1;34m pos[0m71.39[1;34m speed[0m0.87[1;36m m_pow[0m56.48[1;36m current[0m3.32[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.07,1.69,-22.31,91.19,infusion,mimoja
+Data,8.07,1.69,-22.31,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.31[1;31m ex2[0m151.18[1;32m up[0m82.92[1;32m mup[0m89.39[1;32m mdn[0m90.03[1;32m dn[0m89.45[1;32m tube[0m88.01[1;33m valv[0m72.08[1;34m pos[0m71.52[1;34m speed[0m0.87[1;36m m_pow[0m56.26[1;36m current[0m3.40[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.08,1.66,-22.13,91.19,infusion,mimoja
+Data,8.08,1.66,-22.13,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.25[1;31m ex2[0m151.18[1;32m up[0m82.87[1;32m mup[0m89.39[1;32m mdn[0m89.98[1;32m dn[0m89.39[1;32m tube[0m87.96[1;33m valv[0m72.16[1;34m pos[0m71.62[1;34m speed[0m0.83[1;36m m_pow[0m56.31[1;36m current[0m3.34[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.09,1.67,-21.93,91.19,infusion,mimoja
+Data,8.09,1.67,-21.93,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.25[1;31m ex2[0m151.18[1;32m up[0m82.87[1;32m mup[0m89.39[1;32m mdn[0m89.92[1;32m dn[0m89.39[1;32m tube[0m87.94[1;33m valv[0m72.19[1;34m pos[0m71.74[1;34m speed[0m0.91[1;36m m_pow[0m56.09[1;36m current[0m3.27[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.09,1.67,-21.93,91.19,infusion,mimoja
+Data,8.09,1.67,-21.93,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.25[1;31m ex2[0m151.18[1;32m up[0m82.87[1;32m mup[0m89.39[1;32m mdn[0m89.87[1;32m dn[0m89.39[1;32m tube[0m87.92[1;33m valv[0m72.23[1;34m pos[0m71.84[1;34m speed[0m0.83[1;36m m_pow[0m56.12[1;36m current[0m3.53[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.09,1.65,-21.93,91.19,infusion,mimoja
+Data,8.09,1.65,-21.93,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.31[1;31m ex2[0m151.18[1;32m up[0m82.87[1;32m mup[0m89.34[1;32m mdn[0m89.82[1;32m dn[0m89.39[1;32m tube[0m87.89[1;33m valv[0m72.27[1;34m pos[0m71.93[1;34m speed[0m0.87[1;36m m_pow[0m56.70[1;36m current[0m3.47[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.08,1.69,-21.23,91.19,infusion,mimoja
+Data,8.08,1.69,-21.23,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.31[1;31m ex2[0m151.12[1;32m up[0m82.87[1;32m mup[0m89.29[1;32m mdn[0m89.82[1;32m dn[0m89.39[1;32m tube[0m87.87[1;33m valv[0m72.31[1;34m pos[0m72.05[1;34m speed[0m0.87[1;36m m_pow[0m56.54[1;36m current[0m3.47[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.69,-20.99,91.19,infusion,mimoja
+Data,8.08,1.69,-20.99,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.25[1;31m ex2[0m151.06[1;32m up[0m82.87[1;32m mup[0m89.23[1;32m mdn[0m89.82[1;32m dn[0m89.39[1;32m tube[0m87.86[1;33m valv[0m72.34[1;34m pos[0m72.17[1;34m speed[0m0.75[1;36m m_pow[0m56.50[1;36m current[0m3.45[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.67,-21.16,91.19,infusion,mimoja
+Data,8.07,1.67,-21.16,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.19[1;31m ex2[0m151.00[1;32m up[0m82.87[1;32m mup[0m89.18[1;32m mdn[0m89.82[1;32m dn[0m89.39[1;32m tube[0m87.85[1;33m valv[0m72.42[1;34m pos[0m72.28[1;34m speed[0m0.87[1;36m m_pow[0m56.66[1;36m current[0m3.52[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.69,-20.65,91.19,infusion,mimoja
+Data,8.07,1.69,-20.65,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.08[1;31m ex2[0m150.93[1;32m up[0m82.92[1;32m mup[0m89.18[1;32m mdn[0m89.82[1;32m dn[0m89.39[1;32m tube[0m87.83[1;33m valv[0m72.45[1;34m pos[0m72.41[1;34m speed[0m1.03[1;36m m_pow[0m56.34[1;36m current[0m3.25[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.68,-20.55,91.19,infusion,mimoja
+Data,8.07,1.68,-20.55,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.08[1;31m ex2[0m150.93[1;32m up[0m82.92[1;32m mup[0m89.18[1;32m mdn[0m89.82[1;32m dn[0m89.39[1;32m tube[0m87.82[1;33m valv[0m72.53[1;34m pos[0m72.53[1;34m speed[0m0.83[1;36m m_pow[0m55.96[1;36m current[0m3.40[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.69,-20.81,91.19,infusion,mimoja
+Data,8.08,1.69,-20.81,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.08[1;31m ex2[0m150.93[1;32m up[0m82.92[1;32m mup[0m89.18[1;32m mdn[0m89.82[1;32m dn[0m89.34[1;32m tube[0m87.82[1;33m valv[0m72.53[1;34m pos[0m72.65[1;34m speed[0m0.91[1;36m m_pow[0m56.04[1;36m current[0m3.28[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.70,-20.58,91.19,infusion,mimoja
+Data,8.08,1.70,-20.58,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.08[1;31m ex2[0m150.93[1;32m up[0m82.96[1;32m mup[0m89.18[1;32m mdn[0m89.82[1;32m dn[0m89.29[1;32m tube[0m87.82[1;33m valv[0m72.57[1;34m pos[0m72.77[1;34m speed[0m0.91[1;36m m_pow[0m55.59[1;36m current[0m3.28[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.69,-20.07,91.19,infusion,mimoja
+Data,8.09,1.69,-20.07,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.08[1;31m ex2[0m150.93[1;32m up[0m83.01[1;32m mup[0m89.18[1;32m mdn[0m89.76[1;32m dn[0m89.23[1;32m tube[0m87.82[1;33m valv[0m72.53[1;34m pos[0m72.89[1;34m speed[0m0.91[1;36m m_pow[0m55.64[1;36m current[0m3.25[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.10,1.71,-20.27,91.19,infusion,mimoja
+Data,8.10,1.71,-20.27,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.08[1;31m ex2[0m150.93[1;32m up[0m83.06[1;32m mup[0m89.18[1;32m mdn[0m89.71[1;32m dn[0m89.29[1;32m tube[0m87.81[1;33m valv[0m72.53[1;34m pos[0m73.00[1;34m speed[0m0.87[1;36m m_pow[0m55.41[1;36m current[0m3.28[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.10,1.67,-20.03,91.19,infusion,mimoja
+Data,8.10,1.67,-20.03,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.08[1;31m ex2[0m150.93[1;32m up[0m83.10[1;32m mup[0m89.18[1;32m mdn[0m89.66[1;32m dn[0m89.29[1;32m tube[0m87.81[1;33m valv[0m72.53[1;34m pos[0m73.11[1;34m speed[0m0.67[1;36m m_pow[0m55.51[1;36m current[0m3.46[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.10,1.63,-19.56,91.19,infusion,mimoja
+Data,8.10,1.63,-19.56,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.08[1;31m ex2[0m150.87[1;32m up[0m83.15[1;32m mup[0m89.08[1;32m mdn[0m89.60[1;32m dn[0m89.34[1;32m tube[0m87.80[1;33m valv[0m72.57[1;34m pos[0m73.22[1;34m speed[0m0.79[1;36m m_pow[0m55.91[1;36m current[0m3.42[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.10,1.65,-19.48,91.19,infusion,mimoja
+Data,8.10,1.65,-19.48,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.08[1;31m ex2[0m150.81[1;32m up[0m83.20[1;32m mup[0m89.08[1;32m mdn[0m89.60[1;32m dn[0m89.34[1;32m tube[0m87.80[1;33m valv[0m72.60[1;34m pos[0m73.34[1;34m speed[0m0.99[1;36m m_pow[0m55.75[1;36m current[0m3.38[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.64,-19.48,91.19,infusion,mimoja
+Data,8.09,1.64,-19.48,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m147.02[1;31m ex2[0m150.75[1;32m up[0m83.20[1;32m mup[0m89.02[1;32m mdn[0m89.60[1;32m dn[0m89.29[1;32m tube[0m87.80[1;33m valv[0m72.64[1;34m pos[0m73.45[1;34m speed[0m0.87[1;36m m_pow[0m55.85[1;36m current[0m3.33[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.63,-18.88,91.19,infusion,mimoja
+Data,8.09,1.63,-18.88,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.90[1;31m ex2[0m150.68[1;32m up[0m83.29[1;32m mup[0m89.08[1;32m mdn[0m89.60[1;32m dn[0m89.29[1;32m tube[0m87.79[1;33m valv[0m72.72[1;34m pos[0m73.56[1;34m speed[0m0.95[1;36m m_pow[0m56.00[1;36m current[0m3.37[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.66,-18.88,91.19,infusion,mimoja
+Data,8.08,1.66,-18.88,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.90[1;31m ex2[0m150.68[1;32m up[0m83.34[1;32m mup[0m89.02[1;32m mdn[0m89.60[1;32m dn[0m89.23[1;32m tube[0m87.80[1;33m valv[0m72.75[1;34m pos[0m73.70[1;34m speed[0m1.03[1;36m m_pow[0m55.53[1;36m current[0m3.20[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.65,-18.88,91.19,infusion,mimoja
+Data,8.09,1.65,-18.88,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.90[1;31m ex2[0m150.68[1;32m up[0m83.38[1;32m mup[0m89.02[1;32m mdn[0m89.60[1;32m dn[0m89.23[1;32m tube[0m87.80[1;33m valv[0m72.79[1;34m pos[0m73.81[1;34m speed[0m0.87[1;36m m_pow[0m55.57[1;36m current[0m3.34[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.66,-18.62,91.19,infusion,mimoja
+Data,8.09,1.66,-18.62,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.90[1;31m ex2[0m150.62[1;32m up[0m83.43[1;32m mup[0m88.97[1;32m mdn[0m89.60[1;32m dn[0m89.18[1;32m tube[0m87.81[1;33m valv[0m72.83[1;34m pos[0m73.94[1;34m speed[0m0.99[1;36m m_pow[0m55.39[1;36m current[0m3.14[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.64,-18.33,91.19,infusion,mimoja
+Data,8.09,1.64,-18.33,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.84[1;31m ex2[0m150.62[1;32m up[0m83.43[1;32m mup[0m88.97[1;32m mdn[0m89.55[1;32m dn[0m89.18[1;32m tube[0m87.80[1;33m valv[0m72.83[1;34m pos[0m74.05[1;34m speed[0m0.83[1;36m m_pow[0m55.10[1;36m current[0m3.26[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.10,1.62,-18.33,91.19,infusion,mimoja
+Data,8.10,1.62,-18.33,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.84[1;31m ex2[0m150.56[1;32m up[0m83.43[1;32m mup[0m88.97[1;32m mdn[0m89.50[1;32m dn[0m89.18[1;32m tube[0m87.80[1;33m valv[0m72.83[1;34m pos[0m74.17[1;34m speed[0m0.87[1;36m m_pow[0m55.03[1;36m current[0m3.24[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.11,1.66,-18.12,91.19,infusion,mimoja
+Data,8.11,1.66,-18.12,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.84[1;31m ex2[0m150.56[1;32m up[0m83.43[1;32m mup[0m88.97[1;32m mdn[0m89.39[1;32m dn[0m89.08[1;32m tube[0m87.77[1;33m valv[0m72.83[1;34m pos[0m74.29[1;34m speed[0m0.91[1;36m m_pow[0m55.00[1;36m current[0m3.28[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.11,1.66,-18.12,91.19,infusion,mimoja
+Data,8.11,1.66,-18.12,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.84[1;31m ex2[0m150.50[1;32m up[0m83.43[1;32m mup[0m88.97[1;32m mdn[0m89.34[1;32m dn[0m89.02[1;32m tube[0m87.75[1;33m valv[0m72.87[1;34m pos[0m74.39[1;34m speed[0m0.79[1;36m m_pow[0m55.30[1;36m current[0m3.30[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.10,1.67,-17.46,91.19,infusion,mimoja
+Data,8.10,1.67,-17.46,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.84[1;31m ex2[0m150.50[1;32m up[0m83.43[1;32m mup[0m88.92[1;32m mdn[0m89.29[1;32m dn[0m88.97[1;32m tube[0m87.73[1;33m valv[0m72.90[1;34m pos[0m74.50[1;34m speed[0m0.95[1;36m m_pow[0m55.62[1;36m current[0m3.24[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.67,-17.59,91.19,infusion,mimoja
+Data,8.09,1.67,-17.59,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.84[1;31m ex2[0m150.44[1;32m up[0m83.43[1;32m mup[0m88.87[1;32m mdn[0m89.23[1;32m dn[0m88.97[1;32m tube[0m87.67[1;33m valv[0m72.98[1;34m pos[0m74.62[1;34m speed[0m0.79[1;36m m_pow[0m55.51[1;36m current[0m3.39[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.64,-16.85,91.19,infusion,mimoja
+Data,8.08,1.64,-16.85,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.84[1;31m ex2[0m150.44[1;32m up[0m83.43[1;32m mup[0m88.81[1;32m mdn[0m89.23[1;32m dn[0m88.97[1;32m tube[0m87.65[1;33m valv[0m72.98[1;34m pos[0m74.73[1;34m speed[0m0.79[1;36m m_pow[0m55.80[1;36m current[0m3.37[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.07,1.63,-16.85,91.19,infusion,mimoja
+Data,8.07,1.63,-16.85,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.84[1;31m ex2[0m150.44[1;32m up[0m83.48[1;32m mup[0m88.81[1;32m mdn[0m89.23[1;32m dn[0m88.97[1;32m tube[0m87.63[1;33m valv[0m72.98[1;34m pos[0m74.86[1;34m speed[0m1.03[1;36m m_pow[0m55.68[1;36m current[0m3.24[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.07,1.64,-16.85,91.19,infusion,mimoja
+Data,8.07,1.64,-16.85,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.84[1;31m ex2[0m150.44[1;32m up[0m83.48[1;32m mup[0m88.76[1;32m mdn[0m89.23[1;32m dn[0m88.97[1;32m tube[0m87.62[1;33m valv[0m72.98[1;34m pos[0m74.98[1;34m speed[0m0.89[1;36m m_pow[0m55.41[1;36m current[0m3.34[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.07,1.62,-16.44,91.19,infusion,mimoja
+Data,8.07,1.62,-16.44,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.79[1;31m ex2[0m150.31[1;32m up[0m83.57[1;32m mup[0m88.76[1;32m mdn[0m89.13[1;32m dn[0m88.97[1;32m tube[0m87.61[1;33m valv[0m73.05[1;34m pos[0m75.09[1;34m speed[0m0.91[1;36m m_pow[0m55.45[1;36m current[0m3.29[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.08,1.64,-15.98,91.19,infusion,mimoja
+Data,8.08,1.64,-15.98,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.73[1;31m ex2[0m150.25[1;32m up[0m83.52[1;32m mup[0m88.76[1;32m mdn[0m89.13[1;32m dn[0m88.97[1;32m tube[0m87.61[1;33m valv[0m73.09[1;34m pos[0m75.22[1;34m speed[0m0.95[1;36m m_pow[0m55.08[1;36m current[0m3.09[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.08,1.62,-16.15,91.19,infusion,mimoja
+Data,8.08,1.62,-16.15,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.67[1;31m ex2[0m150.19[1;32m up[0m83.52[1;32m mup[0m88.71[1;32m mdn[0m89.08[1;32m dn[0m88.92[1;32m tube[0m87.61[1;33m valv[0m73.13[1;34m pos[0m75.33[1;34m speed[0m0.91[1;36m m_pow[0m55.19[1;36m current[0m3.26[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.09,1.63,-15.59,91.19,infusion,mimoja
+Data,8.09,1.63,-15.59,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.61[1;31m ex2[0m150.25[1;32m up[0m83.48[1;32m mup[0m88.61[1;32m mdn[0m89.02[1;32m dn[0m88.81[1;32m tube[0m87.57[1;33m valv[0m73.17[1;34m pos[0m75.45[1;34m speed[0m0.99[1;36m m_pow[0m55.12[1;36m current[0m3.15[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,8.09,1.61,-15.33,91.19,infusion,mimoja
+Data,8.09,1.61,-15.33,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.61[1;31m ex2[0m150.25[1;32m up[0m83.48[1;32m mup[0m88.55[1;32m mdn[0m88.97[1;32m dn[0m88.76[1;32m tube[0m87.53[1;33m valv[0m73.21[1;34m pos[0m75.55[1;34m speed[0m0.75[1;36m m_pow[0m55.18[1;36m current[0m3.28[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.59,-15.10,91.19,infusion,mimoja
+Data,8.08,1.59,-15.10,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.61[1;31m ex2[0m150.25[1;32m up[0m83.48[1;32m mup[0m88.55[1;32m mdn[0m88.97[1;32m dn[0m88.76[1;32m tube[0m87.50[1;33m valv[0m73.24[1;34m pos[0m75.66[1;34m speed[0m0.83[1;36m m_pow[0m55.55[1;36m current[0m3.39[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.58,-14.73,91.19,infusion,mimoja
+Data,8.08,1.58,-14.73,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.61[1;31m ex2[0m150.19[1;32m up[0m83.48[1;32m mup[0m88.55[1;32m mdn[0m88.97[1;32m dn[0m88.76[1;32m tube[0m87.47[1;33m valv[0m73.28[1;34m pos[0m75.78[1;34m speed[0m0.91[1;36m m_pow[0m55.57[1;36m current[0m3.22[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.58,-14.32,91.19,infusion,mimoja
+Data,8.07,1.58,-14.32,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.61[1;31m ex2[0m150.19[1;32m up[0m83.43[1;32m mup[0m88.55[1;32m mdn[0m88.87[1;32m dn[0m88.76[1;32m tube[0m87.43[1;33m valv[0m73.28[1;34m pos[0m75.89[1;34m speed[0m0.82[1;36m m_pow[0m55.57[1;36m current[0m3.30[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.06,1.56,-14.32,91.19,infusion,mimoja
+Data,8.06,1.56,-14.32,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.61[1;31m ex2[0m150.19[1;32m up[0m83.43[1;32m mup[0m88.55[1;32m mdn[0m88.81[1;32m dn[0m88.76[1;32m tube[0m87.42[1;33m valv[0m73.28[1;34m pos[0m76.01[1;34m speed[0m0.95[1;36m m_pow[0m55.83[1;36m current[0m3.24[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.06,1.57,-13.54,91.19,infusion,mimoja
+Data,8.06,1.57,-13.54,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.61[1;31m ex2[0m150.19[1;32m up[0m83.43[1;32m mup[0m88.50[1;32m mdn[0m88.76[1;32m dn[0m88.76[1;32m tube[0m87.41[1;33m valv[0m73.28[1;34m pos[0m76.16[1;34m speed[0m1.07[1;36m m_pow[0m55.35[1;36m current[0m3.06[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.06,1.56,-13.54,91.19,infusion,mimoja
+Data,8.06,1.56,-13.54,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.55[1;31m ex2[0m150.07[1;32m up[0m83.43[1;32m mup[0m88.40[1;32m mdn[0m88.76[1;32m dn[0m88.76[1;32m tube[0m87.38[1;33m valv[0m73.32[1;34m pos[0m76.28[1;34m speed[0m0.99[1;36m m_pow[0m55.32[1;36m current[0m3.27[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.57,-13.51,91.19,infusion,mimoja
+Data,8.07,1.57,-13.51,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.55[1;31m ex2[0m150.01[1;32m up[0m83.43[1;32m mup[0m88.35[1;32m mdn[0m88.76[1;32m dn[0m88.76[1;32m tube[0m87.36[1;33m valv[0m73.36[1;34m pos[0m76.41[1;34m speed[0m1.03[1;36m m_pow[0m55.00[1;36m current[0m3.07[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.56,-13.09,91.19,infusion,mimoja
+Data,8.07,1.56,-13.09,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.50[1;31m ex2[0m149.95[1;32m up[0m83.43[1;32m mup[0m88.35[1;32m mdn[0m88.71[1;32m dn[0m88.71[1;32m tube[0m87.34[1;33m valv[0m73.39[1;34m pos[0m76.53[1;34m speed[0m0.79[1;36m m_pow[0m54.87[1;36m current[0m3.14[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.54,-12.82,91.19,infusion,mimoja
+Data,8.08,1.54,-12.82,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.44[1;31m ex2[0m149.95[1;32m up[0m83.43[1;32m mup[0m88.35[1;32m mdn[0m88.66[1;32m dn[0m88.61[1;32m tube[0m87.31[1;33m valv[0m73.43[1;34m pos[0m76.65[1;34m speed[0m0.92[1;36m m_pow[0m54.74[1;36m current[0m3.19[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.55,-12.82,91.19,infusion,mimoja
+Data,8.09,1.55,-12.82,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.38[1;31m ex2[0m149.95[1;32m up[0m83.43[1;32m mup[0m88.35[1;32m mdn[0m88.66[1;32m dn[0m88.55[1;32m tube[0m87.29[1;33m valv[0m73.43[1;34m pos[0m76.76[1;34m speed[0m0.87[1;36m m_pow[0m54.61[1;36m current[0m3.12[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.54,-12.82,91.19,infusion,mimoja
+Data,8.09,1.54,-12.82,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.38[1;31m ex2[0m149.95[1;32m up[0m83.43[1;32m mup[0m88.29[1;32m mdn[0m88.66[1;32m dn[0m88.55[1;32m tube[0m87.27[1;33m valv[0m73.47[1;34m pos[0m76.87[1;34m speed[0m0.87[1;36m m_pow[0m55.07[1;36m current[0m3.16[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.56,-11.99,91.19,infusion,mimoja
+Data,8.08,1.56,-11.99,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.44[1;31m ex2[0m149.88[1;32m up[0m83.43[1;32m mup[0m88.24[1;32m mdn[0m88.61[1;32m dn[0m88.55[1;32m tube[0m87.26[1;33m valv[0m73.51[1;34m pos[0m76.98[1;34m speed[0m1.03[1;36m m_pow[0m55.19[1;36m current[0m3.11[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.56,-11.71,91.19,infusion,mimoja
+Data,8.08,1.56,-11.71,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.50[1;31m ex2[0m149.82[1;32m up[0m83.43[1;32m mup[0m88.09[1;32m mdn[0m88.50[1;32m dn[0m88.55[1;32m tube[0m87.22[1;33m valv[0m73.58[1;34m pos[0m77.11[1;34m speed[0m0.83[1;36m m_pow[0m55.02[1;36m current[0m3.13[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.54,-11.53,91.19,infusion,mimoja
+Data,8.07,1.54,-11.53,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.50[1;31m ex2[0m149.76[1;32m up[0m83.43[1;32m mup[0m88.04[1;32m mdn[0m88.50[1;32m dn[0m88.55[1;32m tube[0m87.19[1;33m valv[0m73.58[1;34m pos[0m77.23[1;34m speed[0m1.03[1;36m m_pow[0m55.15[1;36m current[0m3.25[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.07,1.54,-11.53,91.19,infusion,mimoja
+Data,8.07,1.54,-11.53,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.44[1;31m ex2[0m149.76[1;32m up[0m83.43[1;32m mup[0m88.04[1;32m mdn[0m88.45[1;32m dn[0m88.55[1;32m tube[0m87.17[1;33m valv[0m73.62[1;34m pos[0m77.38[1;34m speed[0m1.11[1;36m m_pow[0m54.78[1;36m current[0m2.98[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.54,-11.07,91.19,infusion,mimoja
+Data,8.08,1.54,-11.07,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.38[1;31m ex2[0m149.70[1;32m up[0m83.34[1;32m mup[0m87.98[1;32m mdn[0m88.40[1;32m dn[0m88.45[1;32m tube[0m87.11[1;33m valv[0m73.62[1;34m pos[0m77.50[1;34m speed[0m0.95[1;36m m_pow[0m54.59[1;36m current[0m3.11[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.08,1.52,-10.81,91.19,infusion,mimoja
+Data,8.08,1.52,-10.81,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.38[1;31m ex2[0m149.70[1;32m up[0m83.34[1;32m mup[0m87.98[1;32m mdn[0m88.35[1;32m dn[0m88.40[1;32m tube[0m87.09[1;33m valv[0m73.62[1;34m pos[0m77.63[1;34m speed[0m1.07[1;36m m_pow[0m54.35[1;36m current[0m3.03[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.09,1.53,-10.56,91.19,infusion,mimoja
+Data,8.09,1.53,-10.56,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.38[1;31m ex2[0m149.70[1;32m up[0m83.29[1;32m mup[0m87.93[1;32m mdn[0m88.35[1;32m dn[0m88.35[1;32m tube[0m87.06[1;33m valv[0m73.62[1;34m pos[0m77.76[1;34m speed[0m0.87[1;36m m_pow[0m54.10[1;36m current[0m3.06[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.10,1.55,-10.09,91.19,infusion,mimoja
+Data,8.10,1.55,-10.09,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.38[1;31m ex2[0m149.70[1;32m up[0m83.29[1;32m mup[0m87.88[1;32m mdn[0m88.35[1;32m dn[0m88.35[1;32m tube[0m87.00[1;33m valv[0m73.70[1;34m pos[0m77.90[1;34m speed[0m1.03[1;36m m_pow[0m53.96[1;36m current[0m3.03[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.11,1.56,-9.78,91.19,infusion,mimoja
+Data,8.11,1.56,-9.78,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.38[1;31m ex2[0m149.64[1;32m up[0m83.29[1;32m mup[0m87.83[1;32m mdn[0m88.35[1;32m dn[0m88.35[1;32m tube[0m86.98[1;33m valv[0m73.74[1;34m pos[0m78.01[1;34m speed[0m0.93[1;36m m_pow[0m53.68[1;36m current[0m3.13[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,8.08,1.42,-9.65,91.19,infusion,mimoja
+Data,8.08,1.42,-9.65,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.38[1;31m ex2[0m149.64[1;32m up[0m83.34[1;32m mup[0m87.78[1;32m mdn[0m88.35[1;32m dn[0m88.35[1;32m tube[0m86.97[1;33m valv[0m73.74[1;34m pos[0m78.04[1;34m speed[0m0.00[1;36m m_pow[0m3.68[1;36m current[0m1.06[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,8.03,1.24,-8.87,91.19,infusion,mimoja
+Data,8.03,1.24,-8.87,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.32[1;31m ex2[0m149.58[1;32m up[0m83.34[1;32m mup[0m87.73[1;32m mdn[0m88.35[1;32m dn[0m88.35[1;32m tube[0m86.96[1;33m valv[0m73.81[1;34m pos[0m78.01[1;34m speed[0m-0.04[1;36m m_pow[0m0.00[1;36m current[0m-0.35[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,7.93,1.06,-5.90,91.19,infusion,mimoja
+Data,7.93,1.06,-5.90,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.21[1;31m ex2[0m149.52[1;32m up[0m83.29[1;32m mup[0m87.73[1;32m mdn[0m88.24[1;32m dn[0m88.35[1;32m tube[0m86.94[1;33m valv[0m73.85[1;34m pos[0m78.00[1;34m speed[0m-0.24[1;36m m_pow[0m20.00[1;36m current[0m0.00[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,7.78,0.86,-4.66,91.19,infusion,mimoja
+Data,7.78,0.86,-4.66,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.15[1;31m ex2[0m149.46[1;32m up[0m83.24[1;32m mup[0m87.73[1;32m mdn[0m88.19[1;32m dn[0m88.35[1;32m tube[0m86.93[1;33m valv[0m73.89[1;34m pos[0m77.99[1;34m speed[0m-0.36[1;36m m_pow[0m20.00[1;36m current[0m-0.27[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,7.61,0.68,-3.64,91.19,infusion,mimoja
+Data,7.61,0.68,-3.64,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.21[1;31m ex2[0m149.46[1;32m up[0m83.29[1;32m mup[0m87.73[1;32m mdn[0m88.14[1;32m dn[0m88.35[1;32m tube[0m86.91[1;33m valv[0m73.89[1;34m pos[0m77.99[1;34m speed[0m-0.24[1;36m m_pow[0m0.00[1;36m current[0m0.24[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,7.45,0.59,-1.61,91.19,infusion,mimoja
+Data,7.45,0.59,-1.61,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.21[1;31m ex2[0m149.46[1;32m up[0m83.29[1;32m mup[0m87.68[1;32m mdn[0m88.14[1;32m dn[0m88.29[1;32m tube[0m86.88[1;33m valv[0m73.89[1;34m pos[0m78.02[1;34m speed[0m0.36[1;36m m_pow[0m20.00[1;36m current[0m1.70[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,7.27,0.42,-0.77,91.19,infusion,mimoja
+Data,7.27,0.42,-0.77,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.21[1;31m ex2[0m149.46[1;32m up[0m83.29[1;32m mup[0m87.63[1;32m mdn[0m88.14[1;32m dn[0m88.24[1;32m tube[0m86.87[1;33m valv[0m73.89[1;34m pos[0m78.00[1;34m speed[0m-0.08[1;36m m_pow[0m20.00[1;36m current[0m-0.14[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,7.12,0.24,0.74,91.19,infusion,mimoja
+Data,7.12,0.24,0.74,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.15[1;31m ex2[0m149.46[1;32m up[0m83.24[1;32m mup[0m87.58[1;32m mdn[0m88.14[1;32m dn[0m88.19[1;32m tube[0m86.85[1;33m valv[0m73.89[1;34m pos[0m78.00[1;34m speed[0m-0.17[1;36m m_pow[0m10.00[1;36m current[0m-0.27[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,6.98,0.04,1.91,91.19,infusion,mimoja
+Data,6.98,0.04,1.91,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.15[1;31m ex2[0m149.46[1;32m up[0m83.24[1;32m mup[0m87.52[1;32m mdn[0m88.04[1;32m dn[0m88.14[1;32m tube[0m86.81[1;33m valv[0m73.97[1;34m pos[0m77.99[1;34m speed[0m-0.20[1;36m m_pow[0m10.00[1;36m current[0m0.13[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,6.85,-0.13,3.42,91.19,infusion,mimoja
+Data,6.85,-0.13,3.42,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.15[1;31m ex2[0m149.46[1;32m up[0m83.24[1;32m mup[0m87.52[1;32m mdn[0m87.98[1;32m dn[0m88.14[1;32m tube[0m86.78[1;33m valv[0m74.01[1;34m pos[0m78.00[1;34m speed[0m-0.16[1;36m m_pow[0m0.00[1;36m current[0m0.49[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,6.70,-0.08,4.12,91.19,infusion,mimoja
+Data,6.70,-0.08,4.12,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.15[1;31m ex2[0m149.46[1;32m up[0m83.24[1;32m mup[0m87.47[1;32m mdn[0m87.93[1;32m dn[0m88.14[1;32m tube[0m86.75[1;33m valv[0m74.04[1;34m pos[0m78.00[1;34m speed[0m0.28[1;36m m_pow[0m10.00[1;36m current[0m1.18[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,6.60,-0.03,5.87,91.19,infusion,mimoja
+Data,6.60,-0.03,5.87,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.15[1;31m ex2[0m149.40[1;32m up[0m83.24[1;32m mup[0m87.47[1;32m mdn[0m87.93[1;32m dn[0m88.14[1;32m tube[0m86.71[1;33m valv[0m74.04[1;34m pos[0m78.00[1;34m speed[0m0.28[1;36m m_pow[0m10.00[1;36m current[0m1.32[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,6.45,0.05,6.69,91.19,infusion,mimoja
+Data,6.45,0.05,6.69,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.15[1;31m ex2[0m149.34[1;32m up[0m83.29[1;32m mup[0m87.37[1;32m mdn[0m87.88[1;32m dn[0m88.14[1;32m tube[0m86.70[1;33m valv[0m74.04[1;34m pos[0m78.01[1;34m speed[0m0.28[1;36m m_pow[0m20.00[1;36m current[0m1.18[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,6.35,0.09,7.99,91.19,infusion,mimoja
+Data,6.35,0.09,7.99,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.15[1;31m ex2[0m149.28[1;32m up[0m83.29[1;32m mup[0m87.37[1;32m mdn[0m87.83[1;32m dn[0m88.09[1;32m tube[0m86.69[1;33m valv[0m74.04[1;34m pos[0m78.01[1;34m speed[0m-0.12[1;36m m_pow[0m30.00[1;36m current[0m0.67[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,6.22,0.06,8.76,91.19,infusion,mimoja
+Data,6.22,0.06,8.76,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.15[1;31m ex2[0m149.28[1;32m up[0m83.29[1;32m mup[0m87.32[1;32m mdn[0m87.78[1;32m dn[0m88.09[1;32m tube[0m86.68[1;33m valv[0m74.04[1;34m pos[0m78.00[1;34m speed[0m-0.12[1;36m m_pow[0m20.00[1;36m current[0m0.28[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,6.13,-0.02,10.07,91.19,infusion,mimoja
+Data,6.13,-0.02,10.07,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.09[1;31m ex2[0m149.22[1;32m up[0m83.24[1;32m mup[0m87.32[1;32m mdn[0m87.73[1;32m dn[0m87.98[1;32m tube[0m86.63[1;33m valv[0m74.04[1;34m pos[0m78.00[1;34m speed[0m-0.12[1;36m m_pow[0m20.00[1;36m current[0m-0.12[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,6.00,-0.03,10.70,91.19,infusion,mimoja
+Data,6.00,-0.03,10.70,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.03[1;31m ex2[0m149.22[1;32m up[0m83.24[1;32m mup[0m87.27[1;32m mdn[0m87.73[1;32m dn[0m87.98[1;32m tube[0m86.60[1;33m valv[0m74.08[1;34m pos[0m77.99[1;34m speed[0m-0.16[1;36m m_pow[0m10.00[1;36m current[0m-0.17[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,5.92,-0.02,12.11,91.19,infusion,mimoja
+Data,5.92,-0.02,12.11,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m146.03[1;31m ex2[0m149.22[1;32m up[0m83.24[1;32m mup[0m87.27[1;32m mdn[0m87.73[1;32m dn[0m87.93[1;32m tube[0m86.58[1;33m valv[0m74.08[1;34m pos[0m77.99[1;34m speed[0m-0.16[1;36m m_pow[0m0.00[1;36m current[0m0.44[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,5.82,0.03,12.74,91.19,infusion,mimoja
+Data,5.82,0.03,12.74,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.98[1;31m ex2[0m149.16[1;32m up[0m83.24[1;32m mup[0m87.17[1;32m mdn[0m87.68[1;32m dn[0m87.93[1;32m tube[0m86.55[1;33m valv[0m74.16[1;34m pos[0m78.00[1;34m speed[0m-0.16[1;36m m_pow[0m0.00[1;36m current[0m0.76[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,5.72,0.08,13.69,91.19,infusion,mimoja
+Data,5.72,0.08,13.69,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.98[1;31m ex2[0m149.10[1;32m up[0m83.24[1;32m mup[0m87.17[1;32m mdn[0m87.63[1;32m dn[0m87.93[1;32m tube[0m86.53[1;33m valv[0m74.16[1;34m pos[0m78.00[1;34m speed[0m0.28[1;36m m_pow[0m10.00[1;36m current[0m1.04[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,5.63,0.08,14.58,91.19,infusion,mimoja
+Data,5.63,0.08,14.58,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.92[1;31m ex2[0m149.03[1;32m up[0m83.24[1;32m mup[0m87.12[1;32m mdn[0m87.58[1;32m dn[0m87.93[1;32m tube[0m86.52[1;33m valv[0m74.20[1;34m pos[0m78.01[1;34m speed[0m0.24[1;36m m_pow[0m20.00[1;36m current[0m1.16[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,5.54,0.04,15.48,91.19,infusion,mimoja
+Data,5.54,0.04,15.48,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.92[1;31m ex2[0m148.97[1;32m up[0m83.24[1;32m mup[0m87.12[1;32m mdn[0m87.52[1;32m dn[0m87.98[1;32m tube[0m86.48[1;33m valv[0m74.24[1;34m pos[0m78.01[1;34m speed[0m0.24[1;36m m_pow[0m20.00[1;36m current[0m0.96[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,5.43,-0.01,16.03,91.19,infusion,mimoja
+Data,5.43,-0.01,16.03,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.92[1;31m ex2[0m148.97[1;32m up[0m83.24[1;32m mup[0m87.12[1;32m mdn[0m87.52[1;32m dn[0m87.98[1;32m tube[0m86.47[1;33m valv[0m74.28[1;34m pos[0m77.99[1;34m speed[0m-0.04[1;36m m_pow[0m10.00[1;36m current[0m-0.13[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,5.35,-0.02,17.18,91.19,infusion,mimoja
+Data,5.35,-0.02,17.18,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.92[1;31m ex2[0m148.97[1;32m up[0m83.24[1;32m mup[0m87.12[1;32m mdn[0m87.52[1;32m dn[0m87.98[1;32m tube[0m86.47[1;33m valv[0m74.31[1;34m pos[0m78.00[1;34m speed[0m-0.16[1;36m m_pow[0m20.00[1;36m current[0m0.60[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,5.27,-0.01,17.62,91.19,infusion,mimoja
+Data,5.27,-0.01,17.62,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.92[1;31m ex2[0m148.97[1;32m up[0m83.24[1;32m mup[0m87.12[1;32m mdn[0m87.52[1;32m dn[0m87.88[1;32m tube[0m86.47[1;33m valv[0m74.31[1;34m pos[0m78.01[1;34m speed[0m-0.08[1;36m m_pow[0m30.00[1;36m current[0m0.67[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,5.17,-0.00,18.68,91.19,infusion,mimoja
+Data,5.17,-0.00,18.68,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.92[1;31m ex2[0m148.97[1;32m up[0m83.24[1;32m mup[0m87.07[1;32m mdn[0m87.47[1;32m dn[0m87.78[1;32m tube[0m86.45[1;33m valv[0m74.35[1;34m pos[0m77.99[1;34m speed[0m-0.08[1;36m m_pow[0m10.00[1;36m current[0m-0.11[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,5.12,-0.00,19.03,91.19,infusion,mimoja
+Data,5.12,-0.00,19.03,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.92[1;31m ex2[0m148.91[1;32m up[0m83.24[1;32m mup[0m87.02[1;32m mdn[0m87.42[1;32m dn[0m87.73[1;32m tube[0m86.43[1;33m valv[0m74.35[1;34m pos[0m77.99[1;34m speed[0m-0.16[1;36m m_pow[0m0.00[1;36m current[0m0.21[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,5.04,0.07,19.90,91.19,infusion,mimoja
+Data,5.04,0.07,19.90,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.92[1;31m ex2[0m148.85[1;32m up[0m83.24[1;32m mup[0m86.97[1;32m mdn[0m87.42[1;32m dn[0m87.73[1;32m tube[0m86.40[1;33m valv[0m74.35[1;34m pos[0m78.00[1;34m speed[0m-0.01[1;36m m_pow[0m0.00[1;36m current[0m0.62[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,4.95,0.10,20.47,91.19,infusion,mimoja
+Data,4.95,0.10,20.47,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.92[1;31m ex2[0m148.79[1;32m up[0m83.29[1;32m mup[0m86.92[1;32m mdn[0m87.37[1;32m dn[0m87.73[1;32m tube[0m86.35[1;33m valv[0m74.39[1;34m pos[0m78.01[1;34m speed[0m0.32[1;36m m_pow[0m10.00[1;36m current[0m1.11[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,4.90,0.10,21.25,91.19,infusion,mimoja
+Data,4.90,0.10,21.25,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.86[1;31m ex2[0m148.79[1;32m up[0m83.34[1;32m mup[0m86.92[1;32m mdn[0m87.37[1;32m dn[0m87.73[1;32m tube[0m86.34[1;33m valv[0m74.39[1;34m pos[0m78.01[1;34m speed[0m0.24[1;36m m_pow[0m30.00[1;36m current[0m0.48[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,4.86,0.03,21.49,91.19,infusion,mimoja
+Data,4.86,0.03,21.49,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.81[1;31m ex2[0m148.79[1;32m up[0m83.34[1;32m mup[0m86.92[1;32m mdn[0m87.32[1;32m dn[0m87.73[1;32m tube[0m86.33[1;33m valv[0m74.43[1;34m pos[0m78.00[1;34m speed[0m-0.16[1;36m m_pow[0m10.00[1;36m current[0m-0.29[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,4.77,0.01,22.48,91.19,infusion,mimoja
+Data,4.77,0.01,22.48,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.81[1;31m ex2[0m148.73[1;32m up[0m83.29[1;32m mup[0m86.92[1;32m mdn[0m87.32[1;32m dn[0m87.68[1;32m tube[0m86.33[1;33m valv[0m74.47[1;34m pos[0m78.01[1;34m speed[0m-0.12[1;36m m_pow[0m0.00[1;36m current[0m0.30[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,4.71,-0.01,22.74,91.19,infusion,mimoja
+Data,4.71,-0.01,22.74,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.81[1;31m ex2[0m148.73[1;32m up[0m83.24[1;32m mup[0m86.87[1;32m mdn[0m87.27[1;32m dn[0m87.63[1;32m tube[0m86.32[1;33m valv[0m74.51[1;34m pos[0m78.01[1;34m speed[0m0.16[1;36m m_pow[0m20.00[1;36m current[0m0.12[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,4.67,0.02,23.35,91.19,infusion,mimoja
+Data,4.67,0.02,23.35,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.86[1;31m ex2[0m148.73[1;32m up[0m83.24[1;32m mup[0m86.82[1;32m mdn[0m87.27[1;32m dn[0m87.58[1;32m tube[0m86.30[1;33m valv[0m74.51[1;34m pos[0m78.00[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.29[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,4.61,0.03,23.98,91.19,infusion,mimoja
+Data,4.61,0.03,23.98,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.86[1;31m ex2[0m148.73[1;32m up[0m83.24[1;32m mup[0m86.77[1;32m mdn[0m87.22[1;32m dn[0m87.52[1;32m tube[0m86.24[1;33m valv[0m74.51[1;34m pos[0m78.00[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.29[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,4.53,0.04,24.55,91.19,infusion,mimoja
+Data,4.53,0.04,24.55,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.81[1;31m ex2[0m148.61[1;32m up[0m83.24[1;32m mup[0m86.72[1;32m mdn[0m87.17[1;32m dn[0m87.52[1;32m tube[0m86.21[1;33m valv[0m74.51[1;34m pos[0m78.00[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.29[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,4.47,0.06,24.84,91.19,infusion,mimoja
+Data,4.47,0.06,24.84,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.75[1;31m ex2[0m148.55[1;32m up[0m83.24[1;32m mup[0m86.72[1;32m mdn[0m87.12[1;32m dn[0m87.52[1;32m tube[0m86.19[1;33m valv[0m74.55[1;34m pos[0m78.00[1;34m speed[0m-0.04[1;36m m_pow[0m0.00[1;36m current[0m-0.29[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,4.43,0.09,25.45,91.19,infusion,mimoja
+Data,4.43,0.09,25.45,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.69[1;31m ex2[0m148.49[1;32m up[0m83.20[1;32m mup[0m86.72[1;32m mdn[0m87.12[1;32m dn[0m87.52[1;32m tube[0m86.17[1;33m valv[0m74.55[1;34m pos[0m78.02[1;34m speed[0m0.44[1;36m m_pow[0m20.00[1;36m current[0m1.03[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,4.38,0.01,25.86,91.19,infusion,mimoja
+Data,4.38,0.01,25.86,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.63[1;31m ex2[0m148.49[1;32m up[0m83.20[1;32m mup[0m86.67[1;32m mdn[0m87.02[1;32m dn[0m87.52[1;32m tube[0m86.14[1;33m valv[0m74.62[1;34m pos[0m78.00[1;34m speed[0m-0.20[1;36m m_pow[0m0.00[1;36m current[0m-0.29[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,4.33,-0.06,26.51,91.19,infusion,mimoja
+Data,4.33,-0.06,26.51,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.63[1;31m ex2[0m148.49[1;32m up[0m83.20[1;32m mup[0m86.67[1;32m mdn[0m86.97[1;32m dn[0m87.47[1;32m tube[0m86.13[1;33m valv[0m74.62[1;34m pos[0m78.00[1;34m speed[0m-0.16[1;36m m_pow[0m0.00[1;36m current[0m-0.24[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,4.27,-0.03,26.66,91.19,infusion,mimoja
+Data,4.27,-0.03,26.66,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.58[1;31m ex2[0m148.49[1;32m up[0m83.24[1;32m mup[0m86.62[1;32m mdn[0m86.92[1;32m dn[0m87.42[1;32m tube[0m86.11[1;33m valv[0m74.66[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m20.00[1;36m current[0m-0.25[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,4.22,-0.02,27.57,91.19,infusion,mimoja
+Data,4.22,-0.02,27.57,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.63[1;31m ex2[0m148.49[1;32m up[0m83.24[1;32m mup[0m86.62[1;32m mdn[0m86.92[1;32m dn[0m87.37[1;32m tube[0m86.07[1;33m valv[0m74.66[1;34m pos[0m78.00[1;34m speed[0m-0.08[1;36m m_pow[0m10.00[1;36m current[0m-0.29[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,4.17,-0.02,27.57,91.19,infusion,mimoja
+Data,4.17,-0.02,27.57,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.63[1;31m ex2[0m148.49[1;32m up[0m83.24[1;32m mup[0m86.57[1;32m mdn[0m86.92[1;32m dn[0m87.37[1;32m tube[0m86.05[1;33m valv[0m74.66[1;34m pos[0m78.00[1;34m speed[0m-0.08[1;36m m_pow[0m10.00[1;36m current[0m-0.24[1;36m bh_pow[0m0.00[1;35m p_r[0m112[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,4.12,-0.04,28.12,91.19,infusion,mimoja
+Data,4.12,-0.04,28.12,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.63[1;31m ex2[0m148.43[1;32m up[0m83.20[1;32m mup[0m86.57[1;32m mdn[0m86.92[1;32m dn[0m87.37[1;32m tube[0m86.04[1;33m valv[0m74.70[1;34m pos[0m78.00[1;34m speed[0m0.16[1;36m m_pow[0m10.00[1;36m current[0m0.30[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,4.05,-0.02,28.61,91.19,infusion,mimoja
+Data,4.05,-0.02,28.61,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.58[1;31m ex2[0m148.38[1;32m up[0m83.20[1;32m mup[0m86.52[1;32m mdn[0m86.92[1;32m dn[0m87.37[1;32m tube[0m86.02[1;33m valv[0m74.78[1;34m pos[0m78.00[1;34m speed[0m0.16[1;36m m_pow[0m0.00[1;36m current[0m0.60[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,4.01,-0.04,29.02,91.19,infusion,mimoja
+Data,4.01,-0.04,29.02,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.46[1;31m ex2[0m148.26[1;32m up[0m83.15[1;32m mup[0m86.52[1;32m mdn[0m86.87[1;32m dn[0m87.32[1;32m tube[0m86.00[1;33m valv[0m74.82[1;34m pos[0m78.00[1;34m speed[0m-0.16[1;36m m_pow[0m10.00[1;36m current[0m-0.07[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,3.96,-0.06,29.17,91.19,infusion,mimoja
+Data,3.96,-0.06,29.17,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.46[1;31m ex2[0m148.26[1;32m up[0m83.20[1;32m mup[0m86.47[1;32m mdn[0m86.82[1;32m dn[0m87.32[1;32m tube[0m85.99[1;33m valv[0m74.82[1;34m pos[0m78.00[1;34m speed[0m0.16[1;36m m_pow[0m10.00[1;36m current[0m0.17[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,3.92,-0.11,29.94,91.19,infusion,mimoja
+Data,3.92,-0.11,29.94,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.46[1;31m ex2[0m148.26[1;32m up[0m83.15[1;32m mup[0m86.47[1;32m mdn[0m86.82[1;32m dn[0m87.32[1;32m tube[0m85.97[1;33m valv[0m74.82[1;34m pos[0m78.00[1;34m speed[0m0.16[1;36m m_pow[0m0.00[1;36m current[0m0.59[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,3.87,-0.10,30.15,91.19,infusion,mimoja
+Data,3.87,-0.10,30.15,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.46[1;31m ex2[0m148.26[1;32m up[0m83.10[1;32m mup[0m86.37[1;32m mdn[0m86.77[1;32m dn[0m87.27[1;32m tube[0m85.94[1;33m valv[0m74.86[1;34m pos[0m78.00[1;34m speed[0m-0.16[1;36m m_pow[0m10.00[1;36m current[0m-0.24[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,3.85,-0.10,30.35,91.19,infusion,mimoja
+Data,3.85,-0.10,30.35,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.46[1;31m ex2[0m148.26[1;32m up[0m83.10[1;32m mup[0m86.37[1;32m mdn[0m86.77[1;32m dn[0m87.22[1;32m tube[0m85.92[1;33m valv[0m74.90[1;34m pos[0m78.00[1;34m speed[0m0.09[1;36m m_pow[0m10.00[1;36m current[0m0.21[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,3.81,-0.08,30.74,91.19,infusion,mimoja
+Data,3.81,-0.08,30.74,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.46[1;31m ex2[0m148.26[1;32m up[0m83.10[1;32m mup[0m86.32[1;32m mdn[0m86.72[1;32m dn[0m87.17[1;32m tube[0m85.90[1;33m valv[0m74.94[1;34m pos[0m78.00[1;34m speed[0m0.16[1;36m m_pow[0m0.00[1;36m current[0m0.73[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,3.77,-0.09,31.11,91.19,infusion,mimoja
+Data,3.77,-0.09,31.11,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.46[1;31m ex2[0m148.20[1;32m up[0m83.10[1;32m mup[0m86.32[1;32m mdn[0m86.72[1;32m dn[0m87.12[1;32m tube[0m85.85[1;33m valv[0m74.98[1;34m pos[0m78.00[1;34m speed[0m-0.16[1;36m m_pow[0m10.00[1;36m current[0m-0.09[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,3.71,-0.10,31.11,91.19,infusion,mimoja
+Data,3.71,-0.10,31.11,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.46[1;31m ex2[0m148.14[1;32m up[0m83.06[1;32m mup[0m86.32[1;32m mdn[0m86.72[1;32m dn[0m87.17[1;32m tube[0m85.83[1;33m valv[0m74.98[1;34m pos[0m78.01[1;34m speed[0m-0.16[1;36m m_pow[0m20.00[1;36m current[0m0.18[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
 (I) MAX_PISTON_DISTANCE_ALLOWED reached
-Data,3.67,-0.04,32.03,91.19,infusion,mimoja
+Data,3.67,-0.04,32.03,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.46[1;31m ex2[0m148.08[1;32m up[0m83.06[1;32m mup[0m86.32[1;32m mdn[0m86.67[1;32m dn[0m87.17[1;32m tube[0m85.82[1;33m valv[0m75.01[1;34m pos[0m78.02[1;34m speed[0m0.20[1;36m m_pow[0m20.00[1;36m current[0m1.06[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.63,-0.09,32.13,91.19,infusion,mimoja
+Data,3.63,-0.09,32.13,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.46[1;31m ex2[0m148.02[1;32m up[0m83.01[1;32m mup[0m86.32[1;32m mdn[0m86.62[1;32m dn[0m87.17[1;32m tube[0m85.81[1;33m valv[0m75.05[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.28[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.62,-0.06,32.21,91.19,infusion,mimoja
+Data,3.62,-0.06,32.21,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.41[1;31m ex2[0m148.02[1;32m up[0m83.01[1;32m mup[0m86.32[1;32m mdn[0m86.57[1;32m dn[0m87.12[1;32m tube[0m85.80[1;33m valv[0m75.05[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.26[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.58,-0.04,32.72,91.19,infusion,mimoja
+Data,3.58,-0.04,32.72,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.35[1;31m ex2[0m148.02[1;32m up[0m82.96[1;32m mup[0m86.27[1;32m mdn[0m86.57[1;32m dn[0m87.12[1;32m tube[0m85.78[1;33m valv[0m75.01[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.26[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.54,-0.06,33.00,91.19,infusion,mimoja
+Data,3.54,-0.06,33.00,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.29[1;31m ex2[0m148.02[1;32m up[0m82.92[1;32m mup[0m86.22[1;32m mdn[0m86.52[1;32m dn[0m87.12[1;32m tube[0m85.77[1;33m valv[0m75.05[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.26[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.49,-0.04,33.20,91.19,infusion,mimoja
+Data,3.49,-0.04,33.20,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.29[1;31m ex2[0m147.90[1;32m up[0m82.87[1;32m mup[0m86.12[1;32m mdn[0m86.52[1;32m dn[0m87.07[1;32m tube[0m85.71[1;33m valv[0m75.09[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.26[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.43,-0.01,33.77,91.19,infusion,mimoja
+Data,3.43,-0.01,33.77,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.29[1;31m ex2[0m147.90[1;32m up[0m82.87[1;32m mup[0m86.12[1;32m mdn[0m86.52[1;32m dn[0m87.02[1;32m tube[0m85.69[1;33m valv[0m75.13[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.26[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.39,-0.04,33.95,91.19,infusion,mimoja
+Data,3.39,-0.04,33.95,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.29[1;31m ex2[0m147.84[1;32m up[0m82.87[1;32m mup[0m86.12[1;32m mdn[0m86.52[1;32m dn[0m87.02[1;32m tube[0m85.66[1;33m valv[0m75.17[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.26[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.38,-0.01,34.24,91.19,infusion,mimoja
+Data,3.38,-0.01,34.24,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.24[1;31m ex2[0m147.90[1;32m up[0m82.87[1;32m mup[0m86.12[1;32m mdn[0m86.47[1;32m dn[0m86.97[1;32m tube[0m85.63[1;33m valv[0m75.21[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.26[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.37,0.01,34.55,91.19,infusion,mimoja
+Data,3.37,0.01,34.55,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.24[1;31m ex2[0m147.84[1;32m up[0m82.87[1;32m mup[0m86.12[1;32m mdn[0m86.47[1;32m dn[0m86.97[1;32m tube[0m85.62[1;33m valv[0m75.25[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.26[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.34,-0.02,34.83,91.19,infusion,mimoja
+Data,3.34,-0.02,34.83,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.24[1;31m ex2[0m147.84[1;32m up[0m82.87[1;32m mup[0m86.07[1;32m mdn[0m86.42[1;32m dn[0m86.92[1;32m tube[0m85.61[1;33m valv[0m75.25[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.25[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.31,0.00,35.19,91.19,infusion,mimoja
+Data,3.31,0.00,35.19,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.29[1;31m ex2[0m147.78[1;32m up[0m82.87[1;32m mup[0m85.97[1;32m mdn[0m86.37[1;32m dn[0m86.92[1;32m tube[0m85.58[1;33m valv[0m75.29[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.24[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.26,0.00,35.43,91.19,infusion,mimoja
+Data,3.26,0.00,35.43,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.29[1;31m ex2[0m147.78[1;32m up[0m82.87[1;32m mup[0m85.92[1;32m mdn[0m86.32[1;32m dn[0m86.92[1;32m tube[0m85.57[1;33m valv[0m75.29[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.23[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.20,0.00,35.73,91.19,infusion,mimoja
+Data,3.20,0.00,35.73,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.29[1;31m ex2[0m147.72[1;32m up[0m82.82[1;32m mup[0m85.92[1;32m mdn[0m86.32[1;32m dn[0m86.92[1;32m tube[0m85.54[1;33m valv[0m75.29[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.23[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.16,0.00,36.13,91.19,infusion,mimoja
+Data,3.16,0.00,36.13,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.24[1;31m ex2[0m147.72[1;32m up[0m82.78[1;32m mup[0m85.92[1;32m mdn[0m86.32[1;32m dn[0m86.92[1;32m tube[0m85.52[1;33m valv[0m75.33[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.23[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.15,0.00,36.42,91.19,infusion,mimoja
+Data,3.15,0.00,36.42,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.07[1;31m ex2[0m147.66[1;32m up[0m82.78[1;32m mup[0m85.92[1;32m mdn[0m86.32[1;32m dn[0m86.92[1;32m tube[0m85.49[1;33m valv[0m75.41[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.23[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.15,0.00,36.53,91.19,infusion,mimoja
+Data,3.15,0.00,36.53,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.01[1;31m ex2[0m147.72[1;32m up[0m82.78[1;32m mup[0m85.92[1;32m mdn[0m86.27[1;32m dn[0m86.92[1;32m tube[0m85.49[1;33m valv[0m75.45[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.23[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.14,0.00,36.83,91.19,infusion,mimoja
+Data,3.14,0.00,36.83,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.01[1;31m ex2[0m147.66[1;32m up[0m82.78[1;32m mup[0m85.92[1;32m mdn[0m86.22[1;32m dn[0m86.92[1;32m tube[0m85.48[1;33m valv[0m75.45[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.23[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,3.14,0.00,37.14,91.19,infusion,mimoja
+Data,3.14,0.00,37.14,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.01[1;31m ex2[0m147.60[1;32m up[0m82.69[1;32m mup[0m85.92[1;32m mdn[0m86.12[1;32m dn[0m86.87[1;32m tube[0m85.46[1;33m valv[0m75.45[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.23[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,3.10,0.00,37.14,91.19,infusion,mimoja
+Data,3.10,0.00,37.14,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.01[1;31m ex2[0m147.55[1;32m up[0m82.69[1;32m mup[0m85.87[1;32m mdn[0m86.12[1;32m dn[0m86.87[1;32m tube[0m85.44[1;33m valv[0m75.49[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.23[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,3.05,0.00,37.78,91.19,infusion,mimoja
+Data,3.05,0.00,37.78,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.01[1;31m ex2[0m147.55[1;32m up[0m82.69[1;32m mup[0m85.82[1;32m mdn[0m86.12[1;32m dn[0m86.87[1;32m tube[0m85.42[1;33m valv[0m75.53[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.23[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,3.00,0.00,37.98,91.19,infusion,mimoja
+Data,3.00,0.00,37.98,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.01[1;31m ex2[0m147.55[1;32m up[0m82.69[1;32m mup[0m85.78[1;32m mdn[0m86.12[1;32m dn[0m86.82[1;32m tube[0m85.40[1;33m valv[0m75.61[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.23[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,2.95,0.00,37.98,91.19,infusion,mimoja
+Data,2.95,0.00,37.98,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.01[1;31m ex2[0m147.55[1;32m up[0m82.69[1;32m mup[0m85.73[1;32m mdn[0m86.12[1;32m dn[0m86.77[1;32m tube[0m85.36[1;33m valv[0m75.61[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.23[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,2.93,0.00,38.44,91.19,infusion,mimoja
+Data,2.93,0.00,38.44,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m145.01[1;31m ex2[0m147.49[1;32m up[0m82.69[1;32m mup[0m85.73[1;32m mdn[0m86.12[1;32m dn[0m86.72[1;32m tube[0m85.35[1;33m valv[0m75.61[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.23[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,2.92,0.00,38.57,91.19,infusion,mimoja
+Data,2.92,0.00,38.57,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m144.95[1;31m ex2[0m147.43[1;32m up[0m82.69[1;32m mup[0m85.73[1;32m mdn[0m86.12[1;32m dn[0m86.72[1;32m tube[0m85.33[1;33m valv[0m75.61[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.23[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,2.92,0.00,38.43,91.19,infusion,mimoja
+Data,2.92,0.00,38.43,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m144.90[1;31m ex2[0m147.31[1;32m up[0m82.69[1;32m mup[0m85.73[1;32m mdn[0m86.12[1;32m dn[0m86.72[1;32m tube[0m85.32[1;33m valv[0m75.65[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.23[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,2.92,0.00,38.89,91.19,infusion,mimoja
+Data,2.92,0.00,38.89,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m144.90[1;31m ex2[0m147.31[1;32m up[0m82.69[1;32m mup[0m85.73[1;32m mdn[0m86.12[1;32m dn[0m86.72[1;32m tube[0m85.31[1;33m valv[0m75.65[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.23[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,2.92,0.00,39.11,91.19,infusion,mimoja
+Data,2.92,0.00,39.11,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m144.95[1;31m ex2[0m147.31[1;32m up[0m82.69[1;32m mup[0m85.73[1;32m mdn[0m86.07[1;32m dn[0m86.72[1;32m tube[0m85.31[1;33m valv[0m75.69[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.23[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,2.87,0.00,39.00,91.19,infusion,mimoja
+Data,2.87,0.00,39.00,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m144.90[1;31m ex2[0m147.31[1;32m up[0m82.69[1;32m mup[0m85.73[1;32m mdn[0m86.07[1;32m dn[0m86.72[1;32m tube[0m85.31[1;33m valv[0m75.73[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.22[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,2.83,0.00,39.64,91.19,infusion,mimoja
+Data,2.83,0.00,39.64,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m144.84[1;31m ex2[0m147.31[1;32m up[0m82.69[1;32m mup[0m85.73[1;32m mdn[0m86.07[1;32m dn[0m86.67[1;32m tube[0m85.30[1;33m valv[0m75.76[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.21[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,2.78,0.00,39.64,91.19,infusion,mimoja
+Data,2.78,0.00,39.64,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m144.78[1;31m ex2[0m147.31[1;32m up[0m82.69[1;32m mup[0m85.73[1;32m mdn[0m86.12[1;32m dn[0m86.62[1;32m tube[0m85.30[1;33m valv[0m75.76[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.20[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,2.74,0.00,40.09,91.19,infusion,mimoja
+Data,2.74,0.00,40.09,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m144.78[1;31m ex2[0m147.25[1;32m up[0m82.69[1;32m mup[0m85.73[1;32m mdn[0m86.07[1;32m dn[0m86.57[1;32m tube[0m85.29[1;33m valv[0m75.80[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.23[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,2.69,0.00,40.31,91.19,infusion,mimoja
+Data,2.69,0.00,40.31,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m144.73[1;31m ex2[0m147.19[1;32m up[0m82.69[1;32m mup[0m85.63[1;32m mdn[0m85.97[1;32m dn[0m86.57[1;32m tube[0m85.27[1;33m valv[0m75.88[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.22[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m53[1;35m 1_r[0m53[1;35m 2_r[0m53[1;35m 3_r[0m53
-Data,2.68,0.00,40.47,91.19,infusion,mimoja
+Data,2.68,0.00,40.47,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m144.73[1;31m ex2[0m147.14[1;32m up[0m82.69[1;32m mup[0m85.58[1;32m mdn[0m85.92[1;32m dn[0m86.57[1;32m tube[0m85.25[1;33m valv[0m75.92[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.20[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,2.68,0.00,40.47,91.19,infusion,mimoja
+Data,2.68,0.00,40.47,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m144.73[1;31m ex2[0m147.14[1;32m up[0m82.69[1;32m mup[0m85.53[1;32m mdn[0m85.92[1;32m dn[0m86.57[1;32m tube[0m85.22[1;33m valv[0m75.92[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.20[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,2.68,0.00,40.89,91.19,infusion,mimoja
+Data,2.68,0.00,40.89,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m144.78[1;31m ex2[0m147.08[1;32m up[0m82.64[1;32m mup[0m85.53[1;32m mdn[0m85.92[1;32m dn[0m86.57[1;32m tube[0m85.20[1;33m valv[0m75.92[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.20[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,2.69,0.00,41.02,91.19,infusion,mimoja
+Data,2.69,0.00,41.02,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m144.67[1;31m ex2[0m147.08[1;32m up[0m82.59[1;32m mup[0m85.53[1;32m mdn[0m85.92[1;32m dn[0m86.52[1;32m tube[0m85.17[1;33m valv[0m75.92[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.20[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
-Data,2.69,0.00,41.02,91.19,infusion,mimoja
+Data,2.69,0.00,41.02,91.19,infusion,mimoja,Pressure,8.0,none,0.0,false
 Sensors,[1;31m ex1[0m144.62[1;31m ex2[0m147.08[1;32m up[0m82.55[1;32m mup[0m85.53[1;32m mdn[0m85.92[1;32m dn[0m86.52[1;32m tube[0m85.16[1;33m valv[0m75.92[1;34m pos[0m78.01[1;34m speed[0m0.00[1;36m m_pow[0m0.00[1;36m current[0m-0.20[1;36m bh_pow[0m0.00[1;35m p_r[0m111[1;35m 0_r[0m54[1;35m 1_r[0m54[1;35m 2_r[0m54[1;35m 3_r[0m54
 INFO: [WeightValueTrigger] Trigger Activated weight - Sensor Read: 41.312759 Weight since ref 42.011658 > Value: 42.000000
 INFO: Moving from Node: 13 to: 305
