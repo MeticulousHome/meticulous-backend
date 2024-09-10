@@ -171,6 +171,13 @@ class MachineState:
     ERROR = "error"  # so far unused
 
 
+class ControlTypes:
+    FLOW = "Flow"
+    PRESSURE = "Pressure"
+    PISTON = "Piston"
+    POWER = "Power"
+
+
 @dataclass
 class ShotData:
     """Class respresenting a Datapoint of the machine in time, used to track a shot"""
@@ -184,6 +191,12 @@ class ShotData:
     time: int = -1
     state: str = ""
     is_extracting: bool = False
+
+    main_controller_kind: ControlTypes = None  # {"Flow","Pressure","Piston","Power"}
+    main_setpoint: float = -1
+    aux_controller_kind: ControlTypes = None  # {"Flow","Pressure","Power"}
+    aux_setpoint: float = -1
+    is_aux_controller_active: bool = False
 
     def clone_with_time_and_state(self, shot_start_time, is_brewing):
         return replace(self, time=shot_start_time, is_extracting=is_brewing)
@@ -199,6 +212,28 @@ class ShotData:
             profile = args[5].strip("\r\n")
         except Exception:
             profile = None
+
+        main_controller_kind = None
+        main_setpoint = 0.0
+        aux_controller_kind = None
+        aux_setpoint = 0.0
+        is_aux_controller_active = False
+        try:
+            main_controller_kind = args[6].strip("\r\n")
+            if main_controller_kind == "none":
+                main_controller_kind = None
+            else:
+                main_controller_kind = ControlTypes(main_controller_kind)
+            main_setpoint = float(args[7].strip("\r\n"))
+            aux_controller_kind = args[8].strip("\r\n")
+            if aux_controller_kind == "none":
+                aux_controller_kind = None
+            else:
+                aux_controller_kind = ControlTypes(aux_controller_kind)
+            aux_setpoint = float(args[9].strip("\r\n"))
+            is_aux_controller_active = args[10].strip("\r\n") == "true"
+        except Exception:
+            pass
 
         state = MachineState.IDLE
         if profile is not None:
@@ -220,6 +255,11 @@ class ShotData:
                 status,
                 profile,
                 state=state,
+                main_controller_kind=main_controller_kind,
+                main_setpoint=main_setpoint,
+                aux_controller_kind=aux_controller_kind,
+                aux_setpoint=aux_setpoint,
+                is_aux_controller_active=is_aux_controller_active,
             )
         except Exception as e:
             logger.warning(f"Failed to parse ShotData: {args}", exc_info=e)
@@ -228,6 +268,15 @@ class ShotData:
         return data
 
     def to_sio(self):
+        setpoints = {}
+        if self.main_controller_kind is not None:
+            setpoints[self.main_controller_kind] = self.main_setpoint
+            setpoints["active"] = self.main_controller_kind
+        if self.aux_controller_kind is not None:
+            setpoints[self.aux_controller_kind] = self.aux_setpoint
+            if self.is_aux_controller_active:
+                setpoints["active"] = self.aux_controller_kind
+
         data = {
             "name": self.status,
             "sensors": {
@@ -236,6 +285,7 @@ class ShotData:
                 "w": self.weight,
                 "t": self.temperature,
             },
+            "setpoints": setpoints,
             "time": self.time,
             "profile": self.profile,
             "state": self.state,
