@@ -46,7 +46,6 @@ class API:
         from . import settings as _settings  # noqa
         from . import update as _update  # noqa
         from . import wifi as _wifi  # noqa
-        from . import update_os as _update  # noqa
         from . import sounds as _sounds  # noqa
         from . import machine as _machine  # noqa
 
