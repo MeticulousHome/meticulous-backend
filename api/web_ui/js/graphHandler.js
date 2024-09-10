@@ -55,6 +55,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const misc_state = document.getElementById('misc_state');
     const misc_extracting = document.getElementById('misc_extracting');
 
+    const misc_set_pressure = document.getElementById('misc_set_pressure');
+    const misc_set_flow = document.getElementById('misc_set_flow');
+    const misc_set_power = document.getElementById('misc_set_power');
+    const misc_set_position = document.getElementById('misc_set_position');
+    const misc_limiter_active = document.getElementById('misc_limiter_active');
+
+
     window.thermistorData = {
         labels: [],
         data: {
@@ -123,6 +130,38 @@ document.addEventListener('DOMContentLoaded', function () {
         misc_profile.innerText = data.profile;
         misc_state.innerText = data.state;
         misc_extracting.innerText = data.extracting;
+
+        setpoint = data.setpoint;
+
+        if (setpoint.pressure) {
+            misc_set_pressure.innerText = setpoint.pressure;
+        } else {
+            misc_set_pressure.innerText = "N/A";
+        }
+
+        if (setpoint.flow) {
+            misc_set_flow.innerText = setpoint.flow;
+        } else {
+            misc_set_flow.innerText = "N/A";
+        }
+
+        if (setpoint.power) {
+            misc_set_power.innerText = setpoint.power;
+        } else {
+            misc_set_power.innerText = "N/A";
+        }
+
+        if (setpoint.position) {
+            misc_set_position.innerText = setpoint.position;
+        } else {
+            misc_set_position.innerText = "N/A";
+        }
+
+        if (data.limiter_active) {
+            misc_limiter_active.innerText = data.limiter_active;
+        } else {
+            misc_limiter_active.innerText = "N/A";
+        }
 
         if (isGraphing) {
             updateGraph('miscGraph', window.miscData);
