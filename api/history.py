@@ -19,6 +19,10 @@ last_version_path = f"/api/{APIVersion.latest_version().name.lower()}"
 
 
 class ZstdHistoryHandler(tornado.web.StaticFileHandler):
+
+    def set_default_headers(self):
+        BaseHandler.set_default_headers(self)
+
     async def get(self, path):
         self.set_header("Content-Type", "application/json")
 
