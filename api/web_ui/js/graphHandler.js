@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initGraph('thermistorGraph', ['barUp', 'barMiddleUp', 'barMiddleDown', 'barDown', 'external1', 'external2', 'tube', 'valve']);
     initGraph('actuatorGraph', ['position', 'speed', 'power', 'current', 'bandHeater_power']);
     initGraph('adcGraph', ['adc0_rate', 'adc1_rate', 'adc2_rate', 'adc3_rate', 'pressureSensor_rate']);
-    initGraph('miscGraph', ['pressureSensor_pressure', 'flowSensor_flow', 'loadcell_weight', 'display_temp']);
+    initGraph('miscGraph', ['pressureSensor_pressure', 'flowSensor_flow', 'loadcell_weight', 'display_temp', 'set_pressure', 'set_flow', 'set_power', 'set_position']);
 
     const therm_up = document.getElementById('therm_up');
     const therm_midUp = document.getElementById('therm_midUp');
@@ -104,7 +104,11 @@ document.addEventListener('DOMContentLoaded', function () {
             pressureSensor_pressure: [],
             flowSensor_flow: [],
             loadcell_weight: [],
-            display_temp: []
+            display_temp: [],
+            set_pressure: [],
+            set_flow: [],
+            set_power: [],
+            set_position: [],
         }
     };
 
@@ -119,6 +123,10 @@ document.addEventListener('DOMContentLoaded', function () {
             flowSensor_flow: data.sensors.f,
             loadcell_weight: data.sensors.w,
             display_temp: data.sensors.t,
+            set_pressure: data.setpoints?.pressure,
+            set_flow: data.setpoints?.flow,
+            set_power: data.setpoints?.power,
+            set_position: data.setpoints?.position,
         });
         misc_pressure.innerText = data.sensors.p;
         misc_flow.innerText = data.sensors.f;
