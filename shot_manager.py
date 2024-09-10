@@ -70,9 +70,8 @@ class Shot:
                 "pressure": shotData.pressure,
                 "flow": shotData.flow,
                 "weight": shotData.weight,
-                "temperature": shotData.temperature,
+                "setpoints": shotData.to_sio().get("setPoints", {}),
             },
-            "setpoints": shotData.to_sio().get("setPoints", {}),
             "time": shotData.time,
             "status": shotData.status,
         }
