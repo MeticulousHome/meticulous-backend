@@ -271,12 +271,12 @@ class ShotData:
         setpoints = {}
 
         if self.main_controller_kind is not None:
-            setpoints[self.main_controller_kind] = self.main_setpoint
-            setpoints["active"] = self.main_controller_kind
+            setpoints[self.main_controller_kind.lower()] = self.main_setpoint
+            setpoints["active"] = self.main_controller_kind.lower()
         if self.aux_controller_kind is not None:
-            setpoints[self.aux_controller_kind] = self.aux_setpoint
+            setpoints[self.aux_controller_kind.lower()] = self.aux_setpoint
             if self.is_aux_controller_active:
-                setpoints["active"] = self.aux_controller_kind
+                setpoints["active"] = self.aux_controller_kind.lower()
 
         data = {
             "name": self.status,
