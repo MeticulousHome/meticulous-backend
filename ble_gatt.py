@@ -136,9 +136,6 @@ class GATTServer:
         self.loop.call_soon_threadsafe(self.trigger.set)
 
     def update_advertisement(self):
-        # Update advertisement
-
-        logger.warning("Updating advertisement")
         self.manufacturer_data = self._build_manufacturer_data()
         self.loop.call_soon_threadsafe(self.update_trigger.set)
 
@@ -160,13 +157,12 @@ class GATTServer:
         return bytes(current_response[:27])
 
     async def _update_data_loop(self):
-        logger.warning("Starting update data loop")
         self.update_trigger.clear()
         while True:
             await self.update_trigger.wait()
             self.update_trigger.clear()
 
-            logger.warning(f"in loop: {self.manufacturer_data}")
+            logger.info(f"Updating BLE anouncment: {self.manufacturer_data}")
             # self.manufacturer_data = b"000000000000000000000000000"
 
             advertisement = self.bless_gatt_server.app.advertisements.pop()
