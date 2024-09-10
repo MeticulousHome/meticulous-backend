@@ -133,31 +133,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
         setpoint = data.setpoint;
 
-        if (setpoint.pressure) {
+        if (setpoint?.pressure) {
             misc_set_pressure.innerText = setpoint.pressure;
         } else {
             misc_set_pressure.innerText = "N/A";
         }
 
-        if (setpoint.flow) {
+        if (setpoint?.flow) {
             misc_set_flow.innerText = setpoint.flow;
         } else {
             misc_set_flow.innerText = "N/A";
         }
 
-        if (setpoint.power) {
+        if (setpoint?.power) {
             misc_set_power.innerText = setpoint.power;
         } else {
             misc_set_power.innerText = "N/A";
         }
 
-        if (setpoint.position) {
+        if (setpoint?.position) {
             misc_set_position.innerText = setpoint.position;
         } else {
             misc_set_position.innerText = "N/A";
         }
 
-        if (data.limiter_active) {
+        if (setpoint?.limiter_active) {
             misc_limiter_active.innerText = data.limiter_active;
         } else {
             misc_limiter_active.innerText = "N/A";
