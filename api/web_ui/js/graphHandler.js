@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', function () {
         misc_state.innerText = data.state;
         misc_extracting.innerText = data.extracting;
 
-        setpoint = data.setpoint;
+        setpoint = data.setpoints;
 
         if (setpoint?.pressure) {
             misc_set_pressure.innerText = setpoint.pressure;
