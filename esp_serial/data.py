@@ -29,7 +29,7 @@ class SensorData:
     bar_down: float = 0.0
     tube: float = 0.0
     valve: float = 0.0
-    LAM_temp: float = 0.0
+    lam_temp: float = 0.0
     motor_position: float = 0.0
     motor_speed: float = 0.0
     motor_power: float = 0.0
@@ -72,7 +72,7 @@ class SensorData:
                 bar_down=safeFloat(args[5]),
                 tube=safeFloat(args[6]),
                 valve=safeFloat(args[7]),
-                LAM_temp=safeFloat(args[8]),
+                lam_temp=safeFloat(args[8]),
                 motor_position=safeFloat(args[9]),
                 motor_speed=safeFloat(args[10]),
                 motor_power=safeFloat(args[11]),
@@ -101,7 +101,7 @@ class SensorData:
             "t_bar_down": self.bar_down,
             "t_tube": self.tube,
             "t_valv": self.valve,
-            "LAM_temp": self.LAM_temp,
+            "lam_temp": self.lam_temp,
         }
 
     def to_sio_communication(self):
