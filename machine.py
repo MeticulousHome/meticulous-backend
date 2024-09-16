@@ -66,6 +66,22 @@ class Machine:
 
     is_idle = True
 
+    def check_machine_alive():
+        if not Machine.infoReady:
+            if MeticulousConfig[CONFIG_USER][DISALLOW_FIRMWARE_FLASHING]:
+                logger.warning(
+                    "The ESP never send an info, but user requested no updates!"
+                )
+            else:
+                logger.warning(
+                    "The ESP never send an info, flashing latest firmware to be sure"
+                )
+                Machine.startUpdate()
+        else:
+            logger.info(
+                "The ESP is alive"
+            )
+
     def init(sio):
         Machine._sio = sio
         Machine.firmware_available = Machine._parseVersionString(
@@ -105,8 +121,18 @@ class Machine:
             loop.run_until_complete(Machine._read_data())
             loop.close()
 
+        def flashingEsp():
+            time.sleep(60)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            loop.run_until_complete(Machine.check_machine_alive())
+            loop.close()
+
         Machine._thread = NamedThread("MachineSerial", target=startLoop)
+        Machine._flashingThread = NamedThread("FlashingEsp", target=flashingEsp)
         Machine._thread.start()
+        Machine._flashingThread.start()
 
     class ReadLine:
         def __init__(self, s):
