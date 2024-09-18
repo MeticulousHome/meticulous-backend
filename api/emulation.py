@@ -20,6 +20,7 @@ logger = MeticulousLogger.getLogger(__name__)
 
 class WiFiConfigHandler(BaseHandler):
     def get(self):
+        logger.info("serving emulated wifi config")
         mode = MeticulousConfig[CONFIG_WIFI][WIFI_MODE]
         apName = MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME]
         apPassword = MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
@@ -68,6 +69,7 @@ class WiFiConfigHandler(BaseHandler):
         self.write(json.dumps(wifi_config))
 
     def post(self):
+        logger.info("serving emulated wifi config")
         try:
             data = json.loads(self.request.body)
             if "mode" in data and data["mode"] in [WIFI_MODE_AP, WIFI_MODE_CLIENT]:
@@ -102,6 +104,8 @@ class WiFiConfigHandler(BaseHandler):
 
 class WiFiListHandler(BaseHandler):
     def get(self):
+        logger.info("serving emulated wifi config")
+
         networks = [
             {"ssid": "MeticulousWifi", "signal": 75, "rate": 195, "in_use": True},
             {"ssid": "StarGate Legacy", "signal": 59, "rate": 195, "in_use": True},
@@ -114,6 +118,8 @@ class WiFiListHandler(BaseHandler):
 
 class WiFiConnectHandler(BaseHandler):
     def post(self):
+        logger.info("serving emulated wifi config")
+
         try:
             data = json.loads(self.request.body)
             ssid = data["ssid"]

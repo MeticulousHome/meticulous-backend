@@ -1,5 +1,17 @@
+import asyncio
+import os
+import socket
+import time
+from dataclasses import dataclass
+from enum import Enum
+from typing import List, Literal
+
+import nmcli
+import sentry_sdk
+from netaddr import IPAddress, IPNetwork
+
+from api.zeroconf_announcement import ZeroConfAnnouncement
 from config import (
-    MeticulousConfig,
     CONFIG_WIFI,
     WIFI_AP_NAME,
     WIFI_AP_PASSWORD,
@@ -7,23 +19,11 @@ from config import (
     WIFI_MODE,
     WIFI_MODE_AP,
     WIFI_MODE_CLIENT,
+    MeticulousConfig,
 )
-
-from netaddr import IPAddress, IPNetwork
-from typing import List
-from dataclasses import dataclass
-from api.zeroconf_announcement import ZeroConfAnnouncement
-
-import nmcli
-import time
-import socket
-import os
-from named_thread import NamedThread
-import asyncio
-
 from hostname import HostnameManager
-
 from log import MeticulousLogger
+from named_thread import NamedThread
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -32,6 +32,65 @@ nmcli.set_lang("C.UTF-8")
 
 # Should be something like "192.168.2.123/24,MyHostname"
 ZEROCONF_OVERWRITE = os.getenv("ZEROCONF_OVERWRITE", "")
+
+
+class WifiType(str, Enum):
+    Open = "OPEN"
+    PreSharedKey = "PSK"
+    Enterprise = "802.1X"
+    WEP = "WEP"
+
+    @staticmethod
+    def from_nmcli_security(security):
+        if security == "":
+            return WifiType.Open
+        elif "802.1X" in security:
+            return WifiType.Enterprise
+        elif "WPA" in security:
+            return WifiType.PreSharedKey
+        # WEP is ancient and needs to die. (Well it already mostly did).
+        # We dont support it and only log it as an error.
+        elif "WEP" in security:
+            return WifiType.WEP
+
+        error_msg = f"Unknown wifi security type: {security}"
+        logger.error(error_msg)
+        sentry_sdk.capture_message(error_msg, level="error")
+
+        return None
+
+
+@dataclass
+class BaseWiFiCredentials:
+    type: WifiType = None
+    security: str = ""
+    ssid: str = ""
+
+    def to_dict(self) -> str:
+        return self.__dict__.copy()
+
+
+@dataclass
+class WifiWpaEnterpriseCredentials(BaseWiFiCredentials):
+    type: Literal["802.1X"] = "802.1X"
+    # TODO: add more fields after implementation
+
+
+@dataclass
+class WifiOpenCredentials(BaseWiFiCredentials):
+    type: Literal["OPEN"] = "OPEN"
+
+
+@dataclass
+class WifiWpaPskCredentials(BaseWiFiCredentials):
+    type: Literal["PSK"] = "PSK"
+    password: str = ""
+
+
+# Define a union type for WiFi credentials
+WiFiCredentials = (
+    WifiWpaEnterpriseCredentials | WifiOpenCredentials | WifiWpaPskCredentials
+)
 
 
 @dataclass
@@ -129,6 +188,9 @@ class WifiManager:
 
         WifiManager._zeroconf.start()
 
+    def networking_available():
+        return WifiManager._networking_available
+
     def tryAutoConnect():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -148,9 +210,13 @@ class WifiManager:
             for network in networks:
                 if network.ssid in previousNetworks:
                     logger.info(f"Found known WIFI {network.ssid}. Connecting")
-                    success = WifiManager.connectToWifi(
-                        ssid=network.ssid, password=previousNetworks[network.ssid]
-                    )
+                    credentials = previousNetworks[network.ssid]
+                    if type(credentials) is str:
+                        credentials = WifiWpaPskCredentials(
+                            ssid=network.ssid, password=credentials
+                        )
+                        WifiManager.rememberWifi(credentials)
+                    success = WifiManager.connectToWifi(credentials)
                     if success:
                         break
 
@@ -235,10 +301,22 @@ class WifiManager:
         WifiManager._known_wifis = wifis
         return wifis
 
-    def connectToWifi(ssid: str, password: str):
+    def connectToWifi(credentials: WiFiCredentials):
         from ble_gatt import GATTServer
 
         if not WifiManager._networking_available:
+            return False
+
+        if credentials is None:
+            return False
+
+        wifi_type = credentials.get("type", None)
+        if wifi_type is None:
+            wifi_type = WifiType.PreSharedKey
+            credentials["type"] = wifi_type
+
+        ssid = credentials.get("ssid", None)
+        if ssid is None:
             return False
 
         logger.info(f"Connecting to wifi: {ssid}")
@@ -254,11 +332,18 @@ class WifiManager:
 
             logger.info("Target network online, connecting now")
             try:
-                nmcli.device.wifi_connect(ssid, password)
+                if wifi_type == WifiType.Open:
+                    nmcli.device.wifi_connect(ssid, None)
+                elif wifi_type == WifiType.PreSharedKey:
+                    nmcli.device.wifi_connect(ssid, credentials.get("password", ""))
+                elif wifi_type == WifiType.Enterprise:
+                    logger.error("Enterprise wifi not yet implemented")
+                    return False
             except Exception as e:
                 logger.info(f"Failed to connect to wifi: {e}")
                 GATTServer.getServer().update_advertisement()
                 return False
+
             logger.info(
                 "Connection should be established, checking if a network is marked in-use"
             )
@@ -267,15 +352,27 @@ class WifiManager:
                 logger.info("Successfully connected")
                 WifiManager._zeroconf.restart()
                 MeticulousConfig[CONFIG_WIFI][WIFI_MODE] = WIFI_MODE_CLIENT
-                WifiManager.rememberWifi(ssid, password)
+                WifiManager.rememberWifi(credentials)
                 GATTServer.getServer().update_advertisement()
                 return True
+
         logger.info("Target network was not found, no connection established")
         GATTServer.getServer().update_advertisement()
         return False
 
-    def rememberWifi(name, password):
-        MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS][name] = password
+    def rememberWifi(credentials: WiFiCredentials):
+        if type(credentials) is not dict:
+            credentials = credentials.to_dict()
+
+        if "type" not in credentials:
+            credentials["type"] = WifiType.PreSharedKey
+
+        if type(credentials.get("type")) is WifiType:
+            credentials["type"] = credentials["type"].value
+
+        MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS][
+            credentials.get("ssid")
+        ] = credentials
         MeticulousConfig.save()
 
     # Reads the IP from ZEROCONF_OVERWRITE and announces that instead

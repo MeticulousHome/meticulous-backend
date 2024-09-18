@@ -78,9 +78,7 @@ class Machine:
                 )
                 Machine.startUpdate()
         else:
-            logger.info(
-                "The ESP is alive"
-            )
+            logger.info("The ESP is alive")
 
     def init(sio):
         Machine._sio = sio

@@ -12,7 +12,7 @@ from config import (
     WIFI_MODE_AP,
     WIFI_MODE_CLIENT,
 )
-from wifi import WifiManager
+from wifi import WifiManager, WifiType
 from ble_gatt import PORT
 
 from .base_handler import BaseHandler
@@ -50,7 +50,6 @@ class WiFiConfig:
 class WiFiQRHandler(BaseHandler):
     def get(self):
         config = WifiManager.getCurrentConfig()
-        logger.warning(config)
         qr_contents: str = ""
         if config.is_hotspot():
             ssid = MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME]
@@ -97,12 +96,12 @@ class WiFiConfigHandler(BaseHandler):
             config_changed = False
             data = json.loads(self.request.body)
             if "mode" in data and data["mode"] in [WIFI_MODE_AP, WIFI_MODE_CLIENT]:
-                logger.warning("Changing wifi mode")
+                logger.info("Changing wifi mode")
                 MeticulousConfig[CONFIG_WIFI][WIFI_MODE] = data["mode"]
                 config_changed = True
 
             if "apPassword" in data:
-                logger.warning("Changing wifi ap password")
+                logger.info("Changing wifi ap password")
                 MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD] = data["apPassword"]
                 config_changed = True
 
@@ -130,7 +129,12 @@ class WiFiListHandler(BaseHandler):
         try:
             for s in WifiManager.scanForNetworks():
                 if s.ssid is not None and s.ssid != "":
+                    wifi_type = WifiType.from_nmcli_security(s.security)
+                    if wifi_type is None:
+                        continue
                     formated: dict = {
+                        "type": wifi_type,
+                        "security": s.security,
                         "ssid": s.ssid,
                         "signal": s.signal,
                         "rate": s.rate,
@@ -142,7 +146,7 @@ class WiFiListHandler(BaseHandler):
                         networks[s.ssid] = formated.copy()
                     else:
                         # Dont overwrite the in_use network
-                        logger.warning(f"{exists}, {exists.get('signal')}")
+                        logger.info(f"{exists}, {exists.get('signal')}")
                         if exists["in_use"]:
                             continue
                         if s.signal > exists["signal"]:
@@ -154,7 +158,7 @@ class WiFiListHandler(BaseHandler):
             self.write(response)
         except Exception as e:
             self.set_status(400)
-            self.write("Failed to fetch wifi list")
+            self.write({"status": "error", "error": f"failed to fetch wifi list: {e}"})
             logger.warning(
                 "Failed to fetch / format wifi list: ", exc_info=e, stack_info=True
             )
@@ -164,10 +168,7 @@ class WiFiConnectHandler(BaseHandler):
     def post(self):
         try:
             data = json.loads(self.request.body)
-            ssid = data["ssid"]
-            password = data["password"]
-
-            success = WifiManager.connectToWifi(ssid, password)
+            success = WifiManager.connectToWifi(data)
 
             if success:
                 self.write({"status": "ok"})
