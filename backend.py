@@ -315,7 +315,7 @@ def main():
         (r"/socket.io/", socketio.get_tornado_handler(sio)),
     ]
 
-    if Machine.emulated:
+    if Machine.emulated and not WifiManager.networking_available():
         register_emulation_handlers()
 
     handlers.extend(API.get_routes())
