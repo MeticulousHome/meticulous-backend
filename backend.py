@@ -22,12 +22,15 @@ from profiles import ProfileManager
 from hostname import HostnameManager
 from config import (
     MeticulousConfig,
+    CONFIG_USER,
+    UPDATE_CHANNEL,
     CONFIG_LOGGING,
     LOGGING_SENSOR_MESSAGES,
 )
 from machine import Machine
 from sounds import SoundPlayer
 from imager import DiscImager
+from ota import UpdateManager
 from shot_manager import ShotManager
 from esp_serial.connection.emulation_data import EmulationData
 
@@ -297,6 +300,8 @@ def main():
     gatherVersionInfo()
 
     HostnameManager.init()
+    UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
+
     Machine.init(sio)
 
     send_data_thread = NamedThread("SendSocketIO", target=send_data_loop)

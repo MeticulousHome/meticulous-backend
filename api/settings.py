@@ -1,10 +1,11 @@
 import json
 
-from config import CONFIG_USER, MeticulousConfig
+from config import CONFIG_USER, MeticulousConfig, UPDATE_CHANNEL
 
 from .base_handler import BaseHandler
 from .api import API, APIVersion
 
+from ota import UpdateManager
 from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -68,6 +69,7 @@ class SettingsHandler(BaseHandler):
                 MeticulousConfig.load()
                 return
         MeticulousConfig.save()
+        UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
         return self.get()
 
 
