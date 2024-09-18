@@ -42,20 +42,20 @@ class SettingsHandler(BaseHandler):
 
         for setting_name in settings:
             value = settings.get(setting_name)
-            if not isinstance(value, (int, bool)):
-                self.set_status(404)
-                self.write(
-                    {
-                        "status": "error",
-                        "error": "setting value invalidm, expected boolean",
-                        "setting": setting_name,
-                        "value": value,
-                    }
-                )
-                MeticulousConfig.load()
-                return
             setting = MeticulousConfig[CONFIG_USER].get(setting_name)
             if setting is not None:
+                if type(value) is not type(setting):
+                    self.set_status(404)
+                    self.write(
+                        {
+                            "status": "error",
+                            "error": "setting value invalidm, expected boolean",
+                            "setting": setting_name,
+                            "value": value,
+                        }
+                    )
+                    MeticulousConfig.load()
+                    return
                 MeticulousConfig[CONFIG_USER][setting_name] = value
             else:
                 self.set_status(404)
