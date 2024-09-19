@@ -299,6 +299,7 @@ class ProfileManager:
         if errors is not None:
             raise errors
 
+        start = time.time()
         try:
             preprocessed_profile = ProfilePreprocessor.processVariables(data)
         except Exception as err:
@@ -307,14 +308,34 @@ class ProfileManager:
             )
             raise err
 
-        logger.info(
-            f"Streaming JSON to ESP32: click_to_start={click_to_start} click_to_purge={click_to_purge} data={json.dumps(preprocessed_profile)}"
-        )
+        after_variables = time.time()
 
+        # Conver to nodeJSON
         converter = ComplexProfileConverter(
             click_to_start, click_to_purge, 1000, 7000, preprocessed_profile
         )
         profile = converter.get_profile()
+        end = time.time()
+
+        time_str = "Preprocessing of the profile took "
+        full_time_ms = (end - start) * 1000
+        if full_time_ms > 10:
+            time_str += f"{int(full_time_ms)} ms"
+        else:
+            time_str += f"{int(full_time_ms*1000)} ns"
+
+        variable_time_ms = (end - after_variables) * 1000
+        time_str += "out of that variables were processed in "
+        if variable_time_ms > 10:
+            time_str += f"{int(variable_time_ms)} ms"
+        else:
+            time_str += f"{int(variable_time_ms*1000)} ns"
+        logger.info(time_str)
+
+        logger.info(
+            f"Streaming JSON to ESP32: click_to_start={click_to_start} click_to_purge={click_to_purge} data={json.dumps(preprocessed_profile)}"
+        )
+
         Machine.send_json_with_hash(profile)
         ProfileManager._set_last_profile(data)
 
