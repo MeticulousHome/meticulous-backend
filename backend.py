@@ -294,11 +294,11 @@ async def send_data():  # noqa: C901
                 ButtonEventData.from_args(["encoder_button_released"]).to_sio(),
             )
 
-rauc_dbus_client=None
+dbus_object=None
 
 def main():
     global send_data_thread
-    global rauc_dbus_client
+    global dbus_object
     parse_command_line()
 
     pyprctl.set_name("Main")
@@ -306,14 +306,7 @@ def main():
     gatherVersionInfo()
 
     logger.info("creating AsyncDBus client")
-    rauc_dbus_client = AsyncDBUSClient()
-    rauc_dbus_client.new_signal_subscription('de.pengutronix.rauc.Installer',
-                                'Completed',
-                                raucDbusCallbacks.rauc_update_complete)
-
-    rauc_dbus_client.new_property_subscription('de.pengutronix.rauc.Installer','Progress',raucDbusCallbacks.update_progress)
-    rauc_dbus_client.new_property_subscription('de.pengutronix.rauc.Installer','LastError',raucDbusCallbacks.report_error)
-    rauc_dbus_client.start()
+    dbus_object = AsyncDBUSClient()
     logger.info("AsyncDBus client created")
 
     # dbus_object.new_property_subscription("")
