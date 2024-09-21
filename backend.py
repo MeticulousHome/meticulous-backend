@@ -38,6 +38,8 @@ from api.api import API
 from api.emulation import register_emulation_handlers
 from api.web_ui import WEB_UI_HANDLER
 
+from dbus_client import AsyncDBUSClient
+
 from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -290,14 +292,22 @@ async def send_data():  # noqa: C901
                 ButtonEventData.from_args(["encoder_button_released"]).to_sio(),
             )
 
+dbus_object=None
 
 def main():
     global send_data_thread
+    global dbus_object
     parse_command_line()
 
     pyprctl.set_name("Main")
 
     gatherVersionInfo()
+
+    logger.info("creating AsyncDBus client")
+    dbus_object = AsyncDBUSClient()
+    logger.info("AsyncDBus client created")
+
+    # dbus_object.new_property_subscription("")
 
     HostnameManager.init()
     UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
