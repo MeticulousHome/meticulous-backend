@@ -4,6 +4,7 @@ import json
 import os
 from named_thread import NamedThread
 import time
+from enum import Enum
 
 from packaging import version
 
@@ -42,6 +43,13 @@ logger = MeticulousLogger.getLogger(__name__)
 
 # can be from [FIKA, USB, EMULATOR / EMULATION]
 BACKEND = os.getenv("BACKEND", "FIKA").upper()
+
+
+class esp_nvs_keys(Enum):
+    color = "color_key"
+    serial_number = "serial_number_key"
+    batch_number = "batch_number_key"
+    build_date = "build_date_key"
 
 
 class Machine:
@@ -324,7 +332,7 @@ class Machine:
                     )
                     if not emulated_firmware:
                         logger.info(
-                            f"ESPInfo running firmware version:   {Machine.firmware_running} on pinout version {Machine.esp_info.espPinout}"
+                            f"ESPInfo running firmware version:   {Machine.firmware_running} on pinout version {Machine.esp_info.espPinout} Machine_color: {Machine.esp_info.color} Serial_number: {Machine.esp_info.serialNumber} Batch_number: {Machine.esp_info.batchNumber} Build_date: {Machine.esp_info.buildDate}"
                         )
                         logger.info(
                             f"Backend available firmware version: {Machine.firmware_available}"
@@ -475,10 +483,38 @@ class Machine:
         Machine.profileReady = True
 
     def setSerial(color, serial, batch_number, build_date):
-        logger.warning("Setting serial number is not implemented yet")
+        write_request = "nvs_request,write,"
+        Machine.write(
+            (write_request + esp_nvs_keys.color.value + "," + color + "\x03").encode(
+                "utf-8"
+            )
+        )
+        Machine.write(
+            (
+                write_request + esp_nvs_keys.serial_number.value + "," + serial + "\x03"
+            ).encode("utf-8")
+        )
+        Machine.write(
+            (
+                write_request
+                + esp_nvs_keys.batch_number.value
+                + ","
+                + batch_number
+                + "\x03"
+            ).encode("utf-8")
+        )
+        Machine.write(
+            (
+                write_request
+                + esp_nvs_keys.build_date.value
+                + ","
+                + build_date
+                + "\x03"
+            ).encode("utf-8")
+        )
+
         serialNotification = Notification(
             f"""
-Serial number was recieved. Writing it to ESP is not yet implemented!!!\n
 Serial number: {serial}\n
 Batch number: {batch_number}\n
 Color: {color}\n
