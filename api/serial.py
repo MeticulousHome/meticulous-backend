@@ -1,8 +1,3 @@
-import json
-
-import tornado.ioloop
-import tornado.web
-
 from log import MeticulousLogger
 from machine import Machine
 
@@ -22,16 +17,16 @@ WEBPAGE = """
     <form action="serial" method="post">
         <label for="color">Color:</label>
         <input type="text" id="color" name="color" value="black"><br><br>
-        
+
         <label for="serial">Serial:</label>
         <input type="text" id="serial" name="serial"><br><br>
-        
+
         <label for="batch_number">Batch Number:</label>
         <input type="text" id="batch_number" name="batch_number"><br><br>
-        
+
         <label for="build_date">Build Date:</label>
         <input type="date" id="build_date" name="build_date"><br><br>
-        
+
         <input type="submit" value="Submit">
     </form>
 
