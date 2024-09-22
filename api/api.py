@@ -66,7 +66,3 @@ class API:
 
             routes.extend(version_routes)
         return routes
-
-
-import tornado.ioloop
-import tornado.web

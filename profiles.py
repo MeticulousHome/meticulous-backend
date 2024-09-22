@@ -325,7 +325,7 @@ class ProfileManager:
             time_str += f"{int(full_time_ms*1000)} ns"
 
         variable_time_ms = (end - after_variables) * 1000
-        time_str += "out of that variables were processed in "
+        time_str += " out of that variables were processed in "
         if variable_time_ms > 10:
             time_str += f"{int(variable_time_ms)} ms"
         else:
