@@ -48,6 +48,7 @@ class API:
         from . import wifi as _wifi  # noqa
         from . import sounds as _sounds  # noqa
         from . import machine as _machine  # noqa
+        from . import serial as _serial  # noqa
 
         routes = []
         logger.info("API Routes registered:")
@@ -65,3 +66,7 @@ class API:
 
             routes.extend(version_routes)
         return routes
+
+
+import tornado.ioloop
+import tornado.web

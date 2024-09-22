@@ -16,6 +16,8 @@ from config import (
     LOGGING_SENSOR_MESSAGES,
     MACHINE_COLOR,
     MACHINE_SERIAL_NUMBER,
+    MACHINE_BUILD_DATE,
+    MACHINE_BATCH_NUMBER,
     MACHINE_HEAT_ON_BOOT,
     MeticulousConfig,
 )
@@ -481,6 +483,27 @@ class Machine:
             time_str = f"{int(time_ms*1000)} ns"
         logger.info(f"Streaming profile to ESP32 took {time_str}")
         Machine.profileReady = True
+
+    def setSerial(color, serial, batch_number, build_date):
+        logger.warning("Setting serial number is not implemented yet")
+        serialNotification = Notification(
+            f"""
+Serial number was recieved. Writing it to ESP is not yet implemented!!!\n
+Serial number: {serial}\n
+Batch number: {batch_number}\n
+Color: {color}\n
+Build Date: {build_date}
+            """,
+            responses=[NotificationResponse.OK],
+        )
+        NotificationManager.add_notification(serialNotification)
+        MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER] = serial
+        MeticulousConfig[CONFIG_SYSTEM][MACHINE_COLOR] = color
+        MeticulousConfig[CONFIG_SYSTEM][MACHINE_BATCH_NUMBER] = batch_number
+        MeticulousConfig[CONFIG_SYSTEM][MACHINE_BUILD_DATE] = build_date
+
+        MeticulousConfig.save()
+        # TODO FIXME IMPLEMENT THIS!!!!
 
     def _parseVersionString(version_str: str):
         release = None

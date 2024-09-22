@@ -45,8 +45,14 @@ DEVICE_DEFAULT_IDENTIFIER = []
 MACHINE_SERIAL_NUMBER = "serial"
 MACHINE_DEFAULT_SERIAL_NUMBER = None
 
+MACHINE_BATCH_NUMBER = "batch_number"
+MACHINE_DEFAULT_BATCH_NUMBER = None
+
 MACHINE_COLOR = "color"
 MACHINE_DEFAULT_COLOR = None
+
+MACHINE_BUILD_DATE = "build_date"
+MACHINE_DEFAULT_BUILD_DATE = None
 
 #
 # USER config
@@ -133,6 +139,8 @@ DefaultConfiguration_V1 = {
         SOUNDS_THEME: SOUNDS_DEFAULT_THEME,
         DEVICE_IDENTIFIER: DEVICE_DEFAULT_IDENTIFIER,
         MACHINE_SERIAL_NUMBER: MACHINE_DEFAULT_SERIAL_NUMBER,
+        MACHINE_BATCH_NUMBER: MACHINE_DEFAULT_BATCH_NUMBER,
+        MACHINE_BUILD_DATE: MACHINE_DEFAULT_BUILD_DATE,
         MACHINE_COLOR: MACHINE_DEFAULT_COLOR,
     },
     CONFIG_USER: {
@@ -218,6 +226,7 @@ class MeticulousConfigDict(dict):
         return self.__configError
 
     def load(self):
+
         if not Path(self.__path).exists():
             self.save()
             _config_logger.info("Created new config")
