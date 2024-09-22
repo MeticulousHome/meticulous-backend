@@ -2,7 +2,6 @@ import asyncio
 import hashlib
 import json
 import os
-import random
 from named_thread import NamedThread
 import time
 
@@ -91,15 +90,6 @@ class Machine:
         if Machine._connection is not None:
             logger.warning("Machine.init was called twice!")
             return
-
-        # FIXME!
-        if not MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]:
-            MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER] = int(
-                random.random() * 999999
-            )
-            colors = ["black", "white", "pink"]
-            MeticulousConfig[CONFIG_SYSTEM][MACHINE_COLOR] = random.choice(colors)
-            MeticulousConfig.save()
 
         match (BACKEND):
             case "USB":

@@ -78,6 +78,11 @@ class GATTServer:
         self.auth_notification: Notification = None
 
         def _exception_handler(loop, context):
+            print(context)
+            # get the exception
+            ex = context["exception"]
+            # log details
+            logger.warning(f"Got exception {ex}")
             logger.exception("GATT Server crashed!", exc_info=context, stack_info=True)
             GATTServer.getServer().stop()
 
@@ -124,6 +129,7 @@ class GATTServer:
                     loop.run_forever()
                 except Exception as e:
                     logger.error(f"BLE loop failed. {e}")
+                    e.with_traceback()
 
             self.loopThread = Thread(target=run_loop, args=(self.loop,))
             self.loopThread.start()
@@ -223,7 +229,11 @@ class GATTServer:
 
         # Init and start GATT
         await self.bless_gatt_server.add_gatt(GATTServer._build_gatt())
-        success = await self.bless_gatt_server.start()
+        try:
+            success = await self.bless_gatt_server.start()
+        except Exception as e:
+            logger.exception("Failed to start GATT server", exc_info=e, stack_info=True)
+            raise
 
         if not success:
             raise RuntimeError("GATT server couldn't be started")
