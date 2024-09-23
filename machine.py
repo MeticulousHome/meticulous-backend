@@ -330,6 +330,30 @@ class Machine:
                     Machine.firmware_running = Machine._parseVersionString(
                         info.firmwareV
                     )
+
+                    if (
+                        info.serialNumber != ""
+                        and info.serialNumber != "NOT_ASSIGNED"
+                        and info.color != ""
+                        and info.color != "NOT_ASSIGNED"
+                        and info.batchNumber != ""
+                        and info.batchNumber != "NOT_ASSIGNED"
+                        and info.buildDate != ""
+                        and info.buildDate != "NOT_ASSIGNED"
+                    ):
+                        MeticulousConfig[CONFIG_SYSTEM][
+                            MACHINE_SERIAL_NUMBER
+                        ] = info.serialNumber
+                        MeticulousConfig[CONFIG_SYSTEM][MACHINE_COLOR] = info.color
+                        MeticulousConfig[CONFIG_SYSTEM][
+                            MACHINE_BATCH_NUMBER
+                        ] = info.batchNumber
+                        MeticulousConfig[CONFIG_SYSTEM][
+                            MACHINE_BUILD_DATE
+                        ] = info.buildDate
+
+                        MeticulousConfig.save()
+
                     if not emulated_firmware:
                         logger.info(
                             f"ESPInfo running firmware version:   {Machine.firmware_running} on pinout version {Machine.esp_info.espPinout} Machine_color: {Machine.esp_info.color} Serial_number: {Machine.esp_info.serialNumber} Batch_number: {Machine.esp_info.batchNumber} Build_date: {Machine.esp_info.buildDate}"
