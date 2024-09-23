@@ -42,6 +42,8 @@ from dbus_client import AsyncDBUSClient
 
 from log import MeticulousLogger
 
+from rauc_dbus import raucDbusCallbacks
+
 logger = MeticulousLogger.getLogger(__name__)
 
 tornado.log.access_log = MeticulousLogger.getLogger("tornado.access")
@@ -292,11 +294,11 @@ async def send_data():  # noqa: C901
                 ButtonEventData.from_args(["encoder_button_released"]).to_sio(),
             )
 
-dbus_object=None
+rauc_dbus_client=None
 
 def main():
     global send_data_thread
-    global dbus_object
+    global rauc_dbus_client
     parse_command_line()
 
     pyprctl.set_name("Main")
@@ -304,7 +306,14 @@ def main():
     gatherVersionInfo()
 
     logger.info("creating AsyncDBus client")
-    dbus_object = AsyncDBUSClient()
+    rauc_dbus_client = AsyncDBUSClient()
+    rauc_dbus_client.new_signal_subscription('de.pengutronix.rauc.Installer',
+                                'Completed',
+                                raucDbusCallbacks.rauc_update_complete)
+
+    rauc_dbus_client.new_property_subscription('de.pengutronix.rauc.Installer','Progress',raucDbusCallbacks.update_progress)
+    rauc_dbus_client.new_property_subscription('de.pengutronix.rauc.Installer','LastError',raucDbusCallbacks.report_error)
+    rauc_dbus_client.start()
     logger.info("AsyncDBus client created")
 
     # dbus_object.new_property_subscription("")
