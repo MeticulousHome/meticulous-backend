@@ -159,10 +159,11 @@ class ESPInfo:
     firmwareV: str = "0.0.0"
     espPinout: int = 0
     mainVoltage: float = 0.0
-    color: str = "0.0"
-    serialNumber: str = "0.0"
-    batchNumber: str = "0.0"
-    buildDate: str = "0.0"
+
+    color: str = ""
+    serialNumber: str = ""
+    batchNumber: str = ""
+    buildDate: str = ""
 
     def from_args(args):
         espPinout = 0
@@ -172,9 +173,18 @@ class ESPInfo:
         except Exception:
             pass
         try:
-            info = ESPInfo(
-                args[0], espPinout, float(args[2]), args[3], args[4], args[5], args[6]
-            )
+            if len(args) >= 7:
+                info = ESPInfo(
+                    args[0],
+                    espPinout,
+                    float(args[2]),
+                    args[3],
+                    args[4],
+                    args[5],
+                    args[6],
+                )
+            else:
+                info = ESPInfo(args[0], espPinout, float(args[2]))
         except Exception as e:
             logger.warning(f"Failed to parse ESPInfo: {args}", exc_info=e)
             return None
