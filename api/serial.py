@@ -80,4 +80,11 @@ class SerialNumberHandler(BaseHandler):
         )
 
 
+class ScaleCalibrateHandler(BaseHandler):
+    def get(self):
+        Machine.startScaleMasterCalibration()
+        return
+
+
 API.register_handler(APIVersion.V1, r"/serial", SerialNumberHandler),
+API.register_handler(APIVersion.V1, r"/scaleCalibrate", ScaleCalibrateHandler),
