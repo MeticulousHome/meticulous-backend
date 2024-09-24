@@ -437,7 +437,7 @@ class MachineNotify:
 
     def from_args(args):
         try:
-            notify = ESPInfo(args[0], args[2])
+            notify = MachineNotify(args[0], args[1])
         except Exception as e:
             logger.warning(f"Failed to parse MachineNotify: {args}", exc_info=e)
             return None
