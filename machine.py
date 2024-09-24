@@ -57,6 +57,7 @@ class Machine:
     _thread = None
     _stopESPcomm = False
     _sio = None
+    _espNotification = Notification("", [NotificationResponse.OK])
 
     infoReady = False
     profileReady = False
@@ -195,6 +196,7 @@ class Machine:
                 sensor = None
                 data = None
                 info = None
+                notify = None
 
                 if (
                     data_str.startswith("rst:0x")
@@ -257,6 +259,8 @@ class Machine:
                         sensor = SensorData.from_args(sensorArgs)
                     case ["ESPInfo", *infoArgs]:
                         info = ESPInfo.from_args(infoArgs)
+                    case ["Notify", *notifyArgs]:
+                        notify = MachineNotify(notifyArgs)
                     case [*_]:
                         logger.info(data_str.strip("\r\n"))
 
@@ -426,6 +430,18 @@ class Machine:
                         logger.info("Tell the machine to preheat")
                         logger.warning("NOT IMPLEMENTED YET")
                         # Machine.action("preheat")
+
+                if notify is not None:
+                    if Machine._espNotification.acknowledged:
+                        Machine._espNotification = Notification(
+                            notify.message, [NotificationResponse.OK]
+                        )
+                    else:
+                        Machine._espNotification.message = notify.message
+                    NotificationManager.add_notification(Machine._espNotification)
+
+    def startScaleMasterCalibration():
+        Machine.action("scale_master_calibration")
 
     def startUpdate():
         updateNotification = Notification(
