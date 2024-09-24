@@ -11,7 +11,7 @@ logger = MeticulousLogger.getLogger(__name__)
 class ExecuteActionHandler(BaseHandler):
     def post(self, action):
         BACKEND_ACTIONS = ["reset"]
-        ESP_ACTIONS = ["start", "stop", "tare"]
+        ESP_ACTIONS = ["start", "stop", "tare", "scale_master_calibration"]
         allowed_actions = BACKEND_ACTIONS + ESP_ACTIONS
         if action in ESP_ACTIONS:
             success = Machine.action(action_event=action)
