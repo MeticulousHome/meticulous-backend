@@ -31,6 +31,7 @@ from esp_serial.data import (
     MachineStatus,
     SensorData,
     ShotData,
+    MachineNotify,
 )
 from esp_serial.esp_tool_wrapper import ESPToolWrapper
 from log import MeticulousLogger
@@ -261,6 +262,10 @@ class Machine:
                         info = ESPInfo.from_args(infoArgs)
                     case ["Notify", *notifyArgs]:
                         notify = MachineNotify(notifyArgs)
+                    case ["acaia_msg", *notifyArgs]:
+                        notify = MachineNotify(*["acaia_msg", "".join(notifyArgs)])
+                        logger.info(f"Acaia message parsed: {notify}")
+
                     case [*_]:
                         logger.info(data_str.strip("\r\n"))
 
@@ -432,12 +437,20 @@ class Machine:
                         # Machine.action("preheat")
 
                 if notify is not None:
+                    if notify.notificationType == "acaia_msg":
+                        responseOptions = []
+                    else:
+                        responseOptions = [NotificationResponse.OK]
                     if Machine._espNotification.acknowledged:
                         Machine._espNotification = Notification(
-                            notify.message, [NotificationResponse.OK]
+                            notify.message, responseOptions
                         )
                     else:
                         Machine._espNotification.message = notify.message
+                        Machine._espNotification.respone_options = responseOptions
+                    logger.info(
+                        f"New Notification from ESP: {Machine._espNotification.message}"
+                    )
                     NotificationManager.add_notification(Machine._espNotification)
 
     def startScaleMasterCalibration():
