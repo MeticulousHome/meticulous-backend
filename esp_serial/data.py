@@ -426,3 +426,19 @@ class ButtonEventData:
             "type": self.event.name,
             "time_since_last_event": int(self.time_since_last_event),
         }
+
+
+@dataclass
+class MachineNotify:
+    """Class respresenting a message the ESP wants the user to know"""
+
+    notificationType: str = ""
+    message: str = ""
+
+    def from_args(args):
+        try:
+            notify = ESPInfo(args[0], args[2])
+        except Exception as e:
+            logger.warning(f"Failed to parse MachineNotify: {args}", exc_info=e)
+            return None
+        return notify
