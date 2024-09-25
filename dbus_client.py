@@ -18,6 +18,7 @@ class DBUSException(Exception):
 
 class AsyncDBUSClient(object):
     def __init__(self):
+        self.thread = None
         self.logger = MeticulousLogger.getLogger(__name__)
         self.dbus_events = asyncio.Queue()
         self.loop = asyncio.new_event_loop()
@@ -26,33 +27,19 @@ class AsyncDBUSClient(object):
         self.property_callbacks = {}
 
         self.system_bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
-        self.logger.info(f"system bus is: [{self.system_bus}]")
 
-        self.sys_bus_flags = self.system_bus.get_flags()
-        self.logger.info(f"bus flags: [{self.sys_bus_flags}]")
-
-        self.logger.info(f"bus dict representation: [{self.system_bus.__dict__}]")
         self.new_signal_subscription('org.freedesktop.DBus.Properties',
                                      'PropertiesChanged',
                                      self.property_changed_callback)
-        
-        self.new_property_subscription('de.pengutronix.rauc.Installer','Progress',self.just_print)
-
+    def start(self):
         self.thread = NamedThread(name="AsyncDbus thread", target=self.run_loop)
         self.thread.start()
-
-        self.logger.info("AsyncDBus client initialized")
-        
     def run_loop(self):
         try:
-            self.logger.info(" dbus thread loop SET")
             asyncio.set_event_loop(self.loop)
-            self.logger.info(" dbus thread loop SET")
             self.loop.create_task(asyncio.to_thread(run_glib_loop))
             self.loop.create_task(self.handle_dbus_event())
-            self.logger.info(" dbus thread handler task created")
             self.loop.run_forever()
-            self.logger.info("do we even reach this")
         except Exception as e:
             self.logger.error("Dbus monitor loop failed")
         
@@ -69,7 +56,6 @@ class AsyncDBUSClient(object):
     def on_dbus_event(self, *args):
         """Generic sync callback for all DBUS events."""
         self.dbus_events.put_nowait(args)
-        self.logger.info(f"unread events on queue [{self.dbus_events.qsize()}]")
 
 
     async def handle_dbus_event(self):
@@ -77,7 +63,6 @@ class AsyncDBUSClient(object):
         Retrieves DBUS events from queue and calls corresponding async
         callback.
         """
-        self.logger.info("handling dbus events")
         while True:
             try:
                 event = self.dbus_events.get_nowait()
@@ -112,7 +97,6 @@ class AsyncDBUSClient(object):
         """Add new signal subscription."""
         signal_subscription = self.system_bus.signal_subscribe(
             None, interface, signal, None, None, 0, self.on_dbus_event)
-        self.logger.info(f"subscriptionId: [{signal_subscription}]")
         self.signal_callbacks[(interface, signal)] = callback
         self.signal_subscriptions.append(signal_subscription)
 
