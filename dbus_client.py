@@ -1,20 +1,21 @@
 import asyncio
 from asyncio import QueueEmpty
 from gi.repository import Gio, GLib
-import logging
 import traceback
-from threading import Thread
 
 from log import MeticulousLogger
 
 from named_thread import NamedThread
 
+
 def run_glib_loop():
     loop = GLib.MainLoop()
     loop.run()
 
+
 class DBUSException(Exception):
     pass
+
 
 class AsyncDBUSClient(object):
     def __init__(self):
@@ -31,18 +32,20 @@ class AsyncDBUSClient(object):
         self.new_signal_subscription('org.freedesktop.DBus.Properties',
                                      'PropertiesChanged',
                                      self.property_changed_callback)
+
     def start(self):
         self.thread = NamedThread(name="AsyncDbus thread", target=self.run_loop)
         self.thread.start()
+
     def run_loop(self):
         try:
             asyncio.set_event_loop(self.loop)
             self.loop.create_task(asyncio.to_thread(run_glib_loop))
             self.loop.create_task(self.handle_dbus_event())
             self.loop.run_forever()
-        except Exception as e:
+        except Exception:
             self.logger.error("Dbus monitor loop failed")
-        
+
     def __del__(self):
         self.cleanup_dbus()
 
@@ -57,7 +60,6 @@ class AsyncDBUSClient(object):
         """Generic sync callback for all DBUS events."""
         self.dbus_events.put_nowait(args)
 
-
     async def handle_dbus_event(self):
         """
         Retrieves DBUS events from queue and calls corresponding async
@@ -70,15 +72,14 @@ class AsyncDBUSClient(object):
                 signal = event[4]
 
                 await self.signal_callbacks[(interface, signal)](*event)
-                
-            except QueueEmpty as e:
+
+            except QueueEmpty:
                 await asyncio.sleep(0.5)
                 pass
             except Exception as e:
                 self.logger.info(f"handling dbus events exception: [{e}]")
                 traceback.print_exc()
                 self.logger.error(str(e))
-
 
     def new_proxy(self, interface, object_path):
         """Returns a new managed proxy."""
@@ -121,8 +122,6 @@ class AsyncDBUSClient(object):
             await self.property_callbacks[(property_interface, attribute)](
                 connection, sender_name, object_path, property_interface,
                 attribute, status)
-            
 
-    async def just_print(self,  connection, sender_name, object_path, property_interface, attribute, status):
+    async def just_print(self, connection, sender_name, object_path, property_interface, attribute, status):
         self.logger.info(f"property: [{attribute}], is [{status}]")
-        
