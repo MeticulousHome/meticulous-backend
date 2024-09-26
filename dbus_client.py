@@ -29,9 +29,11 @@ class AsyncDBUSClient(object):
 
         self.system_bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
 
-        self.new_signal_subscription('org.freedesktop.DBus.Properties',
-                                     'PropertiesChanged',
-                                     self.property_changed_callback)
+        self.new_signal_subscription(
+            "org.freedesktop.DBus.Properties",
+            "PropertiesChanged",
+            self.property_changed_callback,
+        )
 
     def start(self):
         self.thread = NamedThread(name="AsyncDbus thread", target=self.run_loop)
@@ -84,20 +86,22 @@ class AsyncDBUSClient(object):
     def new_proxy(self, interface, object_path):
         """Returns a new managed proxy."""
         # assume name is interface without last part
-        name = '.'.join(interface.split('.')[:-1])
-        proxy = Gio.DBusProxy.new_sync(self.system_bus, 0, None, name,
-                                       object_path, interface, None)
+        name = ".".join(interface.split(".")[:-1])
+        proxy = Gio.DBusProxy.new_sync(
+            self.system_bus, 0, None, name, object_path, interface, None
+        )
 
         # FIXME: check for methods
         if len(proxy.get_cached_property_names()) == 0:
-            self.logger.warning('Proxy {} contains no properties')
+            self.logger.warning("Proxy {} contains no properties")
 
         return proxy
 
     def new_signal_subscription(self, interface, signal, callback):
         """Add new signal subscription."""
         signal_subscription = self.system_bus.signal_subscribe(
-            None, interface, signal, None, None, 0, self.on_dbus_event)
+            None, interface, signal, None, None, 0, self.on_dbus_event
+        )
         self.signal_callbacks[(interface, signal)] = callback
         self.signal_subscriptions.append(signal_subscription)
 
@@ -105,23 +109,44 @@ class AsyncDBUSClient(object):
         """Add new property subscription."""
         self.property_callbacks[(interface, property_)] = callback
 
-    async def property_changed_callback(self, connection, sender_name,
-                                        object_path, interface_name,
-                                        signal_name, parameters):
+    async def property_changed_callback(
+        self,
+        connection,
+        sender_name,
+        object_path,
+        interface_name,
+        signal_name,
+        parameters,
+    ):
         """
         Callback for changed properties. Calls callbacks for changed
         properties as if they were signals.
         """
         property_interface = parameters[0]
 
-        changed_properties = {k: v for k, v in parameters[1].items()
-                              if (property_interface, k) in
-                              self.property_callbacks}
+        changed_properties = {
+            k: v
+            for k, v in parameters[1].items()
+            if (property_interface, k) in self.property_callbacks
+        }
 
         for attribute, status in changed_properties.items():
             await self.property_callbacks[(property_interface, attribute)](
-                connection, sender_name, object_path, property_interface,
-                attribute, status)
+                connection,
+                sender_name,
+                object_path,
+                property_interface,
+                attribute,
+                status,
+            )
 
-    async def just_print(self, connection, sender_name, object_path, property_interface, attribute, status):
+    async def just_print(
+        self,
+        connection,
+        sender_name,
+        object_path,
+        property_interface,
+        attribute,
+        status,
+    ):
         self.logger.info(f"property: [{attribute}], is [{status}]")
