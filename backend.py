@@ -294,7 +294,8 @@ async def send_data():  # noqa: C901
                 ButtonEventData.from_args(["encoder_button_released"]).to_sio(),
             )
 
-dbus_object=None
+dbus_object = None
+
 
 def main():
     global send_data_thread
@@ -308,15 +309,15 @@ def main():
     logger.info("creating AsyncDBus client")
     dbus_object = AsyncDBUSClient()
     dbus_object.new_signal_subscription('de.pengutronix.rauc.Installer',
-                                'Completed',
-                                dbusCallbacks.rauc_update_complete)
+                                        'Completed',
+                                        dbusCallbacks.rauc_update_complete)
 
     dbus_object.new_signal_subscription('com.Meticulous.Handler.MassStorage',
-                                'NewUSB',
-                                dbusCallbacks.notify_usb)
+                                        'NewUSB',
+                                        dbusCallbacks.notify_usb)
 
-    dbus_object.new_property_subscription('de.pengutronix.rauc.Installer','Progress',dbusCallbacks.update_progress)
-    dbus_object.new_property_subscription('de.pengutronix.rauc.Installer','LastError',dbusCallbacks.report_error)
+    dbus_object.new_property_subscription('de.pengutronix.rauc.Installer', 'Progress', dbusCallbacks.update_progress)
+    dbus_object.new_property_subscription('de.pengutronix.rauc.Installer', 'LastError', dbusCallbacks.report_error)
     dbus_object.start()
     logger.info("AsyncDBus client created")
 
