@@ -316,7 +316,11 @@ def main():
                                         'NewUSB',
                                         dbusCallbacks.notify_usb)
 
-    dbus_object.new_property_subscription('de.pengutronix.rauc.Installer', 'Progress', dbusCallbacks.update_progress)
+    dbus_object.new_signal_subscription('org.hawkbit.DownloadProgress',
+                                        'ProgressUpdate',
+                                        dbusCallbacks.download_progress)
+
+    dbus_object.new_property_subscription('de.pengutronix.rauc.Installer', 'Progress', dbusCallbacks.install_progress)
     dbus_object.new_property_subscription('de.pengutronix.rauc.Installer', 'LastError', dbusCallbacks.report_error)
     dbus_object.start()
     logger.info("AsyncDBus client created")
