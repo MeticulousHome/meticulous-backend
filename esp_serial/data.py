@@ -442,3 +442,53 @@ class MachineNotify:
             logger.warning(f"Failed to parse MachineNotify: {args}", exc_info=e)
             return None
         return notify
+
+
+@dataclass
+class HeaterTimeoutInfo:
+    """Class representing heater timeout information received from the microcontroller"""
+
+    # Time remaining for profile end timeout
+    coffe_profile_end_remaining: float
+    # Total timeout for profile end
+    coffe_profile_end_timeout: float
+    # Time remaining for preheat timeout
+    preheat_remaining: float
+    # Total timeout for preheat
+    preheat_timeout: float
+
+    @classmethod
+    def from_args(cls, args):
+        """
+        Create a HeaterTimeoutInfo instance from a list of arguments.
+
+        Args:
+            args (list): List containing timeout information
+                         [coffe_profile_end_remaining, coffe_profile_end_timeout,
+                          preheat_remaining, preheat_timeout]
+
+        Returns:
+            HeaterTimeoutInfo: An instance of HeaterTimeoutInfo
+        """
+        if len(args) != 4:
+            raise ValueError("Expected 4 arguments for HeaterTimeoutInfo")
+
+        return cls(
+            coffe_profile_end_remaining=float(args[0]),
+            coffe_profile_end_timeout=float(args[1]),
+            preheat_remaining=float(args[2]),
+            preheat_timeout=float(args[3]),
+        )
+
+    def to_dict(self):
+        """Convert the HeaterTimeoutInfo to a dictionary"""
+        return {
+            "coffe_profile_end": {
+                "remaining": self.coffe_profile_end_remaining,
+                "timeout": self.coffe_profile_end_timeout,
+            },
+            "preheat": {
+                "remaining": self.preheat_remaining,
+                "timeout": self.preheat_timeout,
+            },
+        }
