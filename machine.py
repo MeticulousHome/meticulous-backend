@@ -32,6 +32,7 @@ from esp_serial.data import (
     SensorData,
     ShotData,
     MachineNotify,
+    HeaterTimeoutInfo,
 )
 from esp_serial.esp_tool_wrapper import ESPToolWrapper
 from log import MeticulousLogger
@@ -59,6 +60,8 @@ class Machine:
     _stopESPcomm = False
     _sio = None
     _espNotification = Notification("", [NotificationResponse.OK])
+
+    heater_timeout_info: HeaterTimeoutInfo = None
 
     infoReady = False
     profileReady = False
@@ -238,7 +241,8 @@ class Machine:
                         Machine.startUpdate()
 
                 match (data_str_sensors):
-                    # FIXME: This should be replace in the firmware with an "Event," prefix for cleanliness
+                    # FIXME: This should be replace in the firmware with an "Event," prefix
+                    # for cleanliness
                     case [
                         "CCW"
                         | "CW"
@@ -266,6 +270,17 @@ class Machine:
                         notify = MachineNotify(*["acaia_msg", "".join(notifyArgs)])
                         logger.info(f"Acaia message parsed: {notify}")
 
+                    case ["HeaterTimeoutInfo", *timeoutArgs]:
+                        try:
+                            heater_timeout_info = HeaterTimeoutInfo.from_args(
+                                timeoutArgs
+                            )
+                            Machine.heater_timeout_info = heater_timeout_info
+                        except Exception as e:
+                            logger.error(
+                                f"Error processing HeaterTimeoutInfo: {e}",
+                                exc_info=True,
+                            )
                     case [*_]:
                         logger.info(data_str.strip("\r\n"))
 
