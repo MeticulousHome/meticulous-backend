@@ -87,12 +87,14 @@ def connect(sid, environ):
 def disconnect(sid):
     logger.info("disconnect %s", sid)
 
+
 @sio.on("set_heater_timeout")
 def set_timeout(sid, timeout):
     logger.info(f"Setting timeout to {timeout}")
     data = f"heater_timeout,{timeout}\x03"
     logger.info(data)
     Machine.write(data.encode("utf-8"))
+
 
 @sio.on("action")
 def msg(sid, data):
