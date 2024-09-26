@@ -16,7 +16,20 @@ error_rauc_updating = ""
 class dbusCallbacks():
 
     @staticmethod
-    async def update_progress(connection, sender_name, object_path, property_interface, attribute, status: tuple[int, str, int]):
+    async def download_progress(connection, sender_name, object_path, interface_name, signal_name, parameters:tuple):
+        global progress_notification
+        percentage = parameters[0]
+
+        progress_notification.message = f"Downloading update: {percentage}%"
+        progress_notification.respone_options = [NotificationResponse.OK]
+        progress_notification.image = notification_image
+
+        NotificationManager.add_notification(
+            progress_notification
+        )
+
+    @staticmethod
+    async def install_progress(connection, sender_name, object_path, property_interface, attribute, status: tuple[int, str, int]):
         global progress_notification
         (progress, message, depth) = status
         progress_notification.message = f"Updating OS:\n {progress}%"
@@ -71,7 +84,7 @@ class dbusCallbacks():
         logger.warning(f"{subprocess_result}")
 
     @staticmethod
-    async def rauc_update_complete(connection, sender_name, object_path, property_interface, attribute, status):
+    async def rauc_update_complete(connection, sender_name, object_path, interface_name, signal_name, parameters):
         global error_rauc_updating
         if error_rauc_updating != "":
             notification_message = f"Failed OS updated no need to reboot your machine\n Error: {error_rauc_updating}"
