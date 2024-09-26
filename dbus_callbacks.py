@@ -1,7 +1,5 @@
-import asyncio
 from log import MeticulousLogger
 from notifications import NotificationManager, Notification, NotificationResponse
-import os
 import subprocess
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -14,13 +12,11 @@ progress_notification.image = notification_image
 
 error_rauc_updating = ""
 
+
 class dbusCallbacks():
-    @staticmethod
-    async def just_print(connection, sender_name, object_path, property_interface, attribute, status):
-        logger.info(f"property: [{attribute}], is [{status}]")
 
     @staticmethod
-    async def update_progress(connection, sender_name, object_path, property_interface, attribute, status:tuple[int, str, int]):
+    async def update_progress(connection, sender_name, object_path, property_interface, attribute, status: tuple[int, str, int]):
         global progress_notification
         (progress, message, depth) = status
         progress_notification.message = f"Updating OS:\n {progress}%"
@@ -42,21 +38,21 @@ class dbusCallbacks():
                 Notification(message=f"There was an error updating the OS:\n {message}", responses=[NotificationResponse.OK], image=notification_image)
             )
 
-            subprocess_result = subprocess.run("umount /tmp/possible_updater",shell=True, capture_output=True)
-            logger.warning(f"{subprocess_result}")
-            
-            subprocess_result = subprocess.run("rm -r /tmp/possible_updater",shell=True, capture_output=True)
+            subprocess_result = subprocess.run("umount /tmp/possible_updater", shell=True, capture_output=True)
             logger.warning(f"{subprocess_result}")
 
+            subprocess_result = subprocess.run("rm -r /tmp/possible_updater", shell=True, capture_output=True)
+            logger.warning(f"{subprocess_result}")
 
     @staticmethod
     async def report_error(connection, sender_name, object_path, property_interface, attribute, status):
+        global error_rauc_updating
         error_rauc_updating = status
         if status == "":
             return
         notification_message = f"There was an error updating the OS:\n {status}"
 
-        ##dismiss progress notification
+        # dismiss progress notification
         progress_notification.image = ""
         progress_notification.message = ""
 
@@ -68,23 +64,22 @@ class dbusCallbacks():
             Notification(message=notification_message, responses=[NotificationResponse.OK], image=notification_image)
         )
 
-        subprocess_result = subprocess.run("umount /tmp/possible_updater",shell=True, capture_output=True)
+        subprocess_result = subprocess.run("umount /tmp/possible_updater", shell=True, capture_output=True)
         logger.warning(f"{subprocess_result}")
-        
-        subprocess_result = subprocess.run("rm -r /tmp/possible_updater",shell=True, capture_output=True)
+
+        subprocess_result = subprocess.run("rm -r /tmp/possible_updater", shell=True, capture_output=True)
         logger.warning(f"{subprocess_result}")
 
     @staticmethod
     async def rauc_update_complete(connection, sender_name, object_path, property_interface, attribute, status):
         global error_rauc_updating
         if error_rauc_updating != "":
-            notification_message = f"Failed OS updated no need to reboot your machine"
+            notification_message = f"Failed OS updated no need to reboot your machine\n Error: {error_rauc_updating}"
             logger.info(f"error is [{error_rauc_updating}]")
-            # return 
         else:
-            notification_message = f"OS updated. Remove USB and reboot your machine"
+            notification_message = "OS updated. Remove USB and reboot your machine"
 
-        ##dismiss progress notification
+        # dismiss progress notification
         progress_notification.image = ""
         progress_notification.message = ""
 
@@ -95,20 +90,18 @@ class dbusCallbacks():
         NotificationManager.add_notification(
             Notification(message=notification_message, responses=[NotificationResponse.OK], image=notification_image)
         )
-        subprocess_result = subprocess.run("umount /tmp/possible_updater",shell=True, capture_output=True)
+        subprocess_result = subprocess.run("umount /tmp/possible_updater", shell=True, capture_output=True)
         logger.warning(f"{subprocess_result}")
-        
-        subprocess_result = subprocess.run("rm -r /tmp/possible_updater",shell=True, capture_output=True)
+
+        subprocess_result = subprocess.run("rm -r /tmp/possible_updater", shell=True, capture_output=True)
         logger.warning(f"{subprocess_result}")
 
     @staticmethod
-    async def just_print(self,  connection, sender_name, object_path, property_interface, attribute, status):
+    async def just_print(self, connection, sender_name, object_path, property_interface, attribute, status):
         logger.info(f"property: [{attribute}], is [{status}]")
 
     @staticmethod
-    async def notify_usb(connection, sender_name,
-                        object_path, interface_name,
-                        signal_name, parameters):
+    async def notify_usb(connection, sender_name, object_path, interface_name, signal_name, parameters):
 
         logger.info(f"received signal NEW USB with parameters: [{parameters}]")
         USB_PATH = parameters[0]
