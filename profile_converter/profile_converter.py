@@ -32,10 +32,37 @@ class ComplexProfileConverter:
             self.head_next_node_id = 17
         self.stages_head = [
             {
-                "name": "purge",
+                "name": "prepare",
                 "nodes": [
                     {
                         "id": -1,
+                        "controllers": [],
+                        "triggers": [
+                            {
+                                "kind": "piston_position_trigger",
+                                "position_reference_id": 0,
+                                "next_node_id": 45,
+                                "source": "Piston Position Raw",
+                                "operator": ">=",
+                                "value": self.max_piston_position - 2,
+                            },
+                            {
+                                "kind": "piston_position_trigger",
+                                "position_reference_id": 0,
+                                "next_node_id": 11,
+                                "source": "Piston Position Raw",
+                                "operator": "<=",
+                                "value": self.max_piston_position - 2,
+                            },
+                        ],
+                    },
+                ],
+            },
+            {
+                "name": "purge",
+                "nodes": [
+                    {
+                        "id": 11,
                         "controllers": [
                             {"kind": "time_reference", "id": 20},
                             {
@@ -45,15 +72,7 @@ class ComplexProfileConverter:
                                 "speed": 6,
                             },
                         ],
-                        "triggers": [
-                            {"kind": "exit", "next_node_id": 1},
-                            {
-                                "kind": "button_trigger",
-                                "next_node_id": 45,
-                                "gesture": "Single Tap",
-                                "source": "Encoder Button",
-                            },
-                        ],
+                        "triggers": [{"kind": "exit", "next_node_id": 1}],
                     },
                     {
                         "id": 1,
@@ -72,12 +91,6 @@ class ComplexProfileConverter:
                                 "operator": ">=",
                                 "value": 1.5,
                                 "next_node_id": 40,
-                            },
-                            {
-                                "kind": "button_trigger",
-                                "next_node_id": 45,
-                                "gesture": "Single Tap",
-                                "source": "Encoder Button",
                             },
                         ],
                     },
@@ -101,13 +114,7 @@ class ComplexProfileConverter:
                                 "operator": "==",
                                 "value": 0,
                                 "next_node_id": 3,
-                            },
-                            {
-                                "kind": "button_trigger",
-                                "next_node_id": 45,
-                                "gesture": "Single Tap",
-                                "source": "Encoder Button",
-                            },
+                            }
                         ],
                     },
                     {
@@ -134,12 +141,6 @@ class ComplexProfileConverter:
                                 "value": 6,
                                 "next_node_id": 2,
                             },
-                            {
-                                "kind": "button_trigger",
-                                "next_node_id": 45,
-                                "gesture": "Single Tap",
-                                "source": "Encoder Button",
-                            },
                         ],
                     },
                     {
@@ -164,12 +165,6 @@ class ComplexProfileConverter:
                                 "value": 1,
                                 "next_node_id": 4,
                             },
-                            {
-                                "kind": "button_trigger",
-                                "next_node_id": 45,
-                                "gesture": "Single Tap",
-                                "source": "Encoder Button",
-                            },
                         ],
                     },
                     {
@@ -182,13 +177,7 @@ class ComplexProfileConverter:
                                 "operator": ">=",
                                 "value": 1,
                                 "next_node_id": 45,
-                            },
-                            {
-                                "kind": "button_trigger",
-                                "next_node_id": 45,
-                                "gesture": "Single Tap",
-                                "source": "Encoder Button",
-                            },
+                            }
                         ],
                     },
                 ],
@@ -215,12 +204,6 @@ class ComplexProfileConverter:
                                 "next_node_id": -2,
                                 "operator": ">=",
                                 "value": 300,
-                            },
-                            {
-                                "kind": "button_trigger",
-                                "next_node_id": 15,
-                                "gesture": "Single Tap",
-                                "source": "Encoder Button",
                             },
                         ],
                     },
@@ -286,12 +269,6 @@ class ComplexProfileConverter:
                                 "operator": ">=",
                                 "value": 900,
                             },
-                            {
-                                "kind": "button_trigger",
-                                "next_node_id": 16,
-                                "gesture": "Single Tap",
-                                "source": "Encoder Button",
-                            },
                         ],
                     }
                 ],
@@ -322,13 +299,7 @@ class ComplexProfileConverter:
                                 "next_node_id": 8,
                                 "operator": ">=",
                                 "value": 1,
-                            },
-                            {
-                                "kind": "button_trigger",
-                                "next_node_id": self.head_next_node_id,
-                                "gesture": "Single Tap",
-                                "source": "Encoder Button",
-                            },
+                            }
                         ],
                     },
                     {
@@ -355,12 +326,6 @@ class ComplexProfileConverter:
                                 "next_node_id": self.head_next_node_id,
                                 "operator": ">=",
                                 "value": 5,
-                            },
-                            {
-                                "kind": "button_trigger",
-                                "next_node_id": self.head_next_node_id,
-                                "gesture": "Single Tap",
-                                "source": "Encoder Button",
                             },
                         ],
                     },
@@ -427,13 +392,7 @@ class ComplexProfileConverter:
                                 "next_node_id": 21,
                                 "operator": "==",
                                 "value": 0,
-                            },
-                            {
-                                "kind": "button_trigger",
-                                "next_node_id": 21,
-                                "gesture": "Single Tap",
-                                "source": "Encoder Button",
-                            },
+                            }
                         ],
                     },
                     {
@@ -454,13 +413,7 @@ class ComplexProfileConverter:
                                 "next_node_id": 23,
                                 "operator": ">=",
                                 "value": 2,
-                            },
-                            {
-                                "kind": "button_trigger",
-                                "next_node_id": 23,
-                                "gesture": "Single Tap",
-                                "source": "Encoder Button",
-                            },
+                            }
                         ],
                     },
                     {
@@ -481,13 +434,7 @@ class ComplexProfileConverter:
                                 "position_reference_id": 1,
                                 "operator": "<=",
                                 "value": -2,
-                            },
-                            {
-                                "kind": "button_trigger",
-                                "next_node_id": 18,
-                                "gesture": "Single Tap",
-                                "source": "Encoder Button",
-                            },
+                            }
                         ],
                     },
                 ],
@@ -557,13 +504,7 @@ class ComplexProfileConverter:
                                 "next_node_id": self.tail_next_node_id,
                                 "operator": "==",
                                 "value": 0,
-                            },
-                            {
-                                "kind": "button_trigger",
-                                "next_node_id": self.tail_next_node_id,
-                                "gesture": "Single Tap",
-                                "source": "Encoder Button",
-                            },
+                            }
                         ],
                     },
                     {
@@ -584,13 +525,7 @@ class ComplexProfileConverter:
                                 "position_reference_id": 3,
                                 "operator": "<=",
                                 "value": -4,
-                            },
-                            {
-                                "kind": "button_trigger",
-                                "next_node_id": self.tail_next_node_id,
-                                "gesture": "Single Tap",
-                                "source": "Encoder Button",
-                            },
+                            }
                         ],
                     },
                 ],
@@ -674,12 +609,6 @@ class ComplexProfileConverter:
                         ],
                         "triggers": [
                             {"kind": "exit", "next_node_id": 32},
-                            {
-                                "kind": "button_trigger",
-                                "next_node_id": -2,
-                                "gesture": "Single Tap",
-                                "source": "Encoder Button",
-                            },
                         ],
                     },
                     {
