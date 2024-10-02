@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# based on rauc-hawkbit/dbus_client.py from github: https://github.com/rauc/rauc-hawkbit/blob/master/rauc_hawkbit/dbus_client.py
+
 import asyncio
 from asyncio import QueueEmpty
 from gi.repository import Gio, GLib
