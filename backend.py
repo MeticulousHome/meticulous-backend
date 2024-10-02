@@ -38,13 +38,12 @@ from api.api import API
 from api.emulation import register_emulation_handlers
 from api.web_ui import WEB_UI_HANDLER
 
-from dbus_client import AsyncDBUSClient
-
 from log import MeticulousLogger
 
-from dbus_callbacks import dbusCallbacks
+from dbus_monitor import DBusMonitor
 
 logger = MeticulousLogger.getLogger(__name__)
+dbusMonitor = DBusMonitor()
 
 tornado.log.access_log = MeticulousLogger.getLogger("tornado.access")
 tornado.log.app_log = MeticulousLogger.getLogger("tornado.application")
@@ -295,9 +294,6 @@ async def send_data():  # noqa: C901
             )
 
 
-dbus_object = None
-
-
 def main():
     global send_data_thread
     global dbus_object
@@ -306,34 +302,7 @@ def main():
     pyprctl.set_name("Main")
 
     gatherVersionInfo()
-
-    logger.info("creating AsyncDBus client")
-    dbus_object = AsyncDBUSClient()
-    dbus_object.new_signal_subscription(
-        "de.pengutronix.rauc.Installer", "Completed", dbusCallbacks.rauc_update_complete
-    )
-
-    dbus_object.new_signal_subscription(
-        "com.Meticulous.Handler.MassStorage", "NewUSB", dbusCallbacks.notify_usb
-    )
-
-    dbus_object.new_signal_subscription(
-        "org.hawkbit.DownloadProgress",
-        "ProgressUpdate",
-        dbusCallbacks.download_progress,
-    )
-
-    dbus_object.new_property_subscription(
-        "de.pengutronix.rauc.Installer", "Progress", dbusCallbacks.install_progress
-    )
-    dbus_object.new_property_subscription(
-        "de.pengutronix.rauc.Installer", "LastError", dbusCallbacks.report_error
-    )
-    dbus_object.start()
-    logger.info("AsyncDBus client created")
-
-    # dbus_object.new_property_subscription("")
-
+    dbusMonitor.init()
     HostnameManager.init()
     UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
 
