@@ -40,6 +40,8 @@ from api.web_ui import WEB_UI_HANDLER
 
 from log import MeticulousLogger
 
+from dbus_monitor import DBusMonitor
+
 logger = MeticulousLogger.getLogger(__name__)
 
 tornado.log.access_log = MeticulousLogger.getLogger("tornado.access")
@@ -293,12 +295,13 @@ async def send_data():  # noqa: C901
 
 def main():
     global send_data_thread
+    global dbus_object
     parse_command_line()
 
     pyprctl.set_name("Main")
 
     gatherVersionInfo()
-
+    DBusMonitor.init()
     HostnameManager.init()
     UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
 
