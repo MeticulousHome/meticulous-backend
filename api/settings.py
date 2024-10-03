@@ -1,6 +1,12 @@
 import json
 
-from config import CONFIG_USER, MeticulousConfig, UPDATE_CHANNEL
+from config import (
+    CONFIG_USER,
+    MeticulousConfig,
+    UPDATE_CHANNEL,
+    MACHINE_HEATING_TIMEOUT,
+)
+from heater_actuator import HeaterActuator
 
 from .base_handler import BaseHandler
 from .api import API, APIVersion
@@ -56,6 +62,23 @@ class SettingsHandler(BaseHandler):
                     )
                     MeticulousConfig.load()
                     return
+
+                if setting_name == MACHINE_HEATING_TIMEOUT:
+                    try:
+                        HeaterActuator.set_timeout(value)
+                    except ValueError as e:
+                        error_message = str(e)
+                        logger.warning(f"Invalid heater timeout value: {error_message}")
+                        self.set_status(400)
+                        self.write(
+                            {
+                                "status": "error",
+                                "error": "invalid heater timeout value",
+                                "details": error_message,
+                            }
+                        )
+                        return
+
                 MeticulousConfig[CONFIG_USER][setting_name] = value
             else:
                 self.set_status(404)
