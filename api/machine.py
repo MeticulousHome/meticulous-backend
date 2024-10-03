@@ -5,6 +5,8 @@ from hostname import HostnameManager
 from log import MeticulousLogger
 from machine import Machine
 from wifi import WifiManager
+from enum import Enum
+import asyncio
 
 from .api import API, APIVersion
 from .base_handler import BaseHandler
@@ -19,6 +21,63 @@ from config import (
 
 logger = MeticulousLogger.getLogger(__name__)
 
+class OSStatus(Enum):
+    IDLE = 0
+    DOWNLOADING = 1
+    INSTALLING = 2
+    COMPLETE = 3
+    FAILED = 3
+
+    @classmethod
+    def to_string(cls, status):
+        mapping = {
+            cls.IDLE : "IDLE",
+            cls.DOWNLOADING : "DOWNLOADING",
+            cls.INSTALLING : "INSTALLING",
+            cls.COMPLETE : "COMPLETE",
+            cls.FAILED : "FAILED"
+        }
+        return mapping.get(status,None)
+
+class UpdateOSStatus():
+    last_progress:float = 0
+    last_status:OSStatus = OSStatus.IDLE
+    last_extra_info:str = None
+    __sio = None
+
+    @classmethod
+    def setSio(cls, sio):
+        cls.__sio = sio
+
+    @classmethod
+    def sendStatus(cls, current_status:OSStatus, current_progress:float, extra_info=None):
+        cls.last_progress = current_progress
+        cls.last_status = current_status
+        if cls.__sio:
+            loop = (
+                asyncio.get_event_loop()
+                if asyncio.get_event_loop().is_running()
+                else asyncio.new_event_loop()
+            )
+            asyncio.set_event_loop(loop)
+
+            async def sendUpdateStatus():
+                extra_info_str = f" : {extra_info}" if extra_info is not None and isinstance(extra_info,str) else ""
+                data = {
+                        "progress":cls.last_progress,
+                        "status":f"{OSStatus.to_string(cls.last_status)}" + extra_info_str
+                        }
+                await cls.__sio.emit("OSUpdate", data)
+                logger.warning(f"new OS Update data: {data}")
+
+            if not loop.is_running():
+                loop.run_until_complete(sendUpdateStatus())
+            else:
+                asyncio.create_task(sendUpdateStatus())
+
+    @classmethod
+    def sendLastStatus(cls):
+        cls.sendStatus(cls.last_status, cls.last_progress)
 
 class MachineInfoHandler(BaseHandler):
     def get(self):
