@@ -42,6 +42,9 @@ from log import MeticulousLogger
 
 from dbus_monitor import DBusMonitor
 
+from api.machine import UpdateOSStatus
+
+
 logger = MeticulousLogger.getLogger(__name__)
 
 tornado.log.access_log = MeticulousLogger.getLogger("tornado.access")
@@ -72,11 +75,12 @@ def gatherVersionInfo():
 
 sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="tornado")
 
+UpdateOSStatus.setSio(sio)
+
 software_info = {
     "name": "Meticulous Espresso",
     "lcdV": 3,
 }
-
 
 @sio.event
 def connect(sid, environ):
