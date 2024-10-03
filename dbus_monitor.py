@@ -17,9 +17,9 @@ logger = MeticulousLogger.getLogger(__name__)
 
 class DBusMonitor:
 
-    def __init__(self):
-        self.dbus_object = AsyncDBUSClient()
+    dbus_object = AsyncDBUSClient()
 
+    @classmethod
     def init(self):
         self.dbus_object.new_signal_subscription(
             "de.pengutronix.rauc.Installer", "Completed", self.rauc_update_complete
