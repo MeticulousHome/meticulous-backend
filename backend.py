@@ -43,7 +43,6 @@ from log import MeticulousLogger
 from dbus_monitor import DBusMonitor
 
 logger = MeticulousLogger.getLogger(__name__)
-dbusMonitor = DBusMonitor()
 
 tornado.log.access_log = MeticulousLogger.getLogger("tornado.access")
 tornado.log.app_log = MeticulousLogger.getLogger("tornado.application")
@@ -302,7 +301,7 @@ def main():
     pyprctl.set_name("Main")
 
     gatherVersionInfo()
-    dbusMonitor.init()
+    DBusMonitor.init()
     HostnameManager.init()
     UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
 
