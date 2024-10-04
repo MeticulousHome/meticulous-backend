@@ -78,7 +78,7 @@ class UpdateOSStatus(BaseHandler):
                     else ""
                 )
                 cls.data = {
-                    "progress": cls.last_progress,
+                    "progress": round(cls.last_progress),
                     "status": f"{OSStatus.to_string(cls.last_status)}",
                     "info": extra_info_str,
                 }
