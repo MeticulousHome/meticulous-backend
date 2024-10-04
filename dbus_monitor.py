@@ -55,11 +55,7 @@ class DBusMonitor:
     ):
         percentage = parameters[0]
 
-        progress_notification.message = f"Downloading update: {percentage}%"
-        progress_notification.respone_options = [NotificationResponse.OK]
-        progress_notification.image = notification_image
-
-        NotificationManager.add_notification(progress_notification)
+        UpdateOSStatus.sendStatus(OSStatus.DOWNLOADING, percentage, None)
 
     @staticmethod
     async def install_progress(
@@ -75,20 +71,9 @@ class DBusMonitor:
         progress_notification.respone_options = [NotificationResponse.OK]
         progress_notification.image = notification_image
         if message.find("fail") == -1:
-            NotificationManager.add_notification(progress_notification)
+            UpdateOSStatus.sendStatus(OSStatus.INSTALLING, progress, None)
         else:
-            progress_notification.message = ""
-            progress_notification.image = ""
-
-            NotificationManager.add_notification(progress_notification)
-
-            NotificationManager.add_notification(
-                Notification(
-                    message=f"There was an error updating the OS:\n {message}",
-                    responses=[NotificationResponse.OK],
-                    image=notification_image,
-                )
-            )
+            UpdateOSStatus.sendStatus(OSStatus.FAILED, 0, message)
 
             subprocess_result = subprocess.run(
                 "umount /tmp/possible_updater", shell=True, capture_output=True
@@ -109,6 +94,8 @@ class DBusMonitor:
         if status == "":
             return
         notification_message = f"There was an error updating the OS:\n {status}"
+
+        UpdateOSStatus.sendStatus(OSStatus.FAILED, 0, status)
 
         # dismiss progress notification
         progress_notification.image = ""
@@ -138,7 +125,7 @@ class DBusMonitor:
     async def rauc_update_complete(
         connection, sender_name, object_path, interface_name, signal_name, parameters
     ):
-        
+
         UpdateOSStatus.sendStatus(OSStatus.COMPLETE, 100, None)
 
         global error_rauc_updating
