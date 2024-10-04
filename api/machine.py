@@ -41,7 +41,7 @@ class OSStatus(Enum):
         return mapping.get(status, None)
 
 
-class UpdateOSStatus:
+class UpdateOSStatus(BaseHandler):
     last_progress: float = 0
     last_status: OSStatus = OSStatus.IDLE
     last_extra_info: str = None
@@ -54,6 +54,9 @@ class UpdateOSStatus:
     
     __sio = None
 
+    def get(self):
+        self.write(self.data)
+
     @classmethod
     def setSio(cls, sio):
         cls.__sio = sio
@@ -62,7 +65,6 @@ class UpdateOSStatus:
     def sendStatus(
         cls, current_status: OSStatus, current_progress: float, extra_info=None
     ):
-        logger.warning("sending OS Update status")
         cls.last_progress = current_progress
         cls.last_status = current_status
         if cls.__sio:
@@ -138,3 +140,4 @@ class MachineResetHandler(BaseHandler):
 
 API.register_handler(APIVersion.V1, r"/machine", MachineInfoHandler)
 API.register_handler(APIVersion.V1, r"/machine/factory_reset", MachineResetHandler)
+API.register_handler(APIVersion.V1, r"/machine/OS_update_status", UpdateOSStatus)
