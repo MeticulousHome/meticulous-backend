@@ -82,6 +82,7 @@ software_info = {
     "lcdV": 3,
 }
 
+
 @sio.event
 def connect(sid, environ):
     logger.info("connect %s", sid)
