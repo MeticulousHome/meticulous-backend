@@ -46,12 +46,8 @@ class UpdateOSStatus(BaseHandler):
     last_status: OSStatus = OSStatus.IDLE
     last_extra_info: str = None
 
-    data = {
-        "progress": 0,
-        "status": "IDLE",
-        "info": ""
-        }
-    
+    data = {"progress": 0, "status": "IDLE", "info": ""}
+
     __sio = None
 
     def get(self):
@@ -84,7 +80,7 @@ class UpdateOSStatus(BaseHandler):
                 cls.data = {
                     "progress": cls.last_progress,
                     "status": f"{OSStatus.to_string(cls.last_status)}",
-                    "info": extra_info_str
+                    "info": extra_info_str,
                 }
                 await cls.__sio.emit("OSUpdate", cls.data)
 
