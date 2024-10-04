@@ -21,6 +21,7 @@ from config import (
 
 logger = MeticulousLogger.getLogger(__name__)
 
+
 class OSStatus(Enum):
     IDLE = 0
     DOWNLOADING = 1
@@ -31,18 +32,19 @@ class OSStatus(Enum):
     @classmethod
     def to_string(cls, status):
         mapping = {
-            cls.IDLE : "IDLE",
-            cls.DOWNLOADING : "DOWNLOADING",
-            cls.INSTALLING : "INSTALLING",
-            cls.COMPLETE : "COMPLETE",
-            cls.FAILED : "FAILED"
+            cls.IDLE: "IDLE",
+            cls.DOWNLOADING: "DOWNLOADING",
+            cls.INSTALLING: "INSTALLING",
+            cls.COMPLETE: "COMPLETE",
+            cls.FAILED: "FAILED",
         }
-        return mapping.get(status,None)
+        return mapping.get(status, None)
 
-class UpdateOSStatus():
-    last_progress:float = 0
-    last_status:OSStatus = OSStatus.IDLE
-    last_extra_info:str = None
+
+class UpdateOSStatus:
+    last_progress: float = 0
+    last_status: OSStatus = OSStatus.IDLE
+    last_extra_info: str = None
     __sio = None
 
     @classmethod
@@ -50,7 +52,10 @@ class UpdateOSStatus():
         cls.__sio = sio
 
     @classmethod
-    def sendStatus(cls, current_status:OSStatus, current_progress:float, extra_info=None):
+    def sendStatus(
+        cls, current_status: OSStatus, current_progress: float, extra_info=None
+    ):
+        logger.warning("sending OS Update status")
         cls.last_progress = current_progress
         cls.last_status = current_status
         if cls.__sio:
@@ -62,22 +67,29 @@ class UpdateOSStatus():
             asyncio.set_event_loop(loop)
 
             async def sendUpdateStatus():
-                extra_info_str = f" : {extra_info}" if extra_info is not None and isinstance(extra_info,str) else ""
+                extra_info_str = (
+                    f" : {extra_info}"
+                    if extra_info is not None and isinstance(extra_info, str)
+                    else ""
+                )
                 data = {
-                        "progress":cls.last_progress,
-                        "status":f"{OSStatus.to_string(cls.last_status)}" + extra_info_str
-                        }
+                    "progress": cls.last_progress,
+                    "status": f"{OSStatus.to_string(cls.last_status)}" + extra_info_str,
+                }
                 await cls.__sio.emit("OSUpdate", data)
                 logger.warning(f"new OS Update data: {data}")
 
             if not loop.is_running():
+                logger.warning("sending OS Update status: no loop running")
                 loop.run_until_complete(sendUpdateStatus())
             else:
+                logger.warning("sending OS Update status: yes loop running")
                 asyncio.create_task(sendUpdateStatus())
 
     @classmethod
     def sendLastStatus(cls):
         cls.sendStatus(cls.last_status, cls.last_progress)
+
 
 class MachineInfoHandler(BaseHandler):
     def get(self):
