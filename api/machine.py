@@ -27,7 +27,7 @@ class OSStatus(Enum):
     DOWNLOADING = 1
     INSTALLING = 2
     COMPLETE = 3
-    FAILED = 3
+    FAILED = 4
 
     @classmethod
     def to_string(cls, status):
@@ -45,6 +45,13 @@ class UpdateOSStatus:
     last_progress: float = 0
     last_status: OSStatus = OSStatus.IDLE
     last_extra_info: str = None
+
+    data = {
+        "progress": 0,
+        "status": "IDLE",
+        "info": ""
+        }
+    
     __sio = None
 
     @classmethod
@@ -72,12 +79,12 @@ class UpdateOSStatus:
                     if extra_info is not None and isinstance(extra_info, str)
                     else ""
                 )
-                data = {
+                cls.data = {
                     "progress": cls.last_progress,
-                    "status": f"{OSStatus.to_string(cls.last_status)}" + extra_info_str,
+                    "status": f"{OSStatus.to_string(cls.last_status)}",
+                    "info": extra_info_str
                 }
-                await cls.__sio.emit("OSUpdate", data)
-                logger.warning(f"new OS Update data: {data}")
+                await cls.__sio.emit("OSUpdate", cls.data)
 
             if not loop.is_running():
                 logger.warning("sending OS Update status: no loop running")
