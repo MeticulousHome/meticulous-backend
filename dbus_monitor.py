@@ -30,6 +30,11 @@ class DBusMonitor:
             "com.Meticulous.Handler.MassStorage", "NewUSB", self.notify_usb
         )
 
+        #signal to identify the OS update is from the USB
+        self.dbus_object.new_signal_subscription(
+            "com.Meticulous.Handler.MassStorage", "RecoveryUpdate", self.recovery_update
+        )
+
         self.dbus_object.new_signal_subscription(
             "org.hawkbit.DownloadProgress",
             "ProgressUpdate",
@@ -57,6 +62,12 @@ class DBusMonitor:
 
         UpdateOSStatus.sendStatus(OSStatus.DOWNLOADING, percentage, None)
 
+        if UpdateOSStatus.isRecoveryUpdate():
+            progress_notification.message = f"Downloading update: {percentage}%"
+            progress_notification.respone_options = [NotificationResponse.OK]
+            progress_notification.image = notification_image
+            NotificationManager.add_notification(progress_notification)
+
     @staticmethod
     async def install_progress(
         connection,
@@ -72,9 +83,27 @@ class DBusMonitor:
         progress_notification.image = notification_image
         if message.find("fail") == -1:
             UpdateOSStatus.sendStatus(OSStatus.INSTALLING, progress, None)
+
+            if UpdateOSStatus.isRecoveryUpdate():
+                NotificationManager.add_notification(progress_notification)
+
         else:
             UpdateOSStatus.sendStatus(OSStatus.FAILED, 0, message)
 
+            if UpdateOSStatus.isRecoveryUpdate():
+                progress_notification.message = ""
+                progress_notification.image = ""
+
+                NotificationManager.add_notification(progress_notification)
+
+                NotificationManager.add_notification(
+                    Notification(
+                        message=f"There was an error updating the OS:\n {message}",
+                        responses=[NotificationResponse.OK],
+                        image=notification_image,
+                    )
+                )
+                
             subprocess_result = subprocess.run(
                 "umount /tmp/possible_updater", shell=True, capture_output=True
             )
@@ -110,6 +139,9 @@ class DBusMonitor:
                 image=notification_image,
             )
         )
+
+        UpdateOSStatus.markAsRecoveryUpdate(False)
+
 
         subprocess_result = subprocess.run(
             "umount /tmp/possible_updater", shell=True, capture_output=True
@@ -148,6 +180,9 @@ class DBusMonitor:
                 image=notification_image,
             )
         )
+
+        UpdateOSStatus.markAsRecoveryUpdate(False)
+        
         subprocess_result = subprocess.run(
             "umount /tmp/possible_updater", shell=True, capture_output=True
         )
@@ -179,3 +214,12 @@ class DBusMonitor:
         USB_PATH = parameters[0]
 
         logger.info(f"USB PATH RECEIVED: {USB_PATH}")
+
+    @staticmethod
+    async def recovery_update(
+        connection, sender_name, object_path, interface_name, signal_name, parameters
+    ):
+        
+        UpdateOSStatus.markAsRecoveryUpdate(True)
+
+        logger.info(f"Update in course is a recovery update")
