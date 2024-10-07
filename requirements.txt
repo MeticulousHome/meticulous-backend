@@ -28,4 +28,4 @@ zeroconf==0.131.0
 zstandard==0.22.0
 jsonschema==4.21.1
 pydbus==0.6.0
-PyGObject==3.48.2
+PyGObject>=3.42.0
