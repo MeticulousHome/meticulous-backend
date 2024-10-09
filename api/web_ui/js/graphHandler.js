@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     initGraph('thermistorGraph', ['barUp', 'barMiddleUp', 'barMiddleDown', 'barDown', 'external1', 'external2', 'tube', 'valve']);
-    initGraph('actuatorGraph', ['position', 'speed', 'power', 'current', 'bandHeater_power']);
+    initGraph('actuatorGraph', ['position', 'speed', 'power', 'current', 'bandHeater_power', 'bandHeater_current']);
     initGraph('adcGraph', ['adc0_rate', 'adc1_rate', 'adc2_rate', 'adc3_rate', 'pressureSensor_rate']);
     initGraph('miscGraph', ['pressureSensor_pressure', 'flowSensor_flow', 'loadcell_weight', 'display_temp', 'set_pressure', 'set_flow', 'set_power', 'set_position']);
 
@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const motor_speed = document.getElementById('motor_speed');
     const motor_power = document.getElementById('motor_power');
     const motor_current = document.getElementById('motor_current');
-    const bandHeater_power = document.getElementById('bandHeater_power');
+    const bandHeater_current = document.getElementById('bandHeater_current');
 
     const adc0_rate = document.getElementById('adc0_rate');
     const adc1_rate = document.getElementById('adc1_rate');
@@ -84,6 +84,7 @@ document.addEventListener('DOMContentLoaded', function () {
             power: [],
             current: [],
             bandHeater_power: [],
+            bandHeater_current: [],
         }
     };
 
@@ -238,6 +239,7 @@ document.addEventListener('DOMContentLoaded', function () {
             power: data.m_pwr,
             current: data.m_cur,
             bandHeater_power: data.bh_pwr,
+            bandHeater_current: data.bh_cur,
         })
 
         motor_position.innerText = data.m_pos;
@@ -245,6 +247,7 @@ document.addEventListener('DOMContentLoaded', function () {
         motor_speed.innerText = data.m_spd;
         motor_power.innerText = data.m_pwr;
         bandHeater_power.innerText = data.bh_pwr;
+        bandHeater_current.innerText = data.bh_cur;
 
         if (isGraphing) {
             updateGraph('actuatorGraph', window.actuatorData);
@@ -436,6 +439,7 @@ const redColor = '#E4321b'; // Red
 const burgundyColor = '#89023E'; // Burgundy
 const blueColor = '#3C59AB'; // Blue
 const tealColor = '#007A8A'; // Teal
+const whiteColor = '#FFFFFF'; //White
 
 function randomColor(key) {
     const colorMapping = {
@@ -467,6 +471,7 @@ function randomColor(key) {
         'external2': burgundyColor,
         'tube': tealColor,
         'valve': blueColor,
+        'bandHeater_current': whiteColor,
     };
 
     return colorMapping[key] || (console.log("No color was found for " + key) || '#FFFFFF');
