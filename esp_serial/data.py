@@ -4,6 +4,7 @@ import re
 import math
 
 from log import MeticulousLogger
+from config import MeticulousConfig, GET_ACCESSORY_DATA, CONFIG_USER
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -15,6 +16,13 @@ def safeFloat(val):
     if math.isnan(convert):
         return 0
     return convert
+
+
+def simulate_temp():
+
+    if MeticulousConfig[CONFIG_USER][GET_ACCESSORY_DATA]:
+        sim_motor_thermistor = 50.0
+        return sim_motor_thermistor
 
 
 @dataclass
@@ -42,6 +50,7 @@ class SensorData:
     adc_2: float = 0.0
     adc_3: float = 0.0
     water_status: bool = False
+    motor_thermistor: float = 0.0
 
     def from_color_coded_args(colorSeperatedArgs):
         global colorSensorRegex
@@ -87,6 +96,10 @@ class SensorData:
                     adc_3=safeFloat(args[19]),
                     water_status=water_status,
                 )
+                if MeticulousConfig[CONFIG_USER][GET_ACCESSORY_DATA]:
+                    data.motor_thermistor = safeFloat(args[21])
+                else:
+                    data.motor_thermistor = 0.0
             else:
                 data = SensorData(
                     external_1=safeFloat(args[0]),
@@ -109,6 +122,11 @@ class SensorData:
                     adc_3=safeFloat(args[17]),
                     water_status=water_status,
                 )
+                if MeticulousConfig[CONFIG_USER][GET_ACCESSORY_DATA]:
+                    data.motor_thermistor = safeFloat(args[21])
+                else:
+                    data.motor_thermistor = 0.0
+
         except Exception as e:
             logger.warning(
                 f"Failed to parse SensorData ({len(args)}): {args}", exc_info=e
@@ -150,6 +168,9 @@ class SensorData:
 
     def to_sio_water_status(self):
         return {"water_status": self.water_status}
+
+    def to_sio_accessory_data(self):
+        return {"motor_thermistor": self.motor_thermistor}
 
 
 @dataclass
