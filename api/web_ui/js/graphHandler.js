@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     initGraph('thermistorGraph', ['barUp', 'barMiddleUp', 'barMiddleDown', 'barDown', 'external1', 'external2', 'tube', 'valve']);
-    initGraph('actuatorGraph', ['position', 'speed', 'power', 'current', 'bandHeater_power']);
+    initGraph('actuatorGraph', ['position', 'speed', 'power', 'current', 'bandHeater_power', 'bandHeater_current']);
     initGraph('adcGraph', ['adc0_rate', 'adc1_rate', 'adc2_rate', 'adc3_rate', 'pressureSensor_rate']);
     initGraph('miscGraph', ['pressureSensor_pressure', 'flowSensor_flow', 'loadcell_weight', 'display_temp', 'set_pressure', 'set_flow', 'set_power', 'set_position']);
 
@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const motor_power = document.getElementById('motor_power');
     const motor_current = document.getElementById('motor_current');
     const bandHeater_power = document.getElementById('bandHeater_power');
+    const bandHeater_current = document.getElementById('bandHeater_current');
 
     const adc0_rate = document.getElementById('adc0_rate');
     const adc1_rate = document.getElementById('adc1_rate');
@@ -84,6 +85,7 @@ document.addEventListener('DOMContentLoaded', function () {
             power: [],
             current: [],
             bandHeater_power: [],
+            bandHeater_current: []
         }
     };
 
@@ -238,6 +240,7 @@ document.addEventListener('DOMContentLoaded', function () {
             power: data.m_pwr,
             current: data.m_cur,
             bandHeater_power: data.bh_pwr,
+            bandHeater_current: data.bh_cur,
         })
 
         motor_position.innerText = data.m_pos;
@@ -245,6 +248,7 @@ document.addEventListener('DOMContentLoaded', function () {
         motor_speed.innerText = data.m_spd;
         motor_power.innerText = data.m_pwr;
         bandHeater_power.innerText = data.bh_pwr;
+        bandHeater_current.innerText = data.bh_cur;
 
         if (isGraphing) {
             updateGraph('actuatorGraph', window.actuatorData);
@@ -264,6 +268,7 @@ document.addEventListener('DOMContentLoaded', function () {
             updateGraph('adcGraph', window.adcData);
             updateGraphData(window.miscData, currentTime, {
                 bandHeater_power: data.bandHeater.power,
+                bandHeater_current: data.bandHeater.current,
                 pressureSensor_pressure: data.pressureSensor.pressure,
                 flowSensor_flow: data.flowSensor.flow,
                 loadcell_weight: data.loadcell.weight
@@ -444,6 +449,7 @@ function randomColor(key) {
         'power': redColor,
         'current': blueColor,
         'bandHeater_power': tealColor,
+        'bandHeater_current': burgundyColor,
 
         // ADC values
         'adc0_rate': yellowColor,
