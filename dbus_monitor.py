@@ -30,7 +30,7 @@ class DBusMonitor:
             "com.Meticulous.Handler.MassStorage", "NewUSB", self.notify_usb
         )
 
-        #signal to identify the OS update is from the USB
+        # signal to identify the OS update is from the USB
         self.dbus_object.new_signal_subscription(
             "com.Meticulous.Handler.MassStorage", "RecoveryUpdate", self.recovery_update
         )
@@ -103,7 +103,7 @@ class DBusMonitor:
                         image=notification_image,
                     )
                 )
-                
+
             subprocess_result = subprocess.run(
                 "umount /tmp/possible_updater", shell=True, capture_output=True
             )
@@ -141,7 +141,6 @@ class DBusMonitor:
         )
 
         UpdateOSStatus.markAsRecoveryUpdate(False)
-
 
         subprocess_result = subprocess.run(
             "umount /tmp/possible_updater", shell=True, capture_output=True
@@ -182,7 +181,7 @@ class DBusMonitor:
         )
 
         UpdateOSStatus.markAsRecoveryUpdate(False)
-        
+
         subprocess_result = subprocess.run(
             "umount /tmp/possible_updater", shell=True, capture_output=True
         )
@@ -219,7 +218,7 @@ class DBusMonitor:
     async def recovery_update(
         connection, sender_name, object_path, interface_name, signal_name, parameters
     ):
-        
+
         UpdateOSStatus.markAsRecoveryUpdate(True)
 
         logger.info(f"Update in course is a recovery update")
