@@ -60,7 +60,7 @@ class DBusMonitor:
     ):
         percentage = parameters[0]
 
-        UpdateOSStatus.sendStatus(OSStatus.DOWNLOADING, percentage, None)
+        UpdateOSStatus.sendStatus(OSStatus.DOWNLOADING, round(percentage), None)
 
         if UpdateOSStatus.isRecoveryUpdate():
             progress_notification.message = f"Downloading update: {percentage}%"
