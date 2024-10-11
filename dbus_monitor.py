@@ -126,19 +126,20 @@ class DBusMonitor:
 
         UpdateOSStatus.sendStatus(OSStatus.FAILED, 0, status)
 
-        # dismiss progress notification
-        progress_notification.image = ""
-        progress_notification.message = ""
+        if UpdateOSStatus.isRecoveryUpdate():
+            # dismiss progress notification
+            progress_notification.image = ""
+            progress_notification.message = ""
 
-        NotificationManager.add_notification(progress_notification)
+            NotificationManager.add_notification(progress_notification)
 
-        NotificationManager.add_notification(
-            Notification(
-                message=notification_message,
-                responses=[NotificationResponse.OK],
-                image=notification_image,
+            NotificationManager.add_notification(
+                Notification(
+                    message=notification_message,
+                    responses=[NotificationResponse.OK],
+                    image=notification_image,
+                )
             )
-        )
 
         UpdateOSStatus.markAsRecoveryUpdate(False)
 
@@ -167,18 +168,19 @@ class DBusMonitor:
             notification_message = "OS updated. Remove USB and reboot your machine"
 
         # dismiss progress notification
-        progress_notification.image = ""
-        progress_notification.message = ""
+        if UpdateOSStatus.isRecoveryUpdate():
+            progress_notification.image = ""
+            progress_notification.message = ""
 
-        NotificationManager.add_notification(progress_notification)
+            NotificationManager.add_notification(progress_notification)
 
-        NotificationManager.add_notification(
-            Notification(
-                message=notification_message,
-                responses=[NotificationResponse.OK],
-                image=notification_image,
+            NotificationManager.add_notification(
+                Notification(
+                    message=notification_message,
+                    responses=[NotificationResponse.OK],
+                    image=notification_image,
+                )
             )
-        )
 
         UpdateOSStatus.markAsRecoveryUpdate(False)
 
