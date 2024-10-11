@@ -223,4 +223,4 @@ class DBusMonitor:
 
         UpdateOSStatus.markAsRecoveryUpdate(True)
 
-        logger.info(f"Update in course is a recovery update")
+        logger.info("Update in course is a recovery update")
