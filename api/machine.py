@@ -42,7 +42,7 @@ class OSStatus(Enum):
 
 
 class UpdateOSStatus(BaseHandler):
-    __is_recovery_update:bool = False
+    __is_recovery_update: bool = False
     last_progress: float = 0
     last_status: OSStatus = OSStatus.IDLE
     last_extra_info: str = None
@@ -61,12 +61,16 @@ class UpdateOSStatus(BaseHandler):
     @classmethod
     def markAsRecoveryUpdate(cls, is_recovery):
         cls.__is_recovery_update = is_recovery
-        logger.info("Marking update as" +( " not" if not cls.__is_recovery_update else "") + " recovery")
-    
+        logger.info(
+            "Marking update as"
+            + (" not" if not cls.__is_recovery_update else "")
+            + " recovery"
+        )
+
     @classmethod
     def isRecoveryUpdate(cls):
         return cls.__is_recovery_update
-    
+
     @classmethod
     def sendStatus(
         cls, current_status: OSStatus, current_progress: float, extra_info=None
