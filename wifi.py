@@ -310,6 +310,9 @@ class WifiManager:
         if credentials is None:
             return False
 
+        if type(credentials) is not dict:
+            credentials = credentials.to_dict()
+
         wifi_type = credentials.get("type", None)
         if wifi_type is None:
             wifi_type = WifiType.PreSharedKey
