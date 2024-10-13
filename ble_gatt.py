@@ -21,7 +21,7 @@ from config import CONFIG_WIFI, WIFI_MODE, WIFI_MODE_AP, MeticulousConfig
 from hostname import HostnameManager
 from log import MeticulousLogger
 from notifications import Notification, NotificationManager, NotificationResponse
-from wifi import WifiManager
+from wifi import WifiManager, WifiWpaPskCredentials
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -313,7 +313,8 @@ class GATTServer:
         ssid = ssid.decode("utf-8")
         passwd = passwd.decode("utf-8")
         logger.info(f"Connecting to '{ssid}' with password: '{passwd}'")
-        if WifiManager.connectToWifi(ssid, passwd):
+        credentials = WifiWpaPskCredentials(ssid=ssid, password=passwd)
+        if WifiManager.connectToWifi(credentials):
             networkConfig = WifiManager.getCurrentConfig()
             localServer = []
             for localIP in networkConfig.ips:
