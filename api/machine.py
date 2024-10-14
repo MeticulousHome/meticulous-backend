@@ -47,12 +47,23 @@ class UpdateOSStatus(BaseHandler):
     last_status: OSStatus = OSStatus.IDLE
     last_extra_info: str = None
 
-    data = {"progress": 0, "status": "IDLE", "info": ""}
-
     __sio = None
 
+    @classmethod
+    def to_json(cls):
+        extra_info_str = (
+            f" : {cls.last_extra_info}"
+            if cls.last_extra_info is not None and isinstance(cls.last_extra_info, str)
+            else ""
+        )
+        return {
+            "progress": round(cls.last_progress),
+            "status": f"{OSStatus.to_string(cls.last_status)}",
+            "info": extra_info_str,
+        }
+
     def get(self):
-        self.write(self.data)
+        self.write(self.to_json())
 
     @classmethod
     def setSio(cls, sio):
@@ -86,17 +97,7 @@ class UpdateOSStatus(BaseHandler):
             asyncio.set_event_loop(loop)
 
             async def sendUpdateStatus():
-                extra_info_str = (
-                    f" : {extra_info}"
-                    if extra_info is not None and isinstance(extra_info, str)
-                    else ""
-                )
-                cls.data = {
-                    "progress": round(cls.last_progress),
-                    "status": f"{OSStatus.to_string(cls.last_status)}",
-                    "info": extra_info_str,
-                }
-                await cls.__sio.emit("OSUpdate", cls.data)
+                await cls.__sio.emit("OSUpdate", cls.to_json())
 
             if not loop.is_running():
                 logger.warning("sending OS Update status: no loop running")
