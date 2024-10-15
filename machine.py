@@ -276,6 +276,9 @@ class Machine:
                                 timeoutArgs
                             )
                             Machine.heater_timeout_info = heater_timeout_info
+                            if heater_timeout_info.preheat_remaining == 0:
+                                await Machine._sio.emit("heater_status", "off")
+                                logger.info("Emitted heater_status: off")
                         except Exception as e:
                             logger.error(
                                 f"Error processing HeaterTimeoutInfo: {e}",
