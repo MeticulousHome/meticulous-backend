@@ -18,13 +18,6 @@ def safeFloat(val):
     return convert
 
 
-def simulate_temp():
-
-    if MeticulousConfig[CONFIG_USER][GET_ACCESSORY_DATA]:
-        sim_motor_thermistor = 50.0
-        return sim_motor_thermistor
-
-
 @dataclass
 class SensorData:
     """Class respresenting the current state of all sensors"""
