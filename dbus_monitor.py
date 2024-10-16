@@ -23,6 +23,12 @@ class DBusMonitor:
     @classmethod
     def init(self):
         self.dbus_object.new_signal_subscription(
+            "com.Meticulous.Handler.Updater",
+            "UpdateFailed",
+            self.recovery_update_failed,
+        )
+
+        self.dbus_object.new_signal_subscription(
             "de.pengutronix.rauc.Installer", "Completed", self.rauc_update_complete
         )
 
@@ -81,38 +87,11 @@ class DBusMonitor:
         progress_notification.message = f"Updating OS:\n {progress}%"
         progress_notification.respone_options = [NotificationResponse.OK]
         progress_notification.image = notification_image
-        if message.find("fail") == -1:
-            UpdateOSStatus.sendStatus(OSStatus.INSTALLING, progress, None)
 
-            if UpdateOSStatus.isRecoveryUpdate():
-                NotificationManager.add_notification(progress_notification)
+        UpdateOSStatus.sendStatus(OSStatus.INSTALLING, progress, None)
 
-        else:
-            UpdateOSStatus.sendStatus(OSStatus.FAILED, 0, message)
-
-            if UpdateOSStatus.isRecoveryUpdate():
-                progress_notification.message = ""
-                progress_notification.image = ""
-
-                NotificationManager.add_notification(progress_notification)
-
-                NotificationManager.add_notification(
-                    Notification(
-                        message=f"There was an error updating the OS:\n {message}",
-                        responses=[NotificationResponse.OK],
-                        image=notification_image,
-                    )
-                )
-
-            subprocess_result = subprocess.run(
-                "umount /tmp/possible_updater", shell=True, capture_output=True
-            )
-            logger.warning(f"{subprocess_result}")
-
-            subprocess_result = subprocess.run(
-                "rm -r /tmp/possible_updater", shell=True, capture_output=True
-            )
-            logger.warning(f"{subprocess_result}")
+        if UpdateOSStatus.isRecoveryUpdate():
+            NotificationManager.add_notification(progress_notification)
 
     @staticmethod
     async def report_error(
@@ -215,6 +194,32 @@ class DBusMonitor:
         USB_PATH = parameters[0]
 
         logger.info(f"USB PATH RECEIVED: {USB_PATH}")
+
+    @staticmethod
+    async def recovery_update_failed(
+        connection, sender_name, object_path, interface_name, signal_name, parameters
+    ):
+        error_message: str = (
+            f"Recovery Update Failed:\n {parameters[0] if parameters[0] != 'unknown' else 'unknown error, possible USB disconnection'}"
+        )
+
+        progress_notification.image = ""
+        progress_notification.message = ""
+
+        UpdateOSStatus.sendStatus(OSStatus.FAILED, 0, parameters[0])
+
+        NotificationManager.add_notification(progress_notification)
+
+        NotificationManager.add_notification(
+            Notification(
+                message=error_message,
+                responses=[NotificationResponse.OK],
+                image=notification_image,
+            )
+        )
+        UpdateOSStatus.markAsRecoveryUpdate(False)
+
+        logger.info(f"RECOVERY UPDATE FAILED: {error_message}")
 
     @staticmethod
     async def recovery_update(
