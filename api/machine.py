@@ -10,6 +10,8 @@ import asyncio
 
 from .api import API, APIVersion
 from .base_handler import BaseHandler
+from backlight_controller import BacklightController
+
 from config import (
     MeticulousConfig,
     CONFIG_SYSTEM,
@@ -149,6 +151,37 @@ class MachineResetHandler(BaseHandler):
         subprocess.run("reboot")
 
 
+class MachineBacklightController(BaseHandler):
+    def post(self):
+        try:
+            settings = json.loads(self.request.body)
+        except json.decoder.JSONDecodeError as e:
+            self.set_status(403)
+            self.write(
+                {"status": "error", "error": "invalid json", "json_error": f"{e}"}
+            )
+            return
+        if "brightness" in settings:
+            brightness = settings.get("brightness")
+            if brightness is not None:
+                if brightness == 1:
+                    logger.info("Dimming up")
+                    BacklightController.dim_up()
+                else:
+                    logger.info("Dimming down")
+                    BacklightController.dim_down()
+            else:
+                self.set_status(400)
+                self.write(
+                    {
+                        "status": "error",
+                        "error": "brightness value is required",
+                    }
+                )
+                return
+
+
 API.register_handler(APIVersion.V1, r"/machine", MachineInfoHandler)
+API.register_handler(APIVersion.V1, r"/machine/backlight", MachineBacklightController)
 API.register_handler(APIVersion.V1, r"/machine/factory_reset", MachineResetHandler)
 API.register_handler(APIVersion.V1, r"/machine/OS_update_status", UpdateOSStatus)
