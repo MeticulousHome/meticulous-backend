@@ -164,28 +164,26 @@ class MachineBacklightController(BaseHandler):
             return
         if "brightness" in settings:
             brightness = settings.get("brightness")
-            if brightness is not None:
 
-                def adjust_brightness():
-                    if brightness == 1:
-                        logger.info("Dimming up")
-                        BacklightController.dim_up()
-                    else:
-                        logger.info("Dimming down")
-                        BacklightController.dim_down()
+            def adjust_brightness():
+                if brightness == 1:
+                    logger.info("Dimming up")
+                    BacklightController.dim_up()
+                else:
+                    logger.info("Dimming down")
+                    BacklightController.dim_down()
 
-                thread = threading.Thread(target=adjust_brightness)
-                thread.start()
-                thread.join()
-            else:
-                self.set_status(400)
-                self.write(
-                    {
-                        "status": "error",
-                        "error": "brightness value is required",
-                    }
-                )
-                return
+            thread = threading.Thread(target=adjust_brightness)
+            thread.start()
+        else:
+            self.set_status(400)
+            self.write(
+                {
+                    "status": "error",
+                    "error": "brightness value is required",
+                }
+            )
+            return
 
 
 API.register_handler(APIVersion.V1, r"/machine", MachineInfoHandler)
