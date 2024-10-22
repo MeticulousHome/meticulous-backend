@@ -7,6 +7,7 @@ from machine import Machine
 from wifi import WifiManager
 from enum import Enum
 import asyncio
+import threading
 
 from .api import API, APIVersion
 from .base_handler import BaseHandler
@@ -164,12 +165,18 @@ class MachineBacklightController(BaseHandler):
         if "brightness" in settings:
             brightness = settings.get("brightness")
             if brightness is not None:
-                if brightness == 1:
-                    logger.info("Dimming up")
-                    BacklightController.dim_up()
-                else:
-                    logger.info("Dimming down")
-                    BacklightController.dim_down()
+
+                def adjust_brightness():
+                    if brightness == 1:
+                        logger.info("Dimming up")
+                        BacklightController.dim_up()
+                    else:
+                        logger.info("Dimming down")
+                        BacklightController.dim_down()
+
+                thread = threading.Thread(target=adjust_brightness)
+                thread.start()
+                thread.join()
             else:
                 self.set_status(400)
                 self.write(
