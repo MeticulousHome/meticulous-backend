@@ -89,6 +89,7 @@ class SettingsHandler(BaseHandler):
                         "setting": setting_name,
                     }
                 )
+                logger.info(f"Setting not found: {setting_name}")
                 MeticulousConfig.load()
                 return
         MeticulousConfig.save()
