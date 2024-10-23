@@ -13,6 +13,26 @@ MIN_BRIGHTNESS = 512
 class BacklightController:
     _adjust_thread = None
 
+    def get_current_brightness():
+        with open(BRIGHTNESS_FILE, "r") as f:
+            return int(f.read().strip())
+
+    def set_brightness(value):
+        with open(BRIGHTNESS_FILE, "w") as f:
+            f.write(str(value))
+
+    # Linear interpolation
+    def linear_interpolation(start, end, steps):
+        step_size = (end - start) / steps
+        for i in range(steps):
+            yield start + step_size * i
+
+    # Quadratic interpolation (curve)
+    def curve_interpolation(start, end, steps):
+        for i in range(steps):
+            t = i / steps
+            yield start + (end - start) * (t**2)
+
     def stop_adjust_thread():
         if (
             BacklightController._adjust_thread
