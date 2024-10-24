@@ -7,7 +7,7 @@ logger = MeticulousLogger.getLogger(__name__)
 
 BRIGHTNESS_FILE = "/sys/class/backlight/backlight/brightness"
 MAX_BRIGHTNESS = 4095
-MIN_BRIGHTNESS = 512
+MIN_BRIGHTNESS = 1500
 
 
 class BacklightController:
