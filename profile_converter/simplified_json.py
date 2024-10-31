@@ -227,7 +227,7 @@ class SimplifiedJson:
                             reference_id = 1
                         weight_comparison = self.set_comparison_type(json_comparison)
                         exit_trigger = WeightTrigger(
-                            SourceType.RAW,
+                            SourceType.PREDICTIVE,
                             weight_comparison,
                             exit_trigger_value,
                             reference_id,
@@ -420,7 +420,7 @@ class SimplifiedJson:
                 ButtonSourceType.ENCODER_BUTTON, next_node_id=next_stage_node_id
             )
             weight_final_trigger = WeightTrigger(
-                SourceType.RAW,
+                SourceType.PREDICTIVE,
                 TriggerOperatorType.GREATER_THAN_OR_EQUAL,
                 self.get_final_weight(),
                 1,
