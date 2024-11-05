@@ -191,6 +191,21 @@ class MachineResetHandler(LocalAccessHandler):
 
 
 class MachineBacklightController(BaseHandler):
+    def get(self):
+        try:
+            current_brightness = BacklightController.get_current_brightness()
+            self.write({"status": "success", "brightness": current_brightness})
+        except Exception as e:
+            logger.warning(f"Error getting brightness: {e}")
+            self.set_status(500)
+            self.write(
+                {
+                    "status": "error",
+                    "error": "Failed to get brightness value",
+                    "details": str(e),
+                }
+            )
+
     def post(self):
         try:
             settings = json.loads(self.request.body)
@@ -203,21 +218,23 @@ class MachineBacklightController(BaseHandler):
         if "brightness" in settings:
             brightness = settings.get("brightness")
 
-            if brightness == "Dimming up":
+            if brightness == 1:
                 logger.info("Dimming up")
                 BacklightController.dim_up()
-            elif brightness == "Dimming down":
+            else:
                 logger.info("Dimming down")
                 BacklightController.dim_down()
-            else:
-                BacklightController.set_brightness(brightness)
+        # Note: The following block is provisional for the hidden menu
+        elif "brightness_testing" in settings:
+            logger.info(f"Setting brightness to {settings['brightness_testing']}")
+            BacklightController.set_brightness(settings["brightness_testing"])
 
         else:
             self.set_status(400)
             self.write(
                 {
                     "status": "error",
-                    "error": "brightness value is required",
+                    "error": "either brightness or brightness_testing value is required",
                 }
             )
             return
