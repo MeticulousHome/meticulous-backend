@@ -496,3 +496,51 @@ class WifiManager:
             hostname,
             domains,
         )
+
+    @staticmethod
+    def toggleWifi(enable: bool):
+        """
+        Enable or disable the WiFi radio.
+
+        Args:
+            enable (bool): True to enable WiFi, False to disable it
+
+        Returns:
+            bool: True if the operation was successful, False otherwise
+        """
+        if not WifiManager._networking_available:
+            return False
+
+        try:
+            if enable:
+                logger.info("Enabling WiFi radio")
+                nmcli.radio.wifi_on()
+            else:
+                logger.info("Disabling WiFi radio")
+                nmcli.radio.wifi_off()
+            return True
+        except Exception as e:
+            logger.error(
+                f"Failed to {'enable' if enable else 'disable'} WiFi radio: {e}"
+            )
+            return False
+
+    @staticmethod
+    def getWifiStatus() -> bool:
+        """
+        Get the current state of the WiFi radio.
+
+        Returns:
+            bool: True if WiFi is enabled, False if disabled or on error
+        """
+        if not WifiManager._networking_available:
+            return False
+
+        try:
+            status = nmcli.radio.wifi()
+            logger.info(f"WiFi radio status: {status}")
+            # nmcli.radio.wifi() devuelve directamente un booleano
+            return bool(status)
+        except Exception as e:
+            logger.error(f"Failed to get WiFi radio status: {e}")
+            return False
