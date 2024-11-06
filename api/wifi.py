@@ -202,6 +202,40 @@ class WiFiDeleteHandler(BaseHandler):
             logger.warning("Failed to connect: ", exc_info=e, stack_info=True)
 
 
+class WiFiRadioHandler(BaseHandler):
+    def get(self):
+        """Get current WiFi radio status"""
+        status = WifiManager.getWifiStatus()
+        self.write({"enabled": status})
+
+    def post(self):
+        """Enable or disable WiFi radio"""
+        try:
+            data = json.loads(self.request.body)
+            enable = data.get("enable", True)
+
+            success = WifiManager.toggleWifi(enable)
+            if success:
+                self.write({"status": "ok", "enabled": enable})
+            else:
+                self.set_status(400)
+                self.write(
+                    {"status": "error", "error": "Failed to change WiFi radio state"}
+                )
+        except json.JSONDecodeError:
+            self.set_status(400)
+            self.write({"status": "error", "error": "Invalid JSON"})
+        except Exception as e:
+            self.set_status(400)
+            self.write(
+                {"status": "error", "error": f"Failed to change WiFi radio state: {e}"}
+            )
+            logger.warning(
+                "Failed to change WiFi radio state: ", exc_info=e, stack_info=True
+            )
+
+
+API.register_handler(APIVersion.V1, r"/wifi/radio", WiFiRadioHandler)
 API.register_handler(APIVersion.V1, r"/wifi/config", WiFiConfigHandler),
 API.register_handler(APIVersion.V1, r"/wifi/config/qr.png", WiFiQRHandler),
 API.register_handler(APIVersion.V1, r"/wifi/list", WiFiListHandler),
