@@ -6,5 +6,6 @@
     "brewing_end": {},
     "abort": {},
     "idle": {},
-    "notification": "notification.mp3"
+    "notification": "notification.mp3",
+    "test": "test.wav"
 }
