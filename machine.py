@@ -172,6 +172,7 @@ class Machine:
         info_requested = False
         time_passed = 0
         emulated_firmware = False
+        previous_preheat_remaining = None
 
         logger.info("Starting to listen for esp32 messages")
         Machine.startTime = time.time()
@@ -279,8 +280,15 @@ class Machine:
                             await Machine._sio.emit(
                                 "heater_status", heater_timeout_info.preheat_remaining
                             )
-                            if heater_timeout_info.preheat_remaining == 0:
+                            if (
+                                heater_timeout_info.preheat_remaining == 0
+                                and previous_preheat_remaining != 0
+                            ):
                                 logger.info("Heater_status: off")
+                            previous_preheat_remaining = (
+                                heater_timeout_info.preheat_remaining
+                            )
+
                         except Exception as e:
                             logger.error(
                                 f"Error processing HeaterTimeoutInfo: {e}",
