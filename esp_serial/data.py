@@ -17,6 +17,14 @@ def safeFloat(val):
         return 0
     return convert
 
+def safe_float_with_nan(value):
+    try:
+        f_value = float(value)
+        if math.isnan(f_value):
+            return "NaN"
+        return f_value
+    except ValueError:
+        return "NaN"
 
 @dataclass
 class SensorData:
@@ -313,10 +321,10 @@ class ShotData:
 
         try:
             data = ShotData(
-                float(args[0]),
-                float(args[1]),
-                float(args[2]),
-                float(args[3]),
+                safe_float_with_nan(args[0]),
+                safe_float_with_nan(args[1]),
+                safe_float_with_nan(args[2]),
+                safe_float_with_nan(args[3]),
                 status,
                 profile,
                 state=state,
