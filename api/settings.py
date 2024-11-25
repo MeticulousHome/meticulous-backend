@@ -14,8 +14,9 @@ from .api import API, APIVersion
 from ota import UpdateManager
 from log import MeticulousLogger
 
-logger = MeticulousLogger.getLogger(__name__)
+from timezone_manager import TimezoneManager
 
+logger = MeticulousLogger.getLogger(__name__)
 
 class SettingsHandler(BaseHandler):
     def get(self, setting_name=None):
@@ -97,4 +98,10 @@ class SettingsHandler(BaseHandler):
         return self.get()
 
 
+class TimezoneUIProvider(BaseHandler):
+    def get(self):
+        self.write(TimezoneManager.get_organized_timezones())
+
 API.register_handler(APIVersion.V1, r"/settings/*", SettingsHandler),
+API.register_handler(APIVersion.V1, r"/settings/UI_timezones", TimezoneUIProvider),
+
