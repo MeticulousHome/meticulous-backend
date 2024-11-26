@@ -44,6 +44,8 @@ from dbus_monitor import DBusMonitor
 
 from api.machine import UpdateOSStatus
 
+from timezone_manager import TimezoneManager
+
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -322,6 +324,10 @@ def main():
     ProfileManager.init(sio)
     ShotManager.init()
     SoundPlayer.init(emulation=Machine.emulated)
+    
+    #Check for mapped timezones json
+    TimezoneManager.validate_timezones_json()
+
     MeticulousConfig.setSIO(sio)
 
     handlers = [
