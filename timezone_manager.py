@@ -1,11 +1,13 @@
 # import json
 import subprocess
+from log import MeticulousLogger
 
+logger = MeticulousLogger.getLogger(__name__)
 
 class TimezoneManager:
 
     @staticmethod
-    def get_organized_timezones():
+    def get_organized_timezones() -> dict:
         '''
             make use of linux embedded timezone information to compile and provide
             the user information to make the timezone selection easier
@@ -99,4 +101,6 @@ class TimezoneManager:
             return(country_timezones)
 
         except:
-            _all_timezones = []
+            logger.error("Could not fetch timezones from system");
+            return({})
+            
