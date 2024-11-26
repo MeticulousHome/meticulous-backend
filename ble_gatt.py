@@ -141,9 +141,23 @@ class GATTServer:
         logger.info("Stopping BLE GATT Server")
         self.loop.call_soon_threadsafe(self.trigger.set)
 
-    def update_advertisement(self):
-        self.manufacturer_data = self._build_manufacturer_data()
-        self.loop.call_soon_threadsafe(self.update_trigger.set)
+    async def update_advertisement(self):
+        """Update the BLE advertisement data if no clients are connected."""
+        try:
+            has_clients = await self.check_client_connections()
+            logger.info(f"Checking client connections: {has_clients}")
+
+            if has_clients:
+                logger.info("Skipping BLE advertisement update - clients connected")
+                return
+
+            logger.info("Updating BLE advertisement")
+            self.manufacturer_data = self._build_manufacturer_data()
+            self.loop.call_soon_threadsafe(self.update_trigger.set)
+
+        except Exception as e:
+            logger.error(f"Error updating advertisement: {str(e)}")
+            logger.exception("Advertisement update failed", exc_info=e, stack_info=True)
 
     def _build_manufacturer_data(self):
         config = WifiManager.getCurrentConfig()
@@ -161,6 +175,37 @@ class GATTServer:
                 current_response += ip.ip.packed
 
         return bytes(current_response[:27])
+
+    async def check_client_connections(self) -> bool:
+        """
+        Check if there are any BLE clients currently connected or interacting with the GATT server.
+
+        Returns:
+            bool: True if there are clients connected, False otherwise.
+        """
+        try:
+            if self.bless_gatt_server is None:
+                logger.info("GATT Server not initialized yet")
+                return False
+
+            is_connected = await self.bless_gatt_server.is_connected()
+
+            if is_connected:
+                logger.info("BLE Client Connected! Active connection detected")
+
+                # If we have more detailed connection info available
+                if hasattr(self.bless_gatt_server, "_subscribed_clients"):
+                    client_count = len(self.bless_gatt_server._subscribed_clients)
+                    logger.info(f"Number of connected clients: {client_count}")
+                else:
+                    logger.info("No BLE clients currently connected")
+
+            return is_connected
+
+        except Exception as e:
+            logger.error(f"Error checking BLE connections: {str(e)}")
+            logger.exception("Connection check failed", exc_info=e, stack_info=True)
+            return False
 
     async def _update_data_loop(self):
         self.update_trigger.clear()
