@@ -188,6 +188,18 @@ class WifiManager:
 
         WifiManager._zeroconf.start()
 
+    def update_gatt_advertisement():
+        """Helper method to safely update GATT advertisement"""
+        from ble_gatt import GATTServer
+
+        server = GATTServer.getServer()
+        if server and server.loop and server.loop.is_running():
+            asyncio.run_coroutine_threadsafe(server.update_advertisement(), server.loop)
+        else:
+            logger.warning(
+                "Cannot update GATT advertisement - server or loop not ready"
+            )
+
     def networking_available():
         return WifiManager._networking_available
 
@@ -221,8 +233,6 @@ class WifiManager:
                         break
 
     def resetWifiMode():
-        from ble_gatt import GATTServer
-
         # Without networking we have no chance starting the wifi or getting the creads
         if WifiManager._networking_available:
             # start AP if needed
@@ -232,7 +242,7 @@ class WifiManager:
                 WifiManager.stopHotspot()
                 WifiManager.scanForNetworks(timeout=1)
                 WifiManager._zeroconf.restart()
-            GATTServer.getServer().update_advertisement()
+            WifiManager.update_gatt_advertisement()
 
     def startHotspot():
         if not WifiManager._networking_available:
@@ -301,8 +311,7 @@ class WifiManager:
         WifiManager._known_wifis = wifis
         return wifis
 
-    def connectToWifi(credentials: WiFiCredentials):
-        from ble_gatt import GATTServer
+    def connectToWifi(credentials: WiFiCredentials) -> bool:
 
         if not WifiManager._networking_available:
             return False
@@ -330,7 +339,7 @@ class WifiManager:
             if len([x for x in networks if x.in_use]) > 0:
                 logger.info("Already connected")
                 WifiManager._zeroconf.restart()
-                GATTServer.getServer().update_advertisement()
+                WifiManager.update_gatt_advertisement()
                 return True
 
             logger.info("Target network online, connecting now")
@@ -344,7 +353,7 @@ class WifiManager:
                     return False
             except Exception as e:
                 logger.info(f"Failed to connect to wifi: {e}")
-                GATTServer.getServer().update_advertisement()
+                WifiManager.update_gatt_advertisement()
                 return False
 
             logger.info(
@@ -356,11 +365,11 @@ class WifiManager:
                 WifiManager._zeroconf.restart()
                 MeticulousConfig[CONFIG_WIFI][WIFI_MODE] = WIFI_MODE_CLIENT
                 WifiManager.rememberWifi(credentials)
-                GATTServer.getServer().update_advertisement()
+                WifiManager.update_gatt_advertisement()
                 return True
 
         logger.info("Target network was not found, no connection established")
-        GATTServer.getServer().update_advertisement()
+        WifiManager.update_gatt_advertisement()
         return False
 
     def rememberWifi(credentials: WiFiCredentials):
