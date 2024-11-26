@@ -1,10 +1,23 @@
-# import json
+import os
+import json
 import subprocess
 from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
 
+TIMEZONE_JSON_FILE_PATH : str = "/usr/share/zoneinfo/UI_timezones.json"
+
 class TimezoneManager:
+    @staticmethod
+    def validate_timezones_json():
+        if os.path.isfile(TIMEZONE_JSON_FILE_PATH):
+            return
+        logger.warning("Json file for UI timezones does not exist, generating")
+        try:
+            with open(TIMEZONE_JSON_FILE_PATH,'w') as json_file:
+                json_file.write(json.dumps(TimezoneManager.get_organized_timezones()))
+        except Exception as e:
+            logger.error(f"Error generating json file: {e}")
 
     @staticmethod
     def get_organized_timezones() -> dict:
@@ -96,11 +109,20 @@ class TimezoneManager:
                 else:
                     country_timezones.setdefault('LINKS', {})[sub_region] = tz
 
-            # Print the result in JSON format
-            # print(json.dumps(country_timezones, indent=2))
             return(country_timezones)
 
         except:
             logger.error("Could not fetch timezones from system");
-            return({})
-            
+            return {}
+    
+    @staticmethod
+    def get_UI_timezones() -> dict :
+        try:
+            UI_TIMEZONES_JSON : dict = {}
+            TimezoneManager.validate_timezones_json()
+            with open(TIMEZONE_JSON_FILE_PATH,'r') as json_file:
+                UI_TIMEZONES_JSON = json.loads(json_file.read())
+                return UI_TIMEZONES_JSON
+        except:
+            logger.error("Json file for UI timezones does not exist and could not be created")
+            return {}

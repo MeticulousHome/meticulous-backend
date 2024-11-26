@@ -100,7 +100,7 @@ class SettingsHandler(BaseHandler):
 
 class TimezoneUIProvider(BaseHandler):
     def get(self):
-        self.write(TimezoneManager.get_organized_timezones())
+        self.write(TimezoneManager.get_UI_timezones())
 
 API.register_handler(APIVersion.V1, r"/settings/*", SettingsHandler),
 API.register_handler(APIVersion.V1, r"/settings/UI_timezones", TimezoneUIProvider),
