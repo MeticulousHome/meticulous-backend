@@ -2,12 +2,91 @@ import os
 import json
 import subprocess
 from log import MeticulousLogger
+from config import (
+    MeticulousConfig,
+    CONFIG_SYSTEM,
+    TIME_ZONE,
+)
 
 logger = MeticulousLogger.getLogger(__name__)
 
 TIMEZONE_JSON_FILE_PATH : str = "/usr/share/zoneinfo/UI_timezones.json"
 
 class TimezoneManager:
+
+    __system_timezone:str = ''
+
+    @staticmethod
+    def init():
+        TimezoneManager.validate_timezones_json()
+        __system_timezone = TimezoneManager.get_system_timezone()
+
+        if MeticulousConfig[CONFIG_SYSTEM][TIME_ZONE] != __system_timezone:
+            MeticulousConfig[CONFIG_SYSTEM][TIME_ZONE] == __system_timezone
+            MeticulousConfig.save()
+    
+    @staticmethod
+    def update_timezone( new_timezone:str ) -> str:
+
+        if MeticulousConfig[CONFIG_SYSTEM][TIME_ZONE] != new_timezone:
+            if TimezoneManager.set_system_timezone(new_timezone):
+                MeticulousConfig[CONFIG_SYSTEM][TIME_ZONE] == new_timezone
+                MeticulousConfig.save()
+
+    @staticmethod
+    def set_system_timezone( new_timezone:str ) -> bool:
+        try:
+            import subprocess
+
+            command = f"timedatectl set-timezone {new_timezone}"
+            cmd_result = subprocess.run(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=True,
+                shell=True
+            )
+
+            if len(cmd_result.stderr) > 0 or len(cmd_result.stdout) > 0:
+                logger.error(f"error setting system time zone\n\t[Out:{cmd_result.stdout} | Err: {cmd_result.stderr} ]")
+                return False
+
+            logger.debug(f"new system time zone: {TimezoneManager.get_system_timezone()} ]")
+            return True
+            
+        except Exception as e:
+            logger.error(f"error setting system time zone\n\t{e}")
+            return False
+
+
+    @staticmethod
+    def get_system_timezone():
+        system_timezone = ''
+        try:
+            import subprocess
+
+            command = "timedatectl status | grep 'Time zone' | awk -F'[:()]' '{print $2}'"
+            cmd_result = subprocess.run(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=True,
+                shell=True
+            )
+
+            if len(cmd_result.stderr) > 0:
+                logger.error("error getting system time zone, using last saved by user")
+                return MeticulousConfig[CONFIG_SYSTEM][TIME_ZONE]
+            
+            system_timezone = cmd_result.stdout.lstrip().rstrip()
+            return system_timezone
+
+        except Exception as e:
+            logger.error(f"error getting system time zone, using last saved by user")
+            return MeticulousConfig[CONFIG_SYSTEM][TIME_ZONE]
+
     @staticmethod
     def validate_timezones_json():
         if os.path.isfile(TIMEZONE_JSON_FILE_PATH):
