@@ -44,6 +44,9 @@ from dbus_monitor import DBusMonitor
 
 from api.machine import UpdateOSStatus
 
+import sdnotify
+
+notifier = sdnotify.SystemdNotifier()
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -299,50 +302,52 @@ async def send_data():  # noqa: C901
 
 
 def main():
-    global send_data_thread
-    global dbus_object
-    parse_command_line()
+    try:
+        global send_data_thread
+        global dbus_object
+        parse_command_line()
+        pyprctl.set_name("Main")
+        # Send initial status
+        notifier.notify("STATUS=Initializing backend components...")
+        gatherVersionInfo()
+        DBusMonitor.init()
+        HostnameManager.init()
+        UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
+        Machine.init(sio)
+        send_data_thread = NamedThread("SendSocketIO", target=send_data_loop)
+        send_data_thread.start()
+        GATTServer.getServer().start()
+        WifiManager.init()
+        NotificationManager.init(sio)
+        ProfileManager.init(sio)
+        ShotManager.init()
+        SoundPlayer.init(emulation=Machine.emulated)
+        MeticulousConfig.setSIO(sio)
 
-    pyprctl.set_name("Main")
+        handlers = [
+            (r"/socket.io/", socketio.get_tornado_handler(sio)),
+        ]
 
-    gatherVersionInfo()
-    DBusMonitor.init()
-    HostnameManager.init()
-    UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
+        if Machine.emulated and not WifiManager.networking_available():
+            register_emulation_handlers()
 
-    Machine.init(sio)
+        handlers.extend(API.get_routes())
+        handlers.extend(WEB_UI_HANDLER)
 
-    send_data_thread = NamedThread("SendSocketIO", target=send_data_loop)
-    send_data_thread.start()
-
-    GATTServer.getServer().start()
-
-    WifiManager.init()
-    NotificationManager.init(sio)
-    ProfileManager.init(sio)
-    ShotManager.init()
-    SoundPlayer.init(emulation=Machine.emulated)
-    MeticulousConfig.setSIO(sio)
-
-    handlers = [
-        (r"/socket.io/", socketio.get_tornado_handler(sio)),
-    ]
-
-    if Machine.emulated and not WifiManager.networking_available():
-        register_emulation_handlers()
-
-    handlers.extend(API.get_routes())
-
-    handlers.extend(WEB_UI_HANDLER)
-
-    app = tornado.web.Application(
-        handlers,
-        debug=DEBUG,
-    )
-
-    app.listen(PORT)
-
-    sio.start_background_task(live)
-
-    DiscImager.flash_if_required()
-    tornado.ioloop.IOLoop.current().start()
+        app = tornado.web.Application(
+            handlers,
+            debug=DEBUG,
+        )
+        app.listen(PORT)
+        sio.start_background_task(live)
+        DiscImager.flash_if_required()
+        # Notify systemd about successful initialization
+        notifier.notify("READY=1")
+        notifier.notify(f"STATUS=Backend running on port {PORT}")
+        logger.info("Backend successfully initialized and running on port %d", PORT)
+        tornado.ioloop.IOLoop.current().start()
+    except Exception as e:
+        if "notifier" in locals():
+            notifier.notify(f"STATUS=Backend initialization failed: {str(e)}")
+        logger.error("Backend initialization failed: %s", str(e))
+        raise

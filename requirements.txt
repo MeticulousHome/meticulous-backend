@@ -21,6 +21,7 @@ python-socketio==5.8.0
 python-xlib==0.33
 pytz>=2024.1
 sentry-sdk==2.10.0
+sdnotify==0.3.2
 six==1.16.0
 SQLAlchemy==2.0.30
 tornado==6.3.3
