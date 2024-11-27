@@ -326,7 +326,7 @@ def main():
     SoundPlayer.init(emulation=Machine.emulated)
     
     #Check for mapped timezones json
-    TimezoneManager.validate_timezones_json()
+    TimezoneManager.init()
 
     MeticulousConfig.setSIO(sio)
 
