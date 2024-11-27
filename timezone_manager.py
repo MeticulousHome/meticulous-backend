@@ -19,10 +19,11 @@ class TimezoneManager:
     @staticmethod
     def init():
         TimezoneManager.validate_timezones_json()
-        __system_timezone = TimezoneManager.get_system_timezone()
+        TimezoneManager.__system_timezone = TimezoneManager.get_system_timezone()
 
-        if MeticulousConfig[CONFIG_SYSTEM][TIME_ZONE] != __system_timezone:
-            MeticulousConfig[CONFIG_SYSTEM][TIME_ZONE] == __system_timezone
+        if MeticulousConfig[CONFIG_SYSTEM][TIME_ZONE] != TimezoneManager.__system_timezone:
+            MeticulousConfig[CONFIG_SYSTEM][TIME_ZONE] = TimezoneManager.__system_timezone
+            logger.warning(f"user config and system timezones confilct, updating user config to {MeticulousConfig[CONFIG_SYSTEM][TIME_ZONE]}")
             MeticulousConfig.save()
     
     @staticmethod
@@ -31,7 +32,7 @@ class TimezoneManager:
         if MeticulousConfig[CONFIG_SYSTEM][TIME_ZONE] != new_timezone:
             SUCCESS = TimezoneManager.set_system_timezone(new_timezone)
             if SUCCESS:
-                MeticulousConfig[CONFIG_SYSTEM][TIME_ZONE] == new_timezone
+                MeticulousConfig[CONFIG_SYSTEM][TIME_ZONE] = new_timezone.rstrip('"').lstrip('"')
                 MeticulousConfig.save()
             return SUCCESS
 
