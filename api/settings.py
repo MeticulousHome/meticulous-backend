@@ -105,8 +105,18 @@ class TimezoneUIProvider(BaseHandler):
     def post(self):
         try:
             new_timezone = self.request.body.decode('utf_8')
-            print(f"time zone received: {new_timezone}")
-            TimezoneManager.update_timezone(new_timezone)
+            status = TimezoneManager.update_timezone(new_timezone) 
+            if status == 'Success':
+                self.set_status(200)
+                self.write(
+                    {"status": "Success"}
+                )
+            else:
+                self.set_status(400)
+                self.write(
+                    {"status": "error", "error": "failed to set new timezone", "cause": f"{status}"}
+                )
+
         except Exception as e:
             logger.error(f"Failed setting the new timezone\n\t{e}")
             self.set_status(400)

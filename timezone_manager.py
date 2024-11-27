@@ -29,12 +29,14 @@ class TimezoneManager:
     def update_timezone( new_timezone:str ) -> str:
 
         if MeticulousConfig[CONFIG_SYSTEM][TIME_ZONE] != new_timezone:
-            if TimezoneManager.set_system_timezone(new_timezone):
+            SUCCESS = TimezoneManager.set_system_timezone(new_timezone)
+            if SUCCESS:
                 MeticulousConfig[CONFIG_SYSTEM][TIME_ZONE] == new_timezone
                 MeticulousConfig.save()
+            return SUCCESS
 
     @staticmethod
-    def set_system_timezone( new_timezone:str ) -> bool:
+    def set_system_timezone( new_timezone:str ) -> str:
         try:
             import subprocess
 
@@ -49,15 +51,16 @@ class TimezoneManager:
             )
 
             if len(cmd_result.stderr) > 0 or len(cmd_result.stdout) > 0:
-                logger.error(f"error setting system time zone\n\t[Out:{cmd_result.stdout} | Err: {cmd_result.stderr} ]")
-                return False
+                error = f"[ Out:{cmd_result.stdout} | Err: {cmd_result.stderr} ]"
+                logger.error(f"error setting system time zone\n\t {error}")
+                return error
 
             logger.debug(f"new system time zone: {TimezoneManager.get_system_timezone()} ]")
-            return True
-            
+            return 'Success'
+
         except Exception as e:
             logger.error(f"error setting system time zone\n\t{e}")
-            return False
+            return f"{e}"
 
 
     @staticmethod
