@@ -101,7 +101,18 @@ class SettingsHandler(BaseHandler):
 class TimezoneUIProvider(BaseHandler):
     def get(self):
         self.write(TimezoneManager.get_UI_timezones())
+    
+    def post(self):
+        try:
+            new_timezone = self.request.body.decode('utf_8')
+            print(f"time zone received: {new_timezone}")
+            TimezoneManager.update_timezone(new_timezone)
+        except Exception as e:
+            logger.error(f"Failed setting the new timezone\n\t{e}")
+            self.set_status(400)
+            self.write(
+                {"status": "error", "error": "failed to set new timezone", "cause": f"{e}"}
+            )
 
 API.register_handler(APIVersion.V1, r"/settings/*", SettingsHandler),
-API.register_handler(APIVersion.V1, r"/settings/UI_timezones", TimezoneUIProvider),
-
+API.register_handler(APIVersion.V1, r"/settings/timezones", TimezoneUIProvider),
