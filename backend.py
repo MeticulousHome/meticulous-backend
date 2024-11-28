@@ -324,8 +324,8 @@ def main():
     ProfileManager.init(sio)
     ShotManager.init()
     SoundPlayer.init(emulation=Machine.emulated)
-    
-    #Check for mapped timezones json
+
+    # Check for mapped timezones json
     TimezoneManager.init()
 
     MeticulousConfig.setSIO(sio)
