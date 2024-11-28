@@ -153,5 +153,5 @@ class TimezoneUIProvider(BaseHandler):
         self.write({"status": f"{status}"})
 
 
-API.register_handler(APIVersion.V1, r"/settings/*", SettingsHandler),
+API.register_handler(APIVersion.V1, r"/settings/(.*)", SettingsHandler),
 API.register_handler(APIVersion.V1, r"/settings/timezones/(.*)", TimezoneUIProvider),
