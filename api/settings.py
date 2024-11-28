@@ -135,11 +135,10 @@ class TimezoneUIProvider(BaseHandler):
         IP_GETTER_URL = "https://analytics.meticulousespresso.com/timezone_ip"
 
         try:
-            from requests.models import Response
             import requests
 
             IP_response = requests.get(IP_GETTER_URL)
-            print(IP_response.raw)
+            print(IP_response._content)
 
         except Exception as e:
             print("failed getting IP address")
