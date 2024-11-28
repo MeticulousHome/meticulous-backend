@@ -100,49 +100,58 @@ class SettingsHandler(BaseHandler):
 
 
 class TimezoneUIProvider(BaseHandler):
-    def get(self):
-        self.write(TimezoneManager.get_UI_timezones())
 
-    def post(self):
+    __timezone_map: dict = {}
+    def get(self, region_type=None):
+        if region_type == None or region_type == '':
+            region_type = 'countries'
         try:
-            new_timezone = self.request.body.decode("utf_8")
-            status = TimezoneManager.update_timezone(new_timezone)
-            if status == "Success":
-                self.set_status(200)
-                self.write({"status": "Success"})
-            else:
-                self.set_status(400)
-                self.write(
-                    {
-                        "status": "error",
-                        "error": "failed to set new timezone",
-                        "cause": f"{status}",
-                    }
-                )
-
-        except Exception as e:
-            logger.error(f"Failed setting the new timezone\n\t{e}")
-            self.set_status(400)
+            conditional = self.request.body.decode("utf_8")
+        except UnicodeDecodeError :
+            self.set_status(403)
             self.write(
-                {
-                    "status": "error",
-                    "error": "failed to set new timezone",
-                    "cause": f"{e}",
-                }
+                {"status": "error", "error": "String cannot be decoded"}
             )
-    
-    def put(self):
-        IP_GETTER_URL = "https://analytics.meticulousespresso.com/timezone_ip"
+            return
+        
+        if not self.__timezone_map:
+            self.__timezone_map = TimezoneManager.get_UI_timezones()
+        
+        return_array : list[str] = []
+        error = ''
+        match region_type:
+            case "countries":
+                return_array = [country for country in self.__timezone_map.keys() if country.lower().startswith(conditional)]
+            case "cities" :
+                cities_in_country : dict = self.__timezone_map.get(conditional)
+                if cities_in_country != None:
+                    return_array = [{city:cities_in_country.get(city)} for city in cities_in_country.keys()]
+                else:
+                    error = 'invalid country requested'
+            case _:
+                error = 'invalid region type requested'
 
-        try:
-            import requests
+        self.set_status(200 if error == '' else 403)
+        self.write(
+            {f"{region_type}": return_array} if error == '' else {"status": "error", "error": f"{error}"}
+        )
 
-            IP_response = requests.get(IP_GETTER_URL)
-            print(IP_response._content)
+    def post(self,setting_type=''):
+        status = ''
+        if setting_type == 'automatic':
+            status = TimezoneManager.request_and_sync_tz()
+        else:
+            try:
+                new_timezone = self.request.body.decode("utf_8")
+                status = TimezoneManager.update_timezone(new_timezone)
 
-        except Exception as e:
-            print("failed getting IP address")
+            except UnicodeDecodeError as e:
+                logger.error(f"Failed setting the new timezone\n\t{e}")
+                status = f"failed to set new timezone: {e}"
+
+        self.set_status(200 if status == 'Success' else 400)
+        self.write({"status": f"{status}"})
 
 
 API.register_handler(APIVersion.V1, r"/settings/*", SettingsHandler),
-API.register_handler(APIVersion.V1, r"/settings/timezones", TimezoneUIProvider),
+API.register_handler(APIVersion.V1, r"/settings/timezones/(.*)", TimezoneUIProvider),

@@ -230,3 +230,31 @@ class TimezoneManager:
                 "Json file for UI timezones does not exist and could not be created"
             )
             return {}
+
+    #TODO: Make async task --vvvv--
+    @staticmethod
+    def request_and_sync_tz() -> str:
+        TZ_GETTER_URL = "https://analytics.meticulousespresso.com/timezone_ip"
+        MAX_RETRIES = 10
+        try_number = 0
+
+        try:
+            import requests
+
+            IP_response = requests.get(TZ_GETTER_URL)
+            while(IP_response.status_code != 200):
+                IP_response = requests.get(TZ_GETTER_URL)
+                if(try_number >= MAX_RETRIES):
+                    break
+                try_number+=1
+
+            if(IP_response.status_code == 200):
+                tz = json.loads(IP_response.content).get("tz")
+                if tz is not None:
+                    print(tz)
+                    return TimezoneManager.update_timezone(tz)
+            else:
+                return "error fetching timezone"
+
+        except Exception as e:
+            return f"error fetching time zone: {e}"
