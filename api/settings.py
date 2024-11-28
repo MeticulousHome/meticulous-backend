@@ -106,7 +106,7 @@ class TimezoneUIProvider(BaseHandler):
         if region_type == None or region_type == '':
             region_type = 'countries'
         try:
-            conditional = self.request.body.decode("utf_8")
+            conditional_filter = self.get_argument("filter", "")
         except UnicodeDecodeError :
             self.set_status(403)
             self.write(
@@ -121,9 +121,9 @@ class TimezoneUIProvider(BaseHandler):
         error = ''
         match region_type:
             case "countries":
-                return_array = [country for country in self.__timezone_map.keys() if country.lower().startswith(conditional)]
+                return_array = [country for country in self.__timezone_map.keys() if country.lower().startswith(conditional_filter)]
             case "cities" :
-                cities_in_country : dict = self.__timezone_map.get(conditional)
+                cities_in_country : dict = self.__timezone_map.get(conditional_filter)
                 if cities_in_country != None:
                     return_array = [{city:cities_in_country.get(city)} for city in cities_in_country.keys()]
                 else:
