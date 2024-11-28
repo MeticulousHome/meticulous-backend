@@ -18,6 +18,7 @@ from timezone_manager import TimezoneManager
 
 logger = MeticulousLogger.getLogger(__name__)
 
+
 class SettingsHandler(BaseHandler):
     def get(self, setting_name=None):
         if setting_name:
@@ -101,28 +102,35 @@ class SettingsHandler(BaseHandler):
 class TimezoneUIProvider(BaseHandler):
     def get(self):
         self.write(TimezoneManager.get_UI_timezones())
-    
+
     def post(self):
         try:
-            new_timezone = self.request.body.decode('utf_8')
-            status = TimezoneManager.update_timezone(new_timezone) 
-            if status == 'Success':
+            new_timezone = self.request.body.decode("utf_8")
+            status = TimezoneManager.update_timezone(new_timezone)
+            if status == "Success":
                 self.set_status(200)
-                self.write(
-                    {"status": "Success"}
-                )
+                self.write({"status": "Success"})
             else:
                 self.set_status(400)
                 self.write(
-                    {"status": "error", "error": "failed to set new timezone", "cause": f"{status}"}
+                    {
+                        "status": "error",
+                        "error": "failed to set new timezone",
+                        "cause": f"{status}",
+                    }
                 )
 
         except Exception as e:
             logger.error(f"Failed setting the new timezone\n\t{e}")
             self.set_status(400)
             self.write(
-                {"status": "error", "error": "failed to set new timezone", "cause": f"{e}"}
+                {
+                    "status": "error",
+                    "error": "failed to set new timezone",
+                    "cause": f"{e}",
+                }
             )
+
 
 API.register_handler(APIVersion.V1, r"/settings/*", SettingsHandler),
 API.register_handler(APIVersion.V1, r"/settings/timezones", TimezoneUIProvider),
