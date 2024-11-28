@@ -267,7 +267,9 @@ class ShotData:
     state: str = ""
     is_extracting: bool = False
 
-    main_controller_kind: ControlTypes = None  # {"Flow","Pressure","Piston","Power"}
+    main_controller_kind: ControlTypes = (
+        None  # {"Flow","Pressure","Piston","Power", "Temperature"}
+    )
     main_setpoint: float = -1
     aux_controller_kind: ControlTypes = None  # {"Flow","Pressure","Power"}
     aux_setpoint: float = -1
@@ -343,7 +345,9 @@ class ShotData:
         return data
 
     def to_sio(self):
-        setpoints = {}
+        setpoints = {
+            "active": None,
+        }
 
         if self.main_controller_kind is not None:
             setpoints[self.main_controller_kind.lower()] = self.main_setpoint
