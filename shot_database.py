@@ -53,7 +53,7 @@ class SearchOrderBy(str, Enum):
 
 class SearchParams(BaseModel):
     query: Optional[str] = None
-    ids: List[int] = Field(default_factory=list)
+    ids: List[str | int] = Field(default_factory=list)
     start_date: Optional[float] = None
     end_date: Optional[float] = None
     order_by: List[SearchOrderBy] = [SearchOrderBy.date]
@@ -405,6 +405,7 @@ class ShotDataBase:
                 or_(
                     ShotDataBase.history_table.c.id.in_(params.ids),
                     ShotDataBase.history_table.c.uuid.in_(params.ids),
+                    ShotDataBase.profile_table.c.id.in_(params.ids),
                 )
             )
 
