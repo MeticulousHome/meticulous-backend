@@ -67,42 +67,36 @@ class SettingsHandler(BaseHandler):
                             )
                             MeticulousConfig.load()
                             return
-                match setting_name:
-                    case TIMEZONE_SYNC.strip() :
-                        if value == "automatic":
-                            TimezoneManager.request_and_sync_tz()
+                if setting_name == TIMEZONE_SYNC:
+                    if value == "automatic":
+                        TimezoneManager.request_and_sync_tz()
+                if setting_name == TIME_ZONE:
+                    try:
+                        new_timezone = self.request.body.decode("utf_8")
+                        status = TimezoneManager.update_timezone(new_timezone)
 
-                    case TIME_ZONE.strip() :
-                        try:
-                            new_timezone = self.request.body.decode("utf_8")
-                            status = TimezoneManager.update_timezone(new_timezone)
+                    except UnicodeDecodeError as e:
+                        logger.error(f"Failed setting the new timezone\n\t{e}")
+                        status = f"failed to set new timezone: {e}"
 
-                        except UnicodeDecodeError as e:
-                            logger.error(f"Failed setting the new timezone\n\t{e}")
-                            status = f"failed to set new timezone: {e}"
+                    self.set_status(200 if status == 'Success' else 400)
+                    self.write({"status": f"{status}"})
 
-                        self.set_status(200 if status == 'Success' else 400)
-                        self.write({"status": f"{status}"})
-
-                    case MACHINE_HEATING_TIMEOUT.strip() :
-                        try:
-                            HeaterActuator.set_timeout(value)
-                        except ValueError as e:
-                            error_message = str(e)
-                            logger.warning(f"Invalid heater timeout value: {error_message}")
-                            self.set_status(400)
-                            self.write(
-                                {
-                                    "status": "error",
-                                    "error": "invalid heater timeout value",
-                                    "details": error_message,
-                                }
-                            )
-                            return
-                    case _:
-                        pass
-
-
+                if setting_name == MACHINE_HEATING_TIMEOUT:
+                    try:
+                        HeaterActuator.set_timeout(value)
+                    except ValueError as e:
+                        error_message = str(e)
+                        logger.warning(f"Invalid heater timeout value: {error_message}")
+                        self.set_status(400)
+                        self.write(
+                            {
+                                "status": "error",
+                                "error": "invalid heater timeout value",
+                                "details": error_message,
+                            }
+                        )
+                        return
                 MeticulousConfig[CONFIG_USER][setting_name] = value
             else:
                 self.set_status(404)
