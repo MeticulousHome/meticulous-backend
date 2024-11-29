@@ -5,7 +5,10 @@ from config import (
     MeticulousConfig,
     UPDATE_CHANNEL,
     MACHINE_HEATING_TIMEOUT,
+    TIMEZONE_SYNC,
+    TIME_ZONE,
 )
+
 from heater_actuator import HeaterActuator
 
 from .base_handler import BaseHandler
@@ -53,33 +56,52 @@ class SettingsHandler(BaseHandler):
             setting = MeticulousConfig[CONFIG_USER].get(setting_name)
             if setting is not None:
                 if type(value) is not type(setting):
-                    self.set_status(404)
-                    self.write(
-                        {
-                            "status": "error",
-                            "error": "setting value invalidm, expected boolean",
-                            "setting": setting_name,
-                            "value": value,
-                        }
-                    )
-                    MeticulousConfig.load()
-                    return
+                            self.set_status(404)
+                            self.write(
+                                {
+                                    "status": "error",
+                                    "error": "setting value invalidm, expected boolean",
+                                    "setting": setting_name,
+                                    "value": value,
+                                }
+                            )
+                            MeticulousConfig.load()
+                            return
+                match setting_name:
+                    case TIMEZONE_SYNC.strip() :
+                        if value == "automatic":
+                            TimezoneManager.request_and_sync_tz()
 
-                if setting_name == MACHINE_HEATING_TIMEOUT:
-                    try:
-                        HeaterActuator.set_timeout(value)
-                    except ValueError as e:
-                        error_message = str(e)
-                        logger.warning(f"Invalid heater timeout value: {error_message}")
-                        self.set_status(400)
-                        self.write(
-                            {
-                                "status": "error",
-                                "error": "invalid heater timeout value",
-                                "details": error_message,
-                            }
-                        )
-                        return
+                    case TIME_ZONE.strip() :
+                        try:
+                            new_timezone = self.request.body.decode("utf_8")
+                            status = TimezoneManager.update_timezone(new_timezone)
+
+                        except UnicodeDecodeError as e:
+                            logger.error(f"Failed setting the new timezone\n\t{e}")
+                            status = f"failed to set new timezone: {e}"
+
+                        self.set_status(200 if status == 'Success' else 400)
+                        self.write({"status": f"{status}"})
+
+                    case MACHINE_HEATING_TIMEOUT.strip() :
+                        try:
+                            HeaterActuator.set_timeout(value)
+                        except ValueError as e:
+                            error_message = str(e)
+                            logger.warning(f"Invalid heater timeout value: {error_message}")
+                            self.set_status(400)
+                            self.write(
+                                {
+                                    "status": "error",
+                                    "error": "invalid heater timeout value",
+                                    "details": error_message,
+                                }
+                            )
+                            return
+                    case _:
+                        pass
+
 
                 MeticulousConfig[CONFIG_USER][setting_name] = value
             else:
@@ -136,21 +158,21 @@ class TimezoneUIProvider(BaseHandler):
             {f"{region_type}": return_array} if error == '' else {"status": "error", "error": f"{error}"}
         )
 
-    def post(self,setting_type=''):
-        status = ''
-        if setting_type == 'automatic':
-            status = TimezoneManager.request_and_sync_tz()
-        else:
-            try:
-                new_timezone = self.request.body.decode("utf_8")
-                status = TimezoneManager.update_timezone(new_timezone)
+    # def post(self,setting_type=''):
+    #     status = ''
+    #     if setting_type == 'automatic':
+    #         status = TimezoneManager.request_and_sync_tz()
+    #     else:
+    #         try:
+    #             new_timezone = self.request.body.decode("utf_8")
+    #             status = TimezoneManager.update_timezone(new_timezone)
 
-            except UnicodeDecodeError as e:
-                logger.error(f"Failed setting the new timezone\n\t{e}")
-                status = f"failed to set new timezone: {e}"
+    #         except UnicodeDecodeError as e:
+    #             logger.error(f"Failed setting the new timezone\n\t{e}")
+    #             status = f"failed to set new timezone: {e}"
 
-        self.set_status(200 if status == 'Success' else 400)
-        self.write({"status": f"{status}"})
+    #     self.set_status(200 if status == 'Success' else 400)
+    #     self.write({"status": f"{status}"})
 
 
 API.register_handler(APIVersion.V1, r"/settings/(.*)", SettingsHandler),
