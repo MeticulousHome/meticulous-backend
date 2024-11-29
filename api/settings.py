@@ -72,7 +72,7 @@ class SettingsHandler(BaseHandler):
                         TimezoneManager.request_and_sync_tz()
                 if setting_name == TIME_ZONE:
                     try:
-                        new_timezone = self.request.body.decode("utf_8")
+                        new_timezone = self.request.body.decode("utf_8").get("time_zone")
                         status = TimezoneManager.update_timezone(new_timezone)
 
                     except UnicodeDecodeError as e:
