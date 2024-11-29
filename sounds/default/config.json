@@ -1,9 +1,9 @@
 {
-    "startup": {},
+    "startup": "startup.mp3",
     "heating_start": {},
     "heating_end": "heating_end.mp3",
-    "brewing_start": {},
-    "brewing_end": {},
+    "brewing_start": "event_start.mp3",
+    "brewing_end": "event_finished.mp3",
     "abort": {},
     "idle": {},
     "notification": "notification.mp3"
