@@ -68,7 +68,7 @@ class SettingsHandler(BaseHandler):
                             MeticulousConfig.load()
                             return
                 if setting_name == TIMEZONE_SYNC:
-                    if value == "automatic":
+                    if value == "automatic" and MeticulousConfig[CONFIG_USER][TIMEZONE_SYNC] != "automatic":
                         TimezoneManager.request_and_sync_tz()
                 if setting_name == TIME_ZONE:
                     try:
