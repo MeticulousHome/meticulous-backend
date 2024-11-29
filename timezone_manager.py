@@ -4,7 +4,7 @@ import subprocess
 from log import MeticulousLogger
 from config import (
     MeticulousConfig,
-    CONFIG_SYSTEM,
+    CONFIG_USER,
     TIME_ZONE,
 )
 
@@ -23,24 +23,24 @@ class TimezoneManager:
         TimezoneManager.__system_timezone = TimezoneManager.get_system_timezone()
 
         if (
-            MeticulousConfig[CONFIG_SYSTEM][TIME_ZONE]
+            MeticulousConfig[CONFIG_USER][TIME_ZONE]
             != TimezoneManager.__system_timezone
         ):
-            MeticulousConfig[CONFIG_SYSTEM][
+            MeticulousConfig[CONFIG_USER][
                 TIME_ZONE
             ] = TimezoneManager.__system_timezone
             logger.warning(
-                f"user config and system timezones confilct, updating user config to {MeticulousConfig[CONFIG_SYSTEM][TIME_ZONE]}"
+                f"user config and system timezones confilct, updating user config to {MeticulousConfig[CONFIG_USER][TIME_ZONE]}"
             )
             MeticulousConfig.save()
 
     @staticmethod
     def update_timezone(new_timezone: str) -> str:
 
-        if MeticulousConfig[CONFIG_SYSTEM][TIME_ZONE] != new_timezone:
+        if MeticulousConfig[CONFIG_USER][TIME_ZONE] != new_timezone:
             SUCCESS = TimezoneManager.set_system_timezone(new_timezone)
             if SUCCESS:
-                MeticulousConfig[CONFIG_SYSTEM][TIME_ZONE] = new_timezone.rstrip(
+                MeticulousConfig[CONFIG_USER][TIME_ZONE] = new_timezone.rstrip(
                     '"'
                 ).lstrip('"')
                 MeticulousConfig.save()
@@ -95,14 +95,12 @@ class TimezoneManager:
 
             if len(cmd_result.stderr) > 0:
                 logger.error("error getting system time zone, using last saved by user")
-                return MeticulousConfig[CONFIG_SYSTEM][TIME_ZONE]
 
             system_timezone = cmd_result.stdout.lstrip().rstrip()
             return system_timezone
 
         except Exception:
             logger.error("error getting system time zone, using last saved by user")
-            return MeticulousConfig[CONFIG_SYSTEM][TIME_ZONE]
 
     @staticmethod
     def validate_timezones_json():
