@@ -1,8 +1,7 @@
 from enum import Enum, auto
 import os
 import json
-
-# from playsound import playsound
+from play_sound import playsound
 import subprocess
 
 from log import MeticulousLogger
@@ -168,10 +167,7 @@ class SoundPlayer:
         logger.info(f"Playing {sound_name} from {file_path}")
 
         try:
-            logger.warning(
-                f"No playing sound {file_path}. All sounds are disable to debug memory leaks!"
-            )
-            # playsound(file_path, block=False)
+            playsound(file_path, block=False)
         except Exception as e:
             logger.exception(f"Failed to play sound: {e}")
             return False
