@@ -41,7 +41,7 @@ class SettingsHandler(BaseHandler):
         else:
             self.write(json.dumps(MeticulousConfig[CONFIG_USER]))
 
-    def post(self):
+    def post(self, setting_name=None):
         try:
             settings = json.loads(self.request.body)
         except json.decoder.JSONDecodeError as e:
