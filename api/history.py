@@ -117,9 +117,9 @@ class HistoryHandler(BaseHandler):
         try:
             data = json.loads(self.request.body)
             params = SearchParams(**data)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
             self.set_status(400)
-            self.write({"error": "Invalid JSON"})
+            self.write({"error": "Invalid JSON", "details": str(e)})
             return
         except ValidationError as e:
             self.set_status(422)
