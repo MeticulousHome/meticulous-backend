@@ -1,8 +1,10 @@
 FROM python:3.12-bookworm
 
 RUN apt update
+RUN apt-get update -y
 RUN apt dist-upgrade -y
-RUN apt install -y libcairo2-dev libxt-dev libgirepository1.0-dev libgstreamer1.0-dev
+RUN apt install -y libcairo2-dev libxt-dev libgirepository1.0-dev libgstreamer1.0-dev bluez
+RUN apt-get install -y dbus systemd
 
 ENV PATH=/root/.cargo/bin:$PATH
 
@@ -23,4 +25,7 @@ WORKDIR /app
 # FIXME use src-layout
 COPY . .
 
-CMD ["/opt/venv/bin/python3", "back.py"]
+RUN mkdir /run/dbus
+RUN chmod +x /app/start_container.sh
+
+CMD ["/bin/bash", "/app/start_container.sh"]
