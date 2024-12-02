@@ -59,8 +59,6 @@ class AsyncDBUSClient(object):
         for subscription in self.signal_subscriptions:
             self.system_bus.signal_unsubscribe(subscription)
 
-        self.dbus_event_task.cancel()
-
     def on_dbus_event(self, *args):
         """Generic sync callback for all DBUS events."""
         self.dbus_events.put_nowait(args)
