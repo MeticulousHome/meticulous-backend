@@ -1,4 +1,4 @@
-FROM python:3.12-bullseye
+FROM python:3.12-bookworm
 
 RUN apt update
 RUN apt dist-upgrade -y
