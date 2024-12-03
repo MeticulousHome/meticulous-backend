@@ -123,9 +123,12 @@ class MachineInfoHandler(BaseHandler):
         if Machine.esp_info is not None:
             response["firmware"] = Machine.esp_info.firmwareV
 
-        response["serial"] = ""
-        if MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER] is not None:
-            response["serial"] = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
+        serial = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
+        if serial is None or serial == "":
+            serial = Machine.generate_random_serial()
+            MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER] = serial
+            MeticulousConfig.save()
+        response["serial"] = serial
 
         response["color"] = ""
         if MeticulousConfig[CONFIG_SYSTEM][MACHINE_COLOR] is not None:
