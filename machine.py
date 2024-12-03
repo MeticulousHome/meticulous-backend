@@ -80,6 +80,19 @@ class Machine:
 
     is_idle = True
 
+    @staticmethod
+    def generate_random_serial():
+        """
+        Generates a random serial number when none is assigned.
+        Format: 999XXXXX where X are random digits.
+        Returns: String with format '999' followed by 5 random digits
+        """
+        import random
+        import string
+
+        random_digits = "".join(random.choices(string.digits, k=5))
+        return f"999{random_digits}"
+
     def check_machine_alive():
         if not Machine.infoReady:
             if MeticulousConfig[CONFIG_USER][DISALLOW_FIRMWARE_FLASHING]:
