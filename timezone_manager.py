@@ -26,9 +26,7 @@ class TimezoneManager:
             MeticulousConfig[CONFIG_USER][TIME_ZONE]
             != TimezoneManager.__system_timezone
         ):
-            MeticulousConfig[CONFIG_USER][
-                TIME_ZONE
-            ] = TimezoneManager.__system_timezone
+            MeticulousConfig[CONFIG_USER][TIME_ZONE] = TimezoneManager.__system_timezone
             logger.warning(
                 f"user config and system timezones confilct, updating user config to {MeticulousConfig[CONFIG_USER][TIME_ZONE]}"
             )
@@ -229,7 +227,7 @@ class TimezoneManager:
             )
             return {}
 
-    #TODO: Make async task --vvvv--
+    # TODO: Make async task --vvvv--
     @staticmethod
     def request_and_sync_tz() -> str:
         TZ_GETTER_URL = "https://analytics.meticulousespresso.com/timezone_ip"
@@ -240,13 +238,13 @@ class TimezoneManager:
             import requests
 
             IP_response = requests.get(TZ_GETTER_URL)
-            while(IP_response.status_code != 200):
+            while IP_response.status_code != 200:
                 IP_response = requests.get(TZ_GETTER_URL)
-                if(try_number >= MAX_RETRIES):
+                if try_number >= MAX_RETRIES:
                     break
-                try_number+=1
+                try_number += 1
 
-            if(IP_response.status_code == 200):
+            if IP_response.status_code == 200:
                 tz = json.loads(IP_response.content).get("tz")
                 if tz is not None:
                     print(tz)

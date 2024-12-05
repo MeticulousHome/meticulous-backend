@@ -56,19 +56,22 @@ class SettingsHandler(BaseHandler):
             setting = MeticulousConfig[CONFIG_USER].get(setting_name)
             if setting is not None:
                 if type(value) is not type(setting):
-                            self.set_status(404)
-                            self.write(
-                                {
-                                    "status": "error",
-                                    "error": "setting value invalidm, expected boolean",
-                                    "setting": setting_name,
-                                    "value": value,
-                                }
-                            )
-                            MeticulousConfig.load()
-                            return
+                    self.set_status(404)
+                    self.write(
+                        {
+                            "status": "error",
+                            "error": "setting value invalidm, expected boolean",
+                            "setting": setting_name,
+                            "value": value,
+                        }
+                    )
+                    MeticulousConfig.load()
+                    return
                 if setting_name == TIMEZONE_SYNC:
-                    if value == "automatic" and MeticulousConfig[CONFIG_USER][TIMEZONE_SYNC] != "automatic":
+                    if (
+                        value == "automatic"
+                        and MeticulousConfig[CONFIG_USER][TIMEZONE_SYNC] != "automatic"
+                    ):
                         TimezoneManager.request_and_sync_tz()
                 if setting_name == TIME_ZONE:
                     try:
@@ -78,7 +81,7 @@ class SettingsHandler(BaseHandler):
                         logger.error(f"Failed setting the new timezone\n\t{e}")
                         status = f"failed to set new timezone: {e}"
 
-                    self.set_status(200 if status == 'Success' else 400)
+                    self.set_status(200 if status == "Success" else 400)
                     self.write({"status": f"{status}"})
 
                 if setting_name == MACHINE_HEATING_TIMEOUT:
@@ -117,55 +120,47 @@ class SettingsHandler(BaseHandler):
 class TimezoneUIProvider(BaseHandler):
 
     __timezone_map: dict = {}
+
     def get(self, region_type=None):
-        if region_type == None or region_type == '':
-            region_type = 'countries'
+        if region_type is None or region_type == "":
+            region_type = "countries"
         try:
             conditional_filter = self.get_argument("filter", "")
-        except UnicodeDecodeError :
+        except UnicodeDecodeError:
             self.set_status(403)
-            self.write(
-                {"status": "error", "error": "String cannot be decoded"}
-            )
+            self.write({"status": "error", "error": "String cannot be decoded"})
             return
-        
+
         if not self.__timezone_map:
             self.__timezone_map = TimezoneManager.get_UI_timezones()
-        
-        return_array : list[str] = []
-        error = ''
+
+        return_array: list[str] = []
+        error = ""
         match region_type:
             case "countries":
-                return_array = [country for country in self.__timezone_map.keys() if country.lower().startswith(conditional_filter)]
-            case "cities" :
-                cities_in_country : dict = self.__timezone_map.get(conditional_filter)
-                if cities_in_country != None:
-                    return_array = [{city:cities_in_country.get(city)} for city in cities_in_country.keys()]
+                return_array = [
+                    country
+                    for country in self.__timezone_map.keys()
+                    if country.lower().startswith(conditional_filter)
+                ]
+            case "cities":
+                cities_in_country: dict = self.__timezone_map.get(conditional_filter)
+                if cities_in_country is not None:
+                    return_array = [
+                        {city: cities_in_country.get(city)}
+                        for city in cities_in_country.keys()
+                    ]
                 else:
-                    error = 'invalid country requested'
+                    error = "invalid country requested"
             case _:
-                error = 'invalid region type requested'
+                error = "invalid region type requested"
 
-        self.set_status(200 if error == '' else 403)
+        self.set_status(200 if error == "" else 403)
         self.write(
-            {f"{region_type}": return_array} if error == '' else {"status": "error", "error": f"{error}"}
+            {f"{region_type}": return_array}
+            if error == ""
+            else {"status": "error", "error": f"{error}"}
         )
-
-    # def post(self,setting_type=''):
-    #     status = ''
-    #     if setting_type == 'automatic':
-    #         status = TimezoneManager.request_and_sync_tz()
-    #     else:
-    #         try:
-    #             new_timezone = self.request.body.decode("utf_8")
-    #             status = TimezoneManager.update_timezone(new_timezone)
-
-    #         except UnicodeDecodeError as e:
-    #             logger.error(f"Failed setting the new timezone\n\t{e}")
-    #             status = f"failed to set new timezone: {e}"
-
-    #     self.set_status(200 if status == 'Success' else 400)
-    #     self.write({"status": f"{status}"})
 
 
 API.register_handler(APIVersion.V1, r"/settings/(.*)", SettingsHandler),
