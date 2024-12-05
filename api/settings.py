@@ -185,5 +185,5 @@ class TimezoneUIProvider(BaseHandler):
         )
 
 
-API.register_handler(APIVersion.V1, r"/settings/*", SettingsHandler),
+API.register_handler(APIVersion.V1, r"/settings/(.*)", SettingsHandler),
 API.register_handler(APIVersion.V1, r"/timezones/(.*)", TimezoneUIProvider),
