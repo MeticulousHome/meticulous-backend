@@ -357,14 +357,20 @@ class ShotData:
             if self.is_aux_controller_active:
                 setpoints["active"] = self.aux_controller_kind.lower()
 
+        # Create sensors dictionary with base data
+        sensors = {
+            "p": self.pressure,
+            "f": self.flow,
+            "w": self.weight,
+        }
+
+        # Only include temperature if status is heating
+        if self.status == MachineStatus.HEATING:
+            sensors["t"] = self.temperature
+
         data = {
             "name": self.status,
-            "sensors": {
-                "p": self.pressure,
-                "f": self.flow,
-                "w": self.weight,
-                "t": self.temperature,
-            },
+            "sensors": sensors,
             "setpoints": setpoints,
             "time": self.time,
             "profile": self.profile,
