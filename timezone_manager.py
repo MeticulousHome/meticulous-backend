@@ -47,8 +47,6 @@ class TimezoneManager:
     @staticmethod
     def set_system_timezone(new_timezone: str) -> str:
         try:
-            import subprocess
-
             command = f"timedatectl set-timezone {new_timezone}"
             cmd_result = subprocess.run(
                 command,
@@ -77,8 +75,6 @@ class TimezoneManager:
     def get_system_timezone():
         system_timezone = ""
         try:
-            import subprocess
-
             command = (
                 "timedatectl status | grep 'Time zone' | awk -F'[:()]' '{print $2}'"
             )
