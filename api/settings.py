@@ -54,29 +54,29 @@ class SettingsHandler(BaseHandler):
             )
             return
 
-        for setting_name in settings:
-            value = settings.get(setting_name)
-            setting = MeticulousConfig[CONFIG_USER].get(setting_name)
+        for setting_target in settings:
+            value = settings.get(setting_target)
+            setting = MeticulousConfig[CONFIG_USER].get(setting_target)
             if setting is not None:
                 if type(value) is not type(setting):
                     self.set_status(404)
                     self.write(
                         {
                             "status": "error",
-                            "error": "setting value invalidm, expected boolean",
-                            "setting": setting_name,
+                            "error": f"setting value invalid, expected {type(setting)}",
+                            "setting": setting_target,
                             "value": value,
                         }
                     )
                     MeticulousConfig.load()
                     return
-                if setting_name == TIMEZONE_SYNC:
+                if setting_target == TIMEZONE_SYNC:
                     if (
                         value == "automatic"
                         and MeticulousConfig[CONFIG_USER][TIMEZONE_SYNC] != "automatic"
                     ):
                         TimezoneManager.request_and_sync_tz()
-                if setting_name == TIME_ZONE:
+                if setting_target == TIME_ZONE:
                     try:
                         status = TimezoneManager.update_timezone(value)
 
@@ -86,8 +86,9 @@ class SettingsHandler(BaseHandler):
 
                     self.set_status(200 if status == "Success" else 400)
                     self.write({"status": f"{status}"})
+                    return
 
-                if setting_name == MACHINE_HEATING_TIMEOUT:
+                if setting_target == MACHINE_HEATING_TIMEOUT:
                     try:
                         HeaterActuator.set_timeout(value)
                     except ValueError as e:
@@ -105,7 +106,7 @@ class SettingsHandler(BaseHandler):
 
                 MeticulousConfig[CONFIG_USER][setting_name] = value
 
-                if setting_name == USB_MODE:
+                if setting_target == USB_MODE:
                     try:
                         USB_MODES(value)
                         USBManager.setUSBMode()
@@ -128,10 +129,10 @@ class SettingsHandler(BaseHandler):
                     {
                         "status": "error",
                         "error": "setting not found",
-                        "setting": setting_name,
+                        "setting": setting_target,
                     }
                 )
-                logger.info(f"Setting not found: {setting_name}")
+                logger.info(f"Setting not found: {setting_target}")
                 MeticulousConfig.load()
                 return
         MeticulousConfig.save()
