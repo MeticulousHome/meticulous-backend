@@ -41,7 +41,7 @@ class SettingsHandler(BaseHandler):
         else:
             self.write(json.dumps(MeticulousConfig[CONFIG_USER]))
 
-    def post(self, setting_name=None):
+    async def post(self, setting_name=None):
         try:
             settings = json.loads(self.request.body)
         except json.decoder.JSONDecodeError as e:
@@ -68,11 +68,20 @@ class SettingsHandler(BaseHandler):
                     MeticulousConfig.load()
                     return
                 if setting_target == TIMEZONE_SYNC:
+                    status = "Success"
                     if (
                         value == "automatic"
                         and MeticulousConfig[CONFIG_USER][TIMEZONE_SYNC] != "automatic"
                     ):
-                        TimezoneManager.request_and_sync_tz()
+
+                        status = await TimezoneManager.request_and_sync_tz()
+                        logger.debug(f"timezone endpoint status: {status}")
+                    MeticulousConfig[CONFIG_USER][setting_target] = value
+                    MeticulousConfig.save()
+                    self.set_status(200 if status == 'Success' else 400)
+                    self.write({"status": status})
+                    return
+
                 if setting_target == TIME_ZONE:
                     try:
                         status = TimezoneManager.update_timezone(value)
@@ -83,6 +92,7 @@ class SettingsHandler(BaseHandler):
 
                     self.set_status(200 if status == "Success" else 400)
                     self.write({"status": f"{status}"})
+                    MeticulousConfig[CONFIG_USER][setting_target] = value
                     return
 
                 if setting_target == MACHINE_HEATING_TIMEOUT:
