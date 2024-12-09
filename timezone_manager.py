@@ -7,6 +7,7 @@ from config import (
     CONFIG_USER,
     TIME_ZONE,
 )
+import asyncio
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -37,15 +38,18 @@ class TimezoneManager:
 
         if MeticulousConfig[CONFIG_USER][TIME_ZONE] != new_timezone:
             SUCCESS = TimezoneManager.set_system_timezone(new_timezone)
+            logger.debug(f"update timezone status: {SUCCESS}")
             if SUCCESS:
                 MeticulousConfig[CONFIG_USER][TIME_ZONE] = new_timezone.rstrip(
                     '"'
                 ).lstrip('"')
                 MeticulousConfig.save()
             return SUCCESS
+        return "Success"
 
     @staticmethod
     def set_system_timezone(new_timezone: str) -> str:
+        logger.debug("setting system timezone")
         try:
             command = f"timedatectl set-timezone {new_timezone}"
             cmd_result = subprocess.run(
@@ -225,28 +229,58 @@ class TimezoneManager:
 
     # TODO: Make async task --vvvv--
     @staticmethod
-    def request_and_sync_tz() -> str:
-        TZ_GETTER_URL = "https://analytics.meticulousespresso.com/timezone_ip"
-        MAX_RETRIES = 10
-        try_number = 0
+    async def request_and_sync_tz() -> str:
+        
+        async def request_tz_task() -> str :
+            # nonlocal error
+            import aiohttp
+        
+            TZ_GETTER_URL = "https://analytics.meticulousespresso.com/timezone_ip"
+
+            async with aiohttp.ClientSession() as session:
+                while True:  # Retry loop
+                    try:
+                        async with session.get(TZ_GETTER_URL) as response:
+                            if response.status == 200:  # Break on success
+                                str_content = await response.text()
+                                tz = json.loads(str_content).get("tz")
+                                if tz is not None:
+                                    return TimezoneManager.update_timezone(tz)
+                                return "Invalid response from server"
+                            else:
+                                logger.warning(f"timezone fetch failed with status code: {response.status}, re-fetching")
+                    except aiohttp.ClientError as e:
+                        logger.warning(f"Request failed: {e}. Retrying...")
+                
+            # try:
+
+            #     async with aiohttp.ClientSession as client:
+
+            #     IP_response = requests.get(TZ_GETTER_URL)
+            #     while IP_response.status_code != 200:
+            #         IP_response = requests.get(TZ_GETTER_URL)
+            #         logger.warning("requesting tz ...")
+
+            #     if IP_response.status_code == 200:
+            #         tz = json.loads(IP_response.content).get("tz")
+            #         logger.warning("got tz response")
+            #         if tz is not None:
+            #             logger.debug(tz)
+            #             status = TimezoneManager.update_timezone(tz)
+            #             logger.debug(f"status: {status}")
+            #             return status
+            #     else:
+            #         logger.debug("tz request status not 200, error")
+            #         return "error fetching timezone"
+
+            # except Exception as e:
+            #     error = f"error fetching time zone: {e}"
+            #     error = logger.debug(error)
+            #     return error
 
         try:
-            import requests
-
-            IP_response = requests.get(TZ_GETTER_URL)
-            while IP_response.status_code != 200:
-                IP_response = requests.get(TZ_GETTER_URL)
-                if try_number >= MAX_RETRIES:
-                    break
-                try_number += 1
-
-            if IP_response.status_code == 200:
-                tz = json.loads(IP_response.content).get("tz")
-                if tz is not None:
-                    print(tz)
-                    return TimezoneManager.update_timezone(tz)
-            else:
-                return "error fetching timezone"
-
-        except Exception as e:
-            return f"error fetching time zone: {e}"
+            result = ''
+            result = await asyncio.wait_for(request_tz_task(),timeout=30)
+            return result
+        except Exception as e :
+            return f"{e}"    
