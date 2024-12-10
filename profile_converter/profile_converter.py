@@ -81,7 +81,7 @@ class ComplexProfileConverter:
                                 {"kind": "exit", "next_node_id": 1},
                                 {
                                     "kind": "button_trigger",
-                                    "next_node_id": 12,
+                                    "next_node_id": 45,
                                     "gesture": "Single Tap",
                                     "source": "Encoder Button",
                                 },
@@ -126,7 +126,7 @@ class ComplexProfileConverter:
                                 },
                                 {
                                     "kind": "button_trigger",
-                                    "next_node_id": 12,
+                                    "next_node_id": 45,
                                     "gesture": "Single Tap",
                                     "source": "Encoder Button",
                                 },
@@ -166,7 +166,7 @@ class ComplexProfileConverter:
                                 },
                                 {
                                     "kind": "button_trigger",
-                                    "next_node_id": 12,
+                                    "next_node_id": 45,
                                     "gesture": "Single Tap",
                                     "source": "Encoder Button",
                                 },
@@ -216,7 +216,7 @@ class ComplexProfileConverter:
                                 },
                                 {
                                     "kind": "button_trigger",
-                                    "next_node_id": 12,
+                                    "next_node_id": 45,
                                     "gesture": "Single Tap",
                                     "source": "Encoder Button",
                                 },
@@ -264,7 +264,7 @@ class ComplexProfileConverter:
                                 },
                                 {
                                     "kind": "button_trigger",
-                                    "next_node_id": 12,
+                                    "next_node_id": 45,
                                     "gesture": "Single Tap",
                                     "source": "Encoder Button",
                                 },
@@ -281,7 +281,7 @@ class ComplexProfileConverter:
                                     "timer_reference_id": 20,
                                     "operator": ">=",
                                     "value": 1,
-                                    "next_node_id": 12,
+                                    "next_node_id": 45,
                                 }
                             ]
                             if no_skipping
@@ -291,11 +291,11 @@ class ComplexProfileConverter:
                                     "timer_reference_id": 20,
                                     "operator": ">=",
                                     "value": 1,
-                                    "next_node_id": 12,
+                                    "next_node_id": 45,
                                 },
                                 {
                                     "kind": "button_trigger",
-                                    "next_node_id": 12,
+                                    "next_node_id": 45,
                                     "gesture": "Single Tap",
                                     "source": "Encoder Button",
                                 },
@@ -307,6 +307,33 @@ class ComplexProfileConverter:
             {
                 "name": "water detection",
                 "nodes": [
+                    {
+                        "id": 45,
+                        "controllers": [{"kind": "time_reference", "id": 12}],
+                        "triggers": [{"kind": "exit", "next_node_id": 9}],
+                    },
+                    {
+                        "id": 9,
+                        "controllers": [{"kind": "time_reference", "id": 2}],
+                        "triggers": [
+                            {
+                                "kind": "water_detection_trigger",
+                                "next_node_id": 15,
+                                "value": True,
+                            },
+                            {
+                                "kind": "water_detection_trigger",
+                                "next_node_id": 12,
+                                "value": False,
+                            },
+                            {
+                                "kind": "button_trigger",
+                                "next_node_id": 15,
+                                "gesture": "Single Tap",
+                                "source": "Encoder Button",
+                            },
+                        ],
+                    },
                     {
                         "id": 12,
                         "controllers": [
@@ -353,33 +380,6 @@ class ComplexProfileConverter:
                                 },
                             ]
                         ),
-                    },
-                    {
-                        "id": 45,
-                        "controllers": [{"kind": "time_reference", "id": 12}],
-                        "triggers": [{"kind": "exit", "next_node_id": 9}],
-                    },
-                    {
-                        "id": 9,
-                        "controllers": [{"kind": "time_reference", "id": 2}],
-                        "triggers": [
-                            {
-                                "kind": "water_detection_trigger",
-                                "next_node_id": 15,
-                                "value": True,
-                            },
-                            {
-                                "kind": "water_detection_trigger",
-                                "next_node_id": 12,
-                                "value": False,
-                            },
-                            {
-                                "kind": "button_trigger",
-                                "next_node_id": 15,
-                                "gesture": "Single Tap",
-                                "source": "Encoder Button",
-                            },
-                        ],
                     },
                 ],
             },
