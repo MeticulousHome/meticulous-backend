@@ -230,11 +230,11 @@ class TimezoneManager:
     # TODO: Make async task --vvvv--
     @staticmethod
     async def request_and_sync_tz() -> str:
-        
-        async def request_tz_task() -> str :
+
+        async def request_tz_task() -> str:
             # nonlocal error
             import aiohttp
-        
+
             TZ_GETTER_URL = "https://analytics.meticulousespresso.com/timezone_ip"
 
             async with aiohttp.ClientSession() as session:
@@ -249,14 +249,15 @@ class TimezoneManager:
                                     return TimezoneManager.update_timezone(tz)
                                 return "Invalid response from server"
                             else:
-                                logger.warning(f"timezone fetch failed with status code: {response.status}, re-fetching")
+                                logger.warning(
+                                    f"timezone fetch failed with status code: {response.status}, re-fetching"
+                                )
                     except aiohttp.ClientError as e:
                         logger.warning(f"Request failed: {e}. Retrying...")
-                
 
         try:
-            result = ''
-            result = await asyncio.wait_for(request_tz_task(),timeout=20)
+            result = ""
+            result = await asyncio.wait_for(request_tz_task(), timeout=20)
             return result
-        except asyncio.TimeoutError :
-            return f"time out error, server could not be contacted or took too long to answer"    
+        except asyncio.TimeoutError:
+            return "time out error, server could not be contacted or took too long to answer"
