@@ -240,6 +240,7 @@ class TimezoneManager:
             async with aiohttp.ClientSession() as session:
                 while True:  # Retry loop
                     try:
+                        await asyncio.sleep(1)
                         async with session.get(TZ_GETTER_URL) as response:
                             if response.status == 200:  # Break on success
                                 str_content = await response.text()
@@ -280,7 +281,7 @@ class TimezoneManager:
 
         try:
             result = ''
-            result = await asyncio.wait_for(request_tz_task(),timeout=30)
+            result = await asyncio.wait_for(request_tz_task(),timeout=20)
             return result
-        except Exception as e :
-            return f"{e}"    
+        except asyncio.TimeoutError :
+            return f"time out error, server could not be contacted or took too long to answer"    
