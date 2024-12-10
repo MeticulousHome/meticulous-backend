@@ -78,7 +78,7 @@ class SettingsHandler(BaseHandler):
                         logger.debug(f"timezone endpoint status: {status}")
                     MeticulousConfig[CONFIG_USER][setting_target] = value
                     MeticulousConfig.save()
-                    self.set_status(200 if status == 'Success' else 400)
+                    self.set_status(200)
                     self.write({"status": status})
                     return
 
