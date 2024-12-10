@@ -253,31 +253,6 @@ class TimezoneManager:
                     except aiohttp.ClientError as e:
                         logger.warning(f"Request failed: {e}. Retrying...")
                 
-            # try:
-
-            #     async with aiohttp.ClientSession as client:
-
-            #     IP_response = requests.get(TZ_GETTER_URL)
-            #     while IP_response.status_code != 200:
-            #         IP_response = requests.get(TZ_GETTER_URL)
-            #         logger.warning("requesting tz ...")
-
-            #     if IP_response.status_code == 200:
-            #         tz = json.loads(IP_response.content).get("tz")
-            #         logger.warning("got tz response")
-            #         if tz is not None:
-            #             logger.debug(tz)
-            #             status = TimezoneManager.update_timezone(tz)
-            #             logger.debug(f"status: {status}")
-            #             return status
-            #     else:
-            #         logger.debug("tz request status not 200, error")
-            #         return "error fetching timezone"
-
-            # except Exception as e:
-            #     error = f"error fetching time zone: {e}"
-            #     error = logger.debug(error)
-            #     return error
 
         try:
             result = ''
