@@ -363,12 +363,9 @@ class ShotData:
             "p": self.pressure,
             "f": self.flow,
             "w": self.weight,
+            "t": self.temperature,
             "flow_from_scale": self.flow_from_scale,
         }
-
-        # Only include temperature if status is heating
-        if self.status == MachineStatus.HEATING:
-            sensors["t"] = self.temperature
 
         data = {
             "name": self.status,
