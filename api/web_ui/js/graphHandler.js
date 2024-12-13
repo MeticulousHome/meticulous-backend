@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function () {
         window.miscGraph.resetZoom();
     });
 
-    initGraph('thermistorGraph', ['barUp', 'barMiddleUp', 'barMiddleDown', 'barDown', 'external1', 'external2', 'tube', 'valve']);
+    initGraph('thermistorGraph', ['barUp', 'barMiddleUp', 'barMiddleDown', 'barDown', 'external1', 'external2', 'externalAVG',  'tube', 'valve']);
     initGraph('actuatorGraph', ['position', 'speed', 'power', 'current', 'bandHeater_power', 'bandHeater_current']);
     initGraph('adcGraph', ['adc0_rate', 'adc1_rate', 'adc2_rate', 'adc3_rate', 'pressureSensor_rate']);
     initGraph('miscGraph', ['pressureSensor_pressure', 'flowSensor_flow', 'loadcell_weight', 'display_temp', 'set_pressure', 'set_flow', 'set_power', 'set_position']);
@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const therm_down = document.getElementById('therm_down');
     const therm_ext1 = document.getElementById('therm_external1');
     const therm_ext2 = document.getElementById('therm_external2');
+    const externalAVG = document.getElementById('externalAVG');
     const therm_tube = document.getElementById('therm_tube');
     const therm_valve = document.getElementById('therm_valve');
 
@@ -72,6 +73,7 @@ document.addEventListener('DOMContentLoaded', function () {
             barDown: [],
             external1: [],
             external2: [],
+            externalAVG: [],
             tube: [],
             valve: []
         }
@@ -188,6 +190,7 @@ document.addEventListener('DOMContentLoaded', function () {
             barDown: data.t_bar_down,
             external1: data.t_ext_1,
             external2: data.t_ext_2,
+            externalAVG: (data.t_ext_1 + data.t_ext_2) / 2,
             tube: data.t_tube,
             valve: data.t_valv
         })
@@ -198,6 +201,7 @@ document.addEventListener('DOMContentLoaded', function () {
         therm_down.innerText = data.t_bar_down;
         therm_ext1.innerText = data.t_ext_1;
         therm_ext2.innerText = data.t_ext_2;
+        externalAVG.innerText = (data.t_ext_1 + data.t_ext_2) / 2;
         therm_tube.innerText = data.t_tube;
         therm_valve.innerText = data.t_valv;
 
@@ -471,6 +475,7 @@ function randomColor(key) {
         'barDown': orangeDeeperColor,
         'external1': redColor,
         'external2': burgundyColor,
+        'externalAVG': blueColor,
         'tube': tealColor,
         'valve': blueColor,
     };
