@@ -33,7 +33,7 @@ class DebugData:
             "flow": shotData.flow,
             "weight": shotData.weight,
             "temperature": shotData.temperature,
-            "flow_from_scale": shotData.flow_from_scale,
+            "gravimetric_flow": shotData.gravimetric_flow,
             "time": shotData.time,
             "profile_time": time.time() - self.startTime,
             "status": shotData.status,
