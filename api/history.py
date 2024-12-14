@@ -23,7 +23,43 @@ class ZstdHistoryHandler(tornado.web.StaticFileHandler):
     def set_default_headers(self):
         BaseHandler.set_default_headers(self)
 
+    async def get_latest_file(self, directory):
+        """Get the most recent file from the debug history directory."""
+        if not os.path.isdir(directory):
+            raise tornado.web.HTTPError(404)
+
+        latest_file = None
+        latest_timestamp = 0
+
+        # Traverse through year-month-day folders
+        for date_folder in sorted(os.listdir(directory), reverse=True):
+            date_path = os.path.join(directory, date_folder)
+            if not os.path.isdir(date_path):
+                continue
+
+            # Check files in the most recent date folder
+            for filename in sorted(os.listdir(date_path), reverse=True):
+                file_path = os.path.join(date_path, filename)
+                if os.path.isfile(file_path):
+                    timestamp = os.path.getmtime(file_path)
+                    if timestamp > latest_timestamp:
+                        latest_timestamp = timestamp
+                        latest_file = os.path.join(date_folder, filename)
+                        return latest_file
+
+        return latest_file
+
     async def get(self, path):
+        if path == "latest":
+            latest_file = await self.get_latest_file(self.root)
+            if latest_file:
+                # Redirect to the actual file
+                return self.redirect(f"{last_version_path}/history/debug/{latest_file}")
+            else:
+                self.set_status(404)
+                self.write({"status": "error", "error": "No debug history files found"})
+                return
+
         self.set_header("Content-Type", "application/json")
 
         # Check if the path is a directory
