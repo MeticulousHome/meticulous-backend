@@ -70,7 +70,7 @@ class Shot:
                 "pressure": shotData.pressure,
                 "flow": shotData.flow,
                 "weight": shotData.weight,
-                "flow_from_scale": shotData.flow_from_scale,
+                "gravimetric_flow": shotData.gravimetric_flow,
                 "setpoints": shotData.to_sio().get("setPoints", {}),
             },
             "time": shotData.time,

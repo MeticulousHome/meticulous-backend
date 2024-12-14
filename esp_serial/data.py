@@ -262,7 +262,7 @@ class ShotData:
     time: int = -1
     state: str = ""
     is_extracting: bool = False
-    flow_from_scale: float = 0.0
+    gravimetric_flow: float = 0.0
 
     main_controller_kind: ControlTypes = (
         None  # {"Flow","Pressure","Piston","Power", "Temperature"}
@@ -292,7 +292,7 @@ class ShotData:
         aux_controller_kind = None
         aux_setpoint = 0.0
         is_aux_controller_active = False
-        flow_from_scale = 0.0
+        gravimetric_flow = 0.0
 
         if len(args) > 11:
             try:
@@ -307,7 +307,7 @@ class ShotData:
 
                 aux_setpoint = float(args[9].strip("\r\n"))
                 is_aux_controller_active = args[10].strip("\r\n") == "true"
-                flow_from_scale = safe_float_with_nan(args[11])
+                gravimetric_flow = safe_float_with_nan(args[11])
             except Exception as e:
                 logger.warning(f"Failed to parse ShotData: {args}", exc_info=e)
                 pass
@@ -337,7 +337,7 @@ class ShotData:
                 aux_controller_kind=aux_controller_kind,
                 aux_setpoint=aux_setpoint,
                 is_aux_controller_active=is_aux_controller_active,
-                flow_from_scale=flow_from_scale,
+                gravimetric_flow=gravimetric_flow,
             )
         except Exception as e:
             logger.warning(f"Failed to parse ShotData: {args}", exc_info=e)
@@ -364,7 +364,7 @@ class ShotData:
             "f": self.flow,
             "w": self.weight,
             "t": self.temperature,
-            "flow_from_scale": self.flow_from_scale,
+            "g": self.gravimetric_flow,
         }
 
         data = {
