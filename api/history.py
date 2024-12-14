@@ -7,7 +7,7 @@ import zstandard as zstd
 from pydantic import ValidationError
 
 from log import MeticulousLogger
-from shot_database import SearchParams, ShotDataBase
+from shot_database import SearchParams, ShotDataBase, SearchOrder, SearchOrderBy
 from shot_debug_manager import DEBUG_HISTORY_PATH
 from shot_manager import ShotManager, SHOT_PATH
 
@@ -131,7 +131,16 @@ class HistoryHandler(BaseHandler):
 
     def get(self):
         # get all entries
-        params = SearchParams(dump_data=False, max_results=-1)
+        params = SearchParams(
+            query=self.get_query_argument("query", None),
+            ids=self.get_query_arguments("ids"),
+            start_date=self.get_query_argument("start_date", None),
+            end_date=self.get_query_argument("end_date", None),
+            order_by=self.get_query_arguments("order_by", [SearchOrderBy.date]),
+            sort=self.get_query_argument("sort", SearchOrder.descending),
+            max_results=self.get_query_argument("max_results", 20),
+            dump_data=self.get_query_argument("dump_data", True),
+        )
 
         results = ShotDataBase.search_history(params)
         self.write({"history": results})
