@@ -122,6 +122,7 @@ class MachineInfoHandler(BaseHandler):
 
         if Machine.esp_info is not None:
             response["firmware"] = Machine.esp_info.firmwareV
+            response["mainVoltage"] = Machine.esp_info.mainVoltage
 
         serial = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
         if serial is None or serial == "":
