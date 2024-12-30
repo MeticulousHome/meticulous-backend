@@ -28,7 +28,7 @@ from sqlalchemy import (
     distinct,
 )
 from sqlalchemy import event as sqlEvent
-from sqlalchemy import func, insert, or_, select, text
+from sqlalchemy import func, insert, or_, select, text, update
 from sqlalchemy.orm import sessionmaker
 
 from log import MeticulousLogger
@@ -96,13 +96,18 @@ class ShotDataBase:
         Column("profile_id", String, nullable=False),
         Column("profile_key", Integer, ForeignKey("profile.key"), nullable=False),
     )
-    
+
     shot_ratings_table = Table(
         "shot_ratings",
         metadata,
         Column("id", Integer, primary_key=True, autoincrement=True),
-        Column("history_id", Integer, ForeignKey("history.id", ondelete='CASCADE'), nullable=False),
-        Column("rating", String, nullable=False, server_default='unrated')
+        Column(
+            "history_id",
+            Integer,
+            ForeignKey("history.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+        Column("rating", String, nullable=False, server_default="unrated"),
     )
 
     stage_fts_table = None
@@ -576,17 +581,17 @@ class ShotDataBase:
     def rate_shot(history_id: int, rating: str) -> bool:
         """
         Rate a shot as good, bad, or unrated
-        
+
         Args:
             history_id: The ID of the shot in the history table
             rating: One of 'good', 'bad', or 'unrated'
-            
+
         Returns:
             bool: True if successful, False otherwise
         """
-        if rating not in ['good', 'bad', 'unrated']:
+        if rating not in ["good", "bad", "unrated"]:
             return False
-            
+
         try:
             with ShotDataBase.engine.connect() as connection:
                 with connection.begin():
@@ -595,19 +600,23 @@ class ShotDataBase:
                         ShotDataBase.shot_ratings_table.c.history_id == history_id
                     )
                     existing_rating = connection.execute(stmt).fetchone()
-                    
+
                     if existing_rating:
                         # Update existing rating
-                        stmt = update(ShotDataBase.shot_ratings_table).where(
-                            ShotDataBase.shot_ratings_table.c.history_id == history_id
-                        ).values(rating=rating)
+                        stmt = (
+                            update(ShotDataBase.shot_ratings_table)
+                            .where(
+                                ShotDataBase.shot_ratings_table.c.history_id
+                                == history_id
+                            )
+                            .values(rating=rating)
+                        )
                     else:
                         # Insert new rating
                         stmt = insert(ShotDataBase.shot_ratings_table).values(
-                            history_id=history_id,
-                            rating=rating
+                            history_id=history_id, rating=rating
                         )
-                        
+
                     connection.execute(stmt)
                     return True
         except Exception as e:
@@ -618,10 +627,10 @@ class ShotDataBase:
     def get_shot_rating(history_id: int) -> str:
         """
         Get the rating for a specific shot
-        
+
         Args:
             history_id: The ID of the shot in the history table
-            
+
         Returns:
             str: The rating ('good', 'bad', 'unrated') or None if not found
         """
@@ -631,7 +640,7 @@ class ShotDataBase:
                     ShotDataBase.shot_ratings_table.c.history_id == history_id
                 )
                 result = connection.execute(stmt).fetchone()
-                return result[0] if result else 'unrated'
+                return result[0] if result else "unrated"
         except Exception as e:
             logger.error(f"Error getting shot rating: {e}")
             return None
@@ -640,7 +649,7 @@ class ShotDataBase:
     def get_rating_statistics() -> dict:
         """
         Get statistics about shot ratings
-        
+
         Returns:
             dict: Contains counts of good, bad, and unrated shots
         """
@@ -648,15 +657,15 @@ class ShotDataBase:
             with ShotDataBase.engine.connect() as connection:
                 stmt = select(
                     ShotDataBase.shot_ratings_table.c.rating,
-                    func.count(ShotDataBase.shot_ratings_table.c.id)
+                    func.count(ShotDataBase.shot_ratings_table.c.id),
                 ).group_by(ShotDataBase.shot_ratings_table.c.rating)
-                
+
                 results = connection.execute(stmt).fetchall()
-                stats = {'good': 0, 'bad': 0, 'unrated': 0}
-                
+                stats = {"good": 0, "bad": 0, "unrated": 0}
+
                 for rating, count in results:
                     stats[rating] = count
-                    
+
                 return stats
         except Exception as e:
             logger.error(f"Error getting rating statistics: {e}")
