@@ -10,8 +10,12 @@ from sqlalchemy import (
     JSON,
     ForeignKey,
     Float,
-    BLOB
+    BLOB,
+    String,
+    CheckConstraint,
+    text
 )
+
 from sqlalchemy import pool
 from alembic import context
 
@@ -52,6 +56,13 @@ history = Table(
     Column('profile_name', Text, nullable=False),
     Column('profile_id', Text, nullable=False),
     Column('profile_key', Integer, ForeignKey('profile.key'), nullable=False)
+)
+
+shot_ratings = Table(
+    'shot_ratings', metadata,
+    Column('id', Integer, primary_key=True),
+    Column('history_id', Integer, ForeignKey('history.id', ondelete='CASCADE'), nullable=False),
+    Column('rating', String, CheckConstraint("rating IN ('good', 'bad', 'unrated')"), nullable=False, server_default='unrated')
 )
 
 # Asignar el metadata al target_metadata
