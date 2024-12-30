@@ -49,6 +49,7 @@ class API:
         from . import sounds as _sounds  # noqa
         from . import machine as _machine  # noqa
         from . import serial as _serial  # noqa
+        from . import shot_rating as _shot_rating  # noqa
 
         routes = []
         logger.info("API Routes registered:")
