@@ -17,18 +17,15 @@ from sqlalchemy import (
 from sqlalchemy import pool
 from alembic import context
 
-# Esto es el objeto de configuración de Alembic
 config = context.config
 
-# Configurar logging
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Crear dos objetos MetaData separados
-metadata = MetaData()  # Para tablas principales
-fts_metadata = MetaData()  # Para tablas FTS (no se usará en migraciones)
+# Create two separate MetaData objects
+metadata = MetaData()  # For main tables
+fts_metadata = MetaData()  # For FTS tables (won't be used in migrations)
 
-# Definir las tablas principales
 profile = Table(
     "profile",
     metadata,
@@ -77,12 +74,11 @@ shot_ratings = Table(
     ),
 )
 
-# Asignar el metadata al target_metadata
 target_metadata = metadata
 
 
 def include_object(object, name, type_, reflected, compare_to):
-    # Lista de todas las tablas relacionadas con FTS que queremos excluir
+    # List of all FTS-related tables we want to exclude
     fts_tables = {
         "profile_fts",
         "profile_fts_data",
@@ -99,7 +95,7 @@ def include_object(object, name, type_, reflected, compare_to):
     }
 
     if type_ == "table":
-        # Excluir tablas FTS específicas y tablas SQLite internas
+        # Exclude specific FTS tables and internal SQLite tables
         if name in fts_tables or name.startswith("sqlite_"):
             return False
         return True
@@ -144,8 +140,8 @@ def run_migrations_online() -> None:
             connection=connection,
             target_metadata=target_metadata,
             include_object=include_object,
-            render_as_batch=True,  # Necesario para SQLite
-            compare_type=False,  # Desactivar comparación de tipos para evitar cambios TEXT/String
+            render_as_batch=True,
+            compare_type=False,
             compare_server_default=True,
         )
 
