@@ -18,48 +18,56 @@ logger = MeticulousLogger.getLogger(__name__)
 last_version_path = f"/api/{APIVersion.latest_version().name.lower()}"
 
 
+class LastDebugFileHandler(BaseHandler):
+    """Handler for retrieving the most recent debug file."""
+
+    DEBUG_FILE_EXTENSION = ".debug.csv.zst"
+
+    async def get(self):
+        """Handle GET request for the latest debug file."""
+        try:
+            last_shot = ShotManager.getLastShot()
+            if not last_shot or "file" not in last_shot:
+                raise FileNotFoundError("No debug files found")
+
+            # Extract date from shot file path
+            date = last_shot["file"].split("/")[0]
+            if not date:
+                raise FileNotFoundError("Invalid shot file path")
+
+            # Get latest debug file
+            debug_dir = os.path.join(DEBUG_HISTORY_PATH, date)
+            if not os.path.exists(debug_dir):
+                raise FileNotFoundError(f"No debug directory for date {date}")
+
+            debug_files = [
+                f
+                for f in os.listdir(debug_dir)
+                if f.endswith(self.DEBUG_FILE_EXTENSION)
+            ]
+            if not debug_files:
+                raise FileNotFoundError(f"No debug files found for date {date}")
+
+            latest_debug_file = max(debug_files)
+            debug_path = f"{date}/{latest_debug_file}"
+
+            self.redirect(f"{last_version_path}/history/debug/{debug_path}")
+
+        except FileNotFoundError as e:
+            self.set_status(404)
+            self.write({"status": "error", "error": str(e)})
+        except Exception as e:
+            logger.error(f"Unexpected error getting last debug file: {e}")
+            self.set_status(500)
+            self.write({"status": "error", "error": "Internal server error"})
+
+
 class ZstdHistoryHandler(tornado.web.StaticFileHandler):
 
     def set_default_headers(self):
         BaseHandler.set_default_headers(self)
 
-    async def get_latest_file(self, directory):
-        """Get the most recent file from the debug history directory."""
-        if not os.path.isdir(directory):
-            raise tornado.web.HTTPError(404)
-
-        latest_file = None
-        latest_timestamp = 0
-
-        # Traverse through year-month-day folders
-        for date_folder in sorted(os.listdir(directory), reverse=True):
-            date_path = os.path.join(directory, date_folder)
-            if not os.path.isdir(date_path):
-                continue
-
-            # Check files in the most recent date folder
-            for filename in sorted(os.listdir(date_path), reverse=True):
-                file_path = os.path.join(date_path, filename)
-                if os.path.isfile(file_path):
-                    timestamp = os.path.getmtime(file_path)
-                    if timestamp > latest_timestamp:
-                        latest_timestamp = timestamp
-                        latest_file = os.path.join(date_folder, filename)
-                        return latest_file
-
-        return latest_file
-
     async def get(self, path):
-        if path == "latest":
-            latest_file = await self.get_latest_file(self.root)
-            if latest_file:
-                # Redirect to the actual file
-                return self.redirect(f"{last_version_path}/history/debug/{latest_file}")
-            else:
-                self.set_status(404)
-                self.write({"status": "error", "error": "No debug history files found"})
-                return
-
         self.set_header("Content-Type", "application/json")
 
         # Check if the path is a directory
@@ -194,6 +202,7 @@ API.register_handler(APIVersion.V1, r"/history/last", LastShotHandler),
 API.register_handler(APIVersion.V1, r"/history/stats", StatisticsHandler),
 
 API.register_handler(APIVersion.V1, r"/history", HistoryHandler),
+API.register_handler(APIVersion.V1, r"/history/last-debug-file", LastDebugFileHandler),
 
 API.register_handler(
     APIVersion.V1,
