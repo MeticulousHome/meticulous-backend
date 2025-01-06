@@ -1,7 +1,7 @@
 import json
 from .stages import *
 from .dictionaries_simplified import *
-from config import MeticulousConfig, CONFIG_SYSTEM, MACHINE_ALLOW_STAGE_SKIPPING
+from config import MeticulousConfig, CONFIG_USER, MACHINE_ALLOW_STAGE_SKIPPING
 
 
 current_node_id = 1
@@ -78,7 +78,7 @@ class SimplifiedJson:
         global current_curve_id
         global current_reference_id
 
-        allow_skipping = MeticulousConfig[CONFIG_SYSTEM][MACHINE_ALLOW_STAGE_SKIPPING]
+        allow_skipping = MeticulousConfig[CONFIG_USER][MACHINE_ALLOW_STAGE_SKIPPING]
 
         current_node_id = end_node_head
         # Use the comments with * as debugging tools.
