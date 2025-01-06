@@ -1,7 +1,7 @@
 import json
 from .profile_json import *
 from .simplified_json import *
-from config import MeticulousConfig, CONFIG_SYSTEM, MACHINE_ALLOW_STAGE_SKIPPING
+from config import MeticulousConfig, CONFIG_USER, MACHINE_ALLOW_STAGE_SKIPPING
 
 
 class ComplexProfileConverter:
@@ -27,7 +27,7 @@ class ComplexProfileConverter:
         self.max_piston_position = 81
 
     def head_template(self):
-        no_skipping = not MeticulousConfig[CONFIG_SYSTEM][MACHINE_ALLOW_STAGE_SKIPPING]
+        no_skipping = not MeticulousConfig[CONFIG_USER][MACHINE_ALLOW_STAGE_SKIPPING]
         if self.click_to_start:
             self.head_next_node_id = 16
         else:
@@ -736,7 +736,7 @@ class ComplexProfileConverter:
         return self.stages_head
 
     def tail_template(self):
-        no_skipping = not MeticulousConfig[CONFIG_SYSTEM][MACHINE_ALLOW_STAGE_SKIPPING]
+        no_skipping = not MeticulousConfig[CONFIG_USER][MACHINE_ALLOW_STAGE_SKIPPING]
 
         if self.click_to_purge:
             self.tail_next_node_id = 30
