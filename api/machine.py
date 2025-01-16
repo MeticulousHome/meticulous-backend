@@ -186,6 +186,41 @@ class MachineBacklightController(BaseHandler):
             return
 
 
+class ImageBuildChannelHandler(BaseHandler):
+    def get(self):
+        try:
+            with open("/opt/image-build-channel", "r") as file:
+                content = file.read().strip()
+                formatted_content = f"\nChannel: {content}\n"
+                self.write(formatted_content)
+        except FileNotFoundError:
+            self.set_status(404)
+            self.write({"error": "Image build channel information not found"})
+        except Exception as e:
+            logger.error(f"Error reading image build channel: {e}")
+            self.set_status(500)
+            self.write({"error": "Internal server error reading image build channel"})
+
+
+class RepositoryInfoHandler(BaseHandler):
+    def get(self):
+        try:
+            with open("/opt/repository_info", "r") as file:
+                content = file.read().strip()
+                self.write(content)
+        except FileNotFoundError:
+            self.set_status(404)
+            self.write({"error": "Repository information not found"})
+        except Exception as e:
+            logger.error(f"Error reading repository info: {e}")
+            self.set_status(500)
+            self.write({"error": "Internal server error reading repository info"})
+
+
+API.register_handler(
+    APIVersion.V1, r"/machine/image_build_channel", ImageBuildChannelHandler
+)
+API.register_handler(APIVersion.V1, r"/machine/repository_info", RepositoryInfoHandler)
 API.register_handler(APIVersion.V1, r"/machine", MachineInfoHandler)
 API.register_handler(APIVersion.V1, r"/machine/backlight", MachineBacklightController)
 API.register_handler(APIVersion.V1, r"/machine/factory_reset", MachineResetHandler)
