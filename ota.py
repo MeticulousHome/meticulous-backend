@@ -9,11 +9,15 @@ logger = MeticulousLogger.getLogger(__name__)
 HAWKBIT_CONFIG_DIR = "/etc/hawkbit/"
 HAWKBIT_CHANNEL_FILE = "channel"
 
+BUILD_DATE_FILE = "/opt/ROOTFS_BUILD_DATE"
+REPO_INFO_FILE = "/opt/summary.txt"
+
 
 class UpdateManager:
 
     ROOTFS_BUILD_DATE = None
-    BUILD_DATE_FILE = "/opt/ROOTFS_BUILD_DATE"
+    CHANNEL = None
+    REPO_INFO = None
 
     @staticmethod
     def setChannel(channel: str):
@@ -45,11 +49,11 @@ class UpdateManager:
         if UpdateManager.ROOTFS_BUILD_DATE is not None:
             return UpdateManager.ROOTFS_BUILD_DATE
 
-        if not os.path.exists(UpdateManager.BUILD_DATE_FILE):
+        if not os.path.exists(BUILD_DATE_FILE):
             logger.info("BUILD_DATE file not found")
             return None
 
-        with open(UpdateManager.BUILD_DATE_FILE, "r") as file:
+        with open(BUILD_DATE_FILE, "r") as file:
             date_string = file.read().strip()
 
         try:
@@ -58,6 +62,35 @@ class UpdateManager:
         except ValueError:
             logger.error("Invalid date format in BUILD_DATE file")
             return None
+
+    @staticmethod
+    def getImageChannel():
+        if UpdateManager.CHANNEL is not None:
+            return UpdateManager.CHANNEL
+        try:
+            with open("/opt/image-build-channel", "r") as file:
+                UpdateManager.CHANNEL = file.read().strip()
+                logger.info(f"Read image build channel: {UpdateManager.CHANNEL}")
+        except FileNotFoundError:
+            logger.warning(
+                "Image build channel file not found at /opt/image-build-channel"
+            )
+        except Exception as e:
+            logger.error(f"Error reading image build channel: {e}")
+
+    @staticmethod
+    def getRepositoryInfo():
+        if UpdateManager.REPO_INFO is not None:
+            return UpdateManager.REPO_INFO
+
+        try:
+            with open(REPO_INFO_FILE, "r") as file:
+                UpdateManager.REPO_INFO = file.read().strip()
+                logger.info(f"Read repository info: {UpdateManager.REPO_INFO}")
+        except FileNotFoundError:
+            logger.warning(f"Repository info file not found at f{REPO_INFO_FILE}")
+        except Exception as e:
+            logger.error(f"Error reading repository info: {e}")
 
     @staticmethod
     def forward_time():
