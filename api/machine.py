@@ -154,6 +154,9 @@ class MachineInfoHandler(BaseHandler):
         else:
             response["software_version"] = None
 
+        response["image_build_channel"] = UpdateManager.getImageChannel()
+        response["repository_info"] = UpdateManager.getRepositoryInfo()
+
         self.write(json.dumps(response))
 
 
