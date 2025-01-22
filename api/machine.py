@@ -10,6 +10,7 @@ import asyncio
 
 from .api import API, APIVersion
 from .base_handler import BaseHandler
+from ota import UpdateManager
 from backlight_controller import BacklightController
 
 from config import (
@@ -144,6 +145,14 @@ class MachineInfoHandler(BaseHandler):
         response["build_date"] = ""
         if MeticulousConfig[CONFIG_SYSTEM][MACHINE_BUILD_DATE] is not None:
             response["build_date"] = MeticulousConfig[CONFIG_SYSTEM][MACHINE_BUILD_DATE]
+
+        software_version = UpdateManager.getBuildTimestamp()
+        if software_version is not None:
+            response["software_version"] = software_version.strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+        else:
+            response["software_version"] = None
 
         self.write(json.dumps(response))
 
