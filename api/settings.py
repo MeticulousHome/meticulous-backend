@@ -5,6 +5,8 @@ from config import (
     MeticulousConfig,
     UPDATE_CHANNEL,
     MACHINE_HEATING_TIMEOUT,
+    USB_MODE,
+    USB_MODES,
 )
 from heater_actuator import HeaterActuator
 
@@ -13,6 +15,7 @@ from .api import API, APIVersion
 
 from ota import UpdateManager
 from log import MeticulousLogger
+from usb import USBManager
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -80,6 +83,22 @@ class SettingsHandler(BaseHandler):
                         return
 
                 MeticulousConfig[CONFIG_USER][setting_name] = value
+
+                if setting_name == USB_MODE:
+                    if value not in USB_MODES:
+                        self.set_status(400)
+                        self.write(
+                            {
+                                "status": "error",
+                                "error": "invalid USB mode",
+                                "setting": setting_name,
+                                "value": value,
+                            }
+                        )
+                        logger.info(f"Invalid USB mode: {value}")
+                        MeticulousConfig.load()
+                        return
+                    USBManager.setUSBMode()
             else:
                 self.set_status(404)
                 self.write(
