@@ -26,13 +26,13 @@ class USBManager:
         ptn = USBManager.usbPdController
 
         match MeticulousConfig[CONFIG_USER][USB_MODE]:
-            case USB_MODES.CLIENT.value():
+            case USB_MODES.CLIENT.value:
                 logger.info("Setting USB mode to CLIENT")
                 ptn.set_port_state(PortState.UFP)
-            case USB_MODES.HOST.value():
+            case USB_MODES.HOST.value:
                 logger.info("Setting USB mode to HOST")
                 ptn.set_port_state(PortState.DFP)
-            case USB_MODES.DUAL.value():
+            case USB_MODES.DUAL.value:
                 logger.info("Setting USB mode to DUAL")
                 ptn.set_port_state(PortState.DRP)
 
