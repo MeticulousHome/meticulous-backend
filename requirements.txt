@@ -29,3 +29,4 @@ zstandard==0.22.0
 jsonschema==4.21.1
 pydbus==0.6.0
 PyGObject>=3.42.0
+kmodpy==0.1.13

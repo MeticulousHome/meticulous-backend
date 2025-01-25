@@ -102,6 +102,15 @@ MACHINE_HEAT_ON_BOOT_DEFAULT = True
 IDLE_SCREEN = "idle_screen"
 IDLE_SCREEN_DEFAULT = "default"
 
+class USB_MODES(Enum):
+    DEFAULT = "default" # Host mode with OTG enabled and network driver loaded
+    CLIENT = "client" # Client mode with network OTG
+    HOST = "host" # OTG / HOST mode without networking
+    DUAL = "dual_role" # Dual role config
+
+USB_MODE = "usb_mode"
+USB_MODE_DEFAULT = USB_MODES.DEFAULT.value()
+
 #
 # LOGGING config
 #
@@ -165,6 +174,7 @@ DefaultConfiguration_V1 = {
         UPDATE_CHANNEL: UPDATE_CHANNEL_DEFAULT,
         IDLE_SCREEN: IDLE_SCREEN_DEFAULT,
         MACHINE_ALLOW_STAGE_SKIPPING: MACHINE_ALLOW_STAGE_SKIPPING_DEFAULT,
+        USB_MODE: USB_MODE_DEFAULT,
     },
     CONFIG_WIFI: {
         WIFI_MODE: WIFI_MODE_AP,
