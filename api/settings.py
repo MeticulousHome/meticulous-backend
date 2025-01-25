@@ -85,7 +85,10 @@ class SettingsHandler(BaseHandler):
                 MeticulousConfig[CONFIG_USER][setting_name] = value
 
                 if setting_name == USB_MODE:
-                    if value not in USB_MODES:
+                    try:
+                        USB_MODES(value)
+                        USBManager.setUSBMode()
+                    except ValueError:
                         self.set_status(400)
                         self.write(
                             {
@@ -98,7 +101,6 @@ class SettingsHandler(BaseHandler):
                         logger.info(f"Invalid USB mode: {value}")
                         MeticulousConfig.load()
                         return
-                    USBManager.setUSBMode()
             else:
                 self.set_status(404)
                 self.write(
