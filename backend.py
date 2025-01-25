@@ -33,6 +33,7 @@ from imager import DiscImager
 from ota import UpdateManager
 from shot_manager import ShotManager
 from esp_serial.connection.emulation_data import EmulationData
+from usb import USBManager
 
 from api.api import API
 from api.emulation import register_emulation_handlers
@@ -311,6 +312,7 @@ def main():
     UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
 
     Machine.init(sio)
+    USBManager.init()
 
     send_data_thread = NamedThread("SendSocketIO", target=send_data_loop)
     send_data_thread.start()
