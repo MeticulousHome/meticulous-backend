@@ -1106,20 +1106,20 @@ class ComplexProfileConverter:
                         "triggers": (
                             [
                                 {
-                                    "kind": "timer_trigger",
-                                    "timer_reference_id": 22,
-                                    "operator": ">=",
-                                    "value": 1,
+                                    "kind": "pressure_value_trigger",
+                                    "source": "Pressure Raw",
+                                    "operator": "<=",
+                                    "value": 0.5,
                                     "next_node_id": -2,
                                 }
                             ]
                             if no_skipping
                             else [
                                 {
-                                    "kind": "timer_trigger",
-                                    "timer_reference_id": 22,
-                                    "operator": ">=",
-                                    "value": 1,
+                                    "kind": "pressure_value_trigger",
+                                    "source": "Pressure Raw",
+                                    "operator": "<=",
+                                    "value": 0.5,
                                     "next_node_id": -2,
                                 },
                                 {
