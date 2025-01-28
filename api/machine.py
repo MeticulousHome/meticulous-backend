@@ -115,6 +115,34 @@ class UpdateOSStatus(BaseHandler):
 
 
 class MachineInfoHandler(BaseHandler):
+    _image_build_channel = None
+    _repository_info = None
+
+    @classmethod
+    def initialize_file_info(cls):
+        logger.info("Initializing file info for MachineInfoHandler")
+        try:
+            with open("/opt/image-build-channel", "r") as file:
+                cls._image_build_channel = file.read().strip()
+                logger.info(f"Read image build channel: {cls._image_build_channel}")
+        except FileNotFoundError:
+            logger.warning(
+                "Image build channel file not found at /opt/image-build-channel"
+            )
+        except Exception as e:
+            logger.error(f"Error reading image build channel: {e}")
+
+        try:
+            with open("/opt/summary.txt", "r") as file:
+                cls._repository_info = file.read().strip()
+                logger.info(f"Read repository info: {cls._repository_info}")
+        except FileNotFoundError:
+            logger.warning("Repository info file not found at /opt/repository_info")
+        except Exception as e:
+            logger.error(f"Error reading repository info: {e}")
+
+        logger.info("File info initialization complete")
+
     def get(self):
         response = {}
         config = WifiManager.getCurrentConfig()
@@ -153,6 +181,12 @@ class MachineInfoHandler(BaseHandler):
             )
         else:
             response["software_version"] = None
+
+        if self._image_build_channel is not None:
+            response["image_build_channel"] = self._image_build_channel
+
+        if self._repository_info is not None:
+            response["repository_info"] = self._repository_info
 
         self.write(json.dumps(response))
 
@@ -195,41 +229,8 @@ class MachineBacklightController(BaseHandler):
             return
 
 
-class ImageBuildChannelHandler(BaseHandler):
-    def get(self):
-        try:
-            with open("/opt/image-build-channel", "r") as file:
-                content = file.read().strip()
-                formatted_content = f"\nChannel: {content}\n"
-                self.write(formatted_content)
-        except FileNotFoundError:
-            self.set_status(404)
-            self.write({"error": "Image build channel information not found"})
-        except Exception as e:
-            logger.error(f"Error reading image build channel: {e}")
-            self.set_status(500)
-            self.write({"error": "Internal server error reading image build channel"})
+MachineInfoHandler.initialize_file_info()
 
-
-class RepositoryInfoHandler(BaseHandler):
-    def get(self):
-        try:
-            with open("/opt/repository_info", "r") as file:
-                content = file.read().strip()
-                self.write(content)
-        except FileNotFoundError:
-            self.set_status(404)
-            self.write({"error": "Repository information not found"})
-        except Exception as e:
-            logger.error(f"Error reading repository info: {e}")
-            self.set_status(500)
-            self.write({"error": "Internal server error reading repository info"})
-
-
-API.register_handler(
-    APIVersion.V1, r"/machine/image_build_channel", ImageBuildChannelHandler
-)
-API.register_handler(APIVersion.V1, r"/machine/repository_info", RepositoryInfoHandler)
 API.register_handler(APIVersion.V1, r"/machine", MachineInfoHandler)
 API.register_handler(APIVersion.V1, r"/machine/backlight", MachineBacklightController)
 API.register_handler(APIVersion.V1, r"/machine/factory_reset", MachineResetHandler)
