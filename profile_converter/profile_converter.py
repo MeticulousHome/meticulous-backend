@@ -443,12 +443,7 @@ class ComplexProfileConverter:
                                 },
                             ]
                         ),
-                    }
-                ],
-            },
-            {
-                "name": "heating",
-                "nodes": [
+                    },
                     {
                         "id": 5,
                         "controllers": [{"kind": "time_reference", "id": 10}],
