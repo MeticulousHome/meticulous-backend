@@ -114,7 +114,7 @@ class SettingsHandler(BaseHandler):
                         )
                         return
 
-                MeticulousConfig[CONFIG_USER][setting_name] = value
+                MeticulousConfig[CONFIG_USER][setting_target] = value
 
                 if setting_target == USB_MODE:
                     try:
