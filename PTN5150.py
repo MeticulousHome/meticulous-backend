@@ -145,6 +145,7 @@ class PTN5150H:
         :param reg_addr: The register address to read (0x00..0xFF).
         :return: The register value (0..255).
         """
+
         cmd = [
             "i2cget",
             "-f",
@@ -153,7 +154,12 @@ class PTN5150H:
             f"0x{self.address:02x}",
             f"0x{reg_addr:02x}",
         ]
-        output = subprocess.check_output(cmd).strip()
+        try:
+            output = subprocess.check_output(cmd).strip()
+        except subprocess.CalledProcessError as e:
+            print(f"Error reading register {reg_addr}: {e}")
+            return -1
+
         # i2cget outputs a string like "0x1f"
         return int(output, 16)
 
@@ -172,7 +178,11 @@ class PTN5150H:
             f"0x{reg_addr:02x}",
             f"0x{value:02x}",
         ]
-        subprocess.check_call(cmd)
+
+        try:
+            subprocess.check_call(cmd)
+        except subprocess.CalledProcessError as e:
+            print(f"Error writing register {reg_addr}: {e}")
 
     # ------------------------------------------------------------------------
     # Register 0x01: Version / Vendor (Read Only)
@@ -185,6 +195,8 @@ class PTN5150H:
         Bits [7:3] = version ID
         """
         reg_val = self.read_register(0x01)
+        if reg_val == -1:
+            return None
         version_id = (reg_val >> 3) & 0x1F
         return version_id
 
@@ -193,6 +205,8 @@ class PTN5150H:
         Bits [2:0] = vendor ID
         """
         reg_val = self.read_register(0x01)
+        if reg_val == -1:
+            return None
         vendor_id = reg_val & 0x07
         return vendor_id
 
@@ -205,7 +219,10 @@ class PTN5150H:
     # ------------------------------------------------------------------------
     def get_control(self) -> int:
         """Returns the entire 8-bit control register (0x02)."""
-        return self.read_register(0x02)
+        reg_val = self.read_register(0x02)
+        if reg_val == -1:
+            return None
+        return reg_val
 
     def set_control(self, value: int) -> None:
         """Writes the entire 8-bit control register (0x02)."""
@@ -219,6 +236,8 @@ class PTN5150H:
         Extract bits [4:3] from the control register and return an RpSelection enum.
         """
         reg_val = self.read_register(0x02)
+        if reg_val == -1:
+            return None
         raw = (reg_val >> 3) & 0x03
         return RpSelection(raw)
 
@@ -227,6 +246,8 @@ class PTN5150H:
         Set bits [4:3] in control register to the given RpSelection enum.
         """
         reg_val = self.read_register(0x02)
+        if reg_val == -1:
+            return None
         # Clear bits [4:3], then set them
         reg_val = (reg_val & 0xE7) | ((rp_sel.value & 0x03) << 3)
         self.write_register(0x02, reg_val)
@@ -239,6 +260,8 @@ class PTN5150H:
         Extract bits [2:1] from the control register and return a PortState enum.
         """
         reg_val = self.read_register(0x02)
+        if reg_val == -1:
+            return None
         raw = (reg_val >> 1) & 0x03
         return PortState(raw)
 
@@ -247,6 +270,9 @@ class PTN5150H:
         Set bits [2:1] in control register to the given PortState enum.
         """
         reg_val = self.read_register(0x02)
+        if reg_val == -1:
+            return None
+
         # Clear bits [2:1], then set them
         reg_val = (reg_val & 0xF9) | ((port_mode.value & 0x03) << 1)
         self.write_register(0x02, reg_val)
@@ -259,6 +285,8 @@ class PTN5150H:
         Extract bit [0] from the control register and return an InterruptMask enum.
         """
         reg_val = self.read_register(0x02)
+        if reg_val == -1:
+            return None
         raw = reg_val & 0x01
         return InterruptMask(raw)
 
@@ -267,6 +295,8 @@ class PTN5150H:
         Set bit [0] in the control register to the given InterruptMask enum.
         """
         reg_val = self.read_register(0x02)
+        if reg_val == -1:
+            return None
         reg_val = (reg_val & 0xFE) | (mask_bit.value & 0x01)
         self.write_register(0x02, reg_val)
 
