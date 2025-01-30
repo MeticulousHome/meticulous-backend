@@ -41,7 +41,7 @@ canvas {
     justify-content: flex-start;
     margin: auto;
     flex-wrap: wrap;
-    max-width: 800px;
+    max-width: 1050px;
     grid-column-start: 1;
     grid-column-end: 8;
 }
