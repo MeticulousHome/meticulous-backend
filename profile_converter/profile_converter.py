@@ -25,7 +25,7 @@ class ComplexProfileConverter:
         self.temperature = self.complex.get_temperature()
         # Use this value to prevent overshooting with a global offset
         self.offset_temperature = 0
-        self.max_piston_position = 81
+        self.max_piston_position = 77
 
     def head_template(self):
         no_skipping = not MeticulousConfig[CONFIG_USER][MACHINE_ALLOW_STAGE_SKIPPING]
