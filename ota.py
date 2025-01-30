@@ -1,5 +1,6 @@
 import subprocess
 import os
+import re
 from pathlib import Path
 from datetime import datetime
 from log import MeticulousLogger
@@ -11,6 +12,7 @@ HAWKBIT_CHANNEL_FILE = "channel"
 
 BUILD_DATE_FILE = "/opt/ROOTFS_BUILD_DATE"
 REPO_INFO_FILE = "/opt/summary.txt"
+BUILD_CHANNEL_FILE = "/opt/image-build-channel"
 
 
 class UpdateManager:
@@ -50,7 +52,7 @@ class UpdateManager:
             return UpdateManager.ROOTFS_BUILD_DATE
 
         if not os.path.exists(BUILD_DATE_FILE):
-            logger.info("BUILD_DATE file not found")
+            logger.warning(f"{BUILD_DATE_FILE} file not found")
             return None
 
         with open(BUILD_DATE_FILE, "r") as file:
@@ -68,15 +70,77 @@ class UpdateManager:
         if UpdateManager.CHANNEL is not None:
             return UpdateManager.CHANNEL
         try:
-            with open("/opt/image-build-channel", "r") as file:
+            with open(BUILD_CHANNEL_FILE, "r") as file:
                 UpdateManager.CHANNEL = file.read().strip()
                 logger.info(f"Read image build channel: {UpdateManager.CHANNEL}")
         except FileNotFoundError:
-            logger.warning(
-                "Image build channel file not found at /opt/image-build-channel"
-            )
+            logger.warning(f"{BUILD_CHANNEL_FILE} file not found")
+
         except Exception as e:
             logger.error(f"Error reading image build channel: {e}")
+
+        return UpdateManager.CHANNEL
+
+    @staticmethod
+    def parse_summary_file(summary: str):
+
+        data = {}
+        current_repo_key = None
+        modified_files_section = False
+
+        # Regex to match lines like: ## ${COMPONENT} ##
+        repo_header_pattern = re.compile(r"^##\s+(.*?)\s+##")
+
+        lines = summary.splitlines()
+        for i, line in enumerate(lines):
+            line = line.strip()
+
+            # If the line matches something like "## watcher ##"
+            header_match = repo_header_pattern.match(line)
+            if header_match:
+                current_repo_key = header_match.group(1)
+                data[current_repo_key] = {
+                    "repo": None,
+                    "url": None,
+                    "branch": None,
+                    "commit": None,
+                    "last_commit": None,
+                    "modified_files": [],
+                }
+                modified_files_section = False
+                continue
+
+            # If we haven't identified a repository block yet, skip
+            if current_repo_key is None:
+                continue
+
+            # Check for lines like "Repository: xyz", "URL: xyz", etc.
+            if line.startswith("Repository:"):
+                data[current_repo_key]["repo"] = line.replace("Repository:", "").strip()
+                modified_files_section = False
+            elif line.startswith("URL:"):
+                data[current_repo_key]["url"] = line.replace("URL:", "").strip()
+                modified_files_section = False
+            elif line.startswith("Branch:"):
+                data[current_repo_key]["branch"] = line.replace("Branch:", "").strip()
+                modified_files_section = False
+            elif line.startswith("Commit:"):
+                data[current_repo_key]["commit"] = line.replace("Commit:", "").strip()
+                modified_files_section = False
+            elif line.startswith("Last commit details:"):
+                if len(lines) > i + 1:
+                    data[current_repo_key]["last_commit"] = lines[i + 1].strip()
+                modified_files_section = False
+            elif line.startswith("Modified files:"):
+                # After this line, all subsequent non-empty lines belong to the Modified files list,
+                # until the next repo block or blank line.
+                modified_files_section = True
+            else:
+                # If we're in the modified files section, any non-empty line is a filename
+                if modified_files_section and line:
+                    data[current_repo_key]["modified_files"].append(line)
+
+        return data
 
     @staticmethod
     def getRepositoryInfo():
@@ -85,12 +149,15 @@ class UpdateManager:
 
         try:
             with open(REPO_INFO_FILE, "r") as file:
-                UpdateManager.REPO_INFO = file.read().strip()
+                summary_file = file.read().strip()
+                UpdateManager.REPO_INFO = UpdateManager.parse_summary_file(summary_file)
                 logger.info(f"Read repository info: {UpdateManager.REPO_INFO}")
         except FileNotFoundError:
-            logger.warning(f"Repository info file not found at f{REPO_INFO_FILE}")
+            logger.warning(f"{REPO_INFO_FILE} file not found")
         except Exception as e:
             logger.error(f"Error reading repository info: {e}")
+
+        return UpdateManager.REPO_INFO
 
     @staticmethod
     def forward_time():
