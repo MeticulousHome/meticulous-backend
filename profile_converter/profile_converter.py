@@ -409,7 +409,7 @@ class ComplexProfileConverter:
                                     "next_node_id": 5,
                                     "source": "Water Temperature",
                                     "operator": ">=",
-                                    "value": self.temperature - self.offset_temperature,
+                                    "value": self.temperature,
                                 },
                                 {
                                     "kind": "timer_trigger",
@@ -426,7 +426,7 @@ class ComplexProfileConverter:
                                     "next_node_id": 5,
                                     "source": "Water Temperature",
                                     "operator": ">=",
-                                    "value": self.temperature - self.offset_temperature,
+                                    "value": self.temperature,
                                 },
                                 {
                                     "kind": "timer_trigger",
@@ -443,12 +443,7 @@ class ComplexProfileConverter:
                                 },
                             ]
                         ),
-                    }
-                ],
-            },
-            {
-                "name": "heating",
-                "nodes": [
+                    },
                     {
                         "id": 5,
                         "controllers": [{"kind": "time_reference", "id": 10}],
@@ -475,70 +470,11 @@ class ComplexProfileConverter:
                             {
                                 "kind": "timer_trigger",
                                 "timer_reference_id": 10,
-                                "next_node_id": 8,
+                                "next_node_id": self.head_next_node_id,
                                 "operator": ">=",
                                 "value": 1,
                             }
                         ],
-                    },
-                    {
-                        "id": 8,
-                        "controllers": [],
-                        "triggers": (
-                            [
-                                {
-                                    "kind": "temperature_value_trigger",
-                                    "next_node_id": self.head_next_node_id,
-                                    "source": "Water Temperature",
-                                    "operator": ">=",
-                                    "value": self.temperature + self.offset_temperature,
-                                },
-                                {
-                                    "kind": "temperature_value_trigger",
-                                    "next_node_id": 5,
-                                    "source": "Water Temperature",
-                                    "operator": "<=",
-                                    "value": self.temperature - self.offset_temperature,
-                                },
-                                {
-                                    "kind": "timer_trigger",
-                                    "timer_reference_id": 5,
-                                    "next_node_id": self.head_next_node_id,
-                                    "operator": ">=",
-                                    "value": 5,
-                                },
-                            ]
-                            if no_skipping
-                            else [
-                                {
-                                    "kind": "temperature_value_trigger",
-                                    "next_node_id": self.head_next_node_id,
-                                    "source": "Water Temperature",
-                                    "operator": ">=",
-                                    "value": self.temperature + self.offset_temperature,
-                                },
-                                {
-                                    "kind": "temperature_value_trigger",
-                                    "next_node_id": 5,
-                                    "source": "Water Temperature",
-                                    "operator": "<=",
-                                    "value": self.temperature - self.offset_temperature,
-                                },
-                                {
-                                    "kind": "timer_trigger",
-                                    "timer_reference_id": 5,
-                                    "next_node_id": self.head_next_node_id,
-                                    "operator": ">=",
-                                    "value": 5,
-                                },
-                                {
-                                    "kind": "button_trigger",
-                                    "next_node_id": self.head_next_node_id,
-                                    "gesture": "Single Tap",
-                                    "source": "Encoder Button",
-                                },
-                            ]
-                        ),
                     },
                 ],
             },
