@@ -155,7 +155,15 @@ class MachineInfoHandler(BaseHandler):
             response["software_version"] = None
 
         response["image_build_channel"] = UpdateManager.getImageChannel()
-        response["repository_info"] = UpdateManager.getRepositoryInfo()
+        response["repository_info"] = {}
+        repo_info = UpdateManager.getRepositoryInfo()
+        if repo_info is not None:
+            for repo in repo_info.keys():
+                info = repo_info[repo]
+                response["repository_info"][repo] = {
+                    "branch": info.get("branch", None),
+                    "commit": info.get("last_commit", None),
+                }
 
         self.write(json.dumps(response))
 
