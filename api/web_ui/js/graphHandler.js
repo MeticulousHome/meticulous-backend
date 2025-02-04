@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function () {
         window.miscGraph.resetZoom();
     });
 
-    initGraph('thermistorGraph', ['barUp', 'barMiddleUp', 'barMiddleDown', 'barDown', 'external1', 'external2', 'tube', 'valve']);
+    initGraph('thermistorGraph', ['barUp', 'barMiddleUp', 'barMiddleDown', 'barDown', 'external1', 'external2', 'tube', 'motor_temp']);
     initGraph('actuatorGraph', ['position', 'speed', 'power', 'current', 'bandHeater_power', 'bandHeater_current']);
     initGraph('adcGraph', ['adc0_rate', 'adc1_rate', 'adc2_rate', 'adc3_rate', 'pressureSensor_rate']);
     initGraph('miscGraph', ['pressureSensor_pressure', 'flowSensor_flow', 'loadcell_weight', 'display_temp', 'set_pressure', 'set_flow', 'set_power', 'set_position']);
@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const therm_ext1 = document.getElementById('therm_external1');
     const therm_ext2 = document.getElementById('therm_external2');
     const therm_tube = document.getElementById('therm_tube');
-    const therm_valve = document.getElementById('therm_valve');
+    const therm_motor = document.getElementById('therm_motor');
 
     const motor_position = document.getElementById('motor_position');
     const motor_speed = document.getElementById('motor_speed');
@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', function () {
             external1: [],
             external2: [],
             tube: [],
-            valve: []
+            motorTemp: []
         }
     };
 
@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function () {
             external1: data.t_ext_1,
             external2: data.t_ext_2,
             tube: data.t_tube,
-            valve: data.t_valv
+            motorTemp: data.t_motorTemp
         })
 
         therm_up.innerText = data.t_bar_up;
@@ -198,7 +198,7 @@ document.addEventListener('DOMContentLoaded', function () {
         therm_ext1.innerText = data.t_ext_1;
         therm_ext2.innerText = data.t_ext_2;
         therm_tube.innerText = data.t_tube;
-        therm_valve.innerText = data.t_valv;
+        therm_motor.innerText = data.t_motorTemp;
 
         if (isGraphing) {
             updateGraph('thermistorGraph', window.thermistorData);
@@ -470,7 +470,7 @@ function randomColor(key) {
         'external1': redColor,
         'external2': burgundyColor,
         'tube': tealColor,
-        'valve': blueColor,
+        'motorTemp': blueColor,
         'bandHeater_current': whiteColor,
     };
 
