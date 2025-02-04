@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function () {
             external1: data.t_ext_1,
             external2: data.t_ext_2,
             tube: data.t_tube,
-            motorTemp: data.t_motorTemp
+            motorTemp: data.t_motor_temp
         })
 
         therm_up.innerText = data.t_bar_up;
@@ -198,7 +198,7 @@ document.addEventListener('DOMContentLoaded', function () {
         therm_ext1.innerText = data.t_ext_1;
         therm_ext2.innerText = data.t_ext_2;
         therm_tube.innerText = data.t_tube;
-        therm_motor.innerText = data.t_motorTemp;
+        therm_motor.innerText = data.t_motor_temp;
 
         if (isGraphing) {
             updateGraph('thermistorGraph', window.thermistorData);
