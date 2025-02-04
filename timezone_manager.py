@@ -227,7 +227,6 @@ class TimezoneManager:
             )
             return {}
 
-    # TODO: Make async task --vvvv--
     @staticmethod
     async def request_and_sync_tz() -> str:
 
