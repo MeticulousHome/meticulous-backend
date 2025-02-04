@@ -150,7 +150,7 @@ class SettingsHandler(BaseHandler):
         return self.get()
 
 
-class TimezoneUIProvider(BaseHandler):
+class TimezoneUIHandler(BaseHandler):
 
     __timezone_map: dict = {}
 
@@ -197,4 +197,4 @@ class TimezoneUIProvider(BaseHandler):
 
 
 API.register_handler(APIVersion.V1, r"/settings/(.*)", SettingsHandler),
-API.register_handler(APIVersion.V1, r"/timezones/(.*)", TimezoneUIProvider),
+API.register_handler(APIVersion.V1, r"/timezones/(.*)", TimezoneUIHandler),
