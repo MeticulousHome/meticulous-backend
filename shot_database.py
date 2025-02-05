@@ -11,25 +11,21 @@ import pytz
 import zstandard as zstd
 from pydantic import BaseModel, Field
 from sqlalchemy import (
-    JSON,
-    Column,
-    DateTime,
-    Float,
-    ForeignKey,
-    Integer,
-    MetaData,
-    String,
-    Table,
-    Text,
     asc,
     create_engine,
     delete,
     desc,
     distinct,
+    func,
+    insert,
+    or_,
+    select,
+    text,
+    Table,
 )
 from sqlalchemy import event as sqlEvent
-from sqlalchemy import func, insert, or_, select, text, update
 from sqlalchemy.orm import sessionmaker
+from database_models import metadata, profile as profile_table, history as history_table
 
 from log import MeticulousLogger
 
@@ -64,52 +60,8 @@ class SearchParams(BaseModel):
 
 class ShotDataBase:
     engine = None
-    metadata = MetaData()
+    metadata = metadata
     session = None
-
-    # Define tables
-    profile_table = Table(
-        "profile",
-        metadata,
-        Column("key", Integer, primary_key=True, autoincrement=True),
-        Column("id", String, nullable=False),
-        Column("author", Text),
-        Column("author_id", Text),
-        Column("display", JSON),
-        Column("final_weight", Integer),
-        Column("last_changed", Float),
-        Column("name", Text),
-        Column("temperature", Integer),
-        Column("stages", JSON),
-        Column("variables", JSON),
-        Column("previous_authors", JSON),
-    )
-
-    history_table = Table(
-        "history",
-        metadata,
-        Column("id", Integer, primary_key=True, autoincrement=True),
-        Column("uuid", Text, nullable=True),
-        Column("file", Text, nullable=False),
-        Column("time", DateTime, nullable=False),
-        Column("profile_name", Text, nullable=False),
-        Column("profile_id", String, nullable=False),
-        Column("profile_key", Integer, ForeignKey("profile.key"), nullable=False),
-    )
-
-    shot_ratings_table = Table(
-        "shot_ratings",
-        metadata,
-        Column("id", Integer, primary_key=True, autoincrement=True),
-        Column(
-            "history_id",
-            Integer,
-            ForeignKey("history.id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        Column("rating", String, nullable=False, server_default="unrated"),
-    )
-
     stage_fts_table = None
     profile_fts_table = None
 
@@ -206,36 +158,28 @@ class ShotDataBase:
         display_json = json.dumps(profile_data.get("previous_authors", []))
 
         query = (
-            select(ShotDataBase.profile_table.c.key)
-            .where(ShotDataBase.profile_table.c.id == profile_data["id"])
-            .where(ShotDataBase.profile_table.c.author == profile_data["author"])
-            .where(ShotDataBase.profile_table.c.author_id == profile_data["author_id"])
+            select(profile_table.c.key)
+            .where(profile_table.c.id == profile_data["id"])
+            .where(profile_table.c.author == profile_data["author"])
+            .where(profile_table.c.author_id == profile_data["author_id"])
             .where(
-                func.json_extract(ShotDataBase.profile_table.c.display, "$")
+                func.json_extract(profile_table.c.display, "$")
                 == func.json_extract(display_json, "$")
             )
+            .where(profile_table.c.final_weight == profile_data["final_weight"])
+            .where(profile_table.c.last_changed == profile_data.get("last_changed", 0))
+            .where(profile_table.c.name == profile_data["name"])
+            .where(profile_table.c.temperature == profile_data["temperature"])
             .where(
-                ShotDataBase.profile_table.c.final_weight
-                == profile_data["final_weight"]
-            )
-            .where(
-                ShotDataBase.profile_table.c.last_changed
-                == profile_data.get("last_changed", 0)
-            )
-            .where(ShotDataBase.profile_table.c.name == profile_data["name"])
-            .where(
-                ShotDataBase.profile_table.c.temperature == profile_data["temperature"]
-            )
-            .where(
-                func.json_extract(ShotDataBase.profile_table.c.stages, "$")
+                func.json_extract(profile_table.c.stages, "$")
                 == func.json_extract(stages_json, "$")
             )
             .where(
-                func.json_extract(ShotDataBase.profile_table.c.variables, "$")
+                func.json_extract(profile_table.c.variables, "$")
                 == func.json_extract(variables_json, "$")
             )
             .where(
-                func.json_extract(ShotDataBase.profile_table.c.previous_authors, "$")
+                func.json_extract(profile_table.c.previous_authors, "$")
                 == func.json_extract(previous_authors_json, "$")
             )
         )
@@ -258,7 +202,7 @@ class ShotDataBase:
             return existing_profile[0]
         with ShotDataBase.engine.connect() as connection:
             with connection.begin():
-                ins_stmt = insert(ShotDataBase.profile_table).values(
+                ins_stmt = insert(profile_table).values(
                     id=profile_data["id"],
                     author=profile_data["author"],
                     author_id=profile_data["author_id"],
@@ -296,9 +240,7 @@ class ShotDataBase:
 
     @staticmethod
     def history_exists(entry):
-        query = select(ShotDataBase.history_table.c.id).where(
-            ShotDataBase.history_table.c.file == entry["file"]
-        )
+        query = select(history_table.c.id).where(history_table.c.file == entry["file"])
 
         with ShotDataBase.engine.connect() as connection:
             existing_history = connection.execute(query).fetchone()
@@ -323,7 +265,7 @@ class ShotDataBase:
                 time_obj = datetime.fromtimestamp(entry["time"])
                 time_obj = pytz.timezone("UTC").localize(time_obj)
 
-                ins_stmt = insert(ShotDataBase.history_table).values(
+                ins_stmt = insert(history_table).values(
                     uuid=entry["id"],
                     file=entry.get("file"),
                     time=time_obj,
@@ -339,30 +281,26 @@ class ShotDataBase:
             with connection.begin():
                 # Delete from history
                 del_stmt = delete(ShotDataBase.history_table).where(
-                    ShotDataBase.history_table.c.id == shot_id
+                    history_table.c.id == shot_id
                 )
                 connection.execute(del_stmt)
 
                 # Get the profile_key of the deleted shot
                 profile_key_stmt = select(
                     [ShotDataBase.history_table.c.profile_key]
-                ).where(ShotDataBase.history_table.c.id == shot_id)
+                ).where(history_table.c.id == shot_id)
                 connection.execute(profile_key_stmt).fetchone()
 
                 # Check for orphaned profiles
-                orphaned_profiles_stmt = select(
-                    [ShotDataBase.profile_table.c.key]
-                ).where(
-                    ~ShotDataBase.profile_table.c.key.in_(
-                        select([ShotDataBase.history_table.c.profile_key])
-                    )
+                orphaned_profiles_stmt = select([profile_table.c.key]).where(
+                    ~profile_table.c.key.in_(select([history_table.c.profile_key]))
                 )
                 orphaned_profiles = connection.execute(
                     orphaned_profiles_stmt
                 ).fetchall()
                 for orphan in orphaned_profiles:
-                    del_profile_stmt = delete(ShotDataBase.profile_table).where(
-                        ShotDataBase.profile_table.c.key == orphan[0]
+                    del_profile_stmt = delete(profile_table).where(
+                        profile_table.c.key == orphan[0]
                     )
                     connection.execute(del_profile_stmt)
 
@@ -382,26 +320,23 @@ class ShotDataBase:
     def search_history(params: SearchParams):
         stmt = (
             select(
-                *[c.label(f"history_{c.name}") for c in ShotDataBase.history_table.c],
-                *[c.label(f"profile_{c.name}") for c in ShotDataBase.profile_table.c],
+                *[c.label(f"history_{c.name}") for c in history_table.c],
+                *[c.label(f"profile_{c.name}") for c in profile_table.c],
             )
             .distinct()
             .select_from(
-                ShotDataBase.history_table.join(
-                    ShotDataBase.profile_table,
-                    ShotDataBase.history_table.c.profile_key
-                    == ShotDataBase.profile_table.c.key,
+                history_table.join(
+                    profile_table,
+                    history_table.c.profile_key == profile_table.c.key,
                 )
             )
             .outerjoin(
                 ShotDataBase.profile_fts_table,
-                ShotDataBase.profile_table.c.key
-                == ShotDataBase.profile_fts_table.c.profile_key,
+                profile_table.c.key == ShotDataBase.profile_fts_table.c.profile_key,
             )
             .outerjoin(
                 ShotDataBase.stage_fts_table,
-                ShotDataBase.profile_table.c.key
-                == ShotDataBase.stage_fts_table.c.profile_key,
+                profile_table.c.key == ShotDataBase.stage_fts_table.c.profile_key,
             )
         )
 
@@ -416,30 +351,30 @@ class ShotDataBase:
         if params.ids:
             stmt = stmt.where(
                 or_(
-                    ShotDataBase.history_table.c.id.in_(params.ids),
-                    ShotDataBase.history_table.c.uuid.in_(params.ids),
-                    ShotDataBase.profile_table.c.id.in_(params.ids),
+                    history_table.c.id.in_(params.ids),
+                    history_table.c.uuid.in_(params.ids),
+                    profile_table.c.id.in_(params.ids),
                 )
             )
 
         if params.start_date:
             start_datetime = datetime.fromtimestamp(params.start_date)
             start_datetime = pytz.timezone("UTC").localize(start_datetime)
-            stmt = stmt.where(ShotDataBase.history_table.c.time >= start_datetime)
+            stmt = stmt.where(history_table.c.time >= start_datetime)
 
         if params.end_date:
             end_datetime = datetime.fromtimestamp(params.end_date)
             end_datetime = pytz.timezone("UTC").localize(end_datetime)
-            stmt = stmt.where(ShotDataBase.history_table.c.time <= end_datetime)
+            stmt = stmt.where(history_table.c.time <= end_datetime)
 
         order_by = []
         for ordering in params.order_by:
             if ordering == SearchOrderBy.date:
-                order_by.append(ShotDataBase.history_table.c.time)
+                order_by.append(history_table.c.time)
             elif ordering == SearchOrderBy.profile:
-                order_by.append(ShotDataBase.history_table.c.profile_name)
+                order_by.append(history_table.c.profile_name)
 
-        order_by.append(ShotDataBase.history_table.c.id)
+        order_by.append(history_table.c.id)
 
         if params.sort == SearchOrder.ascending:
             stmt = stmt.order_by(*[asc(order_column) for order_column in order_by])
@@ -503,9 +438,9 @@ class ShotDataBase:
         with ShotDataBase.session() as session:
             if not prefix:
                 stmt = (
-                    select(ShotDataBase.history_table.c.profile_name)
+                    select(history_table.c.profile_name)
                     .distinct()
-                    .group_by(ShotDataBase.history_table.c.profile_name)
+                    .group_by(history_table.c.profile_name)
                     .order_by(func.count().desc())
                 )
                 results = session.execute(stmt).fetchall()
@@ -549,16 +484,14 @@ class ShotDataBase:
         with ShotDataBase.session() as session:
             stmt = (
                 select(
-                    ShotDataBase.history_table.c.profile_name.label("profile_name"),
-                    func.count(ShotDataBase.history_table.c.profile_name).label(
-                        "profile_count"
-                    ),
-                    func.count(distinct(ShotDataBase.history_table.c.profile_id)).label(
+                    history_table.c.profile_name.label("profile_name"),
+                    func.count(history_table.c.profile_name).label("profile_count"),
+                    func.count(distinct(history_table.c.profile_id)).label(
                         "profile_versions"
                     ),
                 )
                 .group_by(
-                    ShotDataBase.history_table.c.profile_name,
+                    history_table.c.profile_name,
                 )
                 .order_by(func.count("profile_count").desc())
             )
@@ -576,97 +509,3 @@ class ShotDataBase:
 
                 parsed_results.append(profile)
             return {"totalSavedShots": total_shots, "byProfile": parsed_results}
-
-    @staticmethod
-    def rate_shot(history_id: int, rating: str) -> bool:
-        """
-        Rate a shot as good, bad, or unrated
-
-        Args:
-            history_id: The ID of the shot in the history table
-            rating: One of 'good', 'bad', or 'unrated'
-
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        if rating not in ["good", "bad", "unrated"]:
-            return False
-
-        try:
-            with ShotDataBase.engine.connect() as connection:
-                with connection.begin():
-                    # Check if rating exists
-                    stmt = select(ShotDataBase.shot_ratings_table).where(
-                        ShotDataBase.shot_ratings_table.c.history_id == history_id
-                    )
-                    existing_rating = connection.execute(stmt).fetchone()
-
-                    if existing_rating:
-                        # Update existing rating
-                        stmt = (
-                            update(ShotDataBase.shot_ratings_table)
-                            .where(
-                                ShotDataBase.shot_ratings_table.c.history_id
-                                == history_id
-                            )
-                            .values(rating=rating)
-                        )
-                    else:
-                        # Insert new rating
-                        stmt = insert(ShotDataBase.shot_ratings_table).values(
-                            history_id=history_id, rating=rating
-                        )
-
-                    connection.execute(stmt)
-                    return True
-        except Exception as e:
-            logger.error(f"Error rating shot: {e}")
-            return False
-
-    @staticmethod
-    def get_shot_rating(history_id: int) -> str:
-        """
-        Get the rating for a specific shot
-
-        Args:
-            history_id: The ID of the shot in the history table
-
-        Returns:
-            str: The rating ('good', 'bad', 'unrated') or None if not found
-        """
-        try:
-            with ShotDataBase.engine.connect() as connection:
-                stmt = select(ShotDataBase.shot_ratings_table.c.rating).where(
-                    ShotDataBase.shot_ratings_table.c.history_id == history_id
-                )
-                result = connection.execute(stmt).fetchone()
-                return result[0] if result else "unrated"
-        except Exception as e:
-            logger.error(f"Error getting shot rating: {e}")
-            return None
-
-    @staticmethod
-    def get_rating_statistics() -> dict:
-        """
-        Get statistics about shot ratings
-
-        Returns:
-            dict: Contains counts of good, bad, and unrated shots
-        """
-        try:
-            with ShotDataBase.engine.connect() as connection:
-                stmt = select(
-                    ShotDataBase.shot_ratings_table.c.rating,
-                    func.count(ShotDataBase.shot_ratings_table.c.id),
-                ).group_by(ShotDataBase.shot_ratings_table.c.rating)
-
-                results = connection.execute(stmt).fetchall()
-                stats = {"good": 0, "bad": 0, "unrated": 0}
-
-                for rating, count in results:
-                    stats[rating] = count
-
-                return stats
-        except Exception as e:
-            logger.error(f"Error getting rating statistics: {e}")
-            return None
