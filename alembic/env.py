@@ -1,104 +1,34 @@
 from logging.config import fileConfig
-from sqlalchemy import (
-    engine_from_config,
-    MetaData,
-    Table,
-    Column,
-    Integer,
-    Text,
-    DateTime,
-    JSON,
-    ForeignKey,
-    Float,
-    String,
-    CheckConstraint,
-)
-
+import os
+from pathlib import Path
+from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
+from database_models import metadata, FTS_TABLES
+from shot_database import HISTORY_PATH, DATABASE_FILE
 
 config = context.config
+db_path = Path(HISTORY_PATH).joinpath(DATABASE_FILE).resolve()
+config.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
-
-# Create two separate MetaData objects
-metadata = MetaData()  # For main tables
-fts_metadata = MetaData()  # For FTS tables (won't be used in migrations)
-
-profile = Table(
-    "profile",
-    metadata,
-    Column("key", Integer, primary_key=True),
-    Column("id", Text, nullable=False),
-    Column("author", Text),
-    Column("author_id", Text),
-    Column("display", JSON),
-    Column("final_weight", Integer),
-    Column("last_changed", Float),
-    Column("name", Text),
-    Column("temperature", Integer),
-    Column("stages", JSON),
-    Column("variables", JSON),
-    Column("previous_authors", JSON),
-)
-
-history = Table(
-    "history",
-    metadata,
-    Column("id", Integer, primary_key=True),
-    Column("uuid", Text),
-    Column("file", Text, nullable=False),
-    Column("time", DateTime, nullable=False),
-    Column("profile_name", Text, nullable=False),
-    Column("profile_id", Text, nullable=False),
-    Column("profile_key", Integer, ForeignKey("profile.key"), nullable=False),
-)
-
-shot_ratings = Table(
-    "shot_ratings",
-    metadata,
-    Column("id", Integer, primary_key=True),
-    Column(
-        "history_id",
-        Integer,
-        ForeignKey("history.id", ondelete="CASCADE"),
-        nullable=False,
-    ),
-    Column(
-        "rating",
-        String,
-        CheckConstraint("rating IN ('good', 'bad', 'unrated')"),
-        nullable=False,
-        server_default="unrated",
-    ),
-)
-
 target_metadata = metadata
 
 
-def include_object(object, name, type_, reflected, compare_to):
-    # List of all FTS-related tables we want to exclude
-    fts_tables = {
-        "profile_fts",
-        "profile_fts_data",
-        "profile_fts_idx",
-        "profile_fts_content",
-        "profile_fts_docsize",
-        "profile_fts_config",
-        "stage_fts",
-        "stage_fts_data",
-        "stage_fts_idx",
-        "stage_fts_content",
-        "stage_fts_docsize",
-        "stage_fts_config",
-    }
+def exclude_tables_from_config(config_):
+    """Exclude FTS tables from migrations since they're managed by SQLite."""
+    tables = config_.get("tables", None)
+    if tables is not None:
+        tables = tables.split(",")
+    return tables
 
-    if type_ == "table":
-        # Exclude specific FTS tables and internal SQLite tables
-        if name in fts_tables or name.startswith("sqlite_"):
-            return False
-        return True
+
+def include_object(object, name, type_, reflected, compare_to):
+    """Filter objects from migrations."""
+    # Skip FTS tables as they're managed by SQLite
+    if type_ == "table" and name in FTS_TABLES:
+        return False
     return True
 
 
@@ -129,8 +59,10 @@ def run_migrations_online() -> None:
     In this scenario we need to create an Engine
     and associate a connection with the context.
     """
+    os.makedirs(HISTORY_PATH, exist_ok=True)
+
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section),
+        config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
