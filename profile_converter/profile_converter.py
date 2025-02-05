@@ -24,7 +24,7 @@ class ComplexProfileConverter:
         self.complex = SimplifiedJson(self.parameters)
         self.temperature = self.complex.get_temperature()
         # Use this value to prevent overshooting with a global offset
-        self.offset_temperature = 0
+        self.offset_temperature = 2
         self.max_piston_position = 75
 
     def head_template(self):
@@ -396,7 +396,9 @@ class ComplexProfileConverter:
                                 "curve": {
                                     "id": 2,
                                     "interpolation_kind": "linear_interpolation",
-                                    "points": [[0, self.temperature]],
+                                    "points": [
+                                        [0, self.temperature + self.offset_temperature]
+                                    ],
                                     "reference": {"kind": "time", "id": 2},
                                 },
                             },
@@ -409,7 +411,7 @@ class ComplexProfileConverter:
                                     "next_node_id": 5,
                                     "source": "Water Temperature",
                                     "operator": ">=",
-                                    "value": self.temperature - self.offset_temperature,
+                                    "value": self.temperature,
                                 },
                                 {
                                     "kind": "timer_trigger",
@@ -426,7 +428,7 @@ class ComplexProfileConverter:
                                     "next_node_id": 5,
                                     "source": "Water Temperature",
                                     "operator": ">=",
-                                    "value": self.temperature - self.offset_temperature,
+                                    "value": self.temperature,
                                 },
                                 {
                                     "kind": "timer_trigger",
