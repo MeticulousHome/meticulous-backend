@@ -20,6 +20,8 @@ class USBManager:
 
     @staticmethod
     def setUSBMode():
+        logger.warning("Setting USB mode is temporarely disabled")
+        return
         if Machine.emulated:
             logger.info("Emulated machine, skipping USB mode setup")
             return
