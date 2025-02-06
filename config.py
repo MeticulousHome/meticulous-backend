@@ -230,15 +230,16 @@ class MeticulousConfigDict(dict):
     def __init__(self, path, default_dict={}) -> None:
         super().__init__(default_dict)
 
-        self.__path = Path(path)
-        self.__configError = False
-        self.__sio = None
+        # Make attributes inheritable
+        self._path = Path(path)
+        self._configError = False
+        self._sio = None
 
-        ext = self.__path.suffix
+        ext = self._path.suffix
         if ext not in [".yml", ".yaml"]:
             raise ValueError(
                 f"Invalid Extension provided! YAML (yml / yaml) expected, {ext} found"
-            )
+        )
 
         self.load()
 
@@ -252,18 +253,18 @@ class MeticulousConfigDict(dict):
 
     # FIXME: Remove once the socket IO server lives in its own file
     def setSIO(self, sio):
-        self.__sio = sio
+        self._sio = sio
 
     def hasError(self):
-        return self.__configError
+        return self._configError
 
     def load(self):
 
-        if not Path(self.__path).exists():
+        if not Path(self._path).exists():
             self.save()
             _config_logger.info("Created new config")
         else:
-            with open(self.__path, "r") as f:
+            with open(self._path, "r") as f:
                 try:
                     disk_config = yaml.safe_load(f)
                     disk_version = disk_config.get("version")
@@ -273,28 +274,28 @@ class MeticulousConfigDict(dict):
                         )
                     merge(self, disk_config)
                     _config_logger.info("Successfully loaded config from disk")
-                    self.__configError = False
+                    self._configError = False
                 except Exception as e:
                     _config_logger.warning(f"Failed to load config: {e}")
-                    basename, extension = os.path.splitext(self.__path)
+                    basename, extension = os.path.splitext(self._path)
                     backup_path = (
                         basename
                         + "_broken_"
                         + datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
                         + extension
                     )
-                    os.rename(self.__path, backup_path)
-                    self.__configError = True
+                    os.rename(self._path, backup_path)
+                    self._configError = True
                 self.save()
 
     def save(self):
         sentry_sdk.set_context("config", self.copy())
 
-        Path(self.__path).parent.mkdir(parents=True, exist_ok=True)
-        with open(self.__path, "w") as f:
+        Path(self._path).parent.mkdir(parents=True, exist_ok=True)
+        with open(self._path, "w") as f:
             yaml.dump(self.copy(), f, default_flow_style=False, allow_unicode=True)
 
-        if self.__sio:
+        if self._sio:
             loop = (
                 asyncio.get_event_loop()
                 if asyncio.get_event_loop().is_running()
@@ -303,7 +304,7 @@ class MeticulousConfigDict(dict):
             asyncio.set_event_loop(loop)
 
             async def sendSettingsNotification():
-                await self.__sio.emit("settings", {})
+                await self._sio.emit("settings", {})
 
             if not loop.is_running():
                 loop.run_until_complete(sendSettingsNotification())
