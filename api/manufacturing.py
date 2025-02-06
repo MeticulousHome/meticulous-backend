@@ -97,10 +97,15 @@ class MeticulousManufacturingConfigDict(MeticulousConfigDict):
     # 2. Load the file if it exists
     # and the the Machine is not set to manufacturing mode
     def __new__(cls, path, default_dict={}):
+        logger.warning("Creating Maunfacturing Config")
         exist_file: bool = Path(path).exists()
+        logger.warning(f"Looking at path: {path}")
+        logger.warning(f"path: {path} " + "exists" if exist_file else "does not exist")
         if exist_file or Machine.enable_manufacturing:
+            logger.warning(f"manufacturing flag is: {Machine.enable_manufacturing}")
             return super().__new__(cls)
         else:
+
             return None
 
     # This will load the file
@@ -110,15 +115,21 @@ class MeticulousManufacturingConfigDict(MeticulousConfigDict):
     #      - If False: it will delete the file and object's contents
     def __init__(self, path, default_dict={}):
         self.empty: bool = False
+        logger.warning(f"Initializing Manufacturing Config")
+
         super().__init__(path, default_dict)
+        
         isPersistent: bool = self.get(PERSIST_KEY)
 
         if isPersistent:
+            logger.warning("Manufacturing config is set to persist")
             return
 
         if Machine.enable_manufacturing:
+            logger.warning("Manufacturing flag is up")
             return
 
+        logger.warning("Cleaning manufacturing config data")
         self.empty: bool = True
         super().__init__(path, {})
 
@@ -137,6 +148,7 @@ class ManufacturingSetter:
         return self.ManufacturingConfig
 
     def update_conf_obj(self) -> None:
+        logger.warning("updating manufacturing config object")
         self.ManufacturingConfig = MeticulousManufacturingConfigDict(
             MANUFACTURING_CONFIG_PATH, Default_manufacturing_config
         )

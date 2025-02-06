@@ -361,7 +361,7 @@ def validate_manufacturing():
         logger.debug(f"serialnumber identified: {serial}, ignoring for testing")
 
     def initialize_manufacturing():
-
+        logger.warning("initialize_manufacturing start")
         manufacturing_config_wrapper.update_conf_obj()
         # ManufacturingConfig = MeticulousManufacturingConfigDict(
         #     MANUFACTURING_CONFIG_PATH, Default_manufacturing_config
@@ -384,10 +384,12 @@ def validate_manufacturing():
         # API.register_handler(APIVersion.V1, r"/manufacturing/*", SettingsHandler)
 
     def task_thread():
+        logger.warning("waiting for 65 seconds")
         time.sleep(65)
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(initialize_manufacturing)
+        logger.warning("running initialize_manufacturing task")
+        loop.run_until_complete(initialize_manufacturing())
         loop.close()
 
     start_manufacturing_thread = NamedThread("start_manufacturing", target=task_thread)
