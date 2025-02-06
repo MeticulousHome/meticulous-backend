@@ -149,31 +149,12 @@ manufacturing_config_wrapper: ManufacturingSetter = ManufacturingSetter()
 
 
 class ManufacturingSettingsHandler(BaseHandler):
-    last_progress: float = 0
-    last_extra_info: str = None
-    __sio = None
-
-    @classmethod
-    def to_json(cls):
-        extra_info_str = (
-            f" : {cls.last_extra_info}"
-            if cls.last_extra_info is not None and isinstance(cls.last_extra_info, str)
-            else ""
-        )
-        return {
-            "progress": round(cls.last_progress),
-            "info": extra_info_str,
-        }
-
-    @classmethod
-    def setSio(cls, sio):
-        cls.__sio = sio
 
     # When the dial request data from the endpoint it will provide the schema if
     # the machine is on manufacturing mode
     def get(self, config=None):
         response: dict = {}
-        if Machine.enable_manufacturing is True:
+        if Machine.enable_manufacturing is False:
             self.set_status(203)  # Report no content
         else:
             self.set_status(200)
@@ -230,4 +211,4 @@ class ManufacturingSettingsHandler(BaseHandler):
         manufacturing_config_wrapper.get_config_obj().save()
 
 
-API.register_handler(APIVersion.V1, r"/manufacturing/(*)", ManufacturingSettingsHandler)
+API.register_handler(APIVersion.V1, r"/manufacturing/(.*)", ManufacturingSettingsHandler)
