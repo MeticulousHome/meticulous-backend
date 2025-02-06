@@ -256,6 +256,7 @@ class MeticulousConfigDict(dict):
     def __init__(self, path, default_dict={}) -> None:
         super().__init__(default_dict)
 
+        # Make attributes inheritable
         self.__path = Path(path)
         self.__configError = False
         self.__sio = None
@@ -264,7 +265,7 @@ class MeticulousConfigDict(dict):
         if ext not in [".yml", ".yaml"]:
             raise ValueError(
                 f"Invalid Extension provided! YAML (yml / yaml) expected, {ext} found"
-            )
+        )
 
         self.load()
 
