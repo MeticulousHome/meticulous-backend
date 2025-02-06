@@ -358,6 +358,7 @@ def validate_manufacturing():
     serial: str | None = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
 
     if serial is not None and serial != "" and serial != "NOT_ASSIGNED":
+        logger.debug(f"serialnumber identified: {serial}")
         return
 
     def initialize_manufacturing():
@@ -407,6 +408,7 @@ def main():
     UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
 
     Machine.init(sio)
+    logger.debug("validating manufacture mode")
     validate_manufacturing()
     USBManager.init()
 
