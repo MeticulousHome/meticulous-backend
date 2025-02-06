@@ -20,7 +20,7 @@ from machine import Machine
 logger = MeticulousLogger.getLogger(__name__)
 
 MANUFACTURING_CONFIG_PATH = os.getenv(
-    "MANUFACTURING_CONFIG_PATH", "/meticulous-user/manufacturing"
+    "MANUFACTURING_CONFIG_PATH", "/meticulous-user/config/manufacturing.yml"
 )
 
 # Stage skipping
