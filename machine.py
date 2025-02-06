@@ -80,6 +80,8 @@ class Machine:
 
     is_idle = True
 
+    enable_manufacturing = False
+
     @staticmethod
     def generate_random_serial():
         """
@@ -403,6 +405,13 @@ class Machine:
                         ] = info.buildDate
 
                         MeticulousConfig.save()
+
+                    # Enable manufacturing mode only when the ESP answers
+                    if (
+                        Machine.enable_manufacturing is False
+                        and Machine.esp_info.serialNumber == "NOT_ASSIGNED"
+                    ):
+                        Machine.enable_manufacturing = True
 
                     if not emulated_firmware:
                         logger.info(
