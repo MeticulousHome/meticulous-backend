@@ -132,6 +132,7 @@ class MeticulousManufacturingConfigDict(MeticulousConfigDict):
         logger.warning("Cleaning manufacturing config data")
         self.empty: bool = True
         super().__init__(path, {})
+        os.remove(Path(path))
 
     @staticmethod
     def delete_object(instance):
