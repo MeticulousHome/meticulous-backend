@@ -362,6 +362,16 @@ def validate_manufacturing():
 
     def initialize_manufacturing():
         logger.warning("initialize_manufacturing start")
+
+        # get the flag from Machine.enable_manufacturing with a 65 second timeout
+        # The flag being set to true also breaks the loop
+        # 65 seconds was chosen as the check ESP function executes at 60s after boot
+
+        start_time = time.time()
+        logger.warning("waiting for 65 seconds at most")
+        while ((not Machine.enable_manufacturing) and ((time.time() - start_time )< 65)):
+            logger.debug(f"time passed: {time.time() - start_time} s")
+            time.sleep(1)
         manufacturing_config_wrapper.update_conf_obj()
         # ManufacturingConfig = MeticulousManufacturingConfigDict(
         #     MANUFACTURING_CONFIG_PATH, Default_manufacturing_config
@@ -374,18 +384,13 @@ def validate_manufacturing():
             ManufacturingConfig is not None
         ):  # If it seems we are on manufacturing mode disable sentry
 
-            if ManufacturingConfig.empty:  # If at the end we are not
-                MeticulousManufacturingConfigDict.delete_object()
-                enable_sentry()
+            if not ManufacturingConfig.empty:  # If confirmed we are in MM
+                disable_sentry()
                 return
-            disable_sentry()
-
-        enable_sentry()
-        # API.register_handler(APIVersion.V1, r"/manufacturing/*", SettingsHandler)
+            MeticulousManufacturingConfigDict.delete_object()
 
     def task_thread():
-        logger.warning("waiting for 65 seconds")
-        time.sleep(65)
+        # time.sleep(65)
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         logger.warning("running initialize_manufacturing task")
