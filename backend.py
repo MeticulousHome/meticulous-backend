@@ -358,8 +358,7 @@ def validate_manufacturing():
     serial: str | None = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
 
     if serial is not None and serial != "" and serial != "NOT_ASSIGNED":
-        logger.debug(f"serialnumber identified: {serial}")
-        return
+        logger.debug(f"serialnumber identified: {serial}, ignoring for testing")
 
     def initialize_manufacturing():
 
