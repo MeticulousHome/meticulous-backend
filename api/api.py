@@ -49,6 +49,7 @@ class API:
         from . import sounds as _sounds  # noqa
         from . import machine as _machine  # noqa
         from . import serial as _serial  # noqa
+        from . import ssh as _ssh  # noqa
 
         routes = []
         logger.info("API Routes registered:")

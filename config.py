@@ -75,6 +75,10 @@ SOUNDS_DEFAULT_ENABLED = True
 SOUNDS_THEME = "sounds_theme"
 SOUNDS_DEFAULT_THEME = "default"
 
+# SSH configuration
+SSH_ENABLED = "ssh_enabled"
+SSH_DEFAULT_ENABLED = False
+
 # Firmware pinning
 DISALLOW_FIRMWARE_FLASHING = "disallow_firmware_flashing"
 DISALLOW_FIRMWARE_FLASHING_DEFAULT = False
