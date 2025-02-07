@@ -11,8 +11,12 @@ config = context.config
 db_path = Path(HISTORY_PATH).joinpath(DATABASE_FILE).resolve()
 config.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
 
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+if context.config.attributes.get("configure_logger", True) is False:
+    pass
+else:
+    if config.config_file_name is not None:
+        fileConfig(config.config_file_name)
+
 target_metadata = metadata
 
 

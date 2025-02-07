@@ -24,7 +24,7 @@ if BACKEND == "FIKA" or SENTRY:
 else:
     print("Skipping Sentry initialization")
 
-
+from db_migration_updater import update_db_migrations  # noqa: E402
 from log import MeticulousLogger  # noqa: E402
 from backend import main as backend_main  # noqa: E402
 
@@ -32,6 +32,7 @@ logger = MeticulousLogger.getLogger(__name__)
 
 if __name__ == "__main__":
     try:
+        update_db_migrations()
         backend_main()
     except Exception as e:
         logger.exception("main() failed", exc_info=e, stack_info=True)
