@@ -131,7 +131,7 @@ class MeticulousManufacturingConfigDict(MeticulousConfigDict):
 
         logger.warning("Cleaning manufacturing config data")
         self.empty: bool = True
-        super().__init__(path, {})
+        dict.__init__({})
         os.remove(Path(path))
 
     @staticmethod
