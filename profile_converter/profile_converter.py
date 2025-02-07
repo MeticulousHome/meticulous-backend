@@ -24,7 +24,7 @@ class ComplexProfileConverter:
         self.complex = SimplifiedJson(self.parameters)
         self.temperature = self.complex.get_temperature()
         # Use this value to prevent overshooting with a global offset
-        self.offset_temperature = 0
+        self.offset_temperature = 2
         self.max_piston_position = 75
 
     def head_template(self):
