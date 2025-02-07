@@ -192,6 +192,7 @@ async def live():
                 "comunication", Machine.sensor_sensors.to_sio_communication()
             )
             await sio.emit("actuators", Machine.sensor_sensors.to_sio_actuators())
+            await sio.emit("accessories", Machine.sensor_sensors.to_sio_accessory_data())
         if Machine.esp_info is not None:
             await sio.emit("info", {**software_info, **Machine.esp_info.to_sio()})
 
