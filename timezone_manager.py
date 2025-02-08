@@ -8,6 +8,7 @@ from config import (
     TIME_ZONE,
 )
 import asyncio
+from datetime import datetime
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -260,3 +261,14 @@ class TimezoneManager:
             return result
         except asyncio.TimeoutError:
             return "time out error, server could not be contacted or took too long to answer"
+
+    @staticmethod
+    def set_system_datetime(newDate: datetime):
+        """This will raise an exception if the date command fails."""
+
+        # Format the datetime in a form acceptable for the date command.
+        formatted_date = newDate.strftime("%Y-%m-%d %H:%M:%S")
+        logger.info("Setting system date to %s", formatted_date)
+        cmd = ["date", "--set", formatted_date]
+
+        subprocess.check_call(cmd)

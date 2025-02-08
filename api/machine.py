@@ -12,6 +12,8 @@ from .api import API, APIVersion
 from .base_handler import BaseHandler
 from ota import UpdateManager
 from backlight_controller import BacklightController
+from datetime import datetime
+from timezone_manager import TimezoneManager
 
 from config import (
     MeticulousConfig,
@@ -206,7 +208,47 @@ class MachineBacklightController(BaseHandler):
             return
 
 
+class MachineTimeHandler(BaseHandler):
+    async def post(self):
+        # Decode the JSON body
+        try:
+            data = json.loads(self.request.body)
+        except Exception:
+            self.set_status(400)
+            self.write({"error": "Invalid JSON"})
+            return
+
+        iso_date = data.get("date")
+        if not iso_date:
+            self.set_status(400)
+            self.write({"error": "Missing 'date' in request"})
+            return
+
+        # Parse the ISO date string.
+        # Replace a trailing 'Z' (UTC) with '+00:00' for correct parsing.
+        try:
+            dt = datetime.fromisoformat(iso_date.replace("Z", "+00:00"))
+        except ValueError:
+            self.set_status(400)
+            self.write({"error": "Invalid ISO date format"})
+            return
+
+        # If the datetime is timezone aware, convert it to local time.
+        if dt.tzinfo is not None:
+            dt = dt.astimezone()
+
+        try:
+            TimezoneManager.set_system_datetime(dt)
+        except subprocess.CalledProcessError:
+            self.set_status(500)
+            self.write({"error": "Failed to set system time"})
+            return
+
+        self.write({"status": "success"})
+
+
 API.register_handler(APIVersion.V1, r"/machine", MachineInfoHandler)
 API.register_handler(APIVersion.V1, r"/machine/backlight", MachineBacklightController)
 API.register_handler(APIVersion.V1, r"/machine/factory_reset", MachineResetHandler)
 API.register_handler(APIVersion.V1, r"/machine/OS_update_status", UpdateOSStatus)
+API.register_handler(APIVersion.V1, r"/machine/time", MachineTimeHandler)
