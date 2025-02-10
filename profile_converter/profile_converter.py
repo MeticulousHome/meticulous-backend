@@ -396,9 +396,7 @@ class ComplexProfileConverter:
                                 "curve": {
                                     "id": 2,
                                     "interpolation_kind": "linear_interpolation",
-                                    "points": [
-                                        [0, self.temperature + self.offset_temperature]
-                                    ],
+                                    "points": [[0, self.temperature]],
                                     "reference": {"kind": "time", "id": 2},
                                 },
                             },
@@ -411,7 +409,7 @@ class ComplexProfileConverter:
                                     "next_node_id": 5,
                                     "source": "Water Temperature",
                                     "operator": ">=",
-                                    "value": self.temperature,
+                                    "value": self.temperature - self.offset_temperature,
                                 },
                                 {
                                     "kind": "timer_trigger",
@@ -428,7 +426,7 @@ class ComplexProfileConverter:
                                     "next_node_id": 5,
                                     "source": "Water Temperature",
                                     "operator": ">=",
-                                    "value": self.temperature,
+                                    "value": self.temperature - self.offset_temperature,
                                 },
                                 {
                                     "kind": "timer_trigger",
