@@ -9,9 +9,11 @@ from config import (
     USB_MODES,
     TIMEZONE_SYNC,
     TIME_ZONE,
+    SSH_ENABLED,
 )
 
 from heater_actuator import HeaterActuator
+from ssh_manager import SSHManager
 
 from .base_handler import BaseHandler
 from .api import API, APIVersion
@@ -160,6 +162,35 @@ class SettingsHandler(BaseHandler):
                             }
                         )
                         logger.info(f"Invalid USB mode: {value}")
+                        save_value = False
+
+                # Handle SSH settings
+                if setting_target == SSH_ENABLED:
+                    try:
+                        if SSHManager.set_ssh_state(value):
+                            any_success = True
+                        else:
+                            complete_success = False
+                            self.set_status(500)
+                            self.write(
+                                {
+                                    "status": "error",
+                                    "setting": SSH_ENABLED,
+                                    "details": "Failed to update SSH service state",
+                                }
+                            )
+                            save_value = False
+                    except Exception as e:
+                        logger.error(f"Error managing SSH service: {e}")
+                        complete_success = False
+                        self.set_status(500)
+                        self.write(
+                            {
+                                "status": "error",
+                                "setting": SSH_ENABLED,
+                                "details": "Internal server error",
+                            }
+                        )
                         save_value = False
 
                 if save_value:

@@ -77,7 +77,7 @@ SOUNDS_DEFAULT_THEME = "default"
 
 # SSH configuration
 SSH_ENABLED = "ssh_enabled"
-SSH_DEFAULT_ENABLED = False
+SSH_DEFAULT_ENABLED = True
 
 # Firmware pinning
 DISALLOW_FIRMWARE_FLASHING = "disallow_firmware_flashing"
@@ -189,6 +189,7 @@ DefaultConfiguration_V1 = {
         USB_MODE: USB_MODE_DEFAULT,
         TIMEZONE_SYNC: DEFAULT_TIMEZONE_SYNC,
         TIME_ZONE: DEFAULT_TIME_ZONE,
+        SSH_ENABLED: SSH_DEFAULT_ENABLED,
     },
     CONFIG_WIFI: {
         WIFI_MODE: WIFI_MODE_AP,
