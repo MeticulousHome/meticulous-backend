@@ -166,32 +166,9 @@ class SettingsHandler(BaseHandler):
 
                 # Handle SSH settings
                 if setting_target == SSH_ENABLED:
-                    try:
-                        if SSHManager.set_ssh_state(value):
-                            any_success = True
-                        else:
-                            complete_success = False
-                            self.set_status(500)
-                            self.write(
-                                {
-                                    "status": "error",
-                                    "setting": SSH_ENABLED,
-                                    "details": "Failed to update SSH service state",
-                                }
-                            )
-                            save_value = False
-                    except Exception as e:
-                        logger.error(f"Error managing SSH service: {e}")
-                        complete_success = False
-                        self.set_status(500)
-                        self.write(
-                            {
-                                "status": "error",
-                                "setting": SSH_ENABLED,
-                                "details": "Internal server error",
-                            }
-                        )
-                        save_value = False
+                    save_value, complete_success, any_success = (
+                        self._handle_ssh_setting(value)
+                    )
 
                 if save_value:
                     MeticulousConfig[CONFIG_USER][setting_target] = value
@@ -208,6 +185,32 @@ class SettingsHandler(BaseHandler):
         MeticulousConfig.save()
         UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
         return self.get()
+
+    def _handle_ssh_setting(self, value):
+        try:
+            if SSHManager.set_ssh_state(value):
+                return True, True, True
+            else:
+                self.set_status(500)
+                self.write(
+                    {
+                        "status": "error",
+                        "setting": SSH_ENABLED,
+                        "details": "Failed to update SSH service state",
+                    }
+                )
+                return False, False, False
+        except Exception as e:
+            logger.error(f"Error managing SSH service: {e}")
+            self.set_status(500)
+            self.write(
+                {
+                    "status": "error",
+                    "setting": SSH_ENABLED,
+                    "details": "Internal server error",
+                }
+            )
+            return False, False, False
 
 
 class TimezoneUIHandler(BaseHandler):
