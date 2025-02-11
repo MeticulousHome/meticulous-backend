@@ -28,10 +28,21 @@ class TimezoneManager:
             MeticulousConfig[CONFIG_USER][TIME_ZONE]
             != TimezoneManager.__system_timezone
         ):
-            MeticulousConfig[CONFIG_USER][TIME_ZONE] = TimezoneManager.__system_timezone
+            # Try to set the system_timezone to the user specified tz
             logger.warning(
-                f"user config and system timezones confilct, updating user config to {MeticulousConfig[CONFIG_USER][TIME_ZONE]}"
+                f"user config and system timezones confilct, updating system config to {MeticulousConfig[CONFIG_USER][TIME_ZONE]}"
             )
+            status = TimezoneManager.set_system_timezone(
+                MeticulousConfig[CONFIG_USER][TIME_ZONE]
+            )
+            # If fails, set the system_timezone as the user timezone and report the error
+            if status != "SUCCESS":
+                logger.error(
+                    f"failed to set system TZ, updating user TZ to {TimezoneManager.__system_timezone} "
+                )
+                MeticulousConfig[CONFIG_USER][
+                    TIME_ZONE
+                ] = TimezoneManager.__system_timezone
             MeticulousConfig.save()
 
     @staticmethod
