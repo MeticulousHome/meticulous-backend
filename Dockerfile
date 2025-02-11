@@ -18,6 +18,7 @@ RUN /opt/venv/bin/pip install --upgrade wheel
 
 # Install dependencies:
 COPY requirements.txt .
+COPY UI_timezones.json /usr/share/zoneinfo
 RUN /opt/venv/bin/pip install -r requirements.txt
 
 WORKDIR /app
