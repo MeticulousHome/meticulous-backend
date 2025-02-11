@@ -12,8 +12,11 @@ from datetime import datetime
 
 logger = MeticulousLogger.getLogger(__name__)
 
+BACKEND = os.getenv("BACKEND", "FIKA").upper()
 TIMEZONE_JSON_FILE_PATH: str = "/usr/share/zoneinfo/UI_timezones.json"
 
+if BACKEND == "EMULATION":
+    TIMEZONE_JSON_FILE_PATH = "/tmp/UI_timezones.json"
 
 class TimezoneManager:
 
