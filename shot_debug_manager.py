@@ -38,6 +38,11 @@ class DebugData:
             "profile_time": time.time() - self.startTime,
             "status": shotData.status,
             "profile": shotData.profile,
+            "main_controller_kind": shotData.main_controller_kind,
+            "main_setpoint": shotData.main_setpoint,
+            "aux_controller_kind": shotData.aux_controller_kind,
+            "aux_setpoint": shotData.aux_setpoint,
+            "is_aux_controller_active": shotData.is_aux_controller_active,
         }
         self.shotData.append(formated_data)
 
