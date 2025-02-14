@@ -12,7 +12,9 @@ from datetime import datetime
 
 logger = MeticulousLogger.getLogger(__name__)
 
-TIMEZONE_JSON_FILE_PATH: str = "/usr/share/zoneinfo/UI_timezones.json"
+TIMEZONE_JSON_FILE_PATH: str = os.getenv(
+    "TIMEZONE_JSON_FILE_PATH", "/usr/share/zoneinfo/UI_timezones.json"
+)
 
 
 class TimezoneManager:

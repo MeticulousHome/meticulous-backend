@@ -12,6 +12,7 @@ export USER_SOUNDS=./sounds
 export DEFAULT_IMAGES=./images/default
 export IMAGES_PATH=./images/profile-images
 export DEFAULT_PROFILES=./default_profiles
+export TIMEZONE_JSON_FILE_PATH=./UI_timezones.json
 
 if [[ "$@" == *"--memory"* ]]; then
     if [ python3 -m memray ]; then
