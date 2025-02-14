@@ -6,8 +6,6 @@ import shutil
 import coloredlogs
 
 LOGLEVEL = os.getenv("LOGLEVEL", "DEBUG").upper()
-LOG_PATH = os.getenv("LOG_PATH", "/meticulous-user/logs")
-
 logformat = "%(asctime)s %(name)s %(levelname)s %(message)s"
 coloredlogs.install(fmt=logformat, level=LOGLEVEL, milliseconds=True)
 
