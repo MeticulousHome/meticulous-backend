@@ -16,12 +16,12 @@ class BacklightController:
     _MAX_BRIGHTNESS = None
 
     @staticmethod
-    def get_current_brightness():
+    def _get_current_raw_brightness():
         with open(BRIGHTNESS_FILE, "r") as f:
             return int(f.read().strip())
 
     @staticmethod
-    def get_max_brightness():
+    def _get_max_raw_brightness():
         if BacklightController._MAX_BRIGHTNESS:
             return BacklightController._MAX_BRIGHTNESS
 
@@ -30,7 +30,11 @@ class BacklightController:
             return BacklightController._MAX_BRIGHTNESS
 
     @staticmethod
-    def set_brightness(value):
+    def _set_raw_brightness(value):
+        if value < 0:
+            value = 0
+        if value > BacklightController._get_max_raw_brightness():
+            value = BacklightController._get_max_raw_brightness()
         with open(BRIGHTNESS_FILE, "w") as f:
             f.write(str(value))
 
@@ -60,9 +64,9 @@ class BacklightController:
     @staticmethod
     def adjust_brightness_thread(target_percent, interpolation="linear", steps=50):
         t = threading.currentThread()
-        current_brightness = BacklightController.get_current_brightness()
+        current_brightness = BacklightController._get_current_raw_brightness()
         target_brightness = round(
-            BacklightController.get_max_brightness() * target_percent
+            BacklightController._get_max_raw_brightness() * target_percent
         )
 
         if interpolation == "linear":
@@ -79,7 +83,7 @@ class BacklightController:
         for brightness in interpolator:
             if getattr(t, "do_run", True) is False:
                 break
-            BacklightController.set_brightness(int(brightness))
+            BacklightController._set_raw_brightness(int(brightness))
             time.sleep(0.01)
 
     @staticmethod
