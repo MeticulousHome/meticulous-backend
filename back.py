@@ -18,7 +18,24 @@ def before_breadcrumb(crumb, hint):
     return crumb
 
 
+def is_tornado_session_disconnected(event):
+    exc = event.get("exception", {})
+    values = exc.get("values", [])
+
+    for item in values:
+        mechanism = item.get("mechanism", {})
+        if (
+            mechanism.get("type", "") == "tornado"
+            and mechanism.get("handled", None) is False
+            and item.get("value", "") == "Session is disconnected"
+        ):
+            return True
+    return False
+
+
 def before_send(event, hint):
+    if is_tornado_session_disconnected(event):
+        return None
     return event
 
 
