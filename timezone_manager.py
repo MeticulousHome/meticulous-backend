@@ -18,6 +18,12 @@ TIMEZONE_JSON_FILE_PATH: str = os.getenv(
     "TIMEZONE_JSON_FILE_PATH", "/usr/share/zoneinfo/UI_timezones.json"
 )
 
+class TimezoneManagerError(Exception):
+
+    def __init__(self, message, log=False):
+        super().__init__(message)
+        if log is True:
+            logger.error(f"{message}")
 
 class TimezoneManager:
 
@@ -36,32 +42,32 @@ class TimezoneManager:
             logger.warning(
                 f"user config and system timezones confilct, updating system config to {MeticulousConfig[CONFIG_USER][TIME_ZONE]}"
             )
-            status = TimezoneManager.set_system_timezone(
-                MeticulousConfig[CONFIG_USER][TIME_ZONE]
-            )
+            try:
+                TimezoneManager.set_system_timezone(
+                    MeticulousConfig[CONFIG_USER][TIME_ZONE]
+                )
+            except TimezoneManagerError:
             # If fails, set the system_timezone as the user timezone and report the error
-            if status != "SUCCESS":
                 logger.error(
                     f"failed to set system TZ, updating user TZ to {TimezoneManager.__system_timezone} "
                 )
                 MeticulousConfig[CONFIG_USER][
                     TIME_ZONE
                 ] = TimezoneManager.__system_timezone
-            MeticulousConfig.save()
+            finally:
+                MeticulousConfig.save()
 
     @staticmethod
-    def update_timezone(new_timezone: str) -> str:
-
-        if MeticulousConfig[CONFIG_USER][TIME_ZONE] != new_timezone:
-            SUCCESS = TimezoneManager.set_system_timezone(new_timezone)
-            logger.debug(f"update timezone status: {SUCCESS}")
-            if SUCCESS:
-                MeticulousConfig[CONFIG_USER][TIME_ZONE] = new_timezone.rstrip(
+    def update_timezone(new_timezone: str) -> None:
+        stripped_new_tz = new_timezone.rstrip(
                     '"'
                 ).lstrip('"')
-                MeticulousConfig.save()
-            return SUCCESS
-        return "Success"
+        if MeticulousConfig[CONFIG_USER][TIME_ZONE] != stripped_new_tz:
+            try:
+                TimezoneManager.set_system_timezone(stripped_new_tz)
+                logger.debug(f"update timezone status: Success")
+            except TimezoneManagerError as e:
+                raise TimezoneManagerError("Error updating timezone:\n\t{e}", log=True)
 
     @staticmethod
     def set_system_timezone(new_timezone: str) -> str:
@@ -79,17 +85,14 @@ class TimezoneManager:
 
             if len(cmd_result.stderr) > 0 or len(cmd_result.stdout) > 0:
                 error = f"[ Out:{cmd_result.stdout} | Err: {cmd_result.stderr} ]"
-                logger.error(f"error setting system time zone\n\t {error}")
-                return error
+                raise Exception(f"{error}")
 
             logger.debug(
                 f"new system time zone: {TimezoneManager.get_system_timezone()} ]"
             )
-            return "Success"
-
         except Exception as e:
-            logger.error(f"error setting system time zone\n\t{e}")
-            return f"{e}"
+            logger.error(f"Error setting system time zone\n\t{e}")
+            raise TimezoneManagerError(f"Error setting system time zone\n\t{e}")
 
     @staticmethod
     def get_system_timezone():
@@ -257,7 +260,7 @@ class TimezoneManager:
     @staticmethod
     async def request_and_sync_tz() -> str:
 
-        async def request_tz_task() -> str:
+        async def request_tz_task() -> None:
             # nonlocal error
             import aiohttp
 
@@ -265,28 +268,27 @@ class TimezoneManager:
 
             async with aiohttp.ClientSession() as session:
                 while True:  # Retry loop
-                    try:
-                        await asyncio.sleep(1)
-                        async with session.get(TZ_GETTER_URL) as response:
-                            if response.status == 200:  # Break on success
-                                str_content = await response.text()
-                                tz = json.loads(str_content).get("tz")
-                                if tz is not None:
-                                    return TimezoneManager.update_timezone(tz)
-                                return "Invalid response from server"
-                            else:
-                                logger.warning(
-                                    f"timezone fetch failed with status code: {response.status}, re-fetching"
-                                )
-                    except aiohttp.ClientError as e:
-                        logger.warning(f"Request failed: {e}. Retrying...")
-
+                    await asyncio.sleep(1)
+                    async with session.get(TZ_GETTER_URL) as response:
+                        if response.status == 200:  # Break on success
+                            str_content = await response.text()
+                            tz = json.loads(str_content).get("tz")
+                            if tz is not None:
+                                TimezoneManager.update_timezone(tz) # raises TimezoneManagerError if fails
+                                return
+                            logger.warning("Invalid response from server, re-fetching")
+                        else:
+                            logger.warning(
+                                f"timezone fetch failed with status code: {response.status}, re-fetching"
+                            )
         try:
-            result = ""
-            result = await asyncio.wait_for(request_tz_task(), timeout=20)
-            return result
+            await asyncio.wait_for(request_tz_task(), timeout=20)
         except asyncio.TimeoutError:
-            return "time out error, server could not be contacted or took too long to answer"
+            logger.error("time out error, server could not be contacted or took too long to answer")
+            raise Exception("time out error, server could not be contacted or took too long to answer")
+        except TimezoneManagerError as e:
+            logger.error(f"failed to set the provided timezone\n\t{e}")
+            raise Exception("failed to set the provided timezone")
 
     @staticmethod
     def set_system_datetime(newDate: datetime):
