@@ -20,7 +20,7 @@ from .api import API, APIVersion
 from ota import UpdateManager
 from log import MeticulousLogger
 from usb import USBManager
-
+import copy
 from timezone_manager import TimezoneManager
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -45,6 +45,45 @@ class SettingsHandler(BaseHandler):
         else:
             self.write(json.dumps(MeticulousConfig[CONFIG_USER]))
 
+    def validate_setting(self, setting_target, value):
+        if setting_target not in MeticulousConfig[CONFIG_USER]:
+            error_message = f"setting {setting_target} not found"
+            raise KeyError(error_message)
+
+        if type(value) is not type(MeticulousConfig[CONFIG_USER][setting_target]):
+            error_message = f"setting value invalid, received {type(value)} and expected {type(setting_target)}"
+            raise KeyError(error_message)
+
+    async def update_timezone_sync(self, value):
+        if value == AUTOMATIC_TIMEZONE_SYNC:
+            try:
+                await TimezoneManager.request_and_sync_tz()
+            except Exception as e:
+                error_message = f"failed to sync timezone: {e}"
+                raise Exception(error_message)
+
+    def update_timezone(self, value):
+        try:
+            TimezoneManager.update_timezone(value)
+        except UnicodeDecodeError as e:
+            error_message = f"failed to set new timezone: {e}"
+            raise Exception(error_message)
+
+    def update_heater_timeout(self, value):
+        try:
+            HeaterActuator.set_timeout(value)
+        except ValueError as e:
+            error_message = f"Invalid heater timeout value: {str(e)}"
+            raise Exception(error_message)
+
+    def update_usb_mode(self, value):
+        try:
+            USB_MODES(value)
+            USBManager.setUSBMode(value)
+        except (ValueError, RuntimeError) as e:
+            error_message = f"Failed to set the USB mode: {str(e)}"
+            raise Exception(error_message)
+
     async def post(self, setting_name=None):
         try:
             settings = json.loads(self.request.body)
@@ -55,127 +94,48 @@ class SettingsHandler(BaseHandler):
             )
             return
 
-        complete_success: bool = True
-        any_success: bool = False
-        for setting_target in settings:
-            value = settings.get(setting_target)
-            setting = MeticulousConfig[CONFIG_USER].get(setting_target)
-            if setting is not None:
-                save_value = True
-                if type(value) is not type(setting):
-                    complete_success = False
-                    self.set_status(404 if not any_success else 207)
-                    self.write(
-                        {
-                            "status": "error",
-                            "setting": setting_target,
-                            "details": f"setting value invalid, received {type(value)} and expected {type(setting)}",
-                        }
-                    )
-                    save_value = False
+        workConfig = copy.deepcopy(MeticulousConfig[CONFIG_USER])
+
+        try:
+            for setting_target in settings:
+                value = settings.get(setting_target)
+
+                self.validate_setting(setting_target, value)
+
                 if setting_target == TIMEZONE_SYNC:
-                    status = "Success"
-                    if value == AUTOMATIC_TIMEZONE_SYNC:
-
-                        status = await TimezoneManager.request_and_sync_tz()
-                        logger.debug(f"timezone endpoint status: {status}")
-
-                    any_success = any_success or status == "Success"
-                    self.set_status(
-                        200
-                        if (complete_success and status == "Success")
-                        else 207 if (any_success and status == "Success") else 404
-                    )
-
-                    if status != "Success":
-                        self.write(
-                            {
-                                "status": "error",
-                                "setting": TIMEZONE_SYNC,
-                                "details": f"{status}",
-                            }
-                        )
-                        complete_success = False
+                    await self.update_timezone_sync(value)
 
                 if setting_target == TIME_ZONE:
-                    try:
-                        status = TimezoneManager.update_timezone(value)
-
-                    except UnicodeDecodeError as e:
-                        logger.error(f"Failed setting the new timezone\n\t{e}")
-                        status = f"failed to set new timezone: {e}"
-
-                    any_success = any_success or status == "Success"
-                    self.set_status(
-                        200
-                        if (complete_success and status == "Success")
-                        else 207 if (any_success and status == "Success") else 404
-                    )
-
-                    if status != "Success":
-                        complete_success = False
-                        self.write(
-                            {
-                                "status": "error",
-                                "setting": TIME_ZONE,
-                                "details": f"{status}",
-                            }
-                        )
-                    save_value = False  # the value is saved by the function TimezoneManager.update_timezone()
+                    self.update_timezone(value)
 
                 if setting_target == MACHINE_HEATING_TIMEOUT:
-                    try:
-                        HeaterActuator.set_timeout(value)
-                    except ValueError as e:
-                        error_message = str(e)
-                        logger.warning(f"Invalid heater timeout value: {error_message}")
-                        self.write(
-                            {
-                                "status": "error",
-                                "setting": MACHINE_HEATING_TIMEOUT,
-                                "details": f"invalid heater timeout value: {error_message} ",
-                            }
-                        )
-                        complete_success = False
-                        save_value = False
-
-                    self.set_status(
-                        200 if complete_success else 207 if any_success else 404
-                    )
+                    self.update_heater_timeout(value)
 
                 if setting_target == USB_MODE:
-                    try:
-                        USB_MODES(value)
-                        USBManager.setUSBMode(value)
-                    except (ValueError, RuntimeError) as error:
-                        self.set_status(400)
-                        complete_success = False
-                        self.write(
-                            {
-                                "status": "error",
-                                "setting": USB_MODE,
-                                "details": f"{error}",
-                            }
-                        )
-                        logger.info(f"Invalid USB mode: {value}")
-                        save_value = False
+                    self.update_usb_mode(value)
 
-                if save_value:
-                    MeticulousConfig[CONFIG_USER][setting_target] = value
-            else:
-                self.set_status(207 if any_success else 404)
-                self.write(
-                    {
-                        "status": "error",
-                        "setting": setting_target,
-                        "details": "setting not found",
-                    }
-                )
-                logger.info(f"Setting not found: {setting_target}")
+                if setting_target == UPDATE_CHANNEL:
+                    UpdateManager.setChannel(value)
+
+                # If we made it here without exception we can update the setting
+                workConfig[setting_target] = value
+
+        except KeyError as e:  # The variable is invalid in some way
+            self.set_status(404)
+            self.write({"status": "error", "error": f"{e}"})
+            return
+
+        except Exception as e:  # The variable specific callbacks could not be activated
+            self.set_status(400)
+            self.write({"status": "error", "error": f"{e}"})
+            return
+
+        # we have a valid config update the entries we changed to make race conditions more fun
+        for setting_target in settings:
+            MeticulousConfig[CONFIG_USER][setting_target] = workConfig[setting_target]
+
         MeticulousConfig.save()
-        UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
-        if complete_success:
-            return self.get()
+        return self.get()
 
 
 class TimezoneUIHandler(BaseHandler):
