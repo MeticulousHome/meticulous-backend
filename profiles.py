@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import shutil
+import urllib.parse
 from named_thread import NamedThread
 import time
 import uuid
@@ -34,6 +35,10 @@ DEFAULT_IMAGES_PATH = os.getenv(
     "DEFAULT_IMAGES", "/opt/meticulous-backend/images/default"
 )
 
+DEFAULT_IMAGES_PATH_ACCENT_COLORS = os.path.join(
+    DEFAULT_IMAGES_PATH, "accent_colors.json"
+)
+
 DEFAULT_PROFILES_PATH = os.getenv(
     "DEFAULT_PROFILES", "/opt/meticulous-backend/default_profiles"
 )
@@ -52,6 +57,7 @@ class ProfileManager:
     _known_images = []
     _default_profiles = []
     _profile_default_images = []
+    _profile_default_images_accent_colors = {}
     _sio: socketio.AsyncServer = None
     _loop: asyncio.AbstractEventLoop = None
     _thread: NamedThread = None
@@ -147,9 +153,13 @@ class ProfileManager:
 
     def handle_image(data):
         if "image" not in data["display"] or data["display"]["image"] == "":
-            data["display"]["image"] = "/api/v1/profile/image/" + random.choice(
-                ProfileManager.get_default_images()
-            )
+            random_image = random.choice(ProfileManager.get_default_images())
+            data["display"]["image"] = "/api/v1/profile/image/" + random_image
+            if random_image in ProfileManager._profile_default_images_accent_colors:
+                logger.info("using default accent color")
+                data["display"]["accentColor"] = (
+                    ProfileManager._profile_default_images_accent_colors[random_image]
+                )
         elif not ProfileManager._is_relative_url(data["display"]["image"]):
             try:
                 uri = datauri.parse(data["display"]["image"])
@@ -200,9 +210,21 @@ class ProfileManager:
 
     def handle_accent_color(data):
         if "accentColor" not in data["display"] or data["display"]["accentColor"] == "":
-            data["display"][
-                "accentColor"
-            ] = ProfileManager.generate_ramdom_accent_color()
+            if "image" in data["display"]:
+                url = urllib.parse.urlparse(data["display"]["image"])
+                base = os.path.basename(url.path)
+
+                if base in ProfileManager._profile_default_images_accent_colors:
+                    logger.info("No accent color found, using default one")
+                    predefined_color = (
+                        ProfileManager._profile_default_images_accent_colors[base]
+                    )
+                    data["display"]["accentColor"] = predefined_color
+                    return
+
+            logger.info("No accent color found, generating random one")
+            random_color = ProfileManager.generate_ramdom_accent_color()
+            data["display"]["accentColor"] = random_color
 
     def save_profile(
         data,
@@ -463,6 +485,18 @@ class ProfileManager:
 
         if not os.path.exists(IMAGES_PATH):
             os.makedirs(IMAGES_PATH)
+
+        if os.path.exists(DEFAULT_IMAGES_PATH_ACCENT_COLORS) and os.path.isfile(
+            DEFAULT_IMAGES_PATH_ACCENT_COLORS
+        ):
+            with open(DEFAULT_IMAGES_PATH_ACCENT_COLORS, "r") as f:
+                try:
+                    accent_colors = json.load(f)
+                    ProfileManager._profile_default_images_accent_colors = accent_colors
+                except json.decoder.JSONDecodeError as error:
+                    logger.warning(
+                        f"Could not decode default accent colors {f.name}: {error}"
+                    )
 
         for filename in os.listdir(DEFAULT_IMAGES_PATH):
             file_path = os.path.join(DEFAULT_IMAGES_PATH, filename)
