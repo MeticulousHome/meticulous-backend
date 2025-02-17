@@ -5,6 +5,7 @@ import tornado
 import tornado.web
 import zstandard as zstd
 from pydantic import ValidationError
+from typing import Optional
 
 from log import MeticulousLogger
 from shot_database import SearchParams, ShotDataBase, SearchOrder, SearchOrderBy
@@ -67,6 +68,15 @@ class ZstdHistoryHandler(tornado.web.StaticFileHandler):
     def set_default_headers(self):
         BaseHandler.set_default_headers(self)
 
+    def compute_etag(self) -> Optional[str]:
+        """Override to disable ETag generation on directories"""
+        if os.path.isdir(self.absolute_path):
+            return None
+        if not os.path.exists(self.absolute_path):
+            return None
+
+        return super().compute_etag()
+
     async def get(self, path):
         self.set_header("Content-Type", "application/json")
 
@@ -77,8 +87,10 @@ class ZstdHistoryHandler(tornado.web.StaticFileHandler):
 
         compressed_path = f"{full_path}.zst"
         if os.path.isdir(full_path):
+            logger.info(f"Request for a Directory:{full_path}")
             # If it's a directory, show the JSON listing
-            return await self.list_directory(full_path)
+            await self.list_directory(full_path)
+            return
         elif not os.path.exists(full_path) or not os.path.isfile(full_path):
             logger.info(
                 f"File doesn't exist: {full_path}, checking if it exists compressed"
