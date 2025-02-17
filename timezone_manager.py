@@ -6,6 +6,8 @@ from config import (
     MeticulousConfig,
     CONFIG_USER,
     TIME_ZONE,
+    TIMEZONE_SYNC,
+    DEFAULT_TIME_ZONE,
 )
 import asyncio
 from datetime import datetime
@@ -240,6 +242,17 @@ class TimezoneManager:
                 "Json file for UI timezones does not exist and could not be created"
             )
             return {}
+
+    @staticmethod
+    def tz_background_update():
+        tz = MeticulousConfig[CONFIG_USER][TIME_ZONE]
+        tz_config = MeticulousConfig[CONFIG_USER][TIMEZONE_SYNC]
+        if tz == DEFAULT_TIME_ZONE and tz_config == "automatic":
+            logger.info(
+                "Timezone is set to automatic, fetching timezone in the background"
+            )
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(TimezoneManager.request_and_sync_tz())
 
     @staticmethod
     async def request_and_sync_tz() -> str:

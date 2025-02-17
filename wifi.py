@@ -22,6 +22,8 @@ from config import (
     MeticulousConfig,
 )
 from hostname import HostnameManager
+from timezone_manager import TimezoneManager
+
 from log import MeticulousLogger
 from named_thread import NamedThread
 
@@ -204,6 +206,7 @@ class WifiManager:
         return WifiManager._networking_available
 
     def tryAutoConnect():
+        logger.info("Starting Networking background Thread")
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         while True:
@@ -212,8 +215,10 @@ class WifiManager:
             if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP:
                 continue
 
+            # Check if we are already connected to something
             current = WifiManager.getCurrentConfig()
             if current.connected:
+                TimezoneManager.tz_background_update()
                 continue
 
             networks = WifiManager.scanForNetworks(timeout=10)
