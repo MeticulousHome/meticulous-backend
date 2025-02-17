@@ -212,6 +212,9 @@ class GATTServer:
         while True:
             await self.update_trigger.wait()
             self.update_trigger.clear()
+            if not self.bless_gatt_server.app:
+                logger.info("BLE GATT Server not initialized yet")
+                continue
 
             logger.info(f"Updating BLE anouncment: {self.manufacturer_data}")
             # self.manufacturer_data = b"000000000000000000000000000"
