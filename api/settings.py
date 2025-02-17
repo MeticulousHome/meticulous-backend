@@ -9,6 +9,7 @@ from config import (
     USB_MODES,
     TIMEZONE_SYNC,
     TIME_ZONE,
+    AUTOMATIC_TIMEZONE_SYNC,
 )
 
 from heater_actuator import HeaterActuator
@@ -74,10 +75,7 @@ class SettingsHandler(BaseHandler):
                     save_value = False
                 if setting_target == TIMEZONE_SYNC:
                     status = "Success"
-                    if (
-                        value == "automatic"
-                        and MeticulousConfig[CONFIG_USER][TIMEZONE_SYNC] != "automatic"
-                    ):
+                    if value == AUTOMATIC_TIMEZONE_SYNC:
 
                         status = await TimezoneManager.request_and_sync_tz()
                         logger.debug(f"timezone endpoint status: {status}")
