@@ -174,7 +174,8 @@ class SettingsHandler(BaseHandler):
                 logger.info(f"Setting not found: {setting_target}")
         MeticulousConfig.save()
         UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
-        return self.get()
+        if complete_success:
+            return self.get()
 
 
 class TimezoneUIHandler(BaseHandler):
