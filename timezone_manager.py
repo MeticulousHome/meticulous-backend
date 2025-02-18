@@ -20,11 +20,7 @@ TIMEZONE_JSON_FILE_PATH: str = os.getenv(
 
 
 class TimezoneManagerError(Exception):
-
-    def __init__(self, message, log=False):
-        super().__init__(message)
-        if log:
-            logger.error(f"{message}")
+    pass
 
 
 class TimezoneManager:
@@ -67,7 +63,8 @@ class TimezoneManager:
                 TimezoneManager.set_system_timezone(stripped_new_tz)
                 logger.debug("update timezone status: Success")
             except TimezoneManagerError as e:
-                raise TimezoneManagerError(f"Error updating timezone:\n\t{e}", log=True)
+                logger.error(f"Error updating timezone: {e}")
+                raise TimezoneManagerError(f"Error updating timezone: {e}")
 
     @staticmethod
     def set_system_timezone(new_timezone: str) -> str:
@@ -85,14 +82,14 @@ class TimezoneManager:
 
             if len(cmd_result.stderr) > 0 or len(cmd_result.stdout) > 0:
                 error = f"[ Out:{cmd_result.stdout} | Err: {cmd_result.stderr} ]"
-                raise Exception(f"{error}")
+                raise Exception(error)
 
             logger.debug(
                 f"new system time zone: {TimezoneManager.get_system_timezone()} ]"
             )
         except Exception as e:
-            logger.error(f"Error setting system time zone\n\t{e}")
-            raise TimezoneManagerError(f"Error setting system time zone\n\t{e}")
+            logger.error(f"Error setting system time zone: {e}")
+            raise TimezoneManagerError(f"Error setting system time zone: {e}")
 
     @staticmethod
     def get_system_timezone():
