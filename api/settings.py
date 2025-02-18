@@ -54,10 +54,11 @@ class SettingsHandler(BaseHandler):
             error_message = f"setting value invalid, received {type(value)} and expected {type(setting_target)}"
             raise KeyError(error_message)
 
-    async def update_timezone_sync(self, value):
+    async def update_timezone_sync(self, value) -> str:
         if value == AUTOMATIC_TIMEZONE_SYNC:
             try:
-                await TimezoneManager.request_and_sync_tz()
+                new_tz = await TimezoneManager.request_and_sync_tz()
+                return new_tz
             except Exception as e:
                 error_message = f"failed to sync timezone: {e}"
                 raise Exception(error_message)
@@ -103,7 +104,10 @@ class SettingsHandler(BaseHandler):
                 self.validate_setting(setting_target, value)
 
                 if setting_target == TIMEZONE_SYNC:
-                    await self.update_timezone_sync(value)
+                    new_tz = await self.update_timezone_sync(value)
+                    if new_tz:
+                        self.validate_setting(TIME_ZONE,new_tz)
+                        workConfig[TIME_ZONE] = new_tz
 
                 if setting_target == TIME_ZONE:
                     self.update_timezone(value)
@@ -131,8 +135,8 @@ class SettingsHandler(BaseHandler):
             return
 
         # we have a valid config update the entries we changed to make race conditions more fun
-        for setting_target in settings:
-            MeticulousConfig[CONFIG_USER][setting_target] = workConfig[setting_target]
+        for key, value in workConfig.items():
+            MeticulousConfig[CONFIG_USER][key] = value
 
         MeticulousConfig.save()
         return self.get()

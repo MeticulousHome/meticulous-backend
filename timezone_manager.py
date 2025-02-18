@@ -260,7 +260,7 @@ class TimezoneManager:
     @staticmethod
     async def request_and_sync_tz() -> str:
 
-        async def request_tz_task() -> None:
+        async def request_tz_task() -> str:
             # nonlocal error
             import aiohttp
 
@@ -275,14 +275,15 @@ class TimezoneManager:
                             tz = json.loads(str_content).get("tz")
                             if tz is not None:
                                 TimezoneManager.update_timezone(tz) # raises TimezoneManagerError if fails
-                                return
+                                return tz
                             logger.warning("Invalid response from server, re-fetching")
                         else:
                             logger.warning(
                                 f"timezone fetch failed with status code: {response.status}, re-fetching"
                             )
         try:
-            await asyncio.wait_for(request_tz_task(), timeout=20)
+            new_tz = await asyncio.wait_for(request_tz_task(), timeout=20)
+            return new_tz
         except asyncio.TimeoutError:
             logger.error("time out error, server could not be contacted or took too long to answer")
             raise Exception("time out error, server could not be contacted or took too long to answer")
