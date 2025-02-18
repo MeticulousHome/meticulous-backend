@@ -18,12 +18,14 @@ TIMEZONE_JSON_FILE_PATH: str = os.getenv(
     "TIMEZONE_JSON_FILE_PATH", "/usr/share/zoneinfo/UI_timezones.json"
 )
 
+
 class TimezoneManagerError(Exception):
 
     def __init__(self, message, log=False):
         super().__init__(message)
-        if log is True:
+        if log:
             logger.error(f"{message}")
+
 
 class TimezoneManager:
 
@@ -47,7 +49,7 @@ class TimezoneManager:
                     MeticulousConfig[CONFIG_USER][TIME_ZONE]
                 )
             except TimezoneManagerError:
-            # If fails, set the system_timezone as the user timezone and report the error
+                # If fails, set the system_timezone as the user timezone and report the error
                 logger.error(
                     f"failed to set system TZ, updating user TZ to {TimezoneManager.__system_timezone} "
                 )
@@ -59,13 +61,11 @@ class TimezoneManager:
 
     @staticmethod
     def update_timezone(new_timezone: str) -> None:
-        stripped_new_tz = new_timezone.rstrip(
-                    '"'
-                ).lstrip('"')
+        stripped_new_tz = new_timezone.rstrip('"').lstrip('"')
         if MeticulousConfig[CONFIG_USER][TIME_ZONE] != stripped_new_tz:
             try:
                 TimezoneManager.set_system_timezone(stripped_new_tz)
-                logger.debug(f"update timezone status: Success")
+                logger.debug("update timezone status: Success")
             except TimezoneManagerError as e:
                 raise TimezoneManagerError(f"Error updating timezone:\n\t{e}", log=True)
 
@@ -274,19 +274,26 @@ class TimezoneManager:
                             str_content = await response.text()
                             tz = json.loads(str_content).get("tz")
                             if tz is not None:
-                                TimezoneManager.update_timezone(tz) # raises TimezoneManagerError if fails
+                                TimezoneManager.update_timezone(
+                                    tz
+                                )  # raises TimezoneManagerError if fails
                                 return tz
                             logger.warning("Invalid response from server, re-fetching")
                         else:
                             logger.warning(
                                 f"timezone fetch failed with status code: {response.status}, re-fetching"
                             )
+
         try:
             new_tz = await asyncio.wait_for(request_tz_task(), timeout=20)
             return new_tz
         except asyncio.TimeoutError:
-            logger.error("time out error, server could not be contacted or took too long to answer")
-            raise Exception("time out error, server could not be contacted or took too long to answer")
+            logger.error(
+                "time out error, server could not be contacted or took too long to answer"
+            )
+            raise Exception(
+                "time out error, server could not be contacted or took too long to answer"
+            )
         except TimezoneManagerError as e:
             logger.error(f"failed to set the provided timezone\n\t{e}")
             raise Exception("failed to set the provided timezone")
