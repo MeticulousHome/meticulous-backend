@@ -67,7 +67,7 @@ class TimezoneManager:
                 TimezoneManager.set_system_timezone(stripped_new_tz)
                 logger.debug(f"update timezone status: Success")
             except TimezoneManagerError as e:
-                raise TimezoneManagerError("Error updating timezone:\n\t{e}", log=True)
+                raise TimezoneManagerError(f"Error updating timezone:\n\t{e}", log=True)
 
     @staticmethod
     def set_system_timezone(new_timezone: str) -> str:
