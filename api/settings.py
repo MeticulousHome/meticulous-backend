@@ -134,9 +134,7 @@ class SettingsHandler(BaseHandler):
             self.write({"status": "error", "error": f"{e}"})
             return
 
-        # we have a valid config update the entries we changed to make race conditions more fun
-        for key, value in workConfig.items():
-            MeticulousConfig[CONFIG_USER][key] = value
+        MeticulousConfig[CONFIG_USER] = workConfig
 
         MeticulousConfig.save()
         return self.get()
