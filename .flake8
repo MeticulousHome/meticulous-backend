@@ -12,7 +12,6 @@ exclude =
     .tox,
     .mypy_cache,
     .pytest_cache
-    modes
     profile_converter
 
 # Set the maximum allowed line length
@@ -37,4 +36,4 @@ enable-extensions = G
 plugin_black = True
 
 # Additional configuration options
-max-complexity = 20
+max-complexity = 18
