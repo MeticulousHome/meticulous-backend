@@ -160,11 +160,16 @@ class SoundPlayer:
 
         # Sound is disabled by the theme
         if file_name in [{}, "", None]:
-            logger.info("Sound is disabled")
+            logger.info(f"Sound {sound_name} is disabled by the theme")
             return True
 
         file_path = os.path.join(theme_path, file_name)
+        file_path = os.path.abspath(file_path)
         logger.info(f"Playing {sound_name} from {file_path}")
+
+        if not os.path.exists(file_path):
+            logger.warning(f"Sound file not found: {file_path}")
+            return False
 
         try:
             playsound(file_path, block=False)
