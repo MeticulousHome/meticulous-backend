@@ -10,6 +10,7 @@ import os
 import os.path
 import pyprctl
 import asyncio
+import sentry_sdk
 
 from esp_serial.data import ButtonEventData
 
@@ -287,6 +288,13 @@ def main():
     DBusMonitor.init()
     HostnameManager.init()
     UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
+
+    try:
+        sentry_sdk.set_context("build-timestamp", UpdateManager.getBuildTimestamp())
+        sentry_sdk.set_context("build-channel", UpdateManager.getImageChannel())
+        sentry_sdk.set_context("build-info", UpdateManager.getRepositoryInfo())
+    except Exception as e:
+        logger.error(f"Failed to set sentry context: {e}")
 
     Machine.init(sio)
     USBManager.init()
