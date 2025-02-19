@@ -213,17 +213,6 @@ class ESPInfo:
             return None
         return info
 
-    def to_sio(self):
-        return {
-            "firmwareV": self.firmwareV,
-            "espPinout": self.espPinout,
-            "mainVoltage": self.mainVoltage,
-            "color": self.color,
-            "serialNumber": self.serialNumber,
-            "batchNumber": self.batchNumber,
-            "buildDate": self.buildDate,
-        }
-
 
 # From ESP32 to backend
 class MachineStatus:

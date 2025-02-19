@@ -8,8 +8,6 @@ import time
 import json
 import os
 import os.path
-import version as backend
-import subprocess
 import pyprctl
 import asyncio
 
@@ -58,32 +56,9 @@ PORT = int(os.getenv("PORT", "8080"))
 DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "y")
 
 
-def gatherVersionInfo():
-    global infoSolicited
-    software_info["name"] = "Meticulous Espresso"
-    software_info["backendV"] = backend.VERSION
-
-    # #OBTENEMOS SU VERSION USANDO LOS COMANDOS DPKG y GREP
-    command = "dpkg --list | grep meticulous-ui"
-    result = subprocess.run(command, shell=True, capture_output=True, text=True)
-    try:
-        lcd_version = result.stdout.split()[2]
-    except IndexError:
-        logger.warning("LCD DialApp is not installed")
-        lcd_version = "0.0.0"
-    infoSolicited = True
-
-    software_info["lcdV"] = lcd_version
-
-
 sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="tornado")
 
 UpdateOSStatus.setSio(sio)
-
-software_info = {
-    "name": "Meticulous Espresso",
-    "lcdV": 3,
-}
 
 
 @sio.event
@@ -195,8 +170,6 @@ async def live():
             await sio.emit(
                 "accessories", Machine.sensor_sensors.to_sio_accessory_data()
             )
-        if Machine.esp_info is not None:
-            await sio.emit("info", {**software_info, **Machine.esp_info.to_sio()})
 
         # current_auto_preheat = MeticulousConfig[CONFIG_USER].get('auto_preheat')
         # if current_auto_preheat != previous_auto_preheat:
@@ -311,7 +284,6 @@ def main():
 
     pyprctl.set_name("Main")
 
-    gatherVersionInfo()
     DBusMonitor.init()
     HostnameManager.init()
     UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
