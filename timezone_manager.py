@@ -26,6 +26,7 @@ class TimezoneManagerError(Exception):
 class TimezoneManager:
 
     __system_timezone: str = ""
+    __system_synced: bool = False
 
     @staticmethod
     def init():
@@ -245,9 +246,8 @@ class TimezoneManager:
 
     @staticmethod
     def tz_background_update():
-        tz = MeticulousConfig[CONFIG_USER][TIME_ZONE]
         tz_config = MeticulousConfig[CONFIG_USER][TIMEZONE_SYNC]
-        if tz == DEFAULT_TIME_ZONE and tz_config == "automatic":
+        if tz_config == "automatic" and not TimezoneManager.__system_synced:
             logger.info(
                 "Timezone is set to automatic, fetching timezone in the background"
             )
@@ -274,6 +274,7 @@ class TimezoneManager:
                                 TimezoneManager.update_timezone(
                                     tz
                                 )  # raises TimezoneManagerError if fails
+                                TimezoneManager.__system_synced = True
                                 return tz
                             logger.warning("Invalid response from server, re-fetching")
                         else:
