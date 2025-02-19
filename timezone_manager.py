@@ -282,7 +282,10 @@ class TimezoneManager:
                                 )  # raises TimezoneManagerError if fails
                                 TimezoneManager.__system_synced = True
                                 return tz
-                            logger.warning("Invalid response from server, re-fetching")
+                            else:
+                                logger.warning("No timezone known for this IP")
+                                TimezoneManager.__system_synced = True
+                                return None
                         else:
                             logger.warning(
                                 f"timezone fetch failed with status code: {response.status}, re-fetching"

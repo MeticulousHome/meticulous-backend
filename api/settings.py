@@ -105,7 +105,7 @@ class SettingsHandler(BaseHandler):
 
                 if setting_target == TIMEZONE_SYNC:
                     new_tz = await self.update_timezone_sync(value)
-                    if new_tz:
+                    if new_tz is not None:
                         self.validate_setting(TIME_ZONE, new_tz)
                         workConfig[TIME_ZONE] = new_tz
 
