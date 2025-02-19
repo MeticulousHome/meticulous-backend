@@ -16,6 +16,7 @@ logger = MeticulousLogger.getLogger(__name__)
 class PlaySoundHandler(BaseHandler):
     def get(self, sound):
         if SoundPlayer.play_sound(sound):
+            self.write({"status": "okay"})
             self.finish()
         else:
             self.set_status(404)
@@ -43,6 +44,7 @@ class SetThemeHandler(BaseHandler):
 
     def get(self, theme):
         if SoundPlayer.set_theme(theme):
+            self.write({"status": "okay"})
             self.finish()
         else:
             self.set_status(404)
