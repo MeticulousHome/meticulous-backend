@@ -243,17 +243,6 @@ class Machine:
                     Machine.action("info")
                     info_requested = True
 
-                if time.time() - Machine.startTime > 60 and not Machine.infoReady:
-                    if MeticulousConfig[CONFIG_USER][DISALLOW_FIRMWARE_FLASHING]:
-                        logger.warning(
-                            "The ESP never send an info, but user requested no updates!"
-                        )
-                    else:
-                        logger.warning(
-                            "The ESP never send an info, flashing latest firmware to be sure"
-                        )
-                        Machine.startUpdate()
-
                 match (data_str_sensors):
                     # FIXME: This should be replace in the firmware with an "Event," prefix
                     # for cleanliness
