@@ -32,23 +32,28 @@ class TimezoneManager:
     def init():
         TimezoneManager.validate_timezones_json()
         TimezoneManager.__system_timezone = TimezoneManager.get_system_timezone()
+        target_timezone = MeticulousConfig[CONFIG_USER][TIME_ZONE]
+        if target_timezone != TimezoneManager.__system_timezone:
 
-        if (
-            MeticulousConfig[CONFIG_USER][TIME_ZONE]
-            != TimezoneManager.__system_timezone
-        ):
-            # Try to set the system_timezone to the user specified tz
-            logger.warning(
-                f"user config and system timezones confilct, updating system config to {MeticulousConfig[CONFIG_USER][TIME_ZONE]}"
-            )
-            try:
-                TimezoneManager.set_system_timezone(
-                    MeticulousConfig[CONFIG_USER][TIME_ZONE]
+            if target_timezone == DEFAULT_TIME_ZONE:
+                logger.info("No timezone was ever configured")
+                if TimezoneManager.__system_timezone == "Etc/UTC":
+                    return
+
+                logger.info("Setting system timezone to Etc/UTC as a default")
+                target_timezone = "Etc/UTC"
+            else:
+                logger.warning(
+                    f"user config and system timezones confilct, updating system config to {MeticulousConfig[CONFIG_USER][TIME_ZONE]}"
                 )
-            except TimezoneManagerError:
+
+            # Try to set the system_timezone to the user specified tz
+            try:
+                TimezoneManager.set_system_timezone(target_timezone)
+            except TimezoneManagerError as e:
                 # If fails, set the system_timezone as the user timezone and report the error
                 logger.error(
-                    f"failed to set system TZ, updating user TZ to {TimezoneManager.__system_timezone} "
+                    f"failed to set system TZ, syncing user TZ with system to {TimezoneManager.__system_timezone}. Error: {e}"
                 )
                 MeticulousConfig[CONFIG_USER][
                     TIME_ZONE
@@ -85,12 +90,13 @@ class TimezoneManager:
                 error = f"[ Out:{cmd_result.stdout} | Err: {cmd_result.stderr} ]"
                 raise Exception(error)
 
-            logger.debug(
-                f"new system time zone: {TimezoneManager.get_system_timezone()} ]"
+            logger.info(
+                f"new system time zone: {TimezoneManager.get_system_timezone()}"
             )
         except Exception as e:
-            logger.error(f"Error setting system time zone: {e}")
-            raise TimezoneManagerError(f"Error setting system time zone: {e}")
+            message = f"Error setting system time zone: {e}"
+            logger.error(message)
+            raise TimezoneManagerError(message)
 
     @staticmethod
     def get_system_timezone():
