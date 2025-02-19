@@ -33,7 +33,7 @@ class Sounds(Enum):
 class SoundPlayer:
     SUPPORTED_FORMATS = [".mp3", ".wav", ".ogg", ".flac"]
     DEFAULT_THEME_NAME = "default"
-    KNOWN_THEMES = {}
+    KNOWN_THEMES = None
 
     CURRENT_THEME_CONFIG = {}
     CURRENT_THEME_NAME = ""
@@ -67,6 +67,8 @@ class SoundPlayer:
 
     @staticmethod
     def availableThemes():
+        if SoundPlayer.KNOWN_THEMES is None:
+            return {}
         return SoundPlayer.KNOWN_THEMES
 
     @staticmethod
@@ -99,6 +101,12 @@ class SoundPlayer:
         Set the current theme if it exists.
         :param theme_name: The name of the theme to set as the current theme.
         """
+        if SoundPlayer.KNOWN_THEMES is None:
+            logger.warning(
+                "Manipulating theme before SoundPlayer was initialized. Ignoring."
+            )
+            return False
+
         if theme_name in SoundPlayer.availableThemes() or theme_name is None:
             MeticulousConfig[CONFIG_SYSTEM][SOUNDS_THEME] = theme_name
             MeticulousConfig.save()
@@ -142,6 +150,12 @@ class SoundPlayer:
         if not MeticulousConfig[CONFIG_USER][SOUNDS_ENABLED]:
             logger.info("No sounds enabled")
             return True
+
+        if SoundPlayer.KNOWN_THEMES is None:
+            logger.warning(
+                "Playing sound before SoundPlayer was initialized. Ignoring."
+            )
+            return False
 
         # Just in case we have a stale mapping
         if (

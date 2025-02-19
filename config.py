@@ -12,7 +12,6 @@ from mergedeep import merge
 
 from log import MeticulousLogger
 
-# We are doing from config import * a lot and this will also import the logger...
 _config_logger = MeticulousLogger.getLogger(__name__)
 
 CONFIG_PATH = os.getenv("CONFIG_PATH", "/meticulous-user/config")
