@@ -19,11 +19,15 @@ from ssh_manager import SSHManager
 from .base_handler import BaseHandler
 from .api import API, APIVersion
 
+from api.manufacturing import dial_schema, CONFIG_MANUFACTURING
+
 from ota import UpdateManager
 from log import MeticulousLogger
 from usb import USBManager
 import copy
 from timezone_manager import TimezoneManager
+
+from machine import Machine
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -161,7 +165,8 @@ class SettingsHandler(BaseHandler):
 
         MeticulousConfig[CONFIG_USER] = workConfig
 
-        MeticulousConfig.save()
+        MeticulousConfig.save()  # ! Add mutex to protect access to it when writing?
+
         return self.get()
 
 
@@ -211,5 +216,69 @@ class TimezoneUIHandler(BaseHandler):
         )
 
 
+class ManufacturingSettingsHandler(BaseHandler):
+
+    # When the dial request data from the endpoint it will provide the schema if
+    # the machine is on manufacturing mode
+    def get(self):
+        if Machine.enable_manufacturing is False:
+            self.set_status(204)  # Report no content
+        else:
+            self.set_status(200)
+            self.write(dial_schema)  # Report the schema
+
+    def validate_setting(self, setting_target, value):
+        configuration = MeticulousConfig[CONFIG_MANUFACTURING]
+        if setting_target not in configuration:
+            error_message = f"setting {setting_target} not found"
+            raise KeyError(error_message)
+
+        if type(value) is not type(configuration[setting_target]):
+            error_message = f"setting value invalid, received {type(value)} and expected {type(setting_target)}"
+            raise KeyError(error_message)
+
+    # the body is a json
+    # {
+    #   <key>: <value>
+    # }
+    def post(self):
+
+        if Machine.enable_manufacturing is False:
+            self.set_status(410)
+            self.write({"status": "error", "error": "no configuration available"})
+            return
+
+        try:
+            config = json.loads(self.request.body)
+        except json.decoder.JSONDecodeError as e:
+            self.set_status(403)
+            self.write(
+                {"status": "error", "error": "invalid json", "json_error": f"{e}"}
+            )
+            return
+
+        workConfig = copy.deepcopy(MeticulousConfig[CONFIG_MANUFACTURING])
+
+        try:
+            for config_key in config:
+                new_value = config.get(config_key)
+                self.validate_setting(config_key, new_value)
+
+                workConfig[config_key] = new_value
+
+        except KeyError as e:  # The variable is invalid in some way
+            self.set_status(404)
+            self.write({"status": "error", "error": f"{e}"})
+            return
+
+        MeticulousConfig[CONFIG_MANUFACTURING] = workConfig
+        self.set_status(200)
+        self.write(json.dumps(MeticulousConfig[CONFIG_MANUFACTURING]))
+
+        MeticulousConfig.save()  # ! Add mutex to protect access to it when writing?
+        return
+
+
+API.register_handler(APIVersion.V1, r"/manufacturing[/]*", ManufacturingSettingsHandler)
 API.register_handler(APIVersion.V1, r"/settings[/]*(.*)", SettingsHandler),
 API.register_handler(APIVersion.V1, r"/timezones/(.*)", TimezoneUIHandler),
