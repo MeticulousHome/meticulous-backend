@@ -1,9 +1,11 @@
 import json
 from io import BytesIO
 import zipfile
+import os
 
 from .base_handler import BaseHandler
 from .api import API, APIVersion
+from .machine import Machine
 
 from sounds import SoundPlayer, USER_SOUNDS
 from config import MeticulousConfig, CONFIG_SYSTEM, SOUNDS_THEME
@@ -57,7 +59,9 @@ class UploadThemeHandler(BaseHandler):
         # Ensure there is a file in the request
         if "file" not in self.request.files:
             self.set_status(400)
-            self.write({"error": "invalid zip", "details": "file not found in request"})
+            self.write(
+                {"error": "invalid zip", "details": "'file' not found in request"}
+            )
             return
 
         fileinfo = self.request.files["file"][0]
@@ -74,7 +78,7 @@ class UploadThemeHandler(BaseHandler):
                     self.write(
                         {
                             "error": "invalid zip",
-                            "details": "Zip must contain exactly one folder at the root.",
+                            "details": "Zip must contain exactly one folder with the themes name at the root.",
                         }
                     )
                     return
@@ -110,11 +114,12 @@ class UploadThemeHandler(BaseHandler):
                             return
 
                 # Extraction destination
-                extraction_path = USER_SOUNDS
-
+                extraction_path = os.path.abspath(USER_SOUNDS)
+                logger.info(f"Extracting zip to {extraction_path}")
                 # If all checks pass, extract the zip
                 zip_ref.extractall(extraction_path)
-                SoundPlayer.init(False, False)
+                logger.info("Reloading sound player")
+                SoundPlayer.init(Machine.emulated, False)
             self.write("Zip file uploaded and unpacked successfully.")
         except zipfile.BadZipFile:
             self.set_status(400)
