@@ -93,7 +93,7 @@ class Machine:
 
     is_idle = True
 
-    enable_manufacturing = True #Testing, should be False
+    enable_manufacturing = False  # Testing, should be False
 
     @staticmethod
     def generate_random_serial():

@@ -29,8 +29,9 @@ from config import (
     LOGGING_SENSOR_MESSAGES,
 )
 from api.manufacturing import (
-    MeticulousManufacturingConfigDict,
-    manufacturing_config_wrapper,
+    CONFIG_MANUFACTURING,
+    MANUFACTURING_ENABLED_KEY,
+    Default_manufacturing_config,
 )
 
 from machine import Machine
@@ -282,7 +283,7 @@ def disable_sentry():
     # Disable sentry if we are on manufacturing mode
     sentry_client = sentry_sdk.get_client()
     if sentry_client:
-        logger.warning("Sentry disabled: In Manufacturing mode")
+        logger.info("Sentry disabled: In Manufacturing mode")
         sentry_client.options["enabled"] = False
     else:
         logger.error("Cannot get sentry client to disable the process")
@@ -292,7 +293,7 @@ def enable_sentry():
     # Disable sentry if we are on manufacturing mode
     sentry_client = sentry_sdk.get_client()
     if sentry_client:
-        logger.warning("Sentry enabled")
+        logger.info("Sentry enabled")
         sentry_client.options["enabled"] = True
     else:
         logger.error("Cannot get sentry client to enable the process")
@@ -305,48 +306,46 @@ def validate_manufacturing():
     60s
 
     """
-    # from .api.api import API, APIVersion
 
     # Look for the S/N in the .yml file, if there is a SN we dont even initialize the ManufacturingConfig data
     serial: str | None = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
 
     if serial is not None and serial != "" and serial != "NOT_ASSIGNED":
-        logger.debug(f"serialnumber identified: {serial}, ignoring for testing")
+        return
 
     def initialize_manufacturing():
-        logger.warning("initialize_manufacturing start")
-
         # get the flag from Machine.enable_manufacturing with a 65 second timeout
         # The flag being set to true also breaks the loop
         # 65 seconds was chosen as the check ESP function executes at 60s after boot
 
         start_time = time.time()
-        logger.warning("waiting for 65 seconds at most")
-        while ((not Machine.enable_manufacturing) and ((time.time() - start_time )< 65)):
-            logger.debug(f"time passed: {time.time() - start_time} s")
+        while (not Machine.enable_manufacturing) and ((time.time() - start_time) < 65):
             time.sleep(1)
-        manufacturing_config_wrapper.update_conf_obj()
-        # ManufacturingConfig = MeticulousManufacturingConfigDict(
-        #     MANUFACTURING_CONFIG_PATH, Default_manufacturing_config
-        # )
 
-        # If the returned object None or the attribute empty is True
-        # We are not in manufacturing mode
-        ManufacturingConfig = manufacturing_config_wrapper.get_config_obj()
-        if (
-            ManufacturingConfig is not None
-        ):  # If it seems we are on manufacturing mode disable sentry
+        # If Machine.enable_manufacturing is False, check for the enable value on config file
+        # if it is true, we are in manufacturing mode, else we are not
 
-            if not ManufacturingConfig.empty:  # If confirmed we are in MM
-                disable_sentry()
-                return
-            MeticulousManufacturingConfigDict.delete_object()
+        file_enable: bool = MeticulousConfig[CONFIG_MANUFACTURING][
+            MANUFACTURING_ENABLED_KEY
+        ]
+        Machine.enable_manufacturing = Machine.enable_manufacturing or file_enable
+
+        if Machine.enable_manufacturing is True:
+            disable_sentry()
+            return
+        else:
+            for config in Default_manufacturing_config:
+                MeticulousConfig[CONFIG_MANUFACTURING][config] = (
+                    Default_manufacturing_config[config]
+                )
+            MeticulousConfig.save()
+            logger.info("restoring CONFIG_MANUFACTURING to defaults")
+            # Reset manufacturing configuration to default values
 
     def task_thread():
         # time.sleep(65)
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        logger.warning("running initialize_manufacturing task")
         loop.run_until_complete(initialize_manufacturing())
         loop.close()
 
