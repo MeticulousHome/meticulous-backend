@@ -8,9 +8,12 @@ from enum import Enum
 
 import sentry_sdk
 import yaml
+import copy
 from mergedeep import merge
 
 from log import MeticulousLogger
+
+from api.manufacturing import CONFIG_MANUFACTURING, Default_manufacturing_config
 
 _config_logger = MeticulousLogger.getLogger(__name__)
 
@@ -219,6 +222,7 @@ DefaultConfiguration_V1 = {
         WIFI_KNOWN_WIFIS: WIFI_DEFAULT_KNOWN_WIFIS,
     },
     CONFIG_PROFILES: {PROFILE_LAST: PROFILE_DEFAULT_LAST},
+    CONFIG_MANUFACTURING: copy.deepcopy(Default_manufacturing_config),
 }
 
 
@@ -265,7 +269,7 @@ class MeticulousConfigDict(dict):
         if ext not in [".yml", ".yaml"]:
             raise ValueError(
                 f"Invalid Extension provided! YAML (yml / yaml) expected, {ext} found"
-        )
+            )
 
         self.load()
 
