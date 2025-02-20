@@ -11,7 +11,8 @@ def get_nested(config, keys):
         if key in config:
             config = config[key]
         else:
-            raise KeyError(f"Key '{key}' not in [{", ".join(config.keys())}]")
+            allowed_keys = "[" + ", ".join(config.keys()) + "]"
+            raise KeyError(f"Key '{key}' not in {allowed_keys}")
     return config
 
 
