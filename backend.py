@@ -30,7 +30,6 @@ from machine import Machine
 from sounds import SoundPlayer
 from imager import DiscImager
 from ota import UpdateManager
-from shot_manager import ShotManager
 from esp_serial.connection.emulation_data import EmulationData
 from usb import USBManager
 
@@ -307,7 +306,6 @@ def main():
     WifiManager.init()
     NotificationManager.init(sio)
     ProfileManager.init(sio)
-    ShotManager.init()
     SoundPlayer.init(emulation=Machine.emulated)
 
     # Check for mapped timezones json
