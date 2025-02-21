@@ -68,6 +68,7 @@ def run():
     from db_migration_updater import update_db_migrations
     from log import MeticulousLogger
     from backend import main as backend_main
+    from shot_manager import ShotManager
 
     # Add ignored errors to sentry now that the import suceeded
     client = sentry_sdk.get_client()
@@ -76,7 +77,19 @@ def run():
     logger = MeticulousLogger.getLogger(__name__)
 
     try:
-        update_db_migrations()
+        try:
+            ShotManager.init()
+            logger.info("ShotManager initialized successfully")
+        except Exception as e:
+            logger.error("Failed to initialize ShotManager", exc_info=e)
+
+        logger.info("Running database migrations")
+        try:
+            update_db_migrations()
+            logger.info("Database migrations completed successfully")
+        except Exception as e:
+            logger.error("Failed to run database migrations", exc_info=e)
+
         backend_main()
     except Exception as e:
         logger.exception("main() failed", exc_info=e, stack_info=True)
