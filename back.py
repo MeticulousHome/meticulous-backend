@@ -79,14 +79,12 @@ def run():
     try:
         try:
             ShotManager.init()
-            logger.info("ShotManager initialized successfully")
         except Exception as e:
             logger.error("Failed to initialize ShotManager", exc_info=e)
 
         logger.info("Running database migrations")
         try:
             update_db_migrations()
-            logger.info("Database migrations completed successfully")
         except Exception as e:
             logger.error("Failed to run database migrations", exc_info=e)
 
