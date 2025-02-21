@@ -26,6 +26,7 @@ from log import MeticulousLogger
 from machine import Machine
 from profile_converter.profile_converter import ComplexProfileConverter
 from profile_preprocessor import ProfilePreprocessor
+from dataclasses import dataclass
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -52,6 +53,13 @@ class PROFILE_EVENT(Enum):
     LOAD = "load"
 
 
+@dataclass
+class ProfileHover:
+    id: str
+    type: str
+    from_: str
+
+
 class ProfileManager:
     _known_profiles = dict()
     _known_images = []
@@ -63,6 +71,7 @@ class ProfileManager:
     _thread: NamedThread = None
     _last_profile_changes = []
     _schema = None
+    _profile_hover = ProfileHover(id="", type="", from_="")
 
     def init(sio: socketio.AsyncServer):
         ProfileManager._sio = sio
@@ -90,6 +99,13 @@ class ProfileManager:
         ProfileManager.refresh_default_profile_list()
         ProfileManager.refresh_profile_list()
         ProfileManager._delete_unused_images()
+
+        if ProfileManager.get_last_profile() is not None:
+            ProfileManager._profile_hover = ProfileHover(
+                id=ProfileManager.get_last_profile()["profile"]["id"],
+                type="click",
+                from_="last",
+            )
 
     def _register_profile_change(
         change: PROFILE_EVENT,
@@ -272,13 +288,49 @@ class ProfileManager:
         )
 
         ProfileManager._emit_profile_event(change_type, data["id"], change_id)
+        ProfileManager._profile_hover = ProfileHover(
+            id=data["id"], type=ProfileManager._profile_hover.type, from_="backend"
+        )
+        ProfileManager._emit_profile_hover()
 
         return {"profile": data, "change_id": change_id}
+
+    def _get_adjacent_profile(profile_id: str) -> Optional[dict]:
+        keys = list(ProfileManager._known_profiles.keys())
+        try:
+            index = keys.index(profile_id)
+            if index > 0:
+                return ProfileManager._known_profiles[keys[index - 1]]
+            elif index < len(keys) - 1:
+                return ProfileManager._known_profiles[keys[index + 1]]
+        except ValueError:
+            pass
+        return None
 
     def delete_profile(id: str, change_id: Optional[str] = None) -> Optional[dict]:
         profile = ProfileManager._known_profiles.get(id)
         if not profile:
             return None
+
+        # If the profile is currently hovered, we need to update the hover
+        if (
+            ProfileManager._profile_hover.id == id
+            or ProfileManager._known_profiles.items().__len__ == 1
+        ):
+            adjacent_profile = ProfileManager._get_adjacent_profile(id)
+            if adjacent_profile:
+                ProfileManager._profile_hover = ProfileHover(
+                    id=adjacent_profile["id"],
+                    type=ProfileManager._profile_hover.type,
+                    from_="backend",
+                )
+                ProfileManager._emit_profile_hover()
+            # We deleted the current profile and there are no other profiles
+            if ProfileManager._known_profiles.items().__len__ == 1:
+                ProfileManager._profile_hover = ProfileHover(
+                    id="", type=ProfileManager._profile_hover.type, from_="backend"
+                )
+                ProfileManager._emit_profile_hover()
 
         filename = f'{profile["id"]}.json'
         file_path = os.path.join(PROFILE_PATH, filename)
@@ -362,6 +414,10 @@ class ProfileManager:
         ProfileManager._set_last_profile(data)
 
         ProfileManager._emit_profile_event(PROFILE_EVENT.LOAD, data["id"])
+        ProfileManager._profile_hover = ProfileHover(
+            id=data["id"], type="focus", from_="backend"
+        )
+        ProfileManager._emit_profile_hover()
 
         return data
 
@@ -589,3 +645,26 @@ class ProfileManager:
             return err
 
         return None
+
+    @staticmethod
+    async def handle_profile_hover(data):
+        ProfileManager._profile_hover = ProfileHover(
+            id=data.get("id"), type=data.get("type"), from_=data.get("from")
+        )
+        await ProfileManager._async_emit_profile_hover()
+
+    @staticmethod
+    async def _async_emit_profile_hover():
+        data = ProfileManager._profile_hover
+        hover = {"id": data.id, "type": data.type, "from": data.from_}
+        logger.info(
+            f"{"Hovering" if data.type == "scroll" else "Selecting"} Profile {json.dumps(hover, indent=1, sort_keys=False)}"
+        )
+        await ProfileManager._sio.emit("profileHover", hover)
+
+    @staticmethod
+    def _emit_profile_hover():
+        async def emit() -> None:
+            await ProfileManager._async_emit_profile_hover()
+
+        asyncio.run_coroutine_threadsafe(emit(), ProfileManager._loop)
