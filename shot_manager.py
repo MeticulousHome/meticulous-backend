@@ -100,6 +100,8 @@ class ShotManager:
     @staticmethod
     def init():
         ShotDataBase.init()
+        logger = MeticulousLogger.getLogger(__name__)
+        logger.info("ShotManager initialized successfully")
 
     @staticmethod
     def start():
