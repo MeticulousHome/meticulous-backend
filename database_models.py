@@ -44,6 +44,28 @@ history = Table(
     Column("profile_key", Integer, ForeignKey("profile.key"), nullable=False),
 )
 
+shot_annotation = Table(
+    "shot_annotation",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column(
+        "history_id", Integer, ForeignKey("history.id"), nullable=False, unique=True
+    ),
+)
+
+shot_rating = Table(
+    "shot_rating",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column(
+        "annotation_id",
+        Integer,
+        ForeignKey("shot_annotation.id"),
+        nullable=False,
+        unique=True,
+    ),
+    Column("basic", Text, nullable=True),  # "like", "dislike", o null
+)
 
 # FTS structure is defined here for reference
 FTS_TABLES = {
