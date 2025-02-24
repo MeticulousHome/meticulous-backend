@@ -208,6 +208,58 @@ class StatisticsHandler(BaseHandler):
         self.write(results)
 
 
+class ShotRatingHandler(BaseHandler):
+
+    def get(self, shot_id):
+        try:
+            shot_id = int(shot_id)
+            rating = ShotDataBase.get_shot_rating(shot_id)
+            self.write({"shot_id": shot_id, "rating": rating})
+        except ValueError:
+            self.set_status(400)
+            self.write({"status": "error", "error": "Invalid shot ID format"})
+        except Exception as e:
+            logger.error(f"Error getting shot rating: {e}")
+            self.set_status(500)
+            self.write({"status": "error", "error": "Internal server error"})
+
+    def post(self, shot_id):
+        try:
+            shot_id = int(shot_id)
+            data = json.loads(self.request.body)
+            rating = data.get("rating", None)
+
+            if rating not in ["like", "dislike", None]:
+                self.set_status(400)
+                self.write(
+                    {
+                        "status": "error",
+                        "error": "Invalid rating value. Use 'like', 'dislike', or null",
+                    }
+                )
+                return
+
+            success = ShotDataBase.rate_shot(shot_id, rating)
+
+            if success:
+                self.write({"status": "ok", "shot_id": shot_id, "rating": rating})
+            else:
+                self.set_status(404)
+                self.write(
+                    {"status": "error", "error": "Shot not found or rating failed"}
+                )
+        except json.JSONDecodeError:
+            self.set_status(400)
+            self.write({"status": "error", "error": "Invalid JSON"})
+        except ValueError:
+            self.set_status(400)
+            self.write({"status": "error", "error": "Invalid shot ID format"})
+        except Exception as e:
+            logger.error(f"Error updating shot rating: {e}")
+            self.set_status(500)
+            self.write({"status": "error", "error": "Internal server error"})
+
+
 API.register_handler(APIVersion.V1, r"/history/search", ProfileSearchHandler),
 API.register_handler(APIVersion.V1, r"/history/current", CurrentShotHandler),
 API.register_handler(APIVersion.V1, r"/history/last", LastShotHandler),
@@ -215,6 +267,7 @@ API.register_handler(APIVersion.V1, r"/history/stats", StatisticsHandler),
 
 API.register_handler(APIVersion.V1, r"/history", HistoryHandler),
 API.register_handler(APIVersion.V1, r"/history/last-debug-file", LastDebugFileHandler),
+API.register_handler(APIVersion.V1, r"/history/rating/([0-9]+)", ShotRatingHandler),
 
 API.register_handler(
     APIVersion.V1,
