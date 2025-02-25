@@ -73,16 +73,10 @@ def disconnect(sid):
 
 @sio.on("action")
 def msg(sid, data):
-    if data == "start":
-        time.sleep(0.5)
-        data = "action," + data + "\x03"
-        logger.info(data)
-        Machine.write(data.encode("utf-8"))
+    if data in Machine.ALLOWED_ESP_ACTIONS:
+        Machine.action(action_event=data)
     else:
-        time.sleep(0.05)
-        data = "action," + data + "\x03"
-        logger.info(data)
-        Machine.write(data.encode("utf-8"))
+        logger.warning(f"Invalid action {data}")
 
 
 @sio.on("notification")
