@@ -384,8 +384,14 @@ class ButtonEventEnum(Enum):
     TARE_LONG = auto()
     TARE_SUPER_LONG = auto()
     CONTEXT = auto()
+
     ENCODER_PRESSED = auto()
     ENCODER_RELEASED = auto()
+    TARE_PRESSED = auto()
+    TARE_RELEASED = auto()
+    CONTEXT_PRESSED = auto()
+    CONTEXT_RELEASED = auto()
+
     # Failure type
     UNKNOWN = auto()
 
@@ -409,6 +415,10 @@ class ButtonEventEnum(Enum):
             "cntx": "CONTEXT",
             "encoder_button_pressed": "ENCODER_PRESSED",
             "encoder_button_released": "ENCODER_RELEASED",
+            "tare_pressed": "TARE_PRESSED",
+            "tare_released": "TARE_RELEASED",
+            "context_pressed": "CONTEXT_PRESSED",
+            "context_released": "CONTEXT_RELEASED",
         }
 
         if event_lookup.get(type_str) is not None:
