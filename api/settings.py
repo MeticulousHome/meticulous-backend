@@ -10,9 +10,11 @@ from config import (
     TIMEZONE_SYNC,
     TIME_ZONE,
     AUTOMATIC_TIMEZONE_SYNC,
+    SSH_ENABLED,
 )
 
 from heater_actuator import HeaterActuator
+from ssh_manager import SSHManager
 
 from .base_handler import BaseHandler
 from .api import API, APIVersion
@@ -85,6 +87,38 @@ class SettingsHandler(BaseHandler):
             error_message = f"Failed to set the USB mode: {str(e)}"
             raise Exception(error_message)
 
+    def handle_manufacturing_status(self, value):
+        try:
+            if not isinstance(value, dict):
+                return value
+
+            current_config = MeticulousConfig.get("manufacturing", {})
+
+            if (
+                current_config.get("enable", True)
+                and not value.get("enable", True)
+                and value.get("first_boot", True)
+            ):
+
+                from ssh_manager import SSHManager
+
+                logger.info(
+                    "Manufacturing mode exit detected, generating root password"
+                )
+
+                # Generate password
+                if not SSHManager.generate_root_password():
+                    logger.error("Failed to generate root password")
+
+                # Mark that it is no longer first_boot
+                value["first_boot"] = False
+
+            return value
+
+        except Exception as e:
+            logger.error(f"Error handling manufacturing update: {e}")
+            return value
+
     async def post(self, setting_name=None):
         try:
             settings = json.loads(self.request.body)
@@ -102,6 +136,35 @@ class SettingsHandler(BaseHandler):
                 value = settings.get(setting_target)
 
                 self.validate_setting(setting_target, value)
+
+                # Handle SSH settings
+                if setting_target == SSH_ENABLED:
+                    try:
+                        if SSHManager.set_ssh_state(value):
+                            any_success = True
+                        else:
+                            complete_success = False
+                            self.set_status(500)
+                            self.write(
+                                {
+                                    "status": "error",
+                                    "setting": SSH_ENABLED,
+                                    "details": "Failed to update SSH service state",
+                                }
+                            )
+                            save_value = False
+                    except Exception as e:
+                        logger.error(f"Error managing SSH service: {e}")
+                        complete_success = False
+                        self.set_status(500)
+                        self.write(
+                            {
+                                "status": "error",
+                                "setting": SSH_ENABLED,
+                                "details": "Internal server error",
+                            }
+                        )
+                        save_value = False
 
                 if setting_target == TIMEZONE_SYNC:
                     new_tz = await self.update_timezone_sync(value)
