@@ -10,17 +10,15 @@ logger = MeticulousLogger.getLogger(__name__)
 
 class ExecuteActionHandler(BaseHandler):
     def post(self, action):
-        BACKEND_ACTIONS = ["reset"]
-        ESP_ACTIONS = ["start", "stop", "tare", "scale_master_calibration", "preheat"]
-        allowed_actions = BACKEND_ACTIONS + ESP_ACTIONS
-        if action in ESP_ACTIONS:
+        allowed_actions = Machine.ALLOWED_BACKEND_ACTIONS + Machine.ALLOWED_ESP_ACTIONS
+        if action in Machine.ALLOWED_ESP_ACTIONS:
             success = Machine.action(action_event=action)
             if success:
                 self.write(json.dumps({"action": action, "status": "ok"}))
             else:
                 self.set_status(409)
                 self.write(json.dumps({"status": "error", "action": action}))
-        elif action in BACKEND_ACTIONS:
+        elif action in Machine.ALLOWED_BACKEND_ACTIONS:
             match action:
                 case "reset":
                     Machine.reset()

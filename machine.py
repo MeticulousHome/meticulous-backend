@@ -55,6 +55,17 @@ class esp_nvs_keys(Enum):
 
 
 class Machine:
+
+    ALLOWED_BACKEND_ACTIONS = ["reset"]
+    ALLOWED_ESP_ACTIONS = [
+        "start",
+        "stop",
+        "tare",
+        "scale_master_calibration",
+        "preheat",
+        "continue",
+    ]
+
     _connection = None
     _thread = None
     _stopESPcomm = False
@@ -489,7 +500,6 @@ class Machine:
     def startUpdate():
         updateNotification = Notification(
             "Upgrading system realtime core. This will take around 20 seconds. The machines buttons will be disabled during the upgrade",
-            [""],
         )
         NotificationManager.add_notification(updateNotification)
 
