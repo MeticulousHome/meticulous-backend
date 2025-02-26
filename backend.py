@@ -47,8 +47,6 @@ from timezone_manager import TimezoneManager
 
 from ssh_manager import SSHManager
 
-manufacturing_config = MeticulousConfig.get("manufacturing", {})
-
 logger = MeticulousLogger.getLogger(__name__)
 
 tornado.log.access_log = MeticulousLogger.getLogger("tornado.access")
@@ -298,19 +296,7 @@ def main():
     except Exception as e:
         logger.error(f"Failed to set sentry context: {e}")
 
-    if not manufacturing_config.get("enable", True) and manufacturing_config.get(
-        "first_boot", True
-    ):
-
-        logger.info("Detected manufacturing mode exit, generating root password")
-        if SSHManager.generate_root_password():
-            # Update first_boot to avoid generating the password again
-            manufacturing_config["first_boot"] = False
-            MeticulousConfig["manufacturing"] = manufacturing_config
-            MeticulousConfig.save()
-            logger.info("Root password generated successfully")
-        else:
-            logger.error("Failed to generate root password")
+    SSHManager.handle_manufacturing_mode_exit()
 
     Machine.init(sio)
     USBManager.init()

@@ -7,8 +7,11 @@ from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
 
 
-class RootPasswordHandler(BaseHandler):
-    def get(self):
+class LocalAccessHandler(BaseHandler):
+    """Base handler that restricts access to local requests only."""
+
+    def prepare(self):
+        super().prepare()
         # Commented for development - Uncomment in production
         # remote_ip = self.request.remote_ip
         # if remote_ip not in ('127.0.0.1', '::1', 'localhost'):
@@ -20,6 +23,9 @@ class RootPasswordHandler(BaseHandler):
         #     })
         #     return
 
+
+class RootPasswordHandler(LocalAccessHandler):
+    def get(self):
         password = MeticulousConfig[CONFIG_SYSTEM].get(ROOT_PASSWORD)
 
         if password:
@@ -34,4 +40,4 @@ class RootPasswordHandler(BaseHandler):
 
 
 # Register the handler with the API
-API.register_handler(APIVersion.V1, r"/system/root-password", RootPasswordHandler),
+API.register_handler(APIVersion.V1, r"/machine/root-password", RootPasswordHandler),
