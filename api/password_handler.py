@@ -1,4 +1,3 @@
-import json
 from config import MeticulousConfig, CONFIG_SYSTEM, ROOT_PASSWORD
 from .base_handler import BaseHandler
 from .api import API, APIVersion
@@ -30,13 +29,13 @@ class RootPasswordHandler(LocalAccessHandler):
 
         if password:
             logger.info("Access to the password endpoint")
-            self.write({"status": "success", "root_password": password})
+            self.write({"status": "success", "root": password})
         else:
             logger.warning(
                 "An attempt was made to access the password, but it was not found"
             )
             self.set_status(404)
-            self.write({"status": "error", "error": "No password has been generated"})
+            self.write({"status": "error", "error": "No info has been generated"})
 
 
 # Register the handler with the API
