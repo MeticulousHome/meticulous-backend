@@ -64,6 +64,8 @@ class Machine:
         "scale_master_calibration",
         "preheat",
         "continue",
+        "home",
+        "purge",
     ]
 
     _connection = None
