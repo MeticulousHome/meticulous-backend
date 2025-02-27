@@ -282,9 +282,6 @@ class Machine:
                         info = ESPInfo.from_args(infoArgs)
                     case ["Notify", *notifyArgs]:
                         notify = MachineNotify(notifyArgs[0], ",".join(notifyArgs[1:]))
-                    case ["acaia_msg", *notifyArgs]:
-                        notify = MachineNotify(*["acaia_msg", "".join(notifyArgs)])
-                        logger.info(f"Acaia message parsed: {notify}")
 
                     case ["HeaterTimeoutInfo", *timeoutArgs]:
                         try:
