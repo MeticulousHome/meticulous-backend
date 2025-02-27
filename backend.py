@@ -26,14 +26,8 @@ from config import (
     DEVICE_IDENTIFIER,
     MACHINE_SERIAL_NUMBER,
     UPDATE_CHANNEL,
-    MACHINE_SERIAL_NUMBER,
     CONFIG_LOGGING,
     LOGGING_SENSOR_MESSAGES,
-)
-from api.manufacturing import (
-    CONFIG_MANUFACTURING,
-    MANUFACTURING_ENABLED_KEY,
-    Default_manufacturing_config,
 )
 
 from machine import Machine
@@ -283,80 +277,6 @@ async def send_data():  # noqa: C901
             )
 
 
-def disable_sentry():
-    # Disable sentry if we are on manufacturing mode
-    sentry_client = sentry_sdk.get_client()
-    if sentry_client:
-        logger.info("Sentry disabled: In Manufacturing mode")
-        sentry_client.options["enabled"] = False
-    else:
-        logger.error("Cannot get sentry client to disable the process")
-
-
-def enable_sentry():
-    # Disable sentry if we are on manufacturing mode
-    sentry_client = sentry_sdk.get_client()
-    if sentry_client:
-        logger.info("Sentry enabled")
-        sentry_client.options["enabled"] = True
-    else:
-        logger.error("Cannot get sentry client to enable the process")
-
-
-def validate_manufacturing():
-    """
-    Check for the S/N in the .yml file, if there is a S/N set, dont enable manufacturing mode,else
-    wait for the flag to enable the manufacturing mode from the Machine module with a timeout of
-    60s
-
-    """
-
-    # Look for the S/N in the .yml file, if there is a SN we dont even initialize the ManufacturingConfig data
-    serial: str | None = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
-
-    if serial is not None and serial != "" and serial != "NOT_ASSIGNED":
-        return
-
-    def initialize_manufacturing():
-        # get the flag from Machine.enable_manufacturing with a 65 second timeout
-        # The flag being set to true also breaks the loop
-        # 65 seconds was chosen as the check ESP function executes at 60s after boot
-
-        start_time = time.time()
-        while (not Machine.enable_manufacturing) and ((time.time() - start_time) < 65):
-            time.sleep(1)
-
-        # If Machine.enable_manufacturing is False, check for the enable value on config file
-        # if it is true, we are in manufacturing mode, else we are not
-
-        file_enable: bool = MeticulousConfig[CONFIG_MANUFACTURING][
-            MANUFACTURING_ENABLED_KEY
-        ]
-        Machine.enable_manufacturing = Machine.enable_manufacturing or file_enable
-
-        if Machine.enable_manufacturing is True:
-            disable_sentry()
-            return
-        else:
-            for config in Default_manufacturing_config:
-                MeticulousConfig[CONFIG_MANUFACTURING][config] = (
-                    Default_manufacturing_config[config]
-                )
-            MeticulousConfig.save()
-            logger.info("restoring CONFIG_MANUFACTURING to defaults")
-            # Reset manufacturing configuration to default values
-
-    def task_thread():
-        # time.sleep(65)
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(initialize_manufacturing())
-        loop.close()
-
-    start_manufacturing_thread = NamedThread("start_manufacturing", target=task_thread)
-    start_manufacturing_thread.start()
-
-
 def main():
     global send_data_thread
     global dbus_object
@@ -387,8 +307,6 @@ def main():
     SSHManager.handle_manufacturing_mode_exit()
 
     Machine.init(sio)
-    logger.debug("validating manufacture mode")
-    validate_manufacturing()
     USBManager.init()
 
     send_data_thread = NamedThread("SendSocketIO", target=send_data_loop)
