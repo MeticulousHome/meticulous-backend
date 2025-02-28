@@ -45,6 +45,7 @@ from api.machine import UpdateOSStatus
 
 from timezone_manager import TimezoneManager
 
+from ssh_manager import SSHManager
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -288,6 +289,8 @@ def main():
         sentry_sdk.set_context("build-info", UpdateManager.getRepositoryInfo())
     except Exception as e:
         logger.error(f"Failed to set sentry context: {e}")
+
+    SSHManager.handle_manufacturing_mode_exit()
 
     Machine.init(sio)
     USBManager.init()
