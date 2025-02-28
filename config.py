@@ -13,7 +13,12 @@ from mergedeep import merge
 
 from log import MeticulousLogger
 
-from api.manufacturing import CONFIG_MANUFACTURING, Default_manufacturing_config
+from api.manufacturing import (
+    CONFIG_MANUFACTURING,
+    Default_manufacturing_config,
+    MANUFACTURING_ENABLED_KEY,
+    MANUFACTURING_ENABLED_DEFAULT,
+)
 
 _config_logger = MeticulousLogger.getLogger(__name__)
 
@@ -193,6 +198,7 @@ DefaultConfiguration_V1 = {
         MACHINE_BUILD_DATE: MACHINE_DEFAULT_BUILD_DATE,
         MACHINE_COLOR: MACHINE_DEFAULT_COLOR,
         ROOT_PASSWORD: ROOT_PASSWORD_DEFAULT,
+        MANUFACTURING_ENABLED_KEY: MANUFACTURING_ENABLED_DEFAULT,
     },
     CONFIG_USER: {
         SOUNDS_ENABLED: SOUNDS_DEFAULT_ENABLED,
