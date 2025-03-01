@@ -26,6 +26,7 @@ from config import (
     CONFIG_LOGGING,
     LOGGING_SENSOR_MESSAGES,
 )
+
 from machine import Machine
 from sounds import SoundPlayer
 from imager import DiscImager

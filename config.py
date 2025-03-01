@@ -8,9 +8,17 @@ from enum import Enum
 
 import sentry_sdk
 import yaml
+import copy
 from mergedeep import merge
 
 from log import MeticulousLogger
+
+from api.manufacturing import (
+    CONFIG_MANUFACTURING,
+    Default_manufacturing_config,
+    MANUFACTURING_ENABLED_KEY,
+    MANUFACTURING_ENABLED_DEFAULT,
+)
 
 _config_logger = MeticulousLogger.getLogger(__name__)
 
@@ -175,6 +183,7 @@ DefaultConfiguration_V1 = {
         MACHINE_BATCH_NUMBER: MACHINE_DEFAULT_BATCH_NUMBER,
         MACHINE_BUILD_DATE: MACHINE_DEFAULT_BUILD_DATE,
         MACHINE_COLOR: MACHINE_DEFAULT_COLOR,
+        MANUFACTURING_ENABLED_KEY: MANUFACTURING_ENABLED_DEFAULT,
     },
     CONFIG_USER: {
         SOUNDS_ENABLED: SOUNDS_DEFAULT_ENABLED,
@@ -201,6 +210,7 @@ DefaultConfiguration_V1 = {
         WIFI_KNOWN_WIFIS: WIFI_DEFAULT_KNOWN_WIFIS,
     },
     CONFIG_PROFILES: {PROFILE_LAST: PROFILE_DEFAULT_LAST},
+    CONFIG_MANUFACTURING: copy.deepcopy(Default_manufacturing_config),
 }
 
 
@@ -238,6 +248,7 @@ class MeticulousConfigDict(dict):
     def __init__(self, path, default_dict={}) -> None:
         super().__init__(default_dict)
 
+        # Make attributes inheritable
         self.__path = Path(path)
         self.__configError = False
         self.__sio = None
