@@ -1,6 +1,5 @@
 from dataclasses import dataclass, asdict
 from typing import Any
-import sentry_sdk
 
 from log import MeticulousLogger
 
@@ -74,23 +73,3 @@ dial_schema: dict = {
         ),
     ]
 }
-
-
-def disable_sentry():
-    # Disable sentry if we are on manufacturing mode
-    sentry_client = sentry_sdk.get_client()
-    if sentry_client:
-        logger.info("Sentry disabled: In Manufacturing mode")
-        sentry_client.options["enabled"] = False
-    else:
-        logger.error("Cannot get sentry client to disable the process")
-
-
-def enable_sentry():
-    # Disable sentry if we are on manufacturing mode
-    sentry_client = sentry_sdk.get_client()
-    if sentry_client:
-        logger.info("Sentry enabled")
-        sentry_client.options["enabled"] = True
-    else:
-        logger.error("Cannot get sentry client to enable the process")
