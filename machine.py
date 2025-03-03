@@ -47,18 +47,22 @@ from sounds import SoundPlayer, Sounds
 from manufacturing import (
     CONFIG_MANUFACTURING,
     FORCE_MANUFACTURING_ENABLED_KEY,
-    Default_manufacturing_config,
 )
 
 
-def disable_sentry():
+def toggle_sentry(enabled):
     # Disable sentry if we are on manufacturing mode
     sentry_client = sentry_sdk.get_client()
     if sentry_client:
-        logger.info("Sentry disabled: In Manufacturing mode")
-        sentry_client.options["enabled"] = False
+        if enabled:
+            logger.info("Sentry disabled: In Manufacturing mode")
+        else:
+            logger.info("Sentry enabled: Manufacturing mode disabled")
+        sentry_client.options["enabled"] = enabled
     else:
-        logger.error("Cannot get sentry client to disable the process")
+        logger.error(
+            f"Cannot get sentry client to toggle to {"enabled" if enabled else "disabled"}"
+        )
 
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -113,65 +117,29 @@ class Machine:
 
     is_idle = True
 
-    enable_manufacturing = False  # Testing, should be False
+    enable_manufacturing = False
+
+    def toggle_manufacturing_mode(enabled):
+        Machine.enable_manufacturing = enabled
+        toggle_sentry(enabled=not enabled)
 
     def validate_manufacturing():
-        """
-        Check for the S/N in the .yml file, if there is a S/N set, dont enable manufacturing mode,else
-        wait for the flag to enable the manufacturing mode from the Machine module with a timeout of
-        60s
-
-        """
-
-        # Look for the S/N in the .yml file, if there is a SN we dont even initialize the ManufacturingConfig data
-        serial: str | None = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
-
-        if serial is not None and serial != "" and serial != "NOT_ASSIGNED":
+        if MeticulousConfig[CONFIG_MANUFACTURING][FORCE_MANUFACTURING_ENABLED_KEY]:
+            Machine.toggle_manufacturing_mode(enabled=True)
             return
 
-        def initialize_manufacturing():
-            # get the flag from Machine.enable_manufacturing with a 65 second timeout
-            # The flag being set to true also breaks the loop
-            # 65 seconds was chosen as the check ESP function executes at 60s after boot
+        # Look for the S/N in the .yml file, if there is a SN we dont enable it by default
+        serial: str | None = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
 
-            start_time = time.time()
-            while (not Machine.enable_manufacturing) and (
-                (time.time() - start_time) < 65
-            ):
-                time.sleep(1)
+        if (
+            serial is not None
+            and serial != ""
+            and serial != "NOT_ASSIGNED"
+            and not serial.startswith("999")
+        ):
+            return
 
-            # If Machine.enable_manufacturing is False, check for the enable value on config file
-            # if it is true, we are in manufacturing mode, else we are not
-
-            print(Machine.esp_info)
-            file_enable: bool = MeticulousConfig[CONFIG_MANUFACTURING][
-                FORCE_MANUFACTURING_ENABLED_KEY
-            ]
-            Machine.enable_manufacturing = Machine.enable_manufacturing or file_enable
-
-            if Machine.enable_manufacturing is True:
-                disable_sentry()
-                return
-            else:
-                for config in Default_manufacturing_config:
-                    MeticulousConfig[CONFIG_MANUFACTURING][config] = (
-                        Default_manufacturing_config[config]
-                    )
-                MeticulousConfig.save()
-                logger.info("restoring CONFIG_MANUFACTURING to defaults")
-                # Reset manufacturing configuration to default values
-
-        def task_thread():
-            # time.sleep(65)
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(initialize_manufacturing())
-            loop.close()
-
-        start_manufacturing_thread = NamedThread(
-            "start_manufacturing", target=task_thread
-        )
-        start_manufacturing_thread.start()
+        Machine.toggle_manufacturing_mode(enabled=True)
 
     @staticmethod
     def generate_random_serial():
@@ -204,6 +172,7 @@ class Machine:
             serial = Machine.generate_random_serial()
             MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER] = serial
             MeticulousConfig.save()
+        Machine.validate_manufacturing()
 
         if Machine._connection is not None:
             logger.warning("Machine.init was called twice!")
@@ -241,7 +210,6 @@ class Machine:
         Machine._flashingThread = NamedThread("FlashingEsp", target=flashingEsp)
         Machine._thread.start()
         Machine._flashingThread.start()
-        Machine.validate_manufacturing()
 
     class ReadLine:
         def __init__(self, s):
@@ -485,12 +453,15 @@ class Machine:
 
                         MeticulousConfig.save()
 
-                    # Enable manufacturing mode only when the ESP answers
-                    if (
-                        Machine.enable_manufacturing is False
-                        and Machine.esp_info.serialNumber == "NOT_ASSIGNED"
-                    ):
-                        Machine.enable_manufacturing = True
+                    # Enable / Disable manufacturing mode based on ESP answer
+                    serial_assigned = Machine.esp_info.serialNumber != "NOT_ASSIGNED"
+                    if Machine.enable_manufacturing != serial_assigned:
+                        if not MeticulousConfig[CONFIG_MANUFACTURING][
+                            FORCE_MANUFACTURING_ENABLED_KEY
+                        ]:
+                            Machine.toggle_manufacturing_mode(
+                                enabled=not serial_assigned
+                            )
 
                     if not emulated_firmware:
                         logger.info(
