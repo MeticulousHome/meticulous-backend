@@ -13,7 +13,7 @@ from mergedeep import merge
 
 from log import MeticulousLogger
 
-from api.manufacturing import CONFIG_MANUFACTURING, Default_manufacturing_config
+from manufacturing import CONFIG_MANUFACTURING, Default_manufacturing_config
 
 _config_logger = MeticulousLogger.getLogger(__name__)
 
