@@ -467,7 +467,7 @@ class Machine:
                     and button_event.event is ButtonEventEnum.ENCODER_DOUBLE
                 ):
                     logger.info("DOUBLE ENCODER, Returning to idle")
-                    Machine.return_to_idle()
+                    Machine.end_profile()
 
                 if (
                     not old_ready
@@ -517,8 +517,16 @@ class Machine:
         NotificationManager.add_notification(updateNotification)
         return error_msg
 
-    def return_to_idle():
-        if Machine.data_sensors.status != "idle":
+    def end_profile():
+        if Machine.data_sensors.status == "idle":
+            return
+        if (
+            Machine.data_sensors.state == "brewing"
+            and Machine.data_sensors.status
+            not in ["heating", "Pour water and click to continue", "click to start"]
+        ):
+            Machine.action("home")
+        else:
             Machine.action("stop")
         SoundPlayer.play_event_sound(Sounds.ABORT)
 
