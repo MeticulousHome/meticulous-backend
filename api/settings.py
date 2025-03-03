@@ -19,7 +19,7 @@ from ssh_manager import SSHManager
 from .base_handler import BaseHandler
 from .api import API, APIVersion
 
-from api.manufacturing import dial_schema, CONFIG_MANUFACTURING
+from manufacturing import dial_schema, CONFIG_MANUFACTURING
 
 from ota import UpdateManager
 from log import MeticulousLogger
