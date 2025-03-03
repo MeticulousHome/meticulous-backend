@@ -281,7 +281,9 @@ class Machine:
                     case ["ESPInfo", *infoArgs]:
                         info = ESPInfo.from_args(infoArgs)
                     case ["Notify", *notifyArgs]:
-                        notify = MachineNotify(notifyArgs[0], ",".join(notifyArgs[1:]))
+                        notify = MachineNotify(
+                            notifyArgs[0], ",".join(notifyArgs[1:]).replace(";", "\n")
+                        )
 
                     case ["HeaterTimeoutInfo", *timeoutArgs]:
                         try:
