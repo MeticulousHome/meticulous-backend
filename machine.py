@@ -42,7 +42,7 @@ from shot_debug_manager import ShotDebugManager
 from shot_manager import ShotManager
 from sounds import SoundPlayer, Sounds
 
-from api.manufacturing import (
+from manufacturing import (
     CONFIG_MANUFACTURING,
     FORCE_MANUFACTURING_ENABLED_KEY,
     Default_manufacturing_config,
