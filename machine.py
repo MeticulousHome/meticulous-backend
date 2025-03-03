@@ -43,7 +43,7 @@ from sounds import SoundPlayer, Sounds
 
 from api.manufacturing import (
     CONFIG_MANUFACTURING,
-    MANUFACTURING_ENABLED_KEY,
+    FORCE_MANUFACTURING_ENABLED_KEY,
     Default_manufacturing_config,
     disable_sentry,
 )
@@ -132,7 +132,7 @@ class Machine:
 
             print(Machine.esp_info)
             file_enable: bool = MeticulousConfig[CONFIG_MANUFACTURING][
-                MANUFACTURING_ENABLED_KEY
+                FORCE_MANUFACTURING_ENABLED_KEY
             ]
             Machine.enable_manufacturing = Machine.enable_manufacturing or file_enable
 
