@@ -130,7 +130,8 @@ class Machine:
             # If Machine.enable_manufacturing is False, check for the enable value on config file
             # if it is true, we are in manufacturing mode, else we are not
 
-            file_enable: bool = MeticulousConfig[CONFIG_SYSTEM][
+            print(Machine.esp_info)
+            file_enable: bool = MeticulousConfig[CONFIG_MANUFACTURING][
                 MANUFACTURING_ENABLED_KEY
             ]
             Machine.enable_manufacturing = Machine.enable_manufacturing or file_enable
