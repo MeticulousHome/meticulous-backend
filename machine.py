@@ -6,6 +6,8 @@ from named_thread import NamedThread
 import time
 from enum import Enum
 import sentry_sdk
+import random
+import string
 
 from packaging import version
 
@@ -173,14 +175,6 @@ class Machine:
 
     @staticmethod
     def generate_random_serial():
-        """
-        Generates a random serial number when none is assigned.
-        Format: 999XXXXX where X are random digits.
-        Returns: String with format '999' followed by 5 random digits
-        """
-        import random
-        import string
-
         random_digits = "".join(random.choices(string.digits, k=5))
         return f"999{random_digits}"
 
@@ -203,6 +197,13 @@ class Machine:
         Machine.firmware_available = Machine._parseVersionString(
             ESPToolWrapper.get_version_from_firmware()
         )
+
+        # If we dont have a serial we still want to be able to show ... something
+        serial = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
+        if serial is None or serial == "":
+            serial = Machine.generate_random_serial()
+            MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER] = serial
+            MeticulousConfig.save()
 
         if Machine._connection is not None:
             logger.warning("Machine.init was called twice!")
