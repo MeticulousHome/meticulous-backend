@@ -14,8 +14,8 @@ SKIP_STAGE_KEY = "skip_stage"
 SKIP_STAGE_DEFAULT = False
 
 # Persistency
-MANUFACTURING_ENABLED_KEY = "enabled"
-MANUFACTURING_ENABLED_DEFAULT = False
+FORCE_MANUFACTURING_ENABLED_KEY = "enabled"
+FORCE_MANUFACTURING_ENABLED_DEFAULT = False
 
 # Detect first normal boot
 FIRST_NORMAL_BOOT_KEY = "first_normal_boot"
@@ -25,7 +25,7 @@ FIRST_NORMAL_BOOT_DEFAULT = False
 MANUFACTURING_SETTINGS_ENDPOINT = "manufacturing_settings"
 
 Default_manufacturing_config = {
-    MANUFACTURING_ENABLED_KEY: MANUFACTURING_ENABLED_DEFAULT,
+    FORCE_MANUFACTURING_ENABLED_KEY: FORCE_MANUFACTURING_ENABLED_DEFAULT,
     FIRST_NORMAL_BOOT_KEY: FIRST_NORMAL_BOOT_DEFAULT,
     SKIP_STAGE_KEY: SKIP_STAGE_DEFAULT,
 }
@@ -62,7 +62,7 @@ dial_schema: dict = {
         ),
         asdict(
             DialElement(
-                key=f"{MANUFACTURING_ENABLED_KEY}",
+                key=f"{FORCE_MANUFACTURING_ENABLED_KEY}",
                 label="Enable Manufacturing",
                 options=[
                     asdict(SettingOptions(name="enabled", type="boolean", value=True)),
