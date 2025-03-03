@@ -5,6 +5,7 @@ import os
 from named_thread import NamedThread
 import time
 from enum import Enum
+import sentry_sdk
 
 from packaging import version
 
@@ -45,8 +46,18 @@ from api.manufacturing import (
     CONFIG_MANUFACTURING,
     FORCE_MANUFACTURING_ENABLED_KEY,
     Default_manufacturing_config,
-    disable_sentry,
 )
+
+
+def disable_sentry():
+    # Disable sentry if we are on manufacturing mode
+    sentry_client = sentry_sdk.get_client()
+    if sentry_client:
+        logger.info("Sentry disabled: In Manufacturing mode")
+        sentry_client.options["enabled"] = False
+    else:
+        logger.error("Cannot get sentry client to disable the process")
+
 
 logger = MeticulousLogger.getLogger(__name__)
 
