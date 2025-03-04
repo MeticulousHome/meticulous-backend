@@ -44,7 +44,7 @@ from dbus_monitor import DBusMonitor
 from api.machine import UpdateOSStatus
 
 from timezone_manager import TimezoneManager
-
+from telemetry_service import TelemetryService
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -304,6 +304,7 @@ def main():
 
     # Check for mapped timezones json
     TimezoneManager.init()
+    TelemetryService.init()
 
     MeticulousConfig.setSIO(sio)
 
