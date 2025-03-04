@@ -128,7 +128,7 @@ class NotificationManager:
             if notification.id == notification_id:
                 notification.acknowledge(response)
                 if notification.callback:
-                    notification.callback(response)
+                    notification.callback()
                 return True
         return False
 

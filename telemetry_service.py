@@ -8,11 +8,12 @@ logger = MeticulousLogger.getLogger(__name__)
 
 
 class TelemetryService:
+    permissionNotification = None
 
     @staticmethod
-    def onNotificationCallback(response):
+    def onNotificationCallback():
         MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] = (
-            response == NotificationResponse.YES
+            TelemetryService.permissionNotification.response == NotificationResponse.YES
         )
         capture_message(
             f"User opted {"in" if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] else "out"} of telemetry"
@@ -36,7 +37,7 @@ class TelemetryService:
             return
 
         logger.info("Sending telemetry notification")
-        updateNotification = Notification(
+        TelemetryService.permissionNotification = Notification(
             "To ensure the longevity of all machines, we would like to collect your motors temperature during operation. "
             + "\nWe are asking you to share this data with us as we want all workflows and profile preferences to be optimized for and not just the most common use cases. "
             + "\n\nThis collection will be automatically stopped with the end of the early production testing but latest by August 2025"
@@ -45,4 +46,4 @@ class TelemetryService:
             image=None,
             callback=TelemetryService.onNotificationCallback,
         )
-        NotificationManager.add_notification(updateNotification)
+        NotificationManager.add_notification(TelemetryService.permissionNotification)
