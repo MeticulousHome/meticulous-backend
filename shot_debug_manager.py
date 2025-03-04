@@ -3,11 +3,12 @@ import io
 import os
 from named_thread import NamedThread
 import time
+import sentry_sdk
 from datetime import datetime
 
 import zstandard as zstd
 
-from config import CONFIG_USER, DEBUG_SHOT_DATA, MeticulousConfig
+from config import CONFIG_USER, DEBUG_SHOT_DATA, MACHINE_DEBUG_SENDING, MeticulousConfig
 from esp_serial.data import SensorData, ShotData
 from log import MeticulousLogger
 
@@ -79,9 +80,6 @@ class ShotDebugManager:
 
     @staticmethod
     def start():
-        if not MeticulousConfig[CONFIG_USER][DEBUG_SHOT_DATA]:
-            return
-
         if ShotDebugManager._current_data is None:
             ShotDebugManager._current_data = DebugData()
             logger.info("Starting debug shot")
@@ -119,13 +117,29 @@ class ShotDebugManager:
                 # Compress and write the shot to disk
                 logger.info("Writing and compressing debug file")
                 start = time.time()
-                with open(file_path, "wb") as file:
-                    cctx = zstd.ZstdCompressor(level=8)
-                    with cctx.stream_writer(file) as compressor:
-                        compressor.write(data_json.encode("utf-8"))
-                time_ms = (time.time() - start) * 1000
-                logger.info(f"Writing debug csv to disc took {time_ms} ms")
-                data_json = None
+
+                # Compress to a byte array first
+                cctx = zstd.ZstdCompressor(level=8)
+                compressed_data = cctx.compress(data_json.encode("utf-8"))
+
+                # Only write to file if enabled
+                if MeticulousConfig[CONFIG_USER][DEBUG_SHOT_DATA]:
+                    logger.info(f"Writing debug csv to {file_path}")
+                    with open(file_path, "wb") as file:
+                        file.write(compressed_data)
+                    time_ms = (time.time() - start) * 1000
+                    logger.info(f"Writing debug csv to disc took {time_ms} ms")
+                    data_json = None
+                else:
+                    logger.info("Debug shot data is disabled, skipping writing to disk")
+
+                if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING]:
+                    scope = sentry_sdk.new_scope()
+                    scope.add_attachment(bytes=compressed_data, filename=file_path)
+                    scope.set_context("config", MeticulousConfig.copy())
+                    sentry_sdk.capture_message(
+                        "Debug shot data", level="info", scope=scope
+                    )
 
             compresson_thread = NamedThread(
                 "DebugShotCompr", target=compress_current_data, args=(csv_data,)

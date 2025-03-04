@@ -22,6 +22,9 @@ from hostname import HostnameManager
 from config import (
     MeticulousConfig,
     CONFIG_USER,
+    CONFIG_SYSTEM,
+    DEVICE_IDENTIFIER,
+    MACHINE_SERIAL_NUMBER,
     UPDATE_CHANNEL,
     CONFIG_LOGGING,
     LOGGING_SENSOR_MESSAGES,
@@ -283,9 +286,18 @@ def main():
     UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
 
     try:
-        sentry_sdk.set_context("build-timestamp", UpdateManager.getBuildTimestamp())
-        sentry_sdk.set_context("build-channel", UpdateManager.getImageChannel())
+        # Context is arbitrary data that will be sent with every event
         sentry_sdk.set_context("build-info", UpdateManager.getRepositoryInfo())
+
+        # Tags are indexed and searchable
+        sentry_sdk.set_tag("build-timestamp", UpdateManager.getBuildTimestamp())
+        sentry_sdk.set_tag("build-channel", UpdateManager.getImageChannel())
+        sentry_sdk.set_tag(
+            "machine", "".join(MeticulousConfig[CONFIG_SYSTEM][DEVICE_IDENTIFIER])
+        )
+        sentry_sdk.set_tag(
+            "serial", MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
+        )
     except Exception as e:
         logger.error(f"Failed to set sentry context: {e}")
 
