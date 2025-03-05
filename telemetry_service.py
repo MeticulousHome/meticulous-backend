@@ -15,9 +15,8 @@ class TelemetryService:
         MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] = (
             TelemetryService.permissionNotification.response == NotificationResponse.YES
         )
-        capture_message(
-            f"User opted {"in" if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] else "out"} of telemetry"
-        )
+        opting = "in" if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] else "out"
+        capture_message(f"User opted {opting} of telemetry")
         MeticulousConfig.save()
 
     @staticmethod
