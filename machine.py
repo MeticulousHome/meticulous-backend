@@ -454,14 +454,15 @@ class Machine:
                         MeticulousConfig.save()
 
                     # Enable / Disable manufacturing mode based on ESP answer
-                    serial_assigned = Machine.esp_info.serialNumber != "NOT_ASSIGNED"
+                    serial_assigned = (
+                        MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
+                        is not None
+                    )
                     if Machine.enable_manufacturing != serial_assigned:
                         if not MeticulousConfig[CONFIG_MANUFACTURING][
                             FORCE_MANUFACTURING_ENABLED_KEY
                         ]:
-                            Machine.toggle_manufacturing_mode(
-                                enabled=not serial_assigned
-                            )
+                            Machine.toggle_manufacturing_mode(enabled=False)
 
                     if not emulated_firmware:
                         logger.info(
