@@ -37,7 +37,7 @@ class RootPasswordHandler(LocalAccessHandler):
 
         if password:
             logger.info("Access to the password endpoint")
-            self.write({"status": "success", "root": password})
+            self.write({"status": "success", "root_password": password})
         else:
             logger.warning(
                 "An attempt was made to access the password, but it was not found"
