@@ -29,7 +29,7 @@ class GetNotificationsHandler(BaseHandler):
                         "id": n.id,
                         "message": n.message,
                         "image": n.image,
-                        "respone_options": n.respone_options,
+                        "responses": n.respone_options,
                         "timestamp": n.timestamp.isoformat(),
                     }
                     for n in notifications

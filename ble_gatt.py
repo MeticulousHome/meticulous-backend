@@ -212,7 +212,7 @@ class GATTServer:
         while True:
             await self.update_trigger.wait()
             self.update_trigger.clear()
-            if not self.bless_gatt_server.app:
+            if not self.bless_gatt_server or not self.bless_gatt_server.app:
                 logger.info("BLE GATT Server not initialized yet")
                 continue
 

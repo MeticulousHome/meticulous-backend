@@ -22,6 +22,9 @@ from hostname import HostnameManager
 from config import (
     MeticulousConfig,
     CONFIG_USER,
+    CONFIG_SYSTEM,
+    DEVICE_IDENTIFIER,
+    MACHINE_SERIAL_NUMBER,
     UPDATE_CHANNEL,
     CONFIG_LOGGING,
     LOGGING_SENSOR_MESSAGES,
@@ -46,6 +49,7 @@ from api.machine import UpdateOSStatus
 from timezone_manager import TimezoneManager
 
 from ssh_manager import SSHManager
+from telemetry_service import TelemetryService
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -74,16 +78,10 @@ def disconnect(sid):
 
 @sio.on("action")
 def msg(sid, data):
-    if data == "start":
-        time.sleep(0.5)
-        data = "action," + data + "\x03"
-        logger.info(data)
-        Machine.write(data.encode("utf-8"))
+    if data in Machine.ALLOWED_ESP_ACTIONS:
+        Machine.action(action_event=data)
     else:
-        time.sleep(0.05)
-        data = "action," + data + "\x03"
-        logger.info(data)
-        Machine.write(data.encode("utf-8"))
+        logger.warning(f"Invalid action {data}")
 
 
 @sio.on("notification")
@@ -290,9 +288,18 @@ def main():
     UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
 
     try:
-        sentry_sdk.set_context("build-timestamp", UpdateManager.getBuildTimestamp())
-        sentry_sdk.set_context("build-channel", UpdateManager.getImageChannel())
+        # Context is arbitrary data that will be sent with every event
         sentry_sdk.set_context("build-info", UpdateManager.getRepositoryInfo())
+
+        # Tags are indexed and searchable
+        sentry_sdk.set_tag("build-timestamp", UpdateManager.getBuildTimestamp())
+        sentry_sdk.set_tag("build-channel", UpdateManager.getImageChannel())
+        sentry_sdk.set_tag(
+            "machine", "".join(MeticulousConfig[CONFIG_SYSTEM][DEVICE_IDENTIFIER])
+        )
+        sentry_sdk.set_tag(
+            "serial", MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
+        )
     except Exception as e:
         logger.error(f"Failed to set sentry context: {e}")
 
@@ -313,6 +320,7 @@ def main():
 
     # Check for mapped timezones json
     TimezoneManager.init()
+    TelemetryService.init()
 
     MeticulousConfig.setSIO(sio)
 

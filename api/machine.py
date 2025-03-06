@@ -105,10 +105,8 @@ class UpdateOSStatus(BaseHandler):
                 await cls.__sio.emit("OSUpdate", cls.to_json())
 
             if not loop.is_running():
-                logger.warning("sending OS Update status: no loop running")
                 loop.run_until_complete(sendUpdateStatus())
             else:
-                logger.warning("sending OS Update status: yes loop running")
                 asyncio.create_task(sendUpdateStatus())
 
     @classmethod

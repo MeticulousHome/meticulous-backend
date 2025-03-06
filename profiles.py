@@ -56,6 +56,7 @@ class ProfileManager:
     _known_profiles = dict()
     _known_images = []
     _default_profiles = []
+    _community_profiles = []
     _profile_default_images = []
     _profile_default_images_accent_colors = {}
     _sio: socketio.AsyncServer = None
@@ -466,6 +467,29 @@ class ProfileManager:
                 logger.info("Found default profile: " + filename)
                 ProfileManager._default_profiles.append(profile)
 
+        # Check for community profiles
+        community_profiles_path = DEFAULT_PROFILES_PATH + "/community"
+        if os.path.exists(community_profiles_path):
+            logger.info("Refreshing community profiles")
+            ProfileManager._community_profiles = []
+            files = os.listdir(community_profiles_path)
+            files.sort()
+            for filename in files:
+                if not filename.endswith(".json"):
+                    continue
+
+                file_path = os.path.join(community_profiles_path, filename)
+                with open(file_path, "r") as f:
+                    try:
+                        profile = json.load(f)
+                    except json.decoder.JSONDecodeError as error:
+                        logger.warning(
+                            f"Could not decode community profile {f.name}: {error}"
+                        )
+                        continue
+                    logger.info("Found community profile: " + filename)
+                    ProfileManager._community_profiles.append(profile)
+
         end = time.time()
         time_ms = (end - start) * 1000
         if time_ms > 10:
@@ -473,7 +497,7 @@ class ProfileManager:
         else:
             time_str = f"{int(time_ms*1000)} ns"
         logger.info(
-            f"Refreshed default profile list in {time_str} with {len(ProfileManager._default_profiles)} known profiles."
+            f"Refreshed default profile list in {time_str} with {len(ProfileManager._default_profiles)} default and {len(ProfileManager._community_profiles)} community profiles."
         )
 
     def refresh_image_list():
@@ -551,7 +575,10 @@ class ProfileManager:
         return ProfileManager._known_profiles
 
     def list_default_profiles():
-        return ProfileManager._default_profiles
+        return {
+            "default": ProfileManager._default_profiles,
+            "community": ProfileManager._community_profiles,
+        }
 
     def get_last_profile():
         return MeticulousConfig[CONFIG_PROFILES][PROFILE_LAST]

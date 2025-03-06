@@ -55,6 +55,19 @@ class esp_nvs_keys(Enum):
 
 
 class Machine:
+
+    ALLOWED_BACKEND_ACTIONS = ["reset"]
+    ALLOWED_ESP_ACTIONS = [
+        "start",
+        "stop",
+        "tare",
+        "scale_master_calibration",
+        "preheat",
+        "continue",
+        "home",
+        "purge",
+    ]
+
     _connection = None
     _thread = None
     _stopESPcomm = False
@@ -268,10 +281,9 @@ class Machine:
                     case ["ESPInfo", *infoArgs]:
                         info = ESPInfo.from_args(infoArgs)
                     case ["Notify", *notifyArgs]:
-                        notify = MachineNotify(notifyArgs)
-                    case ["acaia_msg", *notifyArgs]:
-                        notify = MachineNotify(*["acaia_msg", "".join(notifyArgs)])
-                        logger.info(f"Acaia message parsed: {notify}")
+                        notify = MachineNotify(
+                            notifyArgs[0], ",".join(notifyArgs[1:]).replace(";", "\n")
+                        )
 
                     case ["HeaterTimeoutInfo", *timeoutArgs]:
                         try:
@@ -454,7 +466,7 @@ class Machine:
                     and button_event.event is ButtonEventEnum.ENCODER_DOUBLE
                 ):
                     logger.info("DOUBLE ENCODER, Returning to idle")
-                    Machine.return_to_idle()
+                    Machine.end_profile()
 
                 if (
                     not old_ready
@@ -489,7 +501,6 @@ class Machine:
     def startUpdate():
         updateNotification = Notification(
             "Upgrading system realtime core. This will take around 20 seconds. The machines buttons will be disabled during the upgrade",
-            [""],
         )
         NotificationManager.add_notification(updateNotification)
 
@@ -505,8 +516,16 @@ class Machine:
         NotificationManager.add_notification(updateNotification)
         return error_msg
 
-    def return_to_idle():
-        if Machine.data_sensors.status != "idle":
+    def end_profile():
+        if Machine.data_sensors.status == "idle":
+            return
+        if (
+            Machine.data_sensors.state == "brewing"
+            and Machine.data_sensors.status
+            not in ["heating", "Pour water and click to continue", "click to start"]
+        ):
+            Machine.action("home")
+        else:
             Machine.action("stop")
         SoundPlayer.play_event_sound(Sounds.ABORT)
 

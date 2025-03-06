@@ -25,7 +25,9 @@ from sqlalchemy import (
 )
 from sqlalchemy import event as sqlEvent
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import update
 from database_models import metadata, profile as profile_table, history as history_table
+from database_models import shot_annotation, shot_rating
 
 from log import MeticulousLogger
 
@@ -509,3 +511,98 @@ class ShotDataBase:
 
                 parsed_results.append(profile)
             return {"totalSavedShots": total_shots, "byProfile": parsed_results}
+
+    @staticmethod
+    def rate_shot(history_id: int, rating: Optional[str]) -> bool:
+
+        if rating not in ("like", "dislike", None):
+            logger.error(
+                f"Invalid rating: {rating}. Must be 'like', 'dislike', or None."
+            )
+            return False
+
+        try:
+            with ShotDataBase.engine.connect() as connection:
+                with connection.begin():
+
+                    shot_exists = connection.execute(
+                        select(history_table.c.id).where(
+                            history_table.c.id == history_id
+                        )
+                    ).fetchone()
+
+                    if not shot_exists:
+                        logger.error(f"Shot with ID {history_id} does not exist")
+                        return False
+
+                    annotation = connection.execute(
+                        select(shot_annotation.c.id).where(
+                            shot_annotation.c.history_id == history_id
+                        )
+                    ).fetchone()
+
+                    if not annotation:
+                        result = connection.execute(
+                            insert(shot_annotation).values(history_id=history_id)
+                        )
+                        annotation_id = result.inserted_primary_key[0]
+                    else:
+                        annotation_id = annotation[0]
+
+                    existing_rating = connection.execute(
+                        select(shot_rating.c.id).where(
+                            shot_rating.c.annotation_id == annotation_id
+                        )
+                    ).fetchone()
+
+                    if rating is None:
+                        if existing_rating:
+                            connection.execute(
+                                delete(shot_rating).where(
+                                    shot_rating.c.annotation_id == annotation_id
+                                )
+                            )
+                    else:
+                        if existing_rating:
+                            connection.execute(
+                                update(shot_rating)
+                                .where(shot_rating.c.annotation_id == annotation_id)
+                                .values(basic=rating)
+                            )
+                        else:
+                            connection.execute(
+                                insert(shot_rating).values(
+                                    annotation_id=annotation_id, basic=rating
+                                )
+                            )
+
+                    return True
+        except Exception as e:
+            logger.error(f"Error rating shot: {e}")
+            return False
+
+    @staticmethod
+    def get_shot_rating(history_id: int) -> Optional[str]:
+        try:
+            with ShotDataBase.engine.connect() as connection:
+
+                query = (
+                    select(shot_rating.c.basic)
+                    .select_from(
+                        shot_annotation.join(
+                            shot_rating,
+                            shot_annotation.c.id == shot_rating.c.annotation_id,
+                            isouter=True,
+                        )
+                    )
+                    .where(shot_annotation.c.history_id == history_id)
+                )
+
+                result = connection.execute(query).fetchone()
+
+                if result:
+                    return result[0]
+                return None
+        except Exception as e:
+            logger.error(f"Error getting shot rating: {e}")
+            return None

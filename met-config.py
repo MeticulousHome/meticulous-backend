@@ -24,14 +24,7 @@ def set_nested(config, keys, value):
     """Set a nested value using a list of keys, creating dictionaries as needed."""
 
     target = config[keys[0]][keys[1]]
-    # target is list-alike
-    if hasattr(target, "__len__"):
-        # handle " and ' shell string escaping if non ambiguous
-        if "'" in value and '"' not in value:
-            value = value.replace("'", '"')
-        data = json.loads(value)
-        config[keys[0]][keys[1]] = data
-    elif isinstance(target, bool):
+    if isinstance(target, bool):
         config[keys[0]][keys[1]] = str2bool(value)
     elif isinstance(target, str):
         config[keys[0]][keys[1]] = value
@@ -39,6 +32,12 @@ def set_nested(config, keys, value):
         config[keys[0]][keys[1]] = int(value)
     elif isinstance(target, float):
         config[keys[0]][keys[1]] = float(value)
+    elif hasattr(target, "__len__"):  # target is list-alike
+        # handle " and ' shell string escaping if non ambiguous
+        if "'" in value and '"' not in value:
+            value = value.replace("'", '"')
+        data = json.loads(value)
+        config[keys[0]][keys[1]] = data
     else:
         raise KeyError("Unsupported target type: ", type(target))
 
