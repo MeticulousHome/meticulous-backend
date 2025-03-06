@@ -1,12 +1,15 @@
 from pydbus import SystemBus
 from log import MeticulousLogger
 import subprocess
+import re
 from config import MeticulousConfig, CONFIG_SYSTEM, ROOT_PASSWORD
 
 logger = MeticulousLogger.getLogger(__name__)
 
 
 class SSHManager:
+    ISSUE_PATH = "/etc/issue"
+
     @staticmethod
     def set_ssh_state(enabled: bool) -> bool:
         """
@@ -46,6 +49,11 @@ class SSHManager:
                 logger.info("Root password generated successfully")
             else:
                 logger.error("Root password generation failed")
+
+        current_password = SSHManager.get_root_password()
+        if current_password:
+            SSHManager.update_issue_file(current_password)
+            logger.info("Updated /etc/issue with current root password")
 
         return manufacturing_config
 
@@ -87,3 +95,28 @@ class SSHManager:
     def get_root_password() -> str:
         """Get the stored root password from config"""
         return MeticulousConfig[CONFIG_SYSTEM].get(ROOT_PASSWORD)
+
+    @staticmethod
+    def update_issue_file(password: str) -> bool:
+        try:
+            password_info = f"\nRoot password: {password}\n\n"
+            try:
+                with open(SSHManager.ISSUE_PATH, "r") as issue_file:
+                    content = issue_file.read()
+                pattern = r"\nRoot password: .+\n\n"
+                if re.search(pattern, content):
+                    content = re.sub(pattern, password_info, content)
+                else:
+                    content += password_info
+            except FileNotFoundError:
+                content = password_info
+            with open(SSHManager.ISSUE_PATH, "w") as issue_file:
+                issue_file.write(content)
+
+            logger.info(
+                f"Successfully updated {SSHManager.ISSUE_PATH} with root password"
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Error updating {SSHManager.ISSUE_PATH} file: {e}")
+            return False

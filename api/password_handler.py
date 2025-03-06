@@ -11,16 +11,24 @@ class LocalAccessHandler(BaseHandler):
 
     def prepare(self):
         super().prepare()
-        # Commented for development - Uncomment in production
-        # remote_ip = self.request.remote_ip
-        # if remote_ip not in ('127.0.0.1', '::1', 'localhost'):
-        #     logger.warning(f"Unauthorized access to the password endpoint from {remote_ip}")
-        #     self.set_status(403)
-        #     self.write({
-        #         "status": "error",
-        #         "error": "This endpoint can only be accessed locally"
-        #     })
-        #     return
+        remote_ip = self.request.remote_ip
+        request_host = self.request.host.split(":")[0]
+        if remote_ip not in ("127.0.0.1", "::1", "localhost") and request_host not in (
+            "localhost",
+            "127.0.0.1",
+        ):
+            logger.warning(
+                f"Unauthorized access to the password endpoint from {remote_ip}"
+            )
+            self.set_status(403)
+            self.write(
+                {
+                    "status": "error",
+                    "error": "This endpoint can only be accessed locally",
+                }
+            )
+            self.finish()
+            return
 
 
 class RootPasswordHandler(LocalAccessHandler):
