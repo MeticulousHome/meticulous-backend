@@ -10,9 +10,11 @@ from config import (
     TIMEZONE_SYNC,
     TIME_ZONE,
     AUTOMATIC_TIMEZONE_SYNC,
+    SSH_ENABLED,
 )
 
 from heater_actuator import HeaterActuator
+from ssh_manager import SSHManager
 
 from .base_handler import BaseHandler
 from .api import API, APIVersion
@@ -102,6 +104,29 @@ class SettingsHandler(BaseHandler):
                 value = settings.get(setting_target)
 
                 self.validate_setting(setting_target, value)
+
+                # Handle SSH settings
+                if setting_target == SSH_ENABLED:
+                    try:
+                        if not SSHManager.set_ssh_state(value):
+                            self.set_status(500)
+                            self.write(
+                                {
+                                    "status": "error",
+                                    "setting": SSH_ENABLED,
+                                    "details": "Failed to update SSH service state",
+                                }
+                            )
+                    except Exception as e:
+                        logger.error(f"Error managing SSH service: {e}")
+                        self.set_status(500)
+                        self.write(
+                            {
+                                "status": "error",
+                                "setting": SSH_ENABLED,
+                                "details": "Internal server error",
+                            }
+                        )
 
                 if setting_target == TIMEZONE_SYNC:
                     new_tz = await self.update_timezone_sync(value)
