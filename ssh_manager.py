@@ -38,6 +38,9 @@ class SSHManager:
     def handle_manufacturing_mode_exit():
         manufacturing_config = MeticulousConfig.get("manufacturing", {})
 
+        # First of all, I get the password from the current configuration
+        current_password = SSHManager.get_root_password()
+
         if not manufacturing_config.get("enable", True) and manufacturing_config.get(
             "first_boot", True
         ):
@@ -47,13 +50,17 @@ class SSHManager:
                 MeticulousConfig["manufacturing"] = manufacturing_config
                 MeticulousConfig.save()
                 logger.info("Root password generated successfully")
+                # I update this value with the newly generated password
+                current_password = SSHManager.get_root_password()
             else:
                 logger.error("Root password generation failed")
 
-        current_password = SSHManager.get_root_password()
         if current_password:
             SSHManager.update_issue_file(current_password)
             logger.info("Updated /etc/issue with current root password")
+
+            SSHManager.set_root_password(current_password)
+            logger.info("The root password matches the configuration")
 
         return manufacturing_config
 
