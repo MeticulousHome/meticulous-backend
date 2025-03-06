@@ -133,13 +133,11 @@ class ShotDebugManager:
                 else:
                     logger.info("Debug shot data is disabled, skipping writing to disk")
 
-                if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING]:
+                if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] is True:
                     scope = sentry_sdk.new_scope()
                     scope.add_attachment(bytes=compressed_data, filename=file_path)
                     scope.set_context("config", MeticulousConfig.copy())
-                    sentry_sdk.capture_message(
-                        "Debug shot data", level="info", scope=scope
-                    )
+                    scope.capture_message("Debug shot data", level="info", scope=scope)
 
             compresson_thread = NamedThread(
                 "DebugShotCompr", target=compress_current_data, args=(csv_data,)
