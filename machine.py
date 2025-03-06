@@ -61,7 +61,7 @@ def toggle_sentry(enabled):
         sentry_client.options["enabled"] = enabled
     else:
         logger.error(
-            f"Cannot get sentry client to toggle to {"enabled" if enabled else "disabled"}"
+            f'Cannot get sentry client to toggle to {"enabled" if enabled else "disabled"}'
         )
 
 
