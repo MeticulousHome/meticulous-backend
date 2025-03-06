@@ -304,9 +304,9 @@ def main():
     except Exception as e:
         logger.error(f"Failed to set sentry context: {e}")
 
-    SSHManager.handle_manufacturing_mode_exit()
-
     Machine.init(sio)
+    SSHManager.init()
+
     USBManager.init()
 
     send_data_thread = NamedThread("SendSocketIO", target=send_data_loop)
