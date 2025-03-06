@@ -35,15 +35,10 @@ class RootPasswordHandler(LocalAccessHandler):
     def get(self):
         password = MeticulousConfig[CONFIG_SYSTEM].get(ROOT_PASSWORD)
 
-        if password:
-            logger.info("Access to the password endpoint")
-            self.write({"status": "success", "root_password": password})
-        else:
-            logger.warning(
-                "An attempt was made to access the password, but it was not found"
-            )
-            self.set_status(404)
-            self.write({"status": "error", "error": "No info has been generated"})
+        if password is None:
+            password = "root"
+
+        self.write({"status": "success", "root_password": password})
 
 
 # Register the handler with the API
