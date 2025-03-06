@@ -15,6 +15,7 @@ from config import (
     CONFIG_LOGGING,
     CONFIG_SYSTEM,
     CONFIG_USER,
+    CONFIG_MANUFACTURING,
     DISALLOW_FIRMWARE_FLASHING,
     LOGGING_SENSOR_MESSAGES,
     MACHINE_COLOR,
@@ -45,7 +46,6 @@ from shot_manager import ShotManager
 from sounds import SoundPlayer, Sounds
 
 from manufacturing import (
-    CONFIG_MANUFACTURING,
     FORCE_MANUFACTURING_ENABLED_KEY,
 )
 

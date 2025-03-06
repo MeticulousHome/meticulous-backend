@@ -1,8 +1,10 @@
 from pydbus import SystemBus
-from log import MeticulousLogger
 import subprocess
 import re
 from config import MeticulousConfig, CONFIG_SYSTEM, ROOT_PASSWORD
+from machine import Machine
+
+from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -35,34 +37,37 @@ class SSHManager:
             return False
 
     @staticmethod
-    def handle_manufacturing_mode_exit():
-        manufacturing_config = MeticulousConfig.get("manufacturing", {})
+    def init():
 
         # First of all, I get the password from the current configuration
         current_password = SSHManager.get_root_password()
 
-        if not manufacturing_config.get("enable", True) and manufacturing_config.get(
-            "first_boot", True
-        ):
+        logger.info(
+            f"Initializing SSH manager... Manufactoring mode: {Machine.enable_manufacturing}. Password already set: {current_password is not None}"
+        )
+
+        # Dont mess with the SSH service if we are emulating
+        if Machine.emulated:
+            return
+
+        # This depends on the machine class to have initialized. If a serial is in the config it means the machine
+        # has been initialized and we can set a password. If the ESP does know its serial but the config is empty
+        # we assume the machine was reset and set a new password on next boot
+        if not Machine.enable_manufacturing and current_password is None:
             logger.info("Detected exit from manufacturing mode and generating password")
             if SSHManager.generate_root_password():
-                manufacturing_config["first_boot"] = False
-                MeticulousConfig["manufacturing"] = manufacturing_config
-                MeticulousConfig.save()
-                logger.info("Root password generated successfully")
+                logger.warning("Root password generated successfully")
                 # I update this value with the newly generated password
                 current_password = SSHManager.get_root_password()
             else:
                 logger.error("Root password generation failed")
 
-        if current_password:
+        if current_password is not None:
             SSHManager.update_issue_file(current_password)
             logger.info("Updated /etc/issue with current root password")
 
             SSHManager.set_root_password(current_password)
             logger.info("The root password matches the configuration")
-
-        return manufacturing_config
 
     @staticmethod
     def generate_root_password() -> bool:
@@ -101,7 +106,7 @@ class SSHManager:
     @staticmethod
     def get_root_password() -> str:
         """Get the stored root password from config"""
-        return MeticulousConfig[CONFIG_SYSTEM].get(ROOT_PASSWORD)
+        return MeticulousConfig[CONFIG_SYSTEM][ROOT_PASSWORD]
 
     @staticmethod
     def update_issue_file(password: str) -> bool:
