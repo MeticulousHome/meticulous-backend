@@ -159,6 +159,7 @@ class MachineInfoHandler(BaseHandler):
                     "branch": info.get("branch", None),
                     "commit": info.get("last_commit", None),
                 }
+        response["manufacturing"] = Machine.enable_manufacturing
 
         self.write(json.dumps(response))
 
