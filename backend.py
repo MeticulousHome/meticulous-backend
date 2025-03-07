@@ -3,20 +3,16 @@ import socketio
 import tornado.log
 import tornado.web
 import tornado.ioloop
-from named_thread import NamedThread
 import time
 import json
 import os
 import os.path
 import pyprctl
-import asyncio
 import sentry_sdk
-
-from esp_serial.data import ButtonEventData
 
 from ble_gatt import GATTServer
 from wifi import WifiManager
-from notifications import Notification, NotificationManager
+from notifications import NotificationManager
 from profiles import ProfileManager
 from hostname import HostnameManager
 from config import (
@@ -26,8 +22,6 @@ from config import (
     DEVICE_IDENTIFIER,
     MACHINE_SERIAL_NUMBER,
     UPDATE_CHANNEL,
-    CONFIG_LOGGING,
-    LOGGING_SENSOR_MESSAGES,
 )
 
 from machine import Machine
@@ -109,9 +103,6 @@ def calibrate(sid, data=True):
     Machine.write(str.encode(_input))
 
 
-send_data_thread = None
-
-
 async def live():
     SAMPLE_TIME = 0.1
     elapsed_time = 0
@@ -180,105 +171,7 @@ async def live():
         i = i + 1
 
 
-def send_data_loop():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    loop.run_until_complete(send_data())
-    loop.close()
-
-
-async def send_data():  # noqa: C901
-    noti = Notification("", ["Ok", "Not okay"])
-    while True:
-        print("> ", end="")
-        try:
-            _input = input()
-        except EOFError:
-            logger.warning("no STDIN attached, not listening to commands!")
-            break
-
-        if _input == "reset":
-            Machine.reset()
-
-        elif _input == "show":
-            MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES] = True
-            MeticulousConfig.save()
-
-        elif _input == "hide":
-            MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES] = False
-            MeticulousConfig.save()
-        elif (
-            _input == "tare"
-            or _input == "stop"
-            or _input == "purge"
-            or _input == "home"
-            or _input == "start"
-        ):
-            Machine.action(_input)
-
-        elif _input == "test":
-            previous_sensor_status = MeticulousConfig[CONFIG_LOGGING][
-                LOGGING_SENSOR_MESSAGES
-            ]
-            MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES] = True
-            for i in range(0, 10):
-                _input = "action," + "purge" + "\x03"
-                Machine.write(str.encode(_input))
-                await asyncio.sleep(15)
-                logger.info(_input)
-                _input = "action," + "home" + "\x03"
-                Machine.write(str.encode(_input))
-                await asyncio.sleep(15)
-                contador = "Numero de prueba: " + str(i + 1)
-                logger.info(_input)
-                logger.info(contador)
-            MeticulousConfig[CONFIG_LOGGING][
-                LOGGING_SENSOR_MESSAGES
-            ] = previous_sensor_status
-
-        elif _input[:11] == "calibration":
-            _input = "action," + _input + "\x03"
-            Machine.write(str.encode(_input))
-
-        elif _input.startswith("update"):
-            Machine.startUpdate()
-
-        elif _input.startswith("notification"):
-            notification = _input[12:]
-            # noti.message = notification
-            # noti.add_qrcode("Hello asjkdljlasjjkdsajkldasljkasdljk")
-            noti = Notification(
-                notification,
-            )
-            NotificationManager.add_notification(noti)
-        elif _input == "l" or _input == "CCW":
-            await sio.emit("button", ButtonEventData.from_args(["CCW"]).to_sio())
-        elif _input == "r" or _input == "CW":
-            await sio.emit("button", ButtonEventData.from_args(["CW"]).to_sio())
-        elif _input == "e" or _input == "push":
-            await sio.emit("button", ButtonEventData.from_args(["push"]).to_sio())
-        elif _input == "d" or _input == "pu_d":
-            await sio.emit("button", ButtonEventData.from_args(["pu_d"]).to_sio())
-        elif _input == "t" or _input == "ta_d":
-            await sio.emit("button", ButtonEventData.from_args(["ta_d"]).to_sio())
-        elif _input == "s" or _input == "ta_l":
-            await sio.emit("button", ButtonEventData.from_args(["ta_l"]).to_sio())
-        elif _input == "ta_sl":
-            await sio.emit("button", ButtonEventData.from_args(["ta_sl"]).to_sio())
-        elif _input == "pr":
-            await sio.emit(
-                "button", ButtonEventData.from_args(["encoder_button_pressed"]).to_sio()
-            )
-        elif _input == "re":
-            await sio.emit(
-                "button",
-                ButtonEventData.from_args(["encoder_button_released"]).to_sio(),
-            )
-
-
 def main():
-    global send_data_thread
     global dbus_object
     parse_command_line()
 
@@ -308,10 +201,6 @@ def main():
     SSHManager.init()
 
     USBManager.init()
-
-    send_data_thread = NamedThread("SendSocketIO", target=send_data_loop)
-    send_data_thread.start()
-
     GATTServer.getServer().start()
 
     WifiManager.init()
