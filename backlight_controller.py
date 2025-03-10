@@ -1,6 +1,7 @@
 import time
 import threading
 
+from machine import Machine
 from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -94,6 +95,9 @@ class BacklightController:
             target_percent = 1
 
         logger.info(f"Adjusting Brightness to {target_percent}")
+
+        if Machine.emulated:
+            return
 
         BacklightController.stop_adjust_thread()
         BacklightController._adjust_thread = threading.Thread(
