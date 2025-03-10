@@ -3,13 +3,14 @@ import io
 import os
 from named_thread import NamedThread
 import time
-import sentry_sdk
+import asyncio
 from datetime import datetime
 
 import zstandard as zstd
 
 from config import CONFIG_USER, DEBUG_SHOT_DATA, MACHINE_DEBUG_SENDING, MeticulousConfig
 from esp_serial.data import SensorData, ShotData
+from telemetry_service import TelemetryService
 from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -113,7 +114,7 @@ class ShotDebugManager:
 
             csv_data = ShotDebugManager._current_data.to_csv()
 
-            def compress_current_data(data_json):
+            async def compress_current_data(data_json):
                 # Compress and write the shot to disk
                 logger.info("Writing and compressing debug file")
                 start = time.time()
@@ -134,13 +135,20 @@ class ShotDebugManager:
                     logger.info("Debug shot data is disabled, skipping writing to disk")
 
                 if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] is True:
-                    scope = sentry_sdk.new_scope()
-                    scope.add_attachment(bytes=compressed_data, filename=file_path)
-                    scope.set_context("config", MeticulousConfig.copy())
-                    scope.capture_message("Debug shot data", level="info", scope=scope)
+                    try:
+                        await TelemetryService.upload_debug_shot(compressed_data)
+                    except Exception as e:
+                        logger.error(f"Failed to send debug shot to server: {e}")
+
+            def compression_loop(csv_data):
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+                loop.run_until_complete(compress_current_data(csv_data))
+                loop.close()
 
             compresson_thread = NamedThread(
-                "DebugShotCompr", target=compress_current_data, args=(csv_data,)
+                "DebugShotCompr", target=compression_loop, args=(csv_data,)
             )
             compresson_thread.start()
 
