@@ -71,7 +71,7 @@ class Shot:
                 "flow": shotData.flow,
                 "weight": shotData.weight,
                 "gravimetric_flow": shotData.gravimetric_flow,
-                "setpoints": shotData.to_sio().get("setPoints", {}),
+                "setpoints": shotData.to_sio().get("setpoints", {}),
             },
             "time": shotData.time,
             "status": shotData.status,
