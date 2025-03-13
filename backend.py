@@ -62,7 +62,9 @@ PORT = int(os.getenv("PORT", "8080"))
 DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "y")
 
 
-sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="tornado")
+sio = socketio.AsyncServer(
+    cors_allowed_origins="*", async_mode="tornado", ping_interval=2, ping_timeout=5
+)
 
 UpdateOSStatus.setSio(sio)
 
