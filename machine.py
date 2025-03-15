@@ -368,12 +368,30 @@ class Machine:
                     is_preparing = data.status == MachineStatus.CLOSING_VALVE
                     is_heating = data.status == MachineStatus.HEATING
 
+                    # A shot started
                     if is_preparing and data.status != old_status:
                         time_flag = True
                         shot_start_time = time.time()
                         logger.info("shot start_time: {:.1f}".format(shot_start_time))
                         ShotManager.start()
                         SoundPlayer.play_event_sound(Sounds.BREWING_START)
+                    elif time_flag:
+                        # A shot could have ended
+                        if Machine.is_idle or is_purge:
+                            time_flag = False
+                            ShotDebugManager.stop()
+
+                        # After retracting the shot is always over. No matter what, during retracting we wait for a stable weight
+                        if old_status == MachineStatus.RETRACTING and not is_retracting:
+                            time_flag = False
+                            ShotManager.stop()
+
+                        if is_retracting:
+                            time_flag = not ShotManager.isWeightStable(data.weight)
+
+                        if time_flag is False:
+                            SoundPlayer.play_event_sound(Sounds.BREWING_END)
+                            ShotManager.stop()
 
                     if old_status == MachineStatus.IDLE and not Machine.is_idle:
                         ShotDebugManager.start()
@@ -382,15 +400,6 @@ class Machine:
 
                     if Machine.is_idle and old_status != MachineStatus.IDLE:
                         SoundPlayer.play_event_sound(Sounds.IDLE)
-
-                    if Machine.is_idle or is_purge or is_retracting:
-                        if time_flag is True:
-                            SoundPlayer.play_event_sound(Sounds.BREWING_END)
-                        time_flag = False
-                        ShotManager.stop()
-
-                    if Machine.is_idle:
-                        ShotDebugManager.stop()
 
                     if is_heating and old_status != MachineStatus.HEATING:
                         time_passed = 0
