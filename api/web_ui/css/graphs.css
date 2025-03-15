@@ -59,4 +59,5 @@ canvas {
 .dataEntry {
     padding-right: 10px;
     width: 45px;
+    white-space: nowrap;
 }
