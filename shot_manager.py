@@ -67,8 +67,8 @@ class Shot:
         # Shotdata is not json serialziable and we dont need the profile entry multiple times
         formated_data = {
             "shot": {
-                "pressure": shotData.pressure,
-                "flow": shotData.flow,
+                "pressure": max(shotData.pressure, 0),
+                "flow": max(shotData.flow, 0),
                 "weight": shotData.weight,
                 "gravimetric_flow": shotData.gravimetric_flow,
                 "setpoints": shotData.to_sio().get("setpoints", {}),
