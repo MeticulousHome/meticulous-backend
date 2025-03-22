@@ -187,6 +187,7 @@ class ESPInfo:
     serialNumber: str = ""
     batchNumber: str = ""
     buildDate: str = ""
+    scaleModule: str = ""
 
     def from_args(args):
         espPinout = 0
@@ -248,6 +249,7 @@ class ShotData:
     pressure: float = 0.0
     flow: float = 0.0
     weight: float = 0.0
+    stable_weight: bool = False
     temperature: float = 20.0
     status: str = ""  # Represented as "name" over socket.io
     profile: str = ""
@@ -269,13 +271,13 @@ class ShotData:
 
     def from_args(args):
         try:
-            s = args[4].strip("\r\n")
+            s = args[5].strip("\r\n")
             status = s
         except Exception:
             status = None
 
         try:
-            profile = args[5].strip("\r\n")
+            profile = args[6].strip("\r\n")
         except Exception:
             profile = None
 
@@ -285,21 +287,22 @@ class ShotData:
         aux_setpoint = 0.0
         is_aux_controller_active = False
         gravimetric_flow = 0.0
+        stable_weight = args[3].strip("\r\n") == "S"
 
-        if len(args) > 11:
+        if len(args) > 12:
             try:
-                main_controller_kind = args[6].strip("\r\n")
+                main_controller_kind = args[7].strip("\r\n")
                 if main_controller_kind == "none":
                     main_controller_kind = None
 
-                main_setpoint = float(args[7].strip("\r\n"))
-                aux_controller_kind = args[8].strip("\r\n")
+                main_setpoint = float(args[8].strip("\r\n"))
+                aux_controller_kind = args[9].strip("\r\n")
                 if aux_controller_kind == "none":
                     aux_controller_kind = None
 
-                aux_setpoint = float(args[9].strip("\r\n"))
-                is_aux_controller_active = args[10].strip("\r\n") == "true"
-                gravimetric_flow = safe_float_with_nan(args[11])
+                aux_setpoint = float(args[10].strip("\r\n"))
+                is_aux_controller_active = args[11].strip("\r\n") == "true"
+                gravimetric_flow = safe_float_with_nan(args[12])
             except Exception as e:
                 logger.warning(f"Failed to parse ShotData: {args}", exc_info=e)
                 pass
@@ -320,7 +323,8 @@ class ShotData:
                 safe_float_with_nan(args[0]),
                 safe_float_with_nan(args[1]),
                 safe_float_with_nan(args[2]),
-                safe_float_with_nan(args[3]),
+                stable_weight,
+                safe_float_with_nan(args[4]),
                 status,
                 profile,
                 state=state,
