@@ -52,6 +52,7 @@ class SensorData:
     adc_1: float = 0.0
     adc_2: float = 0.0
     adc_3: float = 0.0
+    stable_weight: bool = False
     water_status: bool = False
     motor_thermistor: float = 0.0
 
@@ -70,12 +71,12 @@ class SensorData:
     def from_args(args):
         try:
 
-            if len(args) >= 21:
-                water_status = args[20].lower() == "true"
+            if len(args) >= 22:
+                water_status = args[21].lower() == "true"
             else:
                 water_status = False
 
-            if len(args) >= 20:
+            if len(args) >= 21:
                 data = SensorData(
                     external_1=safeFloat(args[0]),
                     external_2=safeFloat(args[1]),
@@ -97,10 +98,11 @@ class SensorData:
                     adc_1=safeFloat(args[17]),
                     adc_2=safeFloat(args[18]),
                     adc_3=safeFloat(args[19]),
+                    stable_weight=args[20].strip("\r\n") == "S",
                     water_status=water_status,
                 )
                 if MeticulousConfig[CONFIG_USER][GET_ACCESSORY_DATA]:
-                    data.motor_thermistor = safeFloat(args[21])
+                    data.motor_thermistor = safeFloat(args[22])
                 else:
                     data.motor_thermistor = 0.0
             else:
@@ -122,10 +124,11 @@ class SensorData:
                     adc_1=safeFloat(args[15]),
                     adc_2=safeFloat(args[16]),
                     adc_3=safeFloat(args[17]),
+                    stable_weight=args[20].strip("\r\n") == "S",
                     water_status=water_status,
                 )
                 if MeticulousConfig[CONFIG_USER][GET_ACCESSORY_DATA]:
-                    data.motor_thermistor = safeFloat(args[21])
+                    data.motor_thermistor = safeFloat(args[22])
                 else:
                     data.motor_thermistor = 0.0
 
@@ -249,7 +252,6 @@ class ShotData:
     pressure: float = 0.0
     flow: float = 0.0
     weight: float = 0.0
-    stable_weight: bool = False
     temperature: float = 20.0
     status: str = ""  # Represented as "name" over socket.io
     profile: str = ""
@@ -289,20 +291,20 @@ class ShotData:
         gravimetric_flow = 0.0
         stable_weight = args[3].strip("\r\n") == "S"
 
-        if len(args) > 12:
+        if len(args) > 11:
             try:
-                main_controller_kind = args[7].strip("\r\n")
+                main_controller_kind = args[6].strip("\r\n")
                 if main_controller_kind == "none":
                     main_controller_kind = None
 
-                main_setpoint = float(args[8].strip("\r\n"))
-                aux_controller_kind = args[9].strip("\r\n")
+                main_setpoint = float(args[7].strip("\r\n"))
+                aux_controller_kind = args[8].strip("\r\n")
                 if aux_controller_kind == "none":
                     aux_controller_kind = None
 
-                aux_setpoint = float(args[10].strip("\r\n"))
-                is_aux_controller_active = args[11].strip("\r\n") == "true"
-                gravimetric_flow = safe_float_with_nan(args[12])
+                aux_setpoint = float(args[9].strip("\r\n"))
+                is_aux_controller_active = args[10].strip("\r\n") == "true"
+                gravimetric_flow = safe_float_with_nan(args[11])
             except Exception as e:
                 logger.warning(f"Failed to parse ShotData: {args}", exc_info=e)
                 pass
@@ -323,8 +325,7 @@ class ShotData:
                 safe_float_with_nan(args[0]),
                 safe_float_with_nan(args[1]),
                 safe_float_with_nan(args[2]),
-                stable_weight,
-                safe_float_with_nan(args[4]),
+                safe_float_with_nan(args[3]),
                 status,
                 profile,
                 state=state,
