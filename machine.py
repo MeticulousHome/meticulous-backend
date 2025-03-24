@@ -108,7 +108,6 @@ class Machine:
     )
     sensor_sensors: SensorData = None
     esp_info = None
-    scale_module = None
     reset_count = 0
     shot_start_time = 0
     emulated = False
