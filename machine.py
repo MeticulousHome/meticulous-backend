@@ -329,8 +329,6 @@ class Machine:
                         sensor = SensorData.from_args(sensorArgs)
                     case ["ESPInfo", *infoArgs]:
                         info = ESPInfo.from_args(infoArgs)
-                    case ["ScaleInfo", *scaleArgs]:
-                        Machine.scale_module = scaleArgs[0]
                     case ["Notify", *notifyArgs]:
                         notify = MachineNotify(
                             notifyArgs[0], ",".join(notifyArgs[1:]).replace(";", "\n")

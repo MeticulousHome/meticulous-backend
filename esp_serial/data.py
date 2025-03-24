@@ -197,7 +197,7 @@ class ESPInfo:
         except Exception:
             pass
         try:
-            if len(args) >= 7:
+            if len(args) >= 8:
                 info = ESPInfo(
                     args[0],
                     espPinout,
@@ -206,6 +206,7 @@ class ESPInfo:
                     args[4],
                     args[5],
                     args[6],
+                    args[7],
                 )
             else:
                 info = ESPInfo(args[0], espPinout, float(args[2]))
