@@ -337,9 +337,7 @@ class ComplexProfileConverter:
                     },
                     {
                         "id": 12,
-                        "controllers": [
-                            {"kind": "log_controller", "message": "No Water"}
-                        ],
+                        "controllers": [],
                         "triggers": (
                             [
                                 {
@@ -548,7 +546,6 @@ class ComplexProfileConverter:
                     {
                         "id": 16,
                         "controllers": [
-                            {"kind": "log_controller", "message": "Click to start"},
                             {"kind": "time_reference", "id": 30},
                         ],
                         "triggers": [{"kind": "exit", "next_node_id": 25}],
@@ -803,9 +800,7 @@ class ComplexProfileConverter:
                 "nodes": [
                     {
                         "id": 30,
-                        "controllers": [
-                            {"kind": "log_controller", "message": "Click to purge"}
-                        ],
+                        "controllers": [],
                         "triggers": [
                             {
                                 "kind": "button_trigger",
