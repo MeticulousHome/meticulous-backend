@@ -39,28 +39,28 @@ def before_send(event, hint):
     return event
 
 
-if BACKEND == "FIKA" or SENTRY:
-    print("Initializing sentry")
-    sentry_sdk.init(
-        dsn="https://0b7872daf08aae52a8d654472bc8bb26@o4506723336060928.ingest.us.sentry.io/4507635208224768",
-        # Set traces_sample_rate to 1.0 to capture 100%
-        # of transactions for performance monitoring.
-        traces_sample_rate=0.0,
-        # Set profiles_sample_rate to 1.0 to profile 100%
-        # of sampled transactions.
-        # We recommend adjusting this value in production.
-        profiles_sample_rate=0.0,
-        integrations=[
-            AsyncioIntegration(),
-        ],
-        ignore_errors=[
-            KeyboardInterrupt,
-        ],
-        before_breadcrumb=before_breadcrumb,
-        before_send=before_send,
-    )
-else:
-    print("Skipping Sentry initialization")
+# if BACKEND == "FIKA" or SENTRY:
+#     print("Initializing sentry")
+#     sentry_sdk.init(
+#         dsn="https://0b7872daf08aae52a8d654472bc8bb26@o4506723336060928.ingest.us.sentry.io/4507635208224768",
+#         # Set traces_sample_rate to 1.0 to capture 100%
+#         # of transactions for performance monitoring.
+#         traces_sample_rate=0.0,
+#         # Set profiles_sample_rate to 1.0 to profile 100%
+#         # of sampled transactions.
+#         # We recommend adjusting this value in production.
+#         profiles_sample_rate=0.0,
+#         integrations=[
+#             AsyncioIntegration(),
+#         ],
+#         ignore_errors=[
+#             KeyboardInterrupt,
+#         ],
+#         before_breadcrumb=before_breadcrumb,
+#         before_send=before_send,
+#     )
+# else:
+print("Skipping Sentry initialization")
 
 
 def run():
