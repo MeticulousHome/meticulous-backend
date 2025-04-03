@@ -281,7 +281,6 @@ async def send_data():  # noqa: C901
 
 def main():
     global send_data_thread
-    global dbus_object
     parse_command_line()
 
     pyprctl.set_name("Main")

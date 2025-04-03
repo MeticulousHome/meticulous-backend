@@ -139,7 +139,6 @@ class DBusMonitor:
 
         UpdateOSStatus.sendStatus(OSStatus.COMPLETE, 100, None)
 
-        global error_rauc_updating
         if error_rauc_updating != "":
             notification_message = f"Failed OS updated no need to reboot your machine\n Error: {error_rauc_updating}"
             logger.info(f"error is [{error_rauc_updating}]")
