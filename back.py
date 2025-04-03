@@ -24,10 +24,11 @@ def is_tornado_session_disconnected(event):
 
     for item in values:
         mechanism = item.get("mechanism", {})
+        value = item.get("value", "")
         if (
             mechanism.get("type", "") == "tornado"
             and mechanism.get("handled", None) is False
-            and item.get("value", "") == "Session is disconnected"
+            and (value == "Session is disconnected" or "Invalid session" in value)
         ):
             return True
     return False
