@@ -67,8 +67,8 @@ class Shot:
         # Shotdata is not json serialziable and we dont need the profile entry multiple times
         formated_data = {
             "shot": {
-                "pressure": shotData.pressure,
-                "flow": shotData.flow,
+                "pressure": max(shotData.pressure, 0),
+                "flow": max(shotData.flow, 0),
                 "weight": shotData.weight,
                 "gravimetric_flow": shotData.gravimetric_flow,
                 "setpoints": shotData.to_sio().get("setpoints", {}),
@@ -89,6 +89,9 @@ class Shot:
         if bool(self.profile):
             shot_dict["profile"] = self.profile
         return shot_dict
+
+    def get_last_datapoints(self, field, n=1):
+        return [d.get("shot", {}).get(field) for d in self.shotData[-n:]]
 
 
 class ShotManager:
@@ -233,6 +236,42 @@ class ShotManager:
             # Shift and clear shot handles after saving
             ShotManager._current_shot.profile = None
             ShotManager._current_shot = None
+
+    @staticmethod
+    def isWeightStable(current_weight):
+        nr_samples_per_group = 3
+        logger.debug("Checking if weight is stable")
+        if ShotManager._current_shot is None:
+            logger.warning("No current shot")
+            return False
+
+        last_weights = ShotManager._current_shot.get_last_datapoints(
+            "weight", nr_samples_per_group * 2
+        )
+        if len(last_weights) < nr_samples_per_group * 2:
+            logger.warning("Not enough datapoints")
+            return False
+
+        try:
+            last_avg = sum(last_weights[-nr_samples_per_group:]) / nr_samples_per_group
+            previous_avg = (
+                sum(last_weights[-(nr_samples_per_group * 2) : -nr_samples_per_group])
+                / nr_samples_per_group
+            )
+
+            current_weight_stable = abs(current_weight - last_avg) < 0.05
+            avg_stable = abs(last_avg - previous_avg) < 0.05
+            # Check for massive weight change due to cup removal
+            massive_weight_change = abs(previous_avg - last_avg) > 10
+
+            logger.debug(
+                f"Current weight stable: {current_weight_stable}, Last three avg stable: {avg_stable}, Massive weight chang: {massive_weight_change}, Last three avg: {last_avg} Previous three avg: {previous_avg}, "
+            )
+            return current_weight_stable or avg_stable or massive_weight_change
+        except Exception as e:
+            logger.error(f"Failed to check weight stability: {e}")
+            logger.error(traceback.format_exc())
+            return False
 
 
 def test():
