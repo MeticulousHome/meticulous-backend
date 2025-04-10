@@ -1,4 +1,3 @@
-import tornado.ioloop
 import tornado.web
 from netaddr import IPNetwork
 
@@ -11,6 +10,9 @@ from config import (
     WIFI_MODE_AP,
     MeticulousConfig,
 )
+from log import MeticulousLogger
+
+logger = MeticulousLogger.getLogger(__name__)
 
 
 class BaseHandler(tornado.web.RequestHandler):
@@ -73,4 +75,29 @@ class BaseHandler(tornado.web.RequestHandler):
         ):
             self.set_status(401)
             self.finish("Unauthorized: Missing X-Authorized header")
+            return
+
+
+class LocalAccessHandler(BaseHandler):
+    """Base handler that restricts access to local requests only."""
+
+    def prepare(self):
+        super().prepare()
+        remote_ip = self.request.remote_ip
+        request_host = self.request.host.split(":")[0]
+        if remote_ip not in ("127.0.0.1", "::1", "localhost") and request_host not in (
+            "localhost",
+            "127.0.0.1",
+        ):
+            logger.warning(
+                f"Unauthorized access to the password endpoint from {remote_ip}"
+            )
+            self.set_status(403)
+            self.write(
+                {
+                    "status": "error",
+                    "error": "This endpoint can only be accessed locally",
+                }
+            )
+            self.finish()
             return

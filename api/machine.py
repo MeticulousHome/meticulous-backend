@@ -9,7 +9,7 @@ from enum import Enum
 import asyncio
 
 from .api import API, APIVersion
-from .base_handler import BaseHandler
+from .base_handler import BaseHandler, LocalAccessHandler
 from ota import UpdateManager
 from backlight_controller import BacklightController
 from datetime import datetime
@@ -164,7 +164,7 @@ class MachineInfoHandler(BaseHandler):
         self.write(json.dumps(response))
 
 
-class MachineResetHandler(BaseHandler):
+class MachineResetHandler(LocalAccessHandler):
 
     def get(self):
         confirm = self.get_argument("confirm", None)
