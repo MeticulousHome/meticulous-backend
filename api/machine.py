@@ -167,6 +167,11 @@ class MachineInfoHandler(BaseHandler):
 class MachineResetHandler(BaseHandler):
 
     def get(self):
+        confirm = self.get_argument("confirm", None)
+        if confirm != "true":
+            self.set_status(400)
+            self.write({"error": "Confirmation required. Add confirm=true"})
+            return
         subprocess.run("rm -rf /meticulous-user/*")
         subprocess.run("reboot")
 
