@@ -172,6 +172,11 @@ class MachineResetHandler(LocalAccessHandler):
             self.set_status(400)
             self.write({"error": "Confirmation required. Add confirm=true"})
             return
+        if Machine.emulated:
+            logger.warning("Factory reset only simluated in emulated mode")
+            self.write({"status": "success", "message": "Emulated mode"})
+            return
+        logger.warning("Performing factory reset")
         subprocess.run("rm -rf /meticulous-user/*")
         subprocess.run("reboot")
 
