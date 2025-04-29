@@ -374,12 +374,12 @@ class Machine:
                         shot_start_time = time.time()
                         logger.info("shot start_time: {:.1f}".format(shot_start_time))
                         ShotManager.start()
+                        ShotDebugManager._shot_in_progress = True
                         SoundPlayer.play_event_sound(Sounds.BREWING_START)
                     elif time_flag:
                         # A shot could have ended
                         if Machine.is_idle or is_purge:
                             time_flag = False
-                            ShotDebugManager.stop()
 
                         # After retracting the shot is always over. No matter what, during retracting we wait for a stable weight
                         if old_status == MachineStatus.RETRACTING and not is_retracting:
@@ -392,6 +392,9 @@ class Machine:
                         if time_flag is False:
                             SoundPlayer.play_event_sound(Sounds.BREWING_END)
                             ShotManager.stop()
+
+                    if Machine.is_idle or is_purge:
+                        ShotDebugManager.stop()
 
                     if old_status == MachineStatus.IDLE and not Machine.is_idle:
                         ShotDebugManager.start()
