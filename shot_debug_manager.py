@@ -78,6 +78,7 @@ class DebugData:
 
 class ShotDebugManager:
     _current_data: DebugData = None
+    _shot_in_progress: bool = False
 
     @staticmethod
     def start():
@@ -97,6 +98,12 @@ class ShotDebugManager:
 
     @staticmethod
     def stop():
+        if ShotDebugManager._shot_in_progress is False:
+            # logger.info("shot did not start, clearing debug data") # This message is not needed, only for debugging purposes
+            ShotDebugManager._current_data = None
+
+        ShotDebugManager._shot_in_progress = False
+
         if ShotDebugManager._current_data is not None:
             # Determine the folder path based on the current date
             start_timestamp = ShotDebugManager._current_data.startTime
