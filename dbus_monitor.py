@@ -47,6 +47,12 @@ class DBusMonitor:
             self.download_progress,
         )
 
+        self.dbus_object.new_signal_subscription(
+            "org.hawkbit.DownloadProgress",
+            "Error",
+            self.report_hawkbit_error,
+        )
+
         self.dbus_object.new_property_subscription(
             "de.pengutronix.rauc.Installer", "Progress", self.install_progress
         )
@@ -73,6 +79,22 @@ class DBusMonitor:
             progress_notification.respone_options = [NotificationResponse.OK]
             progress_notification.image = notification_image
             NotificationManager.add_notification(progress_notification)
+
+    @staticmethod
+    async def report_hawkbit_error(
+        connection,
+        sender_name,
+        object_path,
+        interface_name,
+        signal_name,
+        parameters: tuple,
+    ):
+        process: str = parameters[0]
+        error: str = parameters[1]
+
+        process = "processing deployment" if process == "EPRODEP" else "downloading"
+
+        logger.error(f"Error in {process} process: {error}")
 
     @staticmethod
     async def install_progress(
