@@ -63,7 +63,7 @@ DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "y")
 
 
 sio = socketio.AsyncServer(
-    cors_allowed_origins="*", async_mode="tornado", ping_interval=2, ping_timeout=5
+    cors_allowed_origins="*", async_mode="tornado", ping_interval=10, ping_timeout=60
 )
 
 UpdateOSStatus.setSio(sio)
