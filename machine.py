@@ -90,6 +90,7 @@ class Machine:
         "continue",
         "home",
         "purge",
+        "continue",
     ]
 
     _connection = None

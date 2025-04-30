@@ -17,7 +17,6 @@ class ComplexProfileConverter:
 
         self.data = None
         self.parameters = parameters if parameters is not None else {}
-        self.click_to_start = click_to_start if click_to_start is not None else True
         self.click_to_purge = click_to_purge if click_to_purge is not None else True
         self.end_node_head = end_node_head
         self.init_node_tail = init_node_tail
@@ -29,10 +28,7 @@ class ComplexProfileConverter:
 
     def head_template(self):
         no_skipping = not MeticulousConfig[CONFIG_USER][MACHINE_ALLOW_STAGE_SKIPPING]
-        if self.click_to_start:
-            self.head_next_node_id = 16
-        else:
-            self.head_next_node_id = 17
+        self.head_next_node_id = 16
         self.stages_head = [
             {
                 "name": "prepare",
@@ -555,7 +551,7 @@ class ComplexProfileConverter:
                         "controllers": [],
                         "triggers": [
                             {
-                                "kind": "button_trigger",
+                                "kind": "user_message_trigger",
                                 "next_node_id": 17,
                                 "gesture": "Single Tap",
                                 "source": "Encoder Button",
@@ -803,7 +799,7 @@ class ComplexProfileConverter:
                         "controllers": [],
                         "triggers": [
                             {
-                                "kind": "button_trigger",
+                                "kind": "user_message_trigger",
                                 "next_node_id": 31,
                                 "gesture": "Single Tap",
                                 "source": "Encoder Button",
