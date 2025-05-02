@@ -68,7 +68,9 @@ class TelemetryService:
         data.add_field("json", json.dumps(config), content_type="application/json")
 
         try:
-            async with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=30)
+            ) as session:
                 async with session.post(url, data=data) as response:
                     response.raise_for_status()
         except aiohttp.ClientError as e:
