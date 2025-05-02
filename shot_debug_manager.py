@@ -147,12 +147,19 @@ class ShotDebugManager:
                     except Exception as e:
                         logger.error(f"Failed to send debug shot to server: {e}")
 
+                compressed_data = None
+                cctx = None
+                data_json = None
+                logger.info("Debug shot data compressed and sent")
+
             def compression_loop(csv_data):
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
 
-                loop.run_until_complete(compress_current_data(csv_data))
-                loop.close()
+                try:
+                    loop.run_until_complete(compress_current_data(csv_data))
+                finally:
+                    loop.close()
 
             compresson_thread = NamedThread(
                 "DebugShotCompr", target=compression_loop, args=(csv_data,)

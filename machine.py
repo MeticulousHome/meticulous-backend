@@ -201,11 +201,7 @@ class Machine:
 
         def flashingEsp():
             time.sleep(60)
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-            loop.run_until_complete(Machine.check_machine_alive())
-            loop.close()
+            Machine.check_machine_alive()
 
         Machine._thread = NamedThread("MachineSerial", target=startLoop)
         Machine._flashingThread = NamedThread("FlashingEsp", target=flashingEsp)

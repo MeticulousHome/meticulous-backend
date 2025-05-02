@@ -16,6 +16,5 @@ class NamedThread(threading.Thread):
             pyprctl.set_name(self.name)
             logger.debug(f"Thread {self.name} started")
             super().run()
-        except Exception:
-            # FIXME we should handle crashes here
-            pass
+        except Exception as e:
+            logger.error(f"Thread {self.name} crashed: {e}")
