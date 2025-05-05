@@ -57,7 +57,7 @@ class SettingsHandler(BaseHandler):
             raise KeyError(error_message)
 
         if type(value) is not type(MeticulousConfig[CONFIG_USER][setting_target]):
-            error_message = f"setting value invalid, received {type(value)} and expected {type(setting_target)}"
+            error_message = f"setting value invalid, received {type(value)} and expected {type(MeticulousConfig[CONFIG_USER][setting_target])}"
             raise KeyError(error_message)
 
     async def update_timezone_sync(self, value) -> str:
@@ -156,11 +156,13 @@ class SettingsHandler(BaseHandler):
         except KeyError as e:  # The variable is invalid in some way
             self.set_status(404)
             self.write({"status": "error", "error": f"{e}"})
+            logger.error(f"KeyError on Settings Handler: {e}")
             return
 
         except Exception as e:  # The variable specific callbacks could not be activated
             self.set_status(400)
             self.write({"status": "error", "error": f"{e}"})
+            logger.error(f"Exception on Settings Handler: {e}")
             return
 
         MeticulousConfig[CONFIG_USER] = workConfig
