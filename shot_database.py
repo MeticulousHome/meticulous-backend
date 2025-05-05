@@ -513,7 +513,7 @@ class ShotDataBase:
             return {"totalSavedShots": total_shots, "byProfile": parsed_results}
 
     @staticmethod
-    def rate_shot(history_id: int, rating: Optional[str]) -> bool:
+    def rate_shot(history_uuid: str, rating: Optional[str]) -> bool:
 
         if rating not in ("like", "dislike", None):
             logger.error(
@@ -527,23 +527,25 @@ class ShotDataBase:
 
                     shot_exists = connection.execute(
                         select(history_table.c.id).where(
-                            history_table.c.id == history_id
+                            history_table.c.uuid == history_uuid
                         )
                     ).fetchone()
 
                     if not shot_exists:
-                        logger.error(f"Shot with ID {history_id} does not exist")
+                        logger.error(f"Shot with ID {history_uuid} does not exist")
                         return False
 
                     annotation = connection.execute(
                         select(shot_annotation.c.id).where(
-                            shot_annotation.c.history_id == history_id
+                            shot_annotation.c.history_uuid == history_uuid
                         )
                     ).fetchone()
 
                     if not annotation:
                         result = connection.execute(
-                            insert(shot_annotation).values(history_id=history_id)
+                            insert(shot_annotation).values(
+                                history_id=shot_exists[0], history_uuid=history_uuid
+                            )
                         )
                         annotation_id = result.inserted_primary_key[0]
                     else:
@@ -582,7 +584,7 @@ class ShotDataBase:
             return False
 
     @staticmethod
-    def get_shot_rating(history_id: int) -> Optional[str]:
+    def get_shot_rating(history_uuid: str) -> Optional[str]:
         try:
             with ShotDataBase.engine.connect() as connection:
 
@@ -595,7 +597,7 @@ class ShotDataBase:
                             isouter=True,
                         )
                     )
-                    .where(shot_annotation.c.history_id == history_id)
+                    .where(shot_annotation.c.history_uuid == history_uuid)
                 )
 
                 result = connection.execute(query).fetchone()

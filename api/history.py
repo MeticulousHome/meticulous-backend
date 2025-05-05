@@ -267,7 +267,7 @@ API.register_handler(APIVersion.V1, r"/history/stats", StatisticsHandler),
 
 API.register_handler(APIVersion.V1, r"/history", HistoryHandler),
 API.register_handler(APIVersion.V1, r"/history/last-debug-file", LastDebugFileHandler),
-API.register_handler(APIVersion.V1, r"/history/rating/([0-9]+)", ShotRatingHandler),
+API.register_handler(APIVersion.V1, r"/history/rating/(.*)", ShotRatingHandler),
 
 API.register_handler(
     APIVersion.V1,
