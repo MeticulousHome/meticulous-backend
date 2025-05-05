@@ -212,12 +212,8 @@ class ShotRatingHandler(BaseHandler):
 
     def get(self, shot_id):
         try:
-            shot_id = int(shot_id)
             rating = ShotDataBase.get_shot_rating(shot_id)
             self.write({"shot_id": shot_id, "rating": rating})
-        except ValueError:
-            self.set_status(400)
-            self.write({"status": "error", "error": "Invalid shot ID format"})
         except Exception as e:
             logger.error(f"Error getting shot rating: {e}")
             self.set_status(500)
@@ -225,7 +221,6 @@ class ShotRatingHandler(BaseHandler):
 
     def post(self, shot_id):
         try:
-            shot_id = int(shot_id)
             data = json.loads(self.request.body)
             rating = data.get("rating", None)
 
@@ -251,9 +246,6 @@ class ShotRatingHandler(BaseHandler):
         except json.JSONDecodeError:
             self.set_status(400)
             self.write({"status": "error", "error": "Invalid JSON"})
-        except ValueError:
-            self.set_status(400)
-            self.write({"status": "error", "error": "Invalid shot ID format"})
         except Exception as e:
             logger.error(f"Error updating shot rating: {e}")
             self.set_status(500)
