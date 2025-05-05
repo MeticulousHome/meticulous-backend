@@ -52,7 +52,7 @@ shot_annotation = Table(
         "history_id", Integer, ForeignKey("history.id"), nullable=False, unique=True
     ),
     Column(
-        "history_uuid", Integer, ForeignKey("history.id"), nullable=False, unique=True
+        "history_uuid", Integer, ForeignKey("history.uuid"), nullable=False, unique=True
     ),
 )
 
