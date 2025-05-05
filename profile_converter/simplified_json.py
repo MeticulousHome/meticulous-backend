@@ -1,8 +1,6 @@
 import json
 from .stages import *
 from .dictionaries_simplified import *
-from config import MeticulousConfig, CONFIG_USER, MACHINE_ALLOW_STAGE_SKIPPING
-
 
 current_node_id = 1
 current_curve_id = 10000
@@ -77,8 +75,6 @@ class SimplifiedJson:
         global current_node_id
         global current_curve_id
         global current_reference_id
-
-        allow_skipping = MeticulousConfig[CONFIG_USER][MACHINE_ALLOW_STAGE_SKIPPING]
 
         current_node_id = end_node_head
         # Use the comments with * as debugging tools.
@@ -420,9 +416,7 @@ class SimplifiedJson:
                 case _:
                     print(f"Type: {type_main_controller} not found.")
 
-            button_trigger = ButtonTrigger(
-                ButtonSourceType.ENCODER_BUTTON, next_node_id=next_stage_node_id
-            )
+            button_trigger = UserMessageTrigger()
             weight_final_trigger = WeightTrigger(
                 SourceType.PREDICTIVE,
                 TriggerOperatorType.GREATER_THAN_OR_EQUAL,
@@ -433,17 +427,14 @@ class SimplifiedJson:
 
             for limit_node in all_nodes[2:]:
                 limit_node["triggers"].append(main_trigger)
-                if allow_skipping:
-                    limit_node["triggers"].append(button_trigger.get_trigger())
+                limit_node["triggers"].append(button_trigger.get_trigger())
                 limit_node["triggers"].append(weight_final_trigger.get_trigger())
 
-            if allow_skipping:
-                main_node.add_trigger(button_trigger)
+            main_node.add_trigger(button_trigger)
             main_node.add_trigger(weight_final_trigger)
 
             if stage_index == len(self.parameters.get("stages")) - 1:
-                if allow_skipping:
-                    button_trigger.set_next_node_id(init_node_tail)
+                button_trigger.set_next_node_id(init_node_tail)
                 weight_final_trigger.set_next_node_id(init_node_tail)
                 for exit_trigger in exit_triggers:
                     exit_trigger["next_node_id"] = init_node_tail
