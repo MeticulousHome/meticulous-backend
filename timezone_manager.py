@@ -36,12 +36,10 @@ class TimezoneManager:
         if target_timezone != TimezoneManager.__system_timezone:
 
             if target_timezone == DEFAULT_TIME_ZONE:
-                logger.info("No timezone was ever configured")
-                if TimezoneManager.__system_timezone == "Etc/UTC":
-                    return
-
+                logger.info("No timezone was ever configured by user")
                 logger.info("Setting system timezone to Etc/UTC as a default")
                 target_timezone = "Etc/UTC"
+                MeticulousConfig[CONFIG_USER][TIME_ZONE] = target_timezone
             else:
                 logger.warning(
                     f"user config and system timezones confilct, updating system config to {MeticulousConfig[CONFIG_USER][TIME_ZONE]}"
