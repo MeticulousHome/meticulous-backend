@@ -220,6 +220,11 @@ class ShotRatingHandler(BaseHandler):
             self.write({"status": "error", "error": "Internal server error"})
 
     def post(self, shot_id):
+        if not shot_id or shot_id == "":
+            self.set_status(400)
+            self.write({"status": "error", "error": "Invalid shot ID"})
+            return
+
         try:
             data = json.loads(self.request.body)
             rating = data.get("rating", None)
