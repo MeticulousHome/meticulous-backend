@@ -137,7 +137,12 @@ class ZstdHistoryHandler(tornado.web.StaticFileHandler):
             raise tornado.web.HTTPError(404)
 
         # List directory contents and sort them
-        files = sorted(os.listdir(full_path))
+        files = sorted(
+            os.listdir(full_path),
+            key=lambda f: os.path.getmtime(os.path.join(full_path, f)),
+            reverse=True,
+        )
+        logger.info("Files sorted")
         files_info = []
         for f in files:
             file_path = f
