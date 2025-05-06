@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function () {
         window.miscGraph.resetZoom();
     });
 
-    initGraph('thermistorGraph', ['barUp', 'barMiddleUp', 'barMiddleDown', 'barDown', 'external1', 'external2', 'tube', 'motor_temp']);
+    initGraph('thermistorGraph', ['barUp', 'barMiddleUp', 'barMiddleDown', 'barDown', 'external1', 'external2', 'tube', 'motor_temp', 'motor_thermistor']);
     initGraph('actuatorGraph', ['position', 'speed', 'power', 'current', 'bandHeater_power', 'bandHeater_current']);
     initGraph('adcGraph', ['adc0_rate', 'adc1_rate', 'adc2_rate', 'adc3_rate', 'pressureSensor_rate']);
     initGraph('miscGraph', ['pressureSensor_pressure', 'flowSensor_flow', 'loadcell_weight', 'display_temp', 'set_pressure', 'set_flow', 'set_power', 'set_position']);
@@ -73,7 +73,8 @@ document.addEventListener('DOMContentLoaded', function () {
             external1: [],
             external2: [],
             tube: [],
-            motorTemp: []
+            motorTemp: [],
+            motorThermistor: []
         }
     };
 
@@ -209,7 +210,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     socket.on("accessories", function (data) {
         therm_motor_accessory.innerText = data.motor_thermistor;
-
+        if (isGraphing) {
+            const currentTime = (Date.now() - startTime) / 1000;
+            updateGraphData(window.thermistorData, currentTime, {
+                motorThermistor: data.motor_thermistor
+            });
+            updateGraph('thermistorGraph', window.thermistorData);
+        }
     })
 
     socket.on("comunication", function (data) {
