@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const therm_ext2 = document.getElementById('therm_external2');
     const therm_tube = document.getElementById('therm_tube');
     const therm_motor = document.getElementById('therm_motor');
+    const therm_motor_accessory = document.getElementById('motor_thermistor');
 
     const motor_position = document.getElementById('motor_position');
     const motor_speed = document.getElementById('motor_speed');
@@ -203,6 +204,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (isGraphing) {
             updateGraph('thermistorGraph', window.thermistorData);
         }
+
+    })
+
+    socket.on("accessories", function (data) {
+        therm_motor_accessory.innerText = data.motor_thermistor;
 
     })
 
