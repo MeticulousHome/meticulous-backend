@@ -21,11 +21,9 @@ from profiles import ProfileManager
 from hostname import HostnameManager
 from config import (
     MeticulousConfig,
-    CONFIG_USER,
     CONFIG_SYSTEM,
     DEVICE_IDENTIFIER,
     MACHINE_SERIAL_NUMBER,
-    UPDATE_CHANNEL,
     CONFIG_LOGGING,
     LOGGING_SENSOR_MESSAGES,
 )
@@ -287,7 +285,7 @@ def main():
 
     DBusMonitor.init()
     HostnameManager.init()
-    UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
+    UpdateManager.init()
 
     try:
         # Context is arbitrary data that will be sent with every event

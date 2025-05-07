@@ -4,6 +4,13 @@ import re
 from pathlib import Path
 from datetime import datetime
 from log import MeticulousLogger
+from config import (
+    MeticulousConfig,
+    CONFIG_USER,
+    UPDATE_CHANNEL,
+    CONFIG_SYSTEM,
+    LAST_SYSTEM_VERSIONS,
+)
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -20,6 +27,41 @@ class UpdateManager:
     ROOTFS_BUILD_DATE = None
     CHANNEL = None
     REPO_INFO = None
+
+    is_changed = False
+
+    @staticmethod
+    def init():
+        UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
+
+        build_time = UpdateManager.getBuildTimestamp()
+        if build_time is None:
+            logger.error("Could not get build timestamp")
+            return
+
+        build_channel = UpdateManager.getImageChannel()
+        if build_channel is None:
+            logger.error("Could not get build channel")
+            return
+
+        this_version_string = build_channel + "-" + build_time.strftime("%Y%m%d_%H%M%S")
+        try:
+            # We might not have anything in the list, so we accept the exception
+            last_known_version = MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS][
+                -1
+            ]
+            is_changed = last_known_version != this_version_string
+        except IndexError:
+            is_changed = 1
+
+        if is_changed:
+            logger.info(f"System was updated to {this_version_string}")
+            MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS].append(
+                this_version_string
+            )
+            while len(MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS]) > 30:
+                MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS].pop(0)
+            MeticulousConfig.save()
 
     @staticmethod
     def setChannel(channel: str):
