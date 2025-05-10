@@ -55,8 +55,13 @@ class UpdateManager:
         except IndexError:
             is_changed = 1
 
+        print(f"Last known version image: {last_known_version}")
+        print(f"This image version: {this_version_string}")
+
         if is_changed:
-            logger.info(f"System was updated to {this_version_string}")
+            logger.info(
+                f"System was updated to {this_version_string} from {last_known_version}"
+            )
             MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS].append(
                 this_version_string
             )
