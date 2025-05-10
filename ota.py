@@ -44,8 +44,8 @@ class UpdateManager:
         if build_channel is None:
             logger.error("Could not get build channel")
             return
-
-        this_version_string = build_channel + "-" + build_time.strftime("%Y%m%d_%H%M%S")
+        this_build_time = build_time.strftime("%Y%m%d_%H%M%S")
+        this_version_string = build_channel + "-" + this_build_time
         try:
             # We might not have anything in the list, so we accept the exception
             last_known_version = MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS][
@@ -71,7 +71,7 @@ class UpdateManager:
 
             NotificationManager.add_notification(
                 Notification(
-                    message=f"System updated to [{build_channel}] build '{build_time.strftime("%Y%m%d_%H%M%S")}'",
+                    message=f"System updated to [{build_channel}] build '{this_build_time}'",
                     responses=[NotificationResponse.OK],
                 )
             )
