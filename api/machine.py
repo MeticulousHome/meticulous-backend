@@ -22,6 +22,7 @@ from config import (
     MACHINE_SERIAL_NUMBER,
     MACHINE_BATCH_NUMBER,
     MACHINE_BUILD_DATE,
+    LAST_SYSTEM_VERSIONS,
 )
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -160,6 +161,14 @@ class MachineInfoHandler(BaseHandler):
                     "commit": info.get("last_commit", None),
                 }
         response["manufacturing"] = Machine.enable_manufacturing
+        response["upgrade_first_boot"] = UpdateManager.is_changed
+        response["version_history"] = []
+        if MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS] is not None:
+            response["version_history"] = MeticulousConfig[CONFIG_SYSTEM][
+                LAST_SYSTEM_VERSIONS
+            ]
+        else:
+            response["version_history"] = []
 
         self.write(json.dumps(response))
 
