@@ -20,6 +20,7 @@ from config import (
     PROFILE_AUTO_PURGE,
     PROFILE_AUTO_START,
     PROFILE_LAST,
+    PROFILE_ORDER,
 )
 import asyncio
 from log import MeticulousLogger
@@ -262,6 +263,10 @@ class ProfileManager:
             json.dump(data, f, indent=4)
 
         ProfileManager._known_profiles[data["id"]] = data
+        if data["id"] not in MeticulousConfig[CONFIG_USER][PROFILE_ORDER]:
+            MeticulousConfig[CONFIG_USER][PROFILE_ORDER].append(data["id"])
+            MeticulousConfig.save()
+
         logger.info(f"Saved profile {name}")
         if is_update:
             change_type = PROFILE_EVENT.UPDATE
@@ -285,6 +290,9 @@ class ProfileManager:
         file_path = os.path.join(PROFILE_PATH, filename)
         os.remove(file_path)
         del ProfileManager._known_profiles[profile["id"]]
+        if profile["id"] in MeticulousConfig[CONFIG_USER][PROFILE_ORDER]:
+            MeticulousConfig[CONFIG_USER][PROFILE_ORDER].remove(profile["id"])
+            MeticulousConfig.save()
         change_id = ProfileManager._register_profile_change(
             PROFILE_EVENT.DELETE, profile["id"], change_id
         )
@@ -366,7 +374,7 @@ class ProfileManager:
 
         return data
 
-    def refresh_profile_list():
+    def refresh_profile_list():  # noqa: C901
         start = time.time()
         ProfileManager._known_profiles = dict()
         for filename in os.listdir(PROFILE_PATH):
@@ -434,6 +442,10 @@ class ProfileManager:
                     continue
 
                 ProfileManager._known_profiles[profile["id"]] = profile
+                if profile["id"] not in MeticulousConfig[CONFIG_USER][PROFILE_ORDER]:
+                    MeticulousConfig[CONFIG_USER][PROFILE_ORDER].append(profile["id"])
+                    MeticulousConfig.save()
+
         end = time.time()
         time_ms = (end - start) * 1000
         if time_ms > 10:
@@ -443,6 +455,10 @@ class ProfileManager:
         logger.info(
             f"Refreshed profile list in {time_str} with {len(ProfileManager._known_profiles)} known profiles."
         )
+        ProfileManager._emit_profile_event(PROFILE_EVENT.RELOAD)
+
+    def on_profile_order_changed():
+        logger.info("Profile order changed")
         ProfileManager._emit_profile_event(PROFILE_EVENT.RELOAD)
 
     def refresh_default_profile_list():
@@ -572,7 +588,19 @@ class ProfileManager:
         return ProfileManager._profile_default_images
 
     def list_profiles():
-        return ProfileManager._known_profiles
+        profile_list = []
+        all_profiles = ProfileManager._known_profiles.copy()
+        for id in MeticulousConfig[CONFIG_USER][PROFILE_ORDER]:
+            if id in all_profiles.keys():
+                profile = all_profiles[id]
+                profile_list.append(profile)
+                del all_profiles[id]
+
+        for profile in all_profiles.values():
+            profile_list.append(profile)
+            MeticulousConfig[CONFIG_USER][PROFILE_ORDER].append(id)
+            MeticulousConfig.save()
+        return profile_list
 
     def list_default_profiles():
         return {
