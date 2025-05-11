@@ -187,9 +187,7 @@ class WiFiDeleteHandler(BaseHandler):
             data = json.loads(self.request.body)
             ssid = data["ssid"]
 
-            if ssid in MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS]:
-                del MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS][ssid]
-                MeticulousConfig.save()
+            if WifiManager.deleteWifi(ssid):
                 self.write({"status": "ok"})
             else:
                 self.set_status(400)

@@ -316,6 +316,13 @@ class WifiManager:
         WifiManager._known_wifis = wifis
         return wifis
 
+    @staticmethod
+    def deleteWifi(ssid: str) -> bool:
+        if ssid in MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS]:
+            nmcli.connection.delete(ssid)
+            del MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS][ssid]
+            MeticulousConfig.save()
+
     def connectToWifi(credentials: WiFiCredentials) -> bool:
 
         if not WifiManager._networking_available:
