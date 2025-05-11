@@ -54,6 +54,7 @@ class UpdateManager:
             is_changed = last_known_version != this_version_string
         except IndexError:
             is_changed = 1
+            last_known_version = "NONE"
 
         print(f"Last known version image: {last_known_version}")
         print(f"This image version: {this_version_string}")
