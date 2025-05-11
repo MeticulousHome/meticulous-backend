@@ -27,7 +27,7 @@ class ListHandler(BaseHandler):
         profiles = ProfileManager.list_profiles()
         response = []
         for profile in profiles:
-            p = profiles[profile].copy()
+            p = profile.copy()
             if not full_profiles:
                 if "stages" in p:
                     del p["stages"]

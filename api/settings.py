@@ -11,10 +11,12 @@ from config import (
     TIME_ZONE,
     AUTOMATIC_TIMEZONE_SYNC,
     SSH_ENABLED,
+    PROFILE_ORDER,
 )
 
 from heater_actuator import HeaterActuator
 from ssh_manager import SSHManager
+from profiles import ProfileManager
 
 from .base_handler import BaseHandler
 from .api import API, APIVersion
@@ -149,6 +151,9 @@ class SettingsHandler(BaseHandler):
 
                 if setting_target == UPDATE_CHANNEL:
                     UpdateManager.setChannel(value)
+
+                if setting_target == PROFILE_ORDER:
+                    ProfileManager.on_profile_order_changed()
 
                 # If we made it here without exception we can update the setting
                 workConfig[setting_target] = value
