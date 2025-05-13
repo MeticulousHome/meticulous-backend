@@ -136,32 +136,32 @@ class DBusMonitor:
 
         UpdateOSStatus.sendStatus(OSStatus.FAILED, 0, status)
 
-        if UpdateOSStatus.isRecoveryUpdate():
-            # dismiss progress notification
-            progress_notification.image = ""
-            progress_notification.message = ""
+        # dismiss progress notification
+        progress_notification.image = ""
+        progress_notification.message = ""
 
-            NotificationManager.add_notification(progress_notification)
+        NotificationManager.add_notification(progress_notification)
 
-            NotificationManager.add_notification(
-                Notification(
-                    message=notification_message,
-                    responses=[NotificationResponse.OK],
-                    image=notification_image,
-                )
+        NotificationManager.add_notification(
+            Notification(
+                message=notification_message,
+                responses=[NotificationResponse.OK],
+                image=notification_image,
             )
-
-        UpdateOSStatus.markAsRecoveryUpdate(False)
-
-        subprocess_result = subprocess.run(
-            "umount /tmp/possible_updater", shell=True, capture_output=True
         )
-        logger.warning(f"{subprocess_result}")
 
-        subprocess_result = subprocess.run(
-            "rm -r /tmp/possible_updater", shell=True, capture_output=True
-        )
-        logger.warning(f"{subprocess_result}")
+        if UpdateOSStatus.isRecoveryUpdate():
+            UpdateOSStatus.markAsRecoveryUpdate(False)
+
+            subprocess_result = subprocess.run(
+                "umount /tmp/possible_updater", shell=True, capture_output=True
+            )
+            logger.warning(f"{subprocess_result}")
+
+            subprocess_result = subprocess.run(
+                "rm -r /tmp/possible_updater", shell=True, capture_output=True
+            )
+            logger.warning(f"{subprocess_result}")
 
     @staticmethod
     async def rauc_update_complete(
