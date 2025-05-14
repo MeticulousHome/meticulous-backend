@@ -74,11 +74,6 @@ class DBusMonitor:
 
         UpdateOSStatus.sendStatus(OSStatus.DOWNLOADING, round(percentage), None)
 
-        if UpdateOSStatus.isRecoveryUpdate():
-            progress_notification.message = f"Downloading update: {percentage}%"
-            progress_notification.respone_options = [NotificationResponse.OK]
-            progress_notification.image = notification_image
-            NotificationManager.add_notification(progress_notification)
 
     @staticmethod
     async def report_hawkbit_error(
