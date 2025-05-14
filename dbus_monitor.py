@@ -84,8 +84,8 @@ class DBusMonitor:
         signal_name,
         parameters: tuple,
     ):
-        process: str = parameters[0]
-        error: str = parameters[1]
+        process: str = parameters[0] if isinstance(parameters[0],str) else "unknown process"
+        error: str = parameters[1] if isinstance(parameters[1],str) else "unknown error"
 
         process = "processing OTA deployment" if process == "EPRODEP" else "downloading OTA update"
 
@@ -124,7 +124,7 @@ class DBusMonitor:
         connection, sender_name, object_path, property_interface, attribute, status
     ):
         global error_rauc_updating
-        error_rauc_updating = status
+        error_rauc_updating = status if isinstance(status, str) else "unknown error"
         if status == "":
             return
         notification_message = f"There was an error updating the OS:\n {status}"
@@ -224,14 +224,15 @@ class DBusMonitor:
     async def recovery_update_failed(
         connection, sender_name, object_path, interface_name, signal_name, parameters
     ):
+        error = parameters[0] if isinstance(parameters[0], str) else "unknown"
         error_message: str = (
-            f"Recovery Update Failed:\n {parameters[0] if parameters[0] != 'unknown' else 'unknown error, possible USB disconnection'}"
+            f"Recovery Update Failed:\n {error if error != 'unknown' else 'unknown error, possible USB disconnection'}"
         )
 
         progress_notification.image = ""
         progress_notification.message = ""
 
-        UpdateOSStatus.sendStatus(OSStatus.FAILED, 0, parameters[0])
+        UpdateOSStatus.sendStatus(OSStatus.FAILED, 0, error)
 
         NotificationManager.add_notification(progress_notification)
 
