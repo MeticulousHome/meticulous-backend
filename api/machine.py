@@ -90,10 +90,11 @@ class UpdateOSStatus(BaseHandler):
 
     @classmethod
     def sendStatus(
-        cls, current_status: OSStatus, current_progress: float, extra_info=None
+        cls, current_status: OSStatus, current_progress: float, extra_info : str | None =None
     ):
         cls.last_progress = current_progress
         cls.last_status = current_status
+        cls.last_extra_info = extra_info if extra_info is not None else ""
         if cls.__sio:
             loop = (
                 asyncio.get_event_loop()
@@ -112,7 +113,7 @@ class UpdateOSStatus(BaseHandler):
 
     @classmethod
     def sendLastStatus(cls):
-        cls.sendStatus(cls.last_status, cls.last_progress)
+        cls.sendStatus(cls.last_status, cls.last_progress, cls.last_extra_info)
 
 
 class MachineInfoHandler(BaseHandler):
