@@ -191,17 +191,17 @@ class DBusMonitor:
                 )
             )
 
-        UpdateOSStatus.markAsRecoveryUpdate(False)
+            UpdateOSStatus.markAsRecoveryUpdate(False)
 
-        subprocess_result = subprocess.run(
-            "umount /tmp/possible_updater", shell=True, capture_output=True
-        )
-        logger.warning(f"{subprocess_result}")
+            subprocess_result = subprocess.run(
+                "umount /tmp/possible_updater", shell=True, capture_output=True
+            )
+            logger.warning(f"{subprocess_result}")
 
-        subprocess_result = subprocess.run(
-            "rm -r /tmp/possible_updater", shell=True, capture_output=True
-        )
-        logger.warning(f"{subprocess_result}")
+            subprocess_result = subprocess.run(
+                "rm -r /tmp/possible_updater", shell=True, capture_output=True
+            )
+            logger.warning(f"{subprocess_result}")
 
     @staticmethod
     async def just_print(
