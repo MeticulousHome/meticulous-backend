@@ -116,6 +116,7 @@ class DBusMonitor:
 
         error_message = f"OTA error {error_code} : {error}"
         logger.error(error_message)
+        logger.info("sending OTA error to sentry and updating status")
         UpdateOSStatus.sendStatus(OSStatus.FAILED, 0, f"{error_code}")
         report_OTA_error_to_sentry(("hawkbit_error",error_message),"Error getting OTA deployment")
 
@@ -148,6 +149,7 @@ class DBusMonitor:
             return
         notification_message = f"There was an error updating the OS:\n {status}"
 
+        logger.info("sending OTA error to sentry and updating status")
         UpdateOSStatus.sendStatus(OSStatus.FAILED, 0, error_rauc_updating)
         report_OTA_error_to_sentry(("rauc_error",error_rauc_updating),"Error installing OS")
 
@@ -188,6 +190,7 @@ class DBusMonitor:
         if error_rauc_updating != "":
             notification_message = f"Failed OS updated no need to reboot your machine\n Error: {error_rauc_updating}"
             logger.info(f"error is [{error_rauc_updating}]")
+            logger.info("sending OTA error to sentry and updating status")
             UpdateOSStatus.sendStatus(OSStatus.FAILED, 0, error_rauc_updating)
             report_OTA_error_to_sentry(("rauc_completed_error",error_rauc_updating),"Error installing OS")
             error_rauc_updating = ""
