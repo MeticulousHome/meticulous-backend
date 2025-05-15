@@ -29,7 +29,7 @@ OTA_error_substrings : dict[str,str] = {
 def report_OTA_error_to_sentry(extra_info: tuple[str,str], error_message: str):
     with sentry_sdk.push_scope() as scope:
         (extra_info_name, extra_info_value) = extra_info
-        scope.set_extra(extra_info_name,extra_info_name)
+        scope.set_extra(extra_info_name,extra_info_value)
         scope.capture_message(error_message, level="error")
         
 
@@ -115,7 +115,7 @@ class DBusMonitor:
                 break
 
         error_message = f"OTA error {error_code} : {error}"
-        logger.error(error_message)
+        logger.warning(f"OTA Update failed: {error_code}")
         UpdateOSStatus.sendStatus(OSStatus.FAILED, 0, f"{error_code}")
         report_OTA_error_to_sentry(("hawkbit_error",error_message),"Error getting OTA deployment")
 
@@ -148,6 +148,7 @@ class DBusMonitor:
             return
         notification_message = f"There was an error updating the OS:\n {status}"
 
+        logger.warning(f"OTA Update failed:{error_rauc_updating}")
         UpdateOSStatus.sendStatus(OSStatus.FAILED, 0, error_rauc_updating)
         report_OTA_error_to_sentry(("rauc_error",error_rauc_updating),"Error installing OS")
 
@@ -189,7 +190,7 @@ class DBusMonitor:
 
         if error_rauc_updating != "":
             notification_message = f"Failed OS updated no need to reboot your machine\n Error: {error_rauc_updating}"
-            logger.info(f"error is [{error_rauc_updating}]")
+            logger.warning(f"OTA Update failed: {error_rauc_updating}")
             UpdateOSStatus.sendStatus(OSStatus.FAILED, 0, error_rauc_updating)
             report_OTA_error_to_sentry(("rauc_completed_error",error_rauc_updating),"Error installing OS")
             error_rauc_updating = ""

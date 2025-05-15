@@ -58,7 +58,7 @@ class UpdateOSStatus(BaseHandler):
     @classmethod
     def to_json(cls):
         extra_info_str = (
-            f" : {cls.last_extra_info}"
+            f"{cls.last_extra_info}"
             if cls.last_extra_info is not None and isinstance(cls.last_extra_info, str)
             else ""
         )
