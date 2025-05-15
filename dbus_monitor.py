@@ -14,7 +14,6 @@ progress_notification: Notification | None = Notification("")
 progress_notification.image = notification_image
 
 error_rauc_updating = ""
-OTA_error_reported : bool = False
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -28,11 +27,10 @@ OTA_error_substrings : dict[str,str] = {
 }
 
 def report_OTA_error_to_sentry(extra_info: tuple[str,str], error_message: str):
-    if not OTA_error_reported:
-        with sentry_sdk.push_scope() as scope:
-            (extra_info_name, extra_info_value) = extra_info
-            scope.set_extra(extra_info_name,extra_info_name)
-            scope.capture_message(error_message, level="error")
+    with sentry_sdk.push_scope() as scope:
+        (extra_info_name, extra_info_value) = extra_info
+        scope.set_extra(extra_info_name,extra_info_name)
+        scope.capture_message(error_message, level="error")
         
 
 class DBusMonitor:
