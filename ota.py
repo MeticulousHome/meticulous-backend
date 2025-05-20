@@ -74,7 +74,7 @@ class UpdateManager:
                 Notification(
                     message=f"System updated to [{build_channel}] build '{this_build_time}'. The UI will now be restarted to optimize the graphical performance.",
                     responses=[NotificationResponse.OK],
-                    callback=lambda response: subprocess.run(
+                    callback=lambda: subprocess.run(
                         ["systemctl", "restart", "meticulous-dial"]
                     ),
                 )
