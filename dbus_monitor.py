@@ -204,7 +204,8 @@ class DBusMonitor:
             logger.warning(f"OTA Update failed: {error_rauc_updating}")
             UpdateOSStatus.sendStatus(OSStatus.FAILED, 0, error_rauc_updating)
             report_OTA_error_to_sentry(
-                ("rauc_completed_error", error_rauc_updating), "Error installing OS"
+                ("rauc_completed_with_error", error_rauc_updating),
+                "Error installing OS",
             )
             error_rauc_updating = ""
         else:
@@ -273,6 +274,9 @@ class DBusMonitor:
         progress_notification.message = ""
 
         UpdateOSStatus.sendStatus(OSStatus.FAILED, 0, error)
+        report_OTA_error_to_sentry(
+            ("recovery_update_failed", error_message), "Error installing OS from USB"
+        )
 
         NotificationManager.add_notification(progress_notification)
 
