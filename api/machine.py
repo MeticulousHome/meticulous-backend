@@ -90,7 +90,10 @@ class UpdateOSStatus(BaseHandler):
 
     @classmethod
     def sendStatus(
-        cls, current_status: OSStatus, current_progress: float, extra_info : str | None =None
+        cls,
+        current_status: OSStatus,
+        current_progress: float,
+        extra_info: str | None = None,
     ):
         cls.last_progress = current_progress
         cls.last_status = current_status

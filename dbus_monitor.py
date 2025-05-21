@@ -18,20 +18,21 @@ error_rauc_updating = ""
 logger = MeticulousLogger.getLogger(__name__)
 
 
-OTA_error_substrings : dict[str,str] = {
-    "Invalid checksum:" : "EBADCHKSUM",
+OTA_error_substrings: dict[str, str] = {
+    "Invalid checksum:": "EBADCHKSUM",
     "multiple chunks": "EBADDEPLOY",
-    "multiple artifacts" : "EBADDEPLOY",
-    "exceeds available space" : "ELOWSPACE",
-    "Failed to calculate free space" : "EGETSPACE"
+    "multiple artifacts": "EBADDEPLOY",
+    "exceeds available space": "ELOWSPACE",
+    "Failed to calculate free space": "EGETSPACE",
 }
 
-def report_OTA_error_to_sentry(extra_info: tuple[str,str], error_message: str):
+
+def report_OTA_error_to_sentry(extra_info: tuple[str, str], error_message: str):
     with sentry_sdk.push_scope() as scope:
         (extra_info_name, extra_info_value) = extra_info
-        scope.set_extra(extra_info_name,extra_info_value)
+        scope.set_extra(extra_info_name, extra_info_value)
         scope.capture_message(error_message, level="error")
-        
+
 
 class DBusMonitor:
 
@@ -91,7 +92,6 @@ class DBusMonitor:
 
         UpdateOSStatus.sendStatus(OSStatus.DOWNLOADING, round(percentage), None)
 
-
     @staticmethod
     async def report_hawkbit_error(
         connection,
@@ -101,12 +101,20 @@ class DBusMonitor:
         signal_name,
         parameters: tuple,
     ):
-        process: str = parameters[0] if isinstance(parameters[0],str) else "unknown process"
-        error: str = parameters[1] if isinstance(parameters[1],str) else "unknown error"
+        process: str = (
+            parameters[0] if isinstance(parameters[0], str) else "unknown process"
+        )
+        error: str = (
+            parameters[1] if isinstance(parameters[1], str) else "unknown error"
+        )
 
-        process = "processing OTA deployment" if process == "EPRODEP" else "downloading OTA update"
+        process = (
+            "processing OTA deployment"
+            if process == "EPRODEP"
+            else "downloading OTA update"
+        )
 
-        #get the error code from the error message
+        # get the error code from the error message
         error_code = ""
         # buckle up, I have no idea how to do this
         for error_substring in OTA_error_substrings.keys():
@@ -117,7 +125,9 @@ class DBusMonitor:
         error_message = f"OTA error {error_code} : {error}"
         logger.warning(f"OTA Update failed: {error_code}")
         UpdateOSStatus.sendStatus(OSStatus.FAILED, 0, f"{error_code}")
-        report_OTA_error_to_sentry(("hawkbit_error",error_message),"Error getting OTA deployment")
+        report_OTA_error_to_sentry(
+            ("hawkbit_error", error_message), "Error getting OTA deployment"
+        )
 
     @staticmethod
     async def install_progress(
@@ -150,8 +160,9 @@ class DBusMonitor:
 
         logger.warning(f"OTA Update failed:{error_rauc_updating}")
         UpdateOSStatus.sendStatus(OSStatus.FAILED, 0, error_rauc_updating)
-        report_OTA_error_to_sentry(("rauc_error",error_rauc_updating),"Error installing OS")
-
+        report_OTA_error_to_sentry(
+            ("rauc_error", error_rauc_updating), "Error installing OS"
+        )
 
         if UpdateOSStatus.isRecoveryUpdate():
 
@@ -192,7 +203,9 @@ class DBusMonitor:
             notification_message = f"Failed OS updated no need to reboot your machine\n Error: {error_rauc_updating}"
             logger.warning(f"OTA Update failed: {error_rauc_updating}")
             UpdateOSStatus.sendStatus(OSStatus.FAILED, 0, error_rauc_updating)
-            report_OTA_error_to_sentry(("rauc_completed_error",error_rauc_updating),"Error installing OS")
+            report_OTA_error_to_sentry(
+                ("rauc_completed_error", error_rauc_updating), "Error installing OS"
+            )
             error_rauc_updating = ""
         else:
             UpdateOSStatus.sendStatus(OSStatus.COMPLETE, 100, None)
