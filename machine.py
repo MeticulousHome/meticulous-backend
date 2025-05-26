@@ -15,6 +15,7 @@ from config import (
     CONFIG_LOGGING,
     CONFIG_SYSTEM,
     CONFIG_USER,
+    SSH_ENABLED,
     CONFIG_MANUFACTURING,
     DISALLOW_FIRMWARE_FLASHING,
     LOGGING_SENSOR_MESSAGES,
@@ -45,9 +46,7 @@ from shot_debug_manager import ShotDebugManager
 from shot_manager import ShotManager
 from sounds import SoundPlayer, Sounds
 
-from manufacturing import (
-    FORCE_MANUFACTURING_ENABLED_KEY,
-)
+from manufacturing import FORCE_MANUFACTURING_ENABLED_KEY, LAST_BOOT_MODE_KEY
 
 
 def toggle_sentry(enabled):
@@ -120,9 +119,25 @@ class Machine:
 
     enable_manufacturing = False
 
+    is_first_normal_boot = False
+
+    def on_first_normal_boot():
+        """
+        Function to execute things only after exiting tha manufactuing mode
+        """
+        from ssh_manager import SSHManager
+
+        SSHManager.set_ssh_state(False)
+        MeticulousConfig[CONFIG_USER][SSH_ENABLED] = False
+        MeticulousConfig.save()
+
     def toggle_manufacturing_mode(enabled):
         Machine.enable_manufacturing = enabled
         toggle_sentry(enabled=not enabled)
+        MeticulousConfig[CONFIG_MANUFACTURING][LAST_BOOT_MODE_KEY] = (
+            "manufacturing" if enabled else "normal"
+        )
+        MeticulousConfig.save()
 
     def validate_manufacturing():
         if MeticulousConfig[CONFIG_MANUFACTURING][FORCE_MANUFACTURING_ENABLED_KEY]:
@@ -138,6 +153,11 @@ class Machine:
             and serial != "NOT_ASSIGNED"
             and not serial.startswith("999")
         ):
+            # if we are not in manufacturing mode, check if we were in the previous boot
+            Machine.is_first_normal_boot = (
+                MeticulousConfig[CONFIG_MANUFACTURING][LAST_BOOT_MODE_KEY]
+                == "manufacturing"
+            )
             return
 
         Machine.toggle_manufacturing_mode(enabled=True)
@@ -207,6 +227,10 @@ class Machine:
         Machine._flashingThread = NamedThread("FlashingEsp", target=flashingEsp)
         Machine._thread.start()
         Machine._flashingThread.start()
+
+        # if the we are on the first non-manufacturing boot
+        if Machine.is_first_normal_boot:
+            Machine.on_first_normal_boot()
 
     class ReadLine:
         def __init__(self, s):
