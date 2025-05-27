@@ -269,8 +269,8 @@ class ShotManager:
             )
             return current_weight_stable or avg_stable or massive_weight_change
         except Exception as e:
-            logger.error(f"Failed to check weight stability: {e}")
-            logger.error(traceback.format_exc())
+            logger.warning(f"Failed to check weight stability: {e}")
+            logger.warning(traceback.format_exc())
             return False
 
 
