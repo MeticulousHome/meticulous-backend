@@ -121,6 +121,10 @@ class Machine:
 
     is_first_normal_boot = False
 
+    stable_start_timestamp = None
+
+    stable_time_threshold = 2.0
+
     def on_first_normal_boot():
         """
         Function to execute things only after exiting tha manufactuing mode
@@ -408,9 +412,22 @@ class Machine:
                             ShotManager.stop()
 
                         if is_retracting:
-                            time_flag = not ShotManager.isWeightStable(data.weight)
+                            if Machine.stable_start_timestamp is not None:
+                                time_flag = (time.time() - Machine.stable_start_timestamp) < Machine.stable_time_threshold
+                                if not data.stable_weight:
+                                    Machine.stable_start_timestamp = None
+                            else:
+                                if data.stable_weight:
+                                    Machine.stable_start_timestamp = time.time()
+                            
 
                         if time_flag is False:
+                            now_time = time.time()
+                            if Machine.stable_start_timestamp is not None:
+                                logger.info(f"shot ended at {now_time} with a stable weight time of: {now_time - Machine.stable_start_timestamp}s")
+                                Machine.stable_start_timestamp = None
+                            else:
+                                logger.info("shot ended with weight unstable")
                             SoundPlayer.play_event_sound(Sounds.BREWING_END)
                             ShotManager.stop()
 
