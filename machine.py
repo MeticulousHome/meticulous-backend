@@ -413,18 +413,21 @@ class Machine:
 
                         if is_retracting:
                             if Machine.stable_start_timestamp is not None:
-                                time_flag = (time.time() - Machine.stable_start_timestamp) < Machine.stable_time_threshold
+                                time_flag = (
+                                    time.time() - Machine.stable_start_timestamp
+                                ) < Machine.stable_time_threshold
                                 if not data.stable_weight:
                                     Machine.stable_start_timestamp = None
                             else:
                                 if data.stable_weight:
                                     Machine.stable_start_timestamp = time.time()
-                            
 
                         if time_flag is False:
                             now_time = time.time()
                             if Machine.stable_start_timestamp is not None:
-                                logger.info(f"shot ended at {now_time} with a stable weight time of: {now_time - Machine.stable_start_timestamp}s")
+                                logger.info(
+                                    f"shot ended at {now_time} with a stable weight time of: {now_time - Machine.stable_start_timestamp}s"
+                                )
                                 Machine.stable_start_timestamp = None
                             else:
                                 logger.info("shot ended with weight unstable")
