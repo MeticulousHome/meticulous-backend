@@ -251,9 +251,12 @@ class ShotManager:
         if len(last_weights) < nr_samples_per_group * 2:
             logger.warning("Not enough datapoints")
             return False
-        
-        #make sure its all numbers
-        last_weights = [(float(weight.strip(' "')) if isinstance(weight,str) else float(weight)) for weight in last_weights]
+
+        # make sure its all numbers
+        last_weights = [
+            (float(weight.strip(' "')) if isinstance(weight, str) else float(weight))
+            for weight in last_weights
+        ]
 
         try:
             last_avg = sum(last_weights[-nr_samples_per_group:]) / nr_samples_per_group
