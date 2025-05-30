@@ -81,6 +81,7 @@ trigger_type = {
         TriggerType.POWER: "piston_power_value_trigger",
     },
     TriggerType.EXIT: "exit",
+    TriggerType.USER_MESSAGE: "user_message_trigger",
 }
 
 source_type = {
