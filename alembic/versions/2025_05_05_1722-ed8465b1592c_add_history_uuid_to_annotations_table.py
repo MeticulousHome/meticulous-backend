@@ -39,4 +39,15 @@ def upgrade() -> None:
 def downgrade() -> None:
 
     with op.batch_alter_table("shot_annotation", schema=None) as batch_op:
+
+        batch_op.drop_constraint("fk_shot_annotation_history_id_history")
+        batch_op.drop_constraint("uq_shot_annotation_history_id")
+        batch_op.drop_constraint("fk_shot_annotation_history_uuid_history")
+        batch_op.drop_constraint("uq_shot_annotation_history_uuid")
         batch_op.drop_column("history_uuid")
+
+    # For shot_rating, if you upgraded it, you should also downgrade it.
+    with op.batch_alter_table("shot_rating", schema=None) as batch_op:
+        batch_op.drop_constraint("fk_shot_rating_annotation_id_shot_annotation")
+        batch_op.drop_constraint("uq_shot_rating_annotation_id")
+
