@@ -20,18 +20,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ALEMBIC_CONFIG_FILE_PATH = os.path.join(BASE_DIR, "alembic.ini")
 ALEMBIC_DIR = os.path.join(BASE_DIR, "alembic")
 
-# def load_module_py(module_id: str, path: str) -> ModuleType | None:
-#     try:
-#         spec = importlib.util.spec_from_file_location(module_id, path)
-#         assert spec
-#         module = importlib.util.module_from_spec(spec)
-#         spec.loader.load_module(module)  # type: ignore
-#     except Exception as e :
-#         logger.warning(f"error importing module {module_id} from {path}")
-#         return None
-#     finally:
-#         return module
-
 
 def retrieve_revision_script(dir: os.path, revision_id: str) -> tuple[str | None]:
     if os.path.exists(dir):
@@ -134,17 +122,8 @@ def update_db_migrations():
             logger.info(
                 "revision not found in script dir, retrieving downgrade path from backup"
             )
-            # retrieved_file, next_id = retrieve_revision_script(USER_DB_MIGRATION_DIR,current_rev)
 
             next_id = current_rev
-
-            # if retrieved_file is None:
-            #     error = "backup dir not found" if next_id == "ENODIR" else "current revision migration script not found in backup dir"
-            #     raise Exception(error)
-
-            # logger.info(f"revision retrieved {current_rev}, points to {next_id} ")
-            # retrieved_ids.append(current_rev)
-            # retrieved_files.append(retrieved_file)
 
             while True:
                 if next_id in retrieved_ids:
