@@ -50,4 +50,3 @@ def downgrade() -> None:
     with op.batch_alter_table("shot_rating", schema=None) as batch_op:
         batch_op.drop_constraint("fk_shot_rating_annotation_id_shot_annotation")
         batch_op.drop_constraint("uq_shot_rating_annotation_id")
-
