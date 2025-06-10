@@ -193,7 +193,7 @@ class MachineResetHandler(LocalAccessHandler):
 class MachineBacklightController(BaseHandler):
     def get(self):
         try:
-            current_brightness = BacklightController.get_current_brightness()
+            current_brightness = BacklightController._get_current_raw_brightness()
             self.write({"status": "success", "brightness": current_brightness})
         except Exception as e:
             logger.warning(f"Error getting brightness: {e}")
@@ -227,7 +227,7 @@ class MachineBacklightController(BaseHandler):
         # Note: The following block is provisional for the hidden menu
         elif "brightness_testing" in settings:
             logger.info(f"Setting brightness to {settings['brightness_testing']}")
-            BacklightController.set_brightness(settings["brightness_testing"])
+            BacklightController._set_raw_brightness(settings["brightness_testing"])
 
         else:
             self.set_status(400)
