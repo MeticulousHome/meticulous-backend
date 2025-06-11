@@ -646,7 +646,7 @@ class Machine:
         if (
             Machine.data_sensors.state == "brewing"
             and Machine.data_sensors.status
-            not in ["heating", "Pour water and click to continue", "click to start"]
+            not in ["heating", "Pour water and click to continue", "click to start", "simultaneous_control"]
         ):
             Machine.action("home")
         else:
