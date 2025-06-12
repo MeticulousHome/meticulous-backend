@@ -2,67 +2,172 @@ from alembic import command, util
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from alembic.script.revision import ResolutionError
 from sqlalchemy import create_engine
 from log import MeticulousLogger
 from shot_database import DATABASE_URL
 import os
 import shutil
 
+from collections.abc import Sequence
+
 logger = MeticulousLogger.getLogger(__name__)
 
-# MIGRATION_VERSION_STABLE = "ebb6a77afd0e" -> Revision ID
-MIGRATION_VERSION_STABLE = ""  # Empty string means use latest version (head)
+DB_VERSION_REQUIRED = "1a598cd3ace3"
 
 USER_DB_MIGRATION_DIR = "/meticulous-user/.dbmigrations"
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ALEMBIC_CONFIG_FILE_PATH = os.path.join(BASE_DIR, "alembic.ini")
 ALEMBIC_DIR = os.path.join(BASE_DIR, "alembic")
+ALEMBIC_VER_DIR = os.path.join(ALEMBIC_DIR, "versions")
 
 
-def retrieve_revision_script(dir: os.path, revision_id: str) -> tuple[str | None]:
-    if os.path.exists(dir):
-        files = os.listdir(dir)
-        for script in files:
-            _, ext = os.path.splitext(script)
-            full_script_path = os.path.join(dir, script)
-            if ext in [".py", ".pyc", ".pyo"] and os.path.isfile(full_script_path):
-                # script_module = load_module_py(revision_id, full_script_path)
-                script_module = util.load_python_file(dir, script)
-                if script_module is None:
-                    continue
-                if hasattr(script_module, "revision") and hasattr(
-                    script_module, "down_revision"
-                ):
-                    if script_module.revision == revision_id:
-                        shutil.copy(
-                            full_script_path, os.path.join(ALEMBIC_DIR, "versions")
-                        )
-                        return str(script), str(script_module.down_revision)
-        return None, "ENOFOUND"
-    return None, "ENODIR"
+REQUIRED_MOD_ATTRS = {
+    "revision": str,
+    "down_revision": str,
+    "branch_labels": str | Sequence,
+    "depends_on": str | Sequence,
+    "upgrade": "function",
+    "downgrade": "function",
+}
+
+VALID_SCRIPT_EXT = [".py", ".pyc", ".pyo"]
 
 
-def clear_retrieved_scripts(files: list[str]):
-    versions_dir = os.path.join(ALEMBIC_DIR, "versions")
-    logger.info("\n==== removing extra migration scripts ====\n\n")
+def retrieve_scripts(backup_dir: os.path) -> list[str]:
+    """
+    Looks into the migration scripts backup directory `backup_dir`
+    for migration scripts that are not present in the alembic versions directory
+    """
 
-    if files.__len__() == 0:
-        logger.info("no scripts retrieved")
+    if not os.path.exists(backup_dir):
+        logger.warning(f"{backup_dir} does not exist")
+        return []
+
+    # Get all valid files list in backup dir and versions dir
+    backup_files = os.listdir(USER_DB_MIGRATION_DIR)
+    version_files = os.listdir(ALEMBIC_VER_DIR)
+
+    files_to_retrieve = [
+        filename for filename in backup_files if filename not in version_files
+    ]
+
+    if len(files_to_retrieve) == 0:
+        logger.info("no missing DB migration files to retrieve")
+        return []
+
+    retrieved_files = []
+    for file in files_to_retrieve:
+        if not is_valid_revision_script(USER_DB_MIGRATION_DIR, file):
+            continue
+        full_script_path = os.path.join(USER_DB_MIGRATION_DIR, file)
+        try:
+            shutil.copy(full_script_path, ALEMBIC_VER_DIR)
+            retrieved_files.append(file)
+        except Exception as e:
+            logger.warning(f"Failed to copy {file} for retrieval: {e}")
+    return retrieved_files
+
+
+# def is_valid_revision_script(dir_path: str, filename: str) -> dict[str,str] | None:
+def is_valid_revision_script(dir_path: str, filename: str) -> bool:
+
+    full_path: str = os.path.join(dir_path, filename)
+    _, ext = os.path.splitext(filename)
+
+    if (
+        not os.path.exists(full_path)
+        or not os.path.isfile(full_path)
+        or ext not in VALID_SCRIPT_EXT
+    ):
+        logger.warning(f"Error on file {full_path}: Not a valid file")
+        # return None
+        return False
+
+    script_module = util.load_python_file(dir_path, filename)
+    if script_module is None:
+        logger.warning(f"[{full_path} script failed to load")
+        # return None
+        return False
+
+    for attr, expected_type in REQUIRED_MOD_ATTRS.items():
+
+        if not hasattr(script_module, attr):
+            logger.warning(f"Invalid script at {full_path} ")
+            logger.warning(f"Missing [{attr} : {expected_type}]")
+            # return None
+            return False
+        value = getattr(script_module, attr)
+
+        logger.info(
+            f"analyzing {attr} type, found {type(value)}, expected {expected_type}"
+        )
+        # this attributes cannot be None
+        if value is None:
+            if attr in ["revision"]:
+                return False
+            else:
+                continue
+
+        if expected_type == "function":
+            if not callable(value) or (value.__name__ == "<lambda>"):
+                logger.warning(f"Invalid script at {full_path}")
+                logger.warning(f"Invalid attribute. Expected [{attr} : function]")
+                # return None
+                return False
+        elif not isinstance(value, expected_type):
+            logger.warning(f"Invalid script at {full_path}")
+            logger.warning(f"Invalid attribute [{attr} : {expected_type}]")
+            # return None
+            return False
+        # further check for Sequences
+        if isinstance(value, Sequence):
+            if not all(isinstance(x, str) for x in value):
+                return False
+    return True
+    # return { str(getattr(script_module, "revision")): full_path }
+
+
+def backup_new_scripts() -> list[str]:
+
+    os.makedirs(USER_DB_MIGRATION_DIR, exist_ok=True)
+
+    # Get all valid files list in backup dir and versions dir
+    backup_files = os.listdir(USER_DB_MIGRATION_DIR)
+    version_files = os.listdir(ALEMBIC_VER_DIR)
+
+    # Validate and clean invalid scripts in backup folder
+    for backup in backup_files:
+        if os.path.isfile(
+            os.path.join(USER_DB_MIGRATION_DIR, backup)
+        ) and not is_valid_revision_script(USER_DB_MIGRATION_DIR, backup):
+            logger.warning(f"removing invalid migration file {backup} from backup")
+            full_path = os.path.join(USER_DB_MIGRATION_DIR, backup)
+            os.remove(full_path)
+
+    backup_files = os.listdir(USER_DB_MIGRATION_DIR)
+    files_to_backup = [
+        filename for filename in version_files if filename not in backup_files
+    ]
+
+    if len(files_to_backup) == 0:
+        logger.info("no new DB migration files to backup")
         return
 
-    for file in files:
-        file_abs_path = os.path.join(versions_dir, file)
-        if os.path.isfile(file_abs_path):
-            logger.info(f" * {file_abs_path}")
-            os.remove(file_abs_path)
+    backed_up_files = []
+    for file in files_to_backup:
+        if not is_valid_revision_script(ALEMBIC_VER_DIR, file):
+            continue
+        full_path = os.path.join(ALEMBIC_VER_DIR, file)
+        try:
+            shutil.copy(full_path, USER_DB_MIGRATION_DIR)
+        except Exception as e:
+            logger.warning(f"failed to copy {file} for backup: {e}")
+    return backed_up_files
 
 
 def update_db_migrations():
     """Update database schema to target version using Alembic migrations."""
 
-    retrieved_ids: list[str] = []
     retrieved_files: list[str] = []
     current_rev = ""
     try:
@@ -72,98 +177,92 @@ def update_db_migrations():
         alembic_cfg.set_main_option("script_location", ALEMBIC_DIR)
         alembic_cfg.attributes["configure_logger"] = False
 
-        script = ScriptDirectory.from_config(alembic_cfg)
+        SD = ScriptDirectory.from_config(alembic_cfg)
 
         engine = create_engine(DATABASE_URL)
         with engine.connect() as connection:
             current_rev = MigrationContext.configure(connection).get_current_revision()
             logger.info(f"current DB revision: {current_rev}")
 
-        # the target revision is the latest migration path provided revision in the folder of version
-        target_rev = script.get_current_head()
-
+        # the target revision is the required DB version for the backend
+        target_rev = DB_VERSION_REQUIRED
         logger.info(f"Target revision set to: {target_rev}")
 
-        # update the migration scripts in the user space
-        versions_path = os.path.join(BASE_DIR, "alembic", "versions")
-        migration_scripts = os.listdir(versions_path)
+        # Backup new scripts
+        backup_new_scripts()
 
-        os.makedirs(USER_DB_MIGRATION_DIR, exist_ok=True)
-
-        for filename in migration_scripts:
-            full_filename = os.path.join(versions_path, filename)
-            if os.path.isfile(full_filename):
-                shutil.copy(full_filename, USER_DB_MIGRATION_DIR)
-
+        # Exit if no migration is needed
         if current_rev == target_rev:
             logger.info("Database is already at target version")
             return
-        # validate the current revision is in the revision list, if it is not, we are facing a downgrade, else an upgrade
+
+        # Try the migration with current scripts in alembic revs version dir
+
+        ordered_revisions = []
+        walk_failed = False
         try:
-            # if it is we are going to update it
-            if current_rev is not None:
-                logger.info("looking for current revision in script dir")
-                script.get_revision(
-                    current_rev
-                )  # raises exception if does not found the revision
-                # TODO: Look for the revision that revises the current rev
-            logger.info(f"Starting upgrade from {current_rev} to {target_rev} (head)")
-            command.upgrade(alembic_cfg, "head")
-            logger.info("Database upgrade completed successfully")
+            for rev in SD.walk_revisions():
+                revision = rev.module.revision
+                if (
+                    revision in [target_rev, current_rev]
+                    and revision not in ordered_revisions
+                ):
+                    ordered_revisions.append(revision)
+                    if len(ordered_revisions) == 2:
+                        break
+        except Exception:
+            walk_failed = True
 
-        except util.CommandError as ce:
-            if not isinstance(ce.__cause__, ResolutionError):
-                raise ce
-            # if it is not, we need to get the downgrade path from the user space
-            # aka all the migration files from head in the scripts dir to the current version
+        # if at least one script misses retrieve data from backup or the SD walk fails
+        if walk_failed or len(ordered_revisions) < 2:
 
-            # check the current version migration file is saved in user space. If so, retrieve them
-            # until reach the "head" version
-            logger.info(
-                "revision not found in script dir, retrieving downgrade path from backup"
+            missing_scripts = [
+                script
+                for script in [target_rev, current_rev]
+                if script not in ordered_revisions
+            ]
+            logger.warning(
+                f"missing migration script for revision{'s' if len(missing_scripts) > 1 else ''} [{' '.join(missing_scripts)}]"
             )
+            retrieved_files = retrieve_scripts(USER_DB_MIGRATION_DIR)
+            logger.info("Files retrieved:")
+            for file in retrieved_files:
+                logger.info(f" - {file}")
+            # retry with the updated ScriptDirectory
 
-            next_id = current_rev
+            ordered_revisions = []
 
-            while True:
-                if next_id in retrieved_ids:
-                    raise Exception("circular path found while downgrading")
-                retrieved_file, aux_id = retrieve_revision_script(
-                    USER_DB_MIGRATION_DIR, next_id
-                )
-                if retrieved_file is None:
-                    error = (
-                        "backup dir not found"
-                        if aux_id == "ENODIR"
-                        else "current revision migration script not found in backup dir"
-                    )
-                    raise Exception(
-                        f"error retrieving revision {next_id} script: {aux_id}. Downgrade path broken: {error}"
-                    )
+            SD = ScriptDirectory.from_config(alembic_cfg)
 
-                retrieved_files.append(retrieved_file)
-                retrieved_ids.append(next_id)
+            # If the walk fails again, we just report it
+            for rev in SD.walk_revisions():
+                revision = rev.module.revision
+                if (
+                    revision in [target_rev, current_rev]
+                    and revision not in ordered_revisions
+                ):
+                    ordered_revisions.append(revision)
+                    if len(ordered_revisions) == 2:
+                        break
 
-                if aux_id is None:
-                    raise Exception(
-                        f"error retrieving downgrade path from {current_rev} to {target_rev}. Base reached"
-                    )
+            if len(ordered_revisions) < 2:
+                raise Exception("Cannot retrieve missing scripts")
 
-                next_id = aux_id
-                if next_id == target_rev:
-                    break
+        is_downgrade: bool = (
+            current_rev == ordered_revisions[0]
+        )  # highest version against target version
+        migration = "downgrade" if is_downgrade else "upgrade"
 
-            # do the downgrade
-            logger.info(f"Starting downgrade from {current_rev} to {target_rev}")
+        logger.info(f"Starting {migration} from {current_rev} to {target_rev} (head)")
+        if not is_downgrade:
+            command.upgrade(alembic_cfg, target_rev)
+        else:
             command.downgrade(alembic_cfg, target_rev)
-            logger.info("Database downgrade completed successfully")
+            logger.info(f"Database {migration} completed successfully")
 
     except Exception as e:
         logger.error(f"Database migration failed: {str(e)}", exc_info=True)
         raise
 
     finally:
-        # delete the retrieved files. If not deleted the next backend start will find them
-        # and perform an upgrade on the db that might not be compatible with the backend
-        clear_retrieved_scripts(retrieved_files)
         logger.info("Migration process finished")
