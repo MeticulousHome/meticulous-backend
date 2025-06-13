@@ -36,7 +36,7 @@ VALID_SCRIPT_EXT = [".py", ".pyc", ".pyo"]
 def retrieve_scripts(backup_dir: os.path) -> list[str]:
     """
     Looks into the migration scripts backup directory `backup_dir`
-    for migration scripts that are not present in the alembic versions directory
+    for valid migration scripts that are not present in the alembic versions directory
     """
 
     if not os.path.exists(backup_dir):
@@ -68,8 +68,20 @@ def retrieve_scripts(backup_dir: os.path) -> list[str]:
     return retrieved_files
 
 
-# def is_valid_revision_script(dir_path: str, filename: str) -> dict[str,str] | None:
 def is_valid_revision_script(dir_path: str, filename: str) -> bool:
+    """
+    Checks if the script `filename` at `dirpath` is a valid migration script, for it to be a
+    valid script, it must be a python file with the following attributes present
+
+    {
+        "revision": str,
+        "down_revision": str | NoneType,
+        "branch_labels": str | Sequence[str] | NoneType,
+        "depends_on": str | Sequence[str] | NoneType,
+        "upgrade": callable,
+        "downgrade": callable,
+    }
+    """
 
     full_path: str = os.path.join(dir_path, filename)
     _, ext = os.path.splitext(filename)
@@ -80,13 +92,11 @@ def is_valid_revision_script(dir_path: str, filename: str) -> bool:
         or ext not in VALID_SCRIPT_EXT
     ):
         logger.warning(f"Error on file {full_path}: Not a valid file")
-        # return None
         return False
 
     script_module = util.load_python_file(dir_path, filename)
     if script_module is None:
         logger.warning(f"[{full_path} script failed to load")
-        # return None
         return False
 
     for attr, expected_type in REQUIRED_MOD_ATTRS.items():
@@ -98,9 +108,6 @@ def is_valid_revision_script(dir_path: str, filename: str) -> bool:
             return False
         value = getattr(script_module, attr)
 
-        logger.info(
-            f"analyzing {attr} type, found {type(value)}, expected {expected_type}"
-        )
         # this attributes cannot be None
         if value is None:
             if attr in ["revision"]:
@@ -112,22 +119,24 @@ def is_valid_revision_script(dir_path: str, filename: str) -> bool:
             if not callable(value) or (value.__name__ == "<lambda>"):
                 logger.warning(f"Invalid script at {full_path}")
                 logger.warning(f"Invalid attribute. Expected [{attr} : function]")
-                # return None
                 return False
         elif not isinstance(value, expected_type):
             logger.warning(f"Invalid script at {full_path}")
             logger.warning(f"Invalid attribute [{attr} : {expected_type}]")
-            # return None
             return False
         # further check for Sequences
         if isinstance(value, Sequence):
             if not all(isinstance(x, str) for x in value):
                 return False
     return True
-    # return { str(getattr(script_module, "revision")): full_path }
 
 
 def backup_new_scripts() -> list[str]:
+    """
+    Cleans the backup directory of invalid migration scripts to then copy all the
+    valid migration scripts that are present in the `alembic/versions` directory and are
+    missing in the backup directory
+    """
 
     os.makedirs(USER_DB_MIGRATION_DIR, exist_ok=True)
 
