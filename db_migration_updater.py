@@ -14,7 +14,9 @@ logger = MeticulousLogger.getLogger(__name__)
 
 DB_VERSION_REQUIRED = "1a598cd3ace3"
 
-USER_DB_MIGRATION_DIR = "/meticulous-user/.dbmigrations"
+USER_DB_MIGRATION_DIR = os.getenv(
+    "USER_DB_MIGRATION_DIR", "/meticulous-user/.dbmigrations"
+)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ALEMBIC_CONFIG_FILE_PATH = os.path.join(BASE_DIR, "alembic.ini")
 ALEMBIC_DIR = os.path.join(BASE_DIR, "alembic")
