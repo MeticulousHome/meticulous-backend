@@ -26,6 +26,7 @@ from timezone_manager import TimezoneManager
 
 from log import MeticulousLogger
 from named_thread import NamedThread
+from machine import Machine
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -254,11 +255,21 @@ class WifiManager:
             return
 
         logger.info("Starting hotspot")
+
+        if Machine.enable_manufacturing:
+            logger.info(
+                "Machine is in manufacturing mode, using hardcoded AP name and password"
+            )
+            ssid = "MeticulousEPW"
+            password = "23456789"
+        else:
+            ssid = MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME]
+            password = MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
         try:
             nmcli.device.wifi_hotspot(
                 con_name=WifiManager._conname,
-                ssid=MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME],
-                password=MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD],
+                ssid=ssid,
+                password=password,
             )
         except Exception as e:
             logger.error(f"Starting hotspot failed: {e}")
