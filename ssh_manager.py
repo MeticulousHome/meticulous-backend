@@ -86,8 +86,12 @@ class SSHManager:
 
     @staticmethod
     def generate_random_password() -> str:
+        # -s or --secure
+        #     Generate completely random passwords
+        # -B or --ambiguous
+        #     Don't include ambiguous characters in the password
         result = subprocess.run(
-            ["openssl", "rand", "-base64", "9"],
+            ["pwgen", "-s", "-B", "-1", "9"],
             capture_output=True,
             text=True,
             check=True,
