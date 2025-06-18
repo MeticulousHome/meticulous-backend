@@ -4,17 +4,25 @@ import os
 from named_thread import NamedThread
 import time
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
+import shutil
 
 import zstandard as zstd
 
-from config import CONFIG_USER, DEBUG_SHOT_DATA, MACHINE_DEBUG_SENDING, MeticulousConfig
+from config import (
+    CONFIG_USER,
+    DEBUG_SHOT_DATA_RETENTION,
+    MACHINE_DEBUG_SENDING,
+    MeticulousConfig,
+)
 from esp_serial.data import SensorData, ShotData
 from telemetry_service import TelemetryService
 from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
 
+DEBUG_FOLDER_FORMAT = "%Y-%m-%d"
+DEBUG_FILE_FORMAT = "%H:%M:%S"
 DEBUG_HISTORY_PATH = os.getenv("DEBUG_HISTORY_PATH", "/meticulous-user/history/debug")
 
 
@@ -97,6 +105,26 @@ class ShotDebugManager:
             ShotDebugManager._current_data.addShotData(shotData)
 
     @staticmethod
+    def deleteOldDebugShotData():
+        retention_days = MeticulousConfig[CONFIG_USER][DEBUG_SHOT_DATA_RETENTION]
+        if retention_days < 0:
+            logger.info(
+                "Debug shot data retention is disabled, not deleting old files"
+            )  #
+            return
+
+        logger.info(
+            f"Debug shot data retention is set to {retention_days} days, deleting old files"
+        )
+        cutoff_date = datetime.now() - timedelta(days=retention_days)
+        history_folders = os.listdir(DEBUG_HISTORY_PATH)
+        for f in history_folders:
+            p = datetime.strptime(f, DEBUG_FOLDER_FORMAT)
+            if p < cutoff_date:
+                shutil.rmtree(os.path.join(DEBUG_HISTORY_PATH, f))
+                logger.info(f"Deleted all shots in {f}")
+
+    @staticmethod
     def stop():
         if ShotDebugManager._shot_in_progress is False:
             # logger.info("shot did not start, clearing debug data") # This message is not needed, only for debugging purposes
@@ -108,14 +136,14 @@ class ShotDebugManager:
             # Determine the folder path based on the current date
             start_timestamp = ShotDebugManager._current_data.startTime
             start = datetime.fromtimestamp(start_timestamp)
-            folder_name = start.strftime("%Y-%m-%d")
+            folder_name = start.strftime(DEBUG_FOLDER_FORMAT)
             folder_path = os.path.join(DEBUG_HISTORY_PATH, folder_name)
 
             # Create the folder if it does not exist
             os.makedirs(folder_path, exist_ok=True)
 
             # Prepare the file path
-            formatted_time = start.strftime("%H:%M:%S")
+            formatted_time = start.strftime(DEBUG_FILE_FORMAT)
             file_name = f"{formatted_time}.debug.csv.zst"
             file_path = os.path.join(folder_path, file_name)
 
@@ -130,16 +158,12 @@ class ShotDebugManager:
                 cctx = zstd.ZstdCompressor(level=8)
                 compressed_data = cctx.compress(data_json.encode("utf-8"))
 
-                # Only write to file if enabled
-                if MeticulousConfig[CONFIG_USER][DEBUG_SHOT_DATA]:
-                    logger.info(f"Writing debug csv to {file_path}")
-                    with open(file_path, "wb") as file:
-                        file.write(compressed_data)
-                    time_ms = (time.time() - start) * 1000
-                    logger.info(f"Writing debug csv to disc took {time_ms} ms")
-                    data_json = None
-                else:
-                    logger.info("Debug shot data is disabled, skipping writing to disk")
+                logger.info(f"Writing debug csv to {file_path}")
+                with open(file_path, "wb") as file:
+                    file.write(compressed_data)
+                time_ms = (time.time() - start) * 1000
+                logger.info(f"Writing debug csv to disc took {time_ms} ms")
+                data_json = None
 
                 if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] is True:
                     try:
@@ -151,6 +175,8 @@ class ShotDebugManager:
                 cctx = None
                 data_json = None
                 logger.info("Debug shot data compressed and sent")
+
+                ShotDebugManager.deleteOldDebugShotData()
 
             def compression_loop(csv_data):
                 loop = asyncio.new_event_loop()
