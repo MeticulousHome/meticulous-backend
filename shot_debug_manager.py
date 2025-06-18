@@ -132,65 +132,67 @@ class ShotDebugManager:
 
         ShotDebugManager._shot_in_progress = False
 
-        if ShotDebugManager._current_data is not None:
-            # Determine the folder path based on the current date
-            start_timestamp = ShotDebugManager._current_data.startTime
-            start = datetime.fromtimestamp(start_timestamp)
-            folder_name = start.strftime(DEBUG_FOLDER_FORMAT)
-            folder_path = os.path.join(DEBUG_HISTORY_PATH, folder_name)
+        if ShotDebugManager._current_data is None:
+            return
 
-            # Create the folder if it does not exist
-            os.makedirs(folder_path, exist_ok=True)
+        # Determine the folder path based on the current date
+        start_timestamp = ShotDebugManager._current_data.startTime
+        start = datetime.fromtimestamp(start_timestamp)
+        folder_name = start.strftime(DEBUG_FOLDER_FORMAT)
+        folder_path = os.path.join(DEBUG_HISTORY_PATH, folder_name)
 
-            # Prepare the file path
-            formatted_time = start.strftime(DEBUG_FILE_FORMAT)
-            file_name = f"{formatted_time}.debug.csv.zst"
-            file_path = os.path.join(folder_path, file_name)
+        # Create the folder if it does not exist
+        os.makedirs(folder_path, exist_ok=True)
 
-            csv_data = ShotDebugManager._current_data.to_csv()
+        # Prepare the file path
+        formatted_time = start.strftime(DEBUG_FILE_FORMAT)
+        file_name = f"{formatted_time}.debug.csv.zst"
+        file_path = os.path.join(folder_path, file_name)
 
-            async def compress_current_data(data_json):
-                # Compress and write the shot to disk
-                logger.info("Writing and compressing debug file")
-                start = time.time()
+        csv_data = ShotDebugManager._current_data.to_csv()
 
-                # Compress to a byte array first
-                cctx = zstd.ZstdCompressor(level=8)
-                compressed_data = cctx.compress(data_json.encode("utf-8"))
+        async def compress_current_data(data_json):
+            # Compress and write the shot to disk
+            logger.info("Writing and compressing debug file")
+            start = time.time()
 
-                logger.info(f"Writing debug csv to {file_path}")
-                with open(file_path, "wb") as file:
-                    file.write(compressed_data)
-                time_ms = (time.time() - start) * 1000
-                logger.info(f"Writing debug csv to disc took {time_ms} ms")
-                data_json = None
+            # Compress to a byte array first
+            cctx = zstd.ZstdCompressor(level=8)
+            compressed_data = cctx.compress(data_json.encode("utf-8"))
 
-                if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] is True:
-                    try:
-                        await TelemetryService.upload_debug_shot(compressed_data)
-                    except Exception as e:
-                        logger.error(f"Failed to send debug shot to server: {e}")
+            logger.info(f"Writing debug csv to {file_path}")
+            with open(file_path, "wb") as file:
+                file.write(compressed_data)
+            time_ms = (time.time() - start) * 1000
+            logger.info(f"Writing debug csv to disc took {time_ms} ms")
+            data_json = None
 
-                compressed_data = None
-                cctx = None
-                data_json = None
-                logger.info("Debug shot data compressed and sent")
-
-                ShotDebugManager.deleteOldDebugShotData()
-
-            def compression_loop(csv_data):
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-
+            if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] is True:
                 try:
-                    loop.run_until_complete(compress_current_data(csv_data))
-                finally:
-                    loop.close()
+                    await TelemetryService.upload_debug_shot(compressed_data)
+                except Exception as e:
+                    logger.error(f"Failed to send debug shot to server: {e}")
 
-            compresson_thread = NamedThread(
-                "DebugShotCompr", target=compression_loop, args=(csv_data,)
-            )
-            compresson_thread.start()
+            compressed_data = None
+            cctx = None
+            data_json = None
+            logger.info("Debug shot data compressed and sent")
 
-            # Clear tracking data after saving
-            ShotDebugManager._current_data = None
+            ShotDebugManager.deleteOldDebugShotData()
+
+        def compression_loop(csv_data):
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            try:
+                loop.run_until_complete(compress_current_data(csv_data))
+            finally:
+                loop.close()
+
+        compresson_thread = NamedThread(
+            "DebugShotCompr", target=compression_loop, args=(csv_data,)
+        )
+        compresson_thread.start()
+
+        # Clear tracking data after saving
+        ShotDebugManager._current_data = None
