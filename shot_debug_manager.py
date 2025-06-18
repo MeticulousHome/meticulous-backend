@@ -15,7 +15,7 @@ from config import (
     MACHINE_DEBUG_SENDING,
     MeticulousConfig,
 )
-from esp_serial.data import SensorData, ShotData
+from esp_serial.data import SensorData, ShotData, MachineStatus, MachineStatusToProfile
 from telemetry_service import TelemetryService
 from log import MeticulousLogger
 
@@ -106,7 +106,10 @@ class ShotDebugManager:
             ShotDebugManager._current_data.addShotData(shotData)
             status = shotData.status
             profile = shotData.profile
-            if status in ["purge", "home"] and profile == status.capitalize():
+            if (
+                status in [MachineStatus.PURGE, MachineStatus.HOME, MachineStatus.BOOT]
+                and MachineStatusToProfile.get(status, "") == profile
+            ):
                 ShotDebugManager._current_data_type = status
 
     @staticmethod

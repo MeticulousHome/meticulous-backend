@@ -225,6 +225,14 @@ class MachineStatus:
     RETRACTING = "retracting"
     CLOSING_VALVE = "closing valve"
     HOME = "home"
+    BOOT = "boot"
+
+
+MachineStatusToProfile = {
+    MachineStatus.PURGE: "Purge",
+    MachineStatus.HOME: "Home",
+    MachineStatus.BOOT: "Bootup",
+}
 
 
 # Backend outwards
