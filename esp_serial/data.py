@@ -221,10 +221,10 @@ class MachineStatus:
     # Enum representing the events from the machine
     IDLE = "idle"
     HEATING = "heating"
-    PURGE = "Purge"
+    PURGE = "purge"
     RETRACTING = "retracting"
     CLOSING_VALVE = "closing valve"
-    HOME = "Home"
+    HOME = "home"
 
 
 # Backend outwards
