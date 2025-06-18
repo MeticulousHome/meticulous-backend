@@ -399,7 +399,6 @@ class Machine:
                         shot_start_time = time.time()
                         logger.info("shot start_time: {:.1f}".format(shot_start_time))
                         ShotManager.start()
-                        ShotDebugManager._shot_in_progress = True
                         SoundPlayer.play_event_sound(Sounds.BREWING_START)
                     elif time_flag:
                         # A shot could have ended
@@ -434,7 +433,7 @@ class Machine:
                             SoundPlayer.play_event_sound(Sounds.BREWING_END)
                             ShotManager.stop()
 
-                    if Machine.is_idle or is_purge:
+                    if Machine.is_idle:
                         ShotDebugManager.stop()
 
                     if old_status == MachineStatus.IDLE and not Machine.is_idle:
