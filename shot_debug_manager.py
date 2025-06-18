@@ -1,5 +1,4 @@
-import csv
-import io
+import json
 import os
 from named_thread import NamedThread
 import time
@@ -12,6 +11,7 @@ import zstandard as zstd
 
 from config import (
     CONFIG_USER,
+    CONFIG_WIFI,
     DEBUG_SHOT_DATA_RETENTION,
     MACHINE_DEBUG_SENDING,
     MeticulousConfig,
@@ -19,6 +19,9 @@ from config import (
 from esp_serial.data import SensorData, ShotData, MachineStatus, MachineStatusToProfile
 from telemetry_service import TelemetryService
 from log import MeticulousLogger
+from shot_manager import Shot
+import copy
+
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -27,74 +30,52 @@ DEBUG_FILE_FORMAT = "%H:%M:%S"
 DEBUG_HISTORY_PATH = os.getenv("DEBUG_HISTORY_PATH", "/meticulous-user/history/debug")
 
 
-class DebugData:
+class DebugShot(Shot):
     def __init__(self) -> None:
-        self.shotData = []
-        self.startTime = time.time()
+        from machine import Machine
 
-    def addSensorData(self, sensorData: SensorData):
-        if len(self.shotData) > 0:
-            # Append onto the last shotData
-            self.shotData[-1].update(dict(sensorData.__dict__))
+        super().__init__()
+        self.config = copy.deepcopy(MeticulousConfig[CONFIG_USER])
+        self.config[CONFIG_WIFI] = {}
+        self.machine = {}
+        if Machine.esp_info is not None:
+            self.machine = Machine.esp_info.to_sio()
+        self.shottype = "shot"
 
-    def addShotData(self, shotData: ShotData):
-        # Shotdata is not json serialziable and we dont need the profile entry multiple times
-        formated_data = {
-            "pressure": shotData.pressure,
-            "flow": shotData.flow,
-            "weight": shotData.weight,
-            "temperature": shotData.temperature,
-            "gravimetric_flow": shotData.gravimetric_flow,
-            "time": shotData.time,
-            "profile_time": time.time() - self.startTime,
-            "status": shotData.status,
-            "profile": shotData.profile,
-            "main_controller_kind": shotData.main_controller_kind,
-            "main_setpoint": shotData.main_setpoint,
-            "aux_controller_kind": shotData.aux_controller_kind,
-            "aux_setpoint": shotData.aux_setpoint,
-            "is_aux_controller_active": shotData.is_aux_controller_active,
+    def to_json(self):
+        data = {
+            "time": self.startTime,
+            "type": self.shottype,
+            "profile_name": self.profile_name,
+            "machine": self.machine,
+            "profile": self.profile,
+            "config": self.config,
+            "data": self.shotData,
         }
+        return data
+
+    def append_shot_data(self, formated_data):
+        time_passed = int((time.time() - self.startTime) * 1000.0)
+        formated_data["profile_ms"] = time_passed
         self.shotData.append(formated_data)
 
-    def to_csv(self, file_path=None):
-        emptyShot = ShotData()
-        emptySensors = SensorData()
-
-        shotFields = list(emptyShot.__dict__.keys())
-        sensorFields = list(emptySensors.__dict__.keys())
-        classFields = ["startTime", "profile_ms"]
-
-        allFields = shotFields + sensorFields + classFields
-
-        output = io.StringIO()
-        writer = csv.DictWriter(output, fieldnames=allFields)
-        writer.writeheader()
-
-        for shotSample in self.shotData:
-            row = {
-                "startTime": self.startTime,
-                "profile_ms": round(shotSample["profile_time"] * 1000),
-            }
-            for sensor_field in shotFields + sensorFields:
-                row[sensor_field] = shotSample.get(sensor_field, "")
-            writer.writerow(row)
-        result = output.getvalue()
-        output.close()
-
-        return result
+    def set_shot_type(self, type: str):
+        self.shottype = type
 
 
 class ShotDebugManager:
-    _current_data: DebugData = None
-    _current_data_type: str = "shot"
+    _current_data: DebugShot = None
 
     @staticmethod
     def start():
         if ShotDebugManager._current_data is None:
-            ShotDebugManager._current_data = DebugData()
-            ShotDebugManager._current_data_type = "shot"
-            logger.info("Starting debug shot")
+            try:
+                ShotDebugManager._current_data = DebugShot()
+                logger.info("Starting debug shot")
+            except Exception as e:
+                logger.error(f"Failed to start debug shot: {e}")
+                ShotDebugManager._current_data = None
+                return
 
     @staticmethod
     def handleSensorData(sensoData: SensorData):
@@ -111,7 +92,7 @@ class ShotDebugManager:
                 status in [MachineStatus.PURGE, MachineStatus.HOME, MachineStatus.BOOT]
                 and MachineStatusToProfile.get(status, "") == profile
             ):
-                ShotDebugManager._current_data_type = status
+                ShotDebugManager._current_data.set_shot_type(status)
 
     @staticmethod
     def deleteOldDebugShotData():
@@ -192,11 +173,22 @@ class ShotDebugManager:
 
         # Prepare the file path
         formatted_time = start.strftime(DEBUG_FILE_FORMAT)
-        file_type = ShotDebugManager._current_data_type
-        file_name = f"{formatted_time}.{file_type}.csv.zst"
+        file_type = ShotDebugManager._current_data.shottype
+        file_name = f"{formatted_time}.{file_type}.json.zst"
         file_path = os.path.join(folder_path, file_name)
 
-        csv_data = ShotDebugManager._current_data.to_csv()
+        debug_shot_data = ShotDebugManager._current_data.to_json()
+        if (
+            debug_shot_data.get("profile") is None
+            and debug_shot_data.get("type") == "shot"
+        ):
+            from profiles import ProfileManager
+
+            last_profile = ProfileManager.get_last_profile()
+            if last_profile is not None:
+                debug_shot_data["profile"] = last_profile.get("profile")
+
+        data_json = json.dumps(debug_shot_data, ensure_ascii=False)
 
         async def compress_current_data(data_json):
             from machine import Machine
@@ -209,12 +201,11 @@ class ShotDebugManager:
             cctx = zstd.ZstdCompressor(level=8)
             compressed_data = cctx.compress(data_json.encode("utf-8"))
 
-            logger.info(f"Writing debug csv to {file_path}")
+            logger.info(f"Writing debug json to {file_path}")
             with open(file_path, "wb") as file:
                 file.write(compressed_data)
             time_ms = (time.time() - start) * 1000
             logger.info(f"Writing debug csv to disc took {time_ms} ms")
-            data_json = None
 
             if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] is True:
                 if Machine.emulated:
@@ -234,17 +225,17 @@ class ShotDebugManager:
 
             ShotDebugManager.deleteOldDebugShotData()
 
-        def compression_loop(csv_data):
+        def compression_loop(data_json):
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
 
             try:
-                loop.run_until_complete(compress_current_data(csv_data))
+                loop.run_until_complete(compress_current_data(data_json))
             finally:
                 loop.close()
 
         compresson_thread = NamedThread(
-            "DebugShotCompr", target=compression_loop, args=(csv_data,)
+            "DebugShotCompr", target=compression_loop, args=(data_json,)
         )
         compresson_thread.start()
 
