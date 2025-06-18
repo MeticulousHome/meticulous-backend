@@ -86,12 +86,13 @@ class DebugData:
 
 class ShotDebugManager:
     _current_data: DebugData = None
-    _shot_in_progress: bool = False
+    _current_data_type: str = "shot"
 
     @staticmethod
     def start():
         if ShotDebugManager._current_data is None:
             ShotDebugManager._current_data = DebugData()
+            ShotDebugManager._current_data_type = "shot"
             logger.info("Starting debug shot")
 
     @staticmethod
@@ -103,6 +104,10 @@ class ShotDebugManager:
     def handleShotData(shotData: ShotData):
         if shotData is not None and ShotDebugManager._current_data is not None:
             ShotDebugManager._current_data.addShotData(shotData)
+            status = shotData.status
+            profile = shotData.profile
+            if status in ["purge", "home"] and profile == status.capitalize():
+                ShotDebugManager._current_data_type = status
 
     @staticmethod
     def deleteOldDebugShotData():
@@ -126,12 +131,6 @@ class ShotDebugManager:
 
     @staticmethod
     def stop():
-        if ShotDebugManager._shot_in_progress is False:
-            # logger.info("shot did not start, clearing debug data") # This message is not needed, only for debugging purposes
-            ShotDebugManager._current_data = None
-
-        ShotDebugManager._shot_in_progress = False
-
         if ShotDebugManager._current_data is None:
             return
 
@@ -146,7 +145,8 @@ class ShotDebugManager:
 
         # Prepare the file path
         formatted_time = start.strftime(DEBUG_FILE_FORMAT)
-        file_name = f"{formatted_time}.debug.csv.zst"
+        file_type = ShotDebugManager._current_data_type
+        file_name = f"{formatted_time}.{file_type}.csv.zst"
         file_path = os.path.join(folder_path, file_name)
 
         csv_data = ShotDebugManager._current_data.to_csv()
