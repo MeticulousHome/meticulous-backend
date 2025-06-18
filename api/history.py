@@ -14,6 +14,8 @@ from shot_manager import ShotManager, SHOT_PATH
 
 from .api import API, APIVersion
 from .base_handler import BaseHandler
+import asyncio
+from shot_debug_manager import ShotDebugManager
 
 logger = MeticulousLogger.getLogger(__name__)
 last_version_path = f"/api/{APIVersion.latest_version().name.lower()}"
@@ -22,7 +24,7 @@ last_version_path = f"/api/{APIVersion.latest_version().name.lower()}"
 class LastDebugFileHandler(BaseHandler):
     """Handler for retrieving the most recent debug file."""
 
-    DEBUG_FILE_EXTENSION = ".debug.csv.zst"
+    DEBUG_FILE_EXTENSION = ".zst"
 
     async def get(self):
         """Handle GET request for the latest debug file."""
@@ -59,6 +61,25 @@ class LastDebugFileHandler(BaseHandler):
             self.write({"status": "error", "error": str(e)})
         except Exception as e:
             logger.error(f"Unexpected error getting last debug file: {e}")
+            self.set_status(500)
+            self.write({"status": "error", "error": "Internal server error"})
+
+
+class CompressedDebugHistoryHandler(BaseHandler):
+    async def get(self):
+        async def compress_debug_file():
+            loop = asyncio.get_event_loop()
+            # Run the compression in a separate thread to avoid blocking the event loop
+            zip_name = await loop.run_in_executor(
+                None, ShotDebugManager.zipAllDebugShots
+            )
+            return zip_name
+
+        try:
+            result = await compress_debug_file()
+            self.redirect(f"{last_version_path}/history/debug/{result}")
+        except Exception as e:
+            logger.error(f"Error compressing debug file: {e}")
             self.set_status(500)
             self.write({"status": "error", "error": "Internal server error"})
 
@@ -278,6 +299,9 @@ API.register_handler(
     url=f"{last_version_path}/history/debug/",
 ),
 
+API.register_handler(
+    APIVersion.V1, r"/history/debug.zip", CompressedDebugHistoryHandler
+),
 API.register_handler(
     APIVersion.V1, r"/history/debug/(.*)", ZstdHistoryHandler, path=DEBUG_HISTORY_PATH
 ),
