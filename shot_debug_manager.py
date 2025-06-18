@@ -155,6 +155,8 @@ class ShotDebugManager:
         csv_data = ShotDebugManager._current_data.to_csv()
 
         async def compress_current_data(data_json):
+            from machine import Machine
+
             # Compress and write the shot to disk
             logger.info("Writing and compressing debug file")
             start = time.time()
@@ -171,15 +173,20 @@ class ShotDebugManager:
             data_json = None
 
             if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] is True:
-                try:
-                    await TelemetryService.upload_debug_shot(compressed_data)
-                except Exception as e:
-                    logger.error(f"Failed to send debug shot to server: {e}")
+                if Machine.emulated:
+                    logger.info("Not sending emulated debug shots")
+                else:
+                    try:
+                        await TelemetryService.upload_debug_shot(compressed_data)
+                        logger.info("Debug shot data compressed and saved")
+
+                    except Exception as e:
+                        logger.error(f"Failed to send debug shot to server: {e}")
 
             compressed_data = None
             cctx = None
             data_json = None
-            logger.info("Debug shot data compressed and sent")
+            logger.info("Debug shot data compressed and saved")
 
             ShotDebugManager.deleteOldDebugShotData()
 
