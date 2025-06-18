@@ -6,6 +6,7 @@ import time
 import asyncio
 from datetime import datetime, timedelta
 import shutil
+import zipfile
 
 import zstandard as zstd
 
@@ -127,10 +128,53 @@ class ShotDebugManager:
         cutoff_date = datetime.now() - timedelta(days=retention_days)
         history_folders = os.listdir(DEBUG_HISTORY_PATH)
         for f in history_folders:
+            if not os.path.isdir(os.path.join(DEBUG_HISTORY_PATH, f)):
+                continue
             p = datetime.strptime(f, DEBUG_FOLDER_FORMAT)
             if p < cutoff_date:
                 shutil.rmtree(os.path.join(DEBUG_HISTORY_PATH, f))
                 logger.info(f"Deleted all shots in {f}")
+
+    @staticmethod
+    def zipAllDebugShots():
+        retention_days = MeticulousConfig[CONFIG_USER][DEBUG_SHOT_DATA_RETENTION]
+        if retention_days < 0:
+            logger.info(
+                "Debug shot data retention is disabled, not deleting old files"
+            )  #
+            return
+
+        logger.info("Zipping all debug files")
+        start = time.time()
+
+        # Delete all potentially existing zip files except the one we are creating
+        for root, dirs, files in os.walk(DEBUG_HISTORY_PATH):
+            for file in files:
+                if file.endswith(".zip"):
+                    logger.info(f"Removing {file}")
+                    os.remove(os.path.join(DEBUG_HISTORY_PATH, file))
+
+        zip_name = datetime.now().strftime(
+            f"debug-{DEBUG_FOLDER_FORMAT}-{DEBUG_FILE_FORMAT}.zip"
+        )
+
+        # Create a zipfile containing all the files in the debug history path
+        zip_filename = os.path.join(DEBUG_HISTORY_PATH, zip_name)
+        with zipfile.ZipFile(zip_filename, "w", zipfile.ZIP_DEFLATED) as zipf:
+            for root, dirs, files in os.walk(DEBUG_HISTORY_PATH):
+                for file in files:
+                    if file.endswith(".zip") and file != zip_name:
+                        logger.info(f"Removing {file}")
+                        os.remove(os.path.join(DEBUG_HISTORY_PATH, file))
+                    if file.endswith(".zst"):
+                        file_path = os.path.join(root, file)
+                        arcname = os.path.relpath(file_path, DEBUG_HISTORY_PATH)
+                        zipf.write(file_path, arcname)
+
+        time_ms = (time.time() - start) * 1000
+        os.rename(zip_filename, os.path.join(DEBUG_HISTORY_PATH, zip_name))
+        logger.info(f"Zipping all debug files disc took {time_ms} ms")
+        return zip_name
 
     @staticmethod
     def stop():
