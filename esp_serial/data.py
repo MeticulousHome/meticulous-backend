@@ -215,6 +215,19 @@ class ESPInfo:
             return None
         return info
 
+    def to_sio(self):
+        """Convert ESPInfo to a dictionary for socket.io communication."""
+        return {
+            "firmware_version": self.firmwareV,
+            "esp_pinout": self.espPinout,
+            "main_voltage": self.mainVoltage,
+            "color": self.color,
+            "serial_number": self.serialNumber,
+            "batch_number": self.batchNumber,
+            "build_date": self.buildDate,
+            "scale_module": self.scaleModule,
+        }
+
 
 # From ESP32 to backend
 class MachineStatus:

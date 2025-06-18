@@ -76,6 +76,9 @@ class Shot:
             "time": shotData.time,
             "status": shotData.status,
         }
+        self.append_shot_data(formated_data)
+
+    def append_shot_data(self, formated_data):
         self.shotData.append(formated_data)
 
     def to_json(self):
