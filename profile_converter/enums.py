@@ -96,6 +96,7 @@ class TriggerType(Enum):
     PRESSURE = "pressure"
     TEMPERATURE = "temperature"
     POWER = "power"
+    USER_MESSAGE = "user_message_trigger"
 
 
 class SourceType(Enum):
