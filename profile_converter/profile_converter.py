@@ -637,7 +637,7 @@ class ComplexProfileConverter:
                                 "kind": "piston_power_controller",
                                 "algorithm": "Spring v1.0",
                                 "curve": {
-                                    "id": 7,
+                                    "id": 8,
                                     "interpolation_kind": "linear_interpolation",
                                     "points": [[0, 0]],
                                     "reference": {"kind": "time", "id": 2}
@@ -658,7 +658,7 @@ class ComplexProfileConverter:
                                 "timer_reference_id": 4,
                                 "next_node_id": 23,
                                 "operator": ">=",
-                                "value": 2,
+                                "value": 3,
                             }
                         ],
                     },
@@ -762,7 +762,7 @@ class ComplexProfileConverter:
                                 "kind": "piston_power_controller",
                                 "algorithm": "Spring v1.0",
                                 "curve": {
-                                    "id": 7,
+                                    "id": 9,
                                     "interpolation_kind": "linear_interpolation",
                                     "points": [[0, -100]],
                                     "reference": {"kind": "time", "id": 8}
