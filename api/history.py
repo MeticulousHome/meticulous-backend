@@ -16,6 +16,7 @@ from .api import API, APIVersion
 from .base_handler import BaseHandler
 import asyncio
 from shot_debug_manager import ShotDebugManager
+from pathlib import Path
 
 logger = MeticulousLogger.getLogger(__name__)
 last_version_path = f"/api/{APIVersion.latest_version().name.lower()}"
@@ -29,40 +30,41 @@ class LastDebugFileHandler(BaseHandler):
     async def get(self):
         """Handle GET request for the latest debug file."""
         try:
-            last_shot = ShotManager.getLastShot()
-            if not last_shot or "file" not in last_shot:
+            latest_debug_file = self._find_latest_debug_file()
+            if not latest_debug_file:
                 raise FileNotFoundError("No debug files found")
-
-            # Extract date from shot file path
-            date = last_shot["file"].split("/")[0]
-            if not date:
-                raise FileNotFoundError("Invalid shot file path")
-
-            # Get latest debug file
-            debug_dir = os.path.join(DEBUG_HISTORY_PATH, date)
-            if not os.path.exists(debug_dir):
-                raise FileNotFoundError(f"No debug directory for date {date}")
-
-            debug_files = [
-                f
-                for f in os.listdir(debug_dir)
-                if f.endswith(self.DEBUG_FILE_EXTENSION)
-            ]
-            if not debug_files:
-                raise FileNotFoundError(f"No debug files found for date {date}")
-
-            latest_debug_file = max(debug_files)
-            debug_path = f"{date}/{latest_debug_file}"
-
-            self.redirect(f"{last_version_path}/history/debug/{debug_path}")
-
+            
+            # Convert absolute path to relative path for redirect
+            relative_path = latest_debug_file.relative_to(DEBUG_HISTORY_PATH)
+            self.redirect(f"{last_version_path}/history/debug/{relative_path}")
+            
         except FileNotFoundError as e:
-            self.set_status(404)
-            self.write({"status": "error", "error": str(e)})
+            self._handle_error(404, str(e))
         except Exception as e:
             logger.error(f"Unexpected error getting last debug file: {e}")
-            self.set_status(500)
-            self.write({"status": "error", "error": "Internal server error"})
+            self._handle_error(500, "Internal server error")
+
+    def _find_latest_debug_file(self):
+        """Find the most recently modified debug file across all directories."""
+        debug_path = Path(DEBUG_HISTORY_PATH)
+        
+        if not debug_path.exists():
+            return None
+        
+        # Find all debug files recursively
+        pattern = f"**/*{self.DEBUG_FILE_EXTENSION}"
+        debug_files = list(debug_path.glob(pattern))
+        
+        if not debug_files:
+            return None
+        
+        # Return the file with the most recent modification time
+        return max(debug_files, key=lambda f: f.stat().st_mtime)
+
+    def _handle_error(self, status_code, message):
+        """Handle error responses consistently."""
+        self.set_status(status_code)
+        self.write({"status": "error", "error": message})
 
 
 class CompressedDebugHistoryHandler(BaseHandler):
