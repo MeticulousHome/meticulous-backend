@@ -33,11 +33,11 @@ class LastDebugFileHandler(BaseHandler):
             latest_debug_file = self._find_latest_debug_file()
             if not latest_debug_file:
                 raise FileNotFoundError("No debug files found")
-            
+
             # Convert absolute path to relative path for redirect
             relative_path = latest_debug_file.relative_to(DEBUG_HISTORY_PATH)
             self.redirect(f"{last_version_path}/history/debug/{relative_path}")
-            
+
         except FileNotFoundError as e:
             self._handle_error(404, str(e))
         except Exception as e:
@@ -47,17 +47,17 @@ class LastDebugFileHandler(BaseHandler):
     def _find_latest_debug_file(self):
         """Find the most recently modified debug file across all directories."""
         debug_path = Path(DEBUG_HISTORY_PATH)
-        
+
         if not debug_path.exists():
             return None
-        
+
         # Find all debug files recursively
         pattern = f"**/*{self.DEBUG_FILE_EXTENSION}"
         debug_files = list(debug_path.glob(pattern))
-        
+
         if not debug_files:
             return None
-        
+
         # Return the file with the most recent modification time
         return max(debug_files, key=lambda f: f.stat().st_mtime)
 
