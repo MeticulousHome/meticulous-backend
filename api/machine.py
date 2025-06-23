@@ -186,7 +186,7 @@ class MachineResetHandler(LocalAccessHandler):
             self.write({"status": "success", "message": "Emulated mode"})
             return
         logger.warning("Performing factory reset")
-        subprocess.run("rm -rf /meticulous-user/*")
+        subprocess.run("rm -rf /meticulous-user/*", shell=True)
         subprocess.run("reboot")
 
 
