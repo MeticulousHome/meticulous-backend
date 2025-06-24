@@ -323,7 +323,32 @@ class WifiManager:
             del MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS][ssid]
             MeticulousConfig.save()
 
-    def connectToWifi(credentials: WiFiCredentials) -> bool:
+    @staticmethod
+    def fixWifiConnection(ssid, wifi_type: WifiType):
+        logger.info(f"Fixing wifi connection for {ssid} with type {wifi_type}")
+
+        keymgmt = None
+        match wifi_type:
+            case WifiType.Open:
+                keymgmt = "none"
+            case WifiType.PreSharedKey:
+                keymgmt = "wpa-psk"
+            case WifiType.Enterprise:
+                keymgmt = "802-1x"
+            case WifiType.WEP:
+                keymgmt = "wep"
+            case _:
+                raise ValueError(f"Unknown WifiType: {wifi_type}")
+        nmcli.connection.modify(
+            ssid,
+            {
+                "802-11-wireless.ssid": ssid,
+                "802-11-wireless-security.key-mgmt": keymgmt,
+            },
+        )
+        nmcli.connection.up(ssid, wait=10)
+
+    def connectToWifi(credentials: WiFiCredentials) -> bool:  # noqa: C901
 
         if not WifiManager._networking_available:
             return False
@@ -355,6 +380,7 @@ class WifiManager:
                 return True
 
             logger.info("Target network online, connecting now")
+            needs_fix = False
             try:
                 if wifi_type == WifiType.Open:
                     nmcli.device.wifi_connect(ssid, None)
@@ -363,10 +389,25 @@ class WifiManager:
                 elif wifi_type == WifiType.Enterprise:
                     logger.error("Enterprise wifi not yet implemented")
                     return False
+
             except Exception as e:
-                logger.info(f"Failed to connect to wifi: {e}")
-                WifiManager.update_gatt_advertisement()
-                return False
+                error_msg = str(e)
+                if (
+                    "802-11-wireless-security.key-mgmt: property is missing"
+                    in error_msg
+                ):
+                    needs_fix = True
+                else:
+                    logger.error(f"Failed to connect to wifi: {e}")
+                    WifiManager.update_gatt_advertisement()
+                    return False
+            if needs_fix:
+                try:
+                    WifiManager.fixWifiConnection(ssid, wifi_type)
+                except Exception as e:
+                    logger.error(f"Failed to connect to wifi: {e}")
+                    WifiManager.update_gatt_advertisement()
+                    return False
 
             logger.info(
                 "Connection should be established, checking if a network is marked in-use"
