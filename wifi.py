@@ -23,6 +23,7 @@ from config import (
 )
 from hostname import HostnameManager
 from timezone_manager import TimezoneManager
+from machine import Machine
 
 from log import MeticulousLogger
 from named_thread import NamedThread
@@ -212,7 +213,11 @@ class WifiManager:
         while True:
             time.sleep(10)
 
-            if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP:
+            manufacturing_mode = Machine.enable_manufacturing
+            if (
+                MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP
+                and not manufacturing_mode
+            ):
                 continue
 
             # Check if we are already connected to something
@@ -225,6 +230,15 @@ class WifiManager:
             previousNetworks = MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS]
 
             for network in networks:
+                # Check if we are looking for a specific network in the factory
+                if manufacturing_mode and network.ssid == "MeticulousEPW":
+                    credentials = WifiWpaPskCredentials(
+                        ssid=network.ssid, password="23456789"
+                    )
+                    success = WifiManager.connectToWifi(credentials)
+                    if success:
+                        break
+
                 if network.ssid in previousNetworks:
                     logger.info(f"Found known WIFI {network.ssid}. Connecting")
                     credentials = previousNetworks[network.ssid]
