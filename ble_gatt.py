@@ -358,22 +358,27 @@ class GATTServer:
         return gatt
 
     def wifi_connect(ssid: str, passwd: str) -> Optional[list[str]]:
-        ssid = ssid.decode("utf-8")
-        passwd = passwd.decode("utf-8")
-        logger.info(f"Connecting to '{ssid}' with password: '{passwd}'")
-        credentials = WifiWpaPskCredentials(ssid=ssid, password=passwd)
-        if WifiManager.connectToWifi(credentials):
-            networkConfig = WifiManager.getCurrentConfig()
-            localServer = []
-            for localIP in networkConfig.ips:
-                if localIP.ip.version == 6:
-                    localServer.append(f"http://[{str(localIP.ip)}]:{PORT}")
-                else:
-                    localServer.append(f"http://{str(localIP.ip)}:{PORT}")
+        try:
+            ssid = ssid.decode("utf-8")
+            passwd = passwd.decode("utf-8")
+            logger.info(f"Connecting to '{ssid}' with password: '{passwd}'")
+            credentials = WifiWpaPskCredentials(ssid=ssid, password=passwd)
+            if WifiManager.connectToWifi(credentials):
+                networkConfig = WifiManager.getCurrentConfig()
+                localServer = []
+                for localIP in networkConfig.ips:
+                    if localIP.ip.version == 6:
+                        localServer.append(f"http://[{str(localIP.ip)}]:{PORT}")
+                    else:
+                        localServer.append(f"http://{str(localIP.ip)}:{PORT}")
 
-            logger.debug(f"Backend redirect IP/URL: {localServer}")
-            return localServer
-        return None
+                logger.debug(f"Backend redirect IP/URL: {localServer}")
+                return localServer
+            return None
+        except Exception as e:
+            logger.error(f"Failed to connect to WiFi: {e}")
+            logger.exception("WiFi connection failed", exc_info=e, stack_info=True)
+            return None
 
     def get_wifi_networks() -> Optional[list[str]]:
         ssids = []
