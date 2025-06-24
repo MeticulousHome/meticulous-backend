@@ -194,8 +194,9 @@ class ShotDebugManager:
                         f"Profile load time ({loadDateTime}) and shot start time ({start}) are more than 30 seconds apart. Ignoring profile"
                     )
                 else:
+                    last_profile_name = last_profile.get("profile", {}).get("name")
                     logger.info(
-                        f"Using last profile {last_profile.get('profile', {}).get("name")} for debug shot"
+                        f"Using last profile {last_profile_name} for debug shot"
                     )
                     debug_shot_data["profile"] = last_profile.get("profile")
 
