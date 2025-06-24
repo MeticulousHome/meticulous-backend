@@ -2,7 +2,7 @@ from enum import Enum, auto
 import os
 import json
 from play_sound import playsound
-import subprocess
+import gpiod
 
 from log import MeticulousLogger
 from config import (
@@ -30,6 +30,10 @@ class Sounds(Enum):
     NOTIFICATION = auto()
 
 
+AUDIO_ENABLE_GPIO_CHIP = 4
+AUDIO_ENABLE_GPIO_PIN = 25
+
+
 class SoundPlayer:
     SUPPORTED_FORMATS = [".mp3", ".wav", ".ogg", ".flac"]
     DEFAULT_THEME_NAME = "default"
@@ -39,11 +43,21 @@ class SoundPlayer:
     CURRENT_THEME_NAME = ""
     DEFAULT_THEME_CONFIG = {}
 
+    _audio_pin = None
+
+    @staticmethod
     def init(emulation=False, play_startup_sound=True):
         if not emulation:
-            # Set the output pin for the IMX som
-            command = ["gpioset", "gpiochip4", "25=1"]
-            subprocess.run(command)
+            config = gpiod.line_request()
+            config.consumer = __name__
+            config.request_type = gpiod.line_request.DIRECTION_OUTPUT
+            try:
+                chip = gpiod.chip(AUDIO_ENABLE_GPIO_CHIP)
+                SoundPlayer._audio_pin = chip.get_line(AUDIO_ENABLE_GPIO_PIN)
+                SoundPlayer._audio_pin.request(config)
+                SoundPlayer._audio_pin.set_value(1)
+            except Exception as e:
+                logger.error(f"Failed to set GPIO pin: {e}")
 
         # Theme detection
         themes = {}
