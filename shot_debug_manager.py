@@ -179,14 +179,25 @@ class ShotDebugManager:
 
         debug_shot_data = ShotDebugManager._current_data.to_json()
         if (
-            debug_shot_data.get("profile") is None
+            not bool(debug_shot_data.get("profile"))
             and debug_shot_data.get("type") == "shot"
         ):
             from profiles import ProfileManager
 
             last_profile = ProfileManager.get_last_profile()
             if last_profile is not None:
-                debug_shot_data["profile"] = last_profile.get("profile")
+                loadTime = last_profile.get("load_time", 0)
+                loadDateTime = datetime.fromtimestamp(loadTime)
+                loadTimeDiff = abs((start - loadDateTime).total_seconds())
+                if loadTimeDiff:
+                    logger.warning(
+                        f"Profile load time ({loadDateTime}) and shot start time ({start}) are more than 30 seconds apart. Ignoring profile"
+                    )
+                else:
+                    logger.info(
+                        f"Using last profile {last_profile.get('profile', {}).get("name")} for debug shot"
+                    )
+                    debug_shot_data["profile"] = last_profile.get("profile")
 
         data_json = json.dumps(debug_shot_data, ensure_ascii=False)
 
@@ -205,7 +216,7 @@ class ShotDebugManager:
             with open(file_path, "wb") as file:
                 file.write(compressed_data)
             time_ms = (time.time() - start) * 1000
-            logger.info(f"Writing debug csv to disc took {time_ms} ms")
+            logger.info(f"Writing debug json to disc took {time_ms} ms")
 
             if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] is True:
                 if Machine.emulated:
