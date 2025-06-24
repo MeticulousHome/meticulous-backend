@@ -199,6 +199,7 @@ class ShotDebugManager:
                         f"Using last profile {last_profile_name} for debug shot"
                     )
                     debug_shot_data["profile"] = last_profile.get("profile")
+                    debug_shot_data["profile_name"] = last_profile_name
 
         data_json = json.dumps(debug_shot_data, ensure_ascii=False)
 
