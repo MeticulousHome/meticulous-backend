@@ -58,12 +58,12 @@ class TelemetryService:
         NotificationManager.add_notification(TelemetryService.permissionNotification)
 
     # Upload a debug shot file to the server
-    async def upload_debug_shot(file_bytes: bytes):
+    async def upload_debug_shot(file_bytes: bytes, filename: str):
         machine_name = f"{HostnameManager.generateHostname()}-{MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]}"
         url = f"https://analytics.meticulousespresso.com/upload/{machine_name}"
         logger.info(f"Uploading debug shot to {url}")
         data = aiohttp.FormData()
-        data.add_field("file", file_bytes, filename="filename")
+        data.add_field("file", file_bytes, filename=filename)
         config = {"config": MeticulousConfig}
         data.add_field("json", json.dumps(config), content_type="application/json")
 

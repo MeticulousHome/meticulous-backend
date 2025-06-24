@@ -212,7 +212,9 @@ class ShotDebugManager:
                     logger.info("Not sending emulated debug shots")
                 else:
                     try:
-                        await TelemetryService.upload_debug_shot(compressed_data)
+                        await TelemetryService.upload_debug_shot(
+                            compressed_data, file_name
+                        )
                         logger.info("Debug shot data compressed and saved")
 
                     except Exception as e:
