@@ -239,6 +239,7 @@ class MachineStatus:
     CLOSING_VALVE = "closing valve"
     HOME = "home"
     BOOT = "boot"
+    STARTING = "starting..."
 
 
 MachineStatusToProfile = {
