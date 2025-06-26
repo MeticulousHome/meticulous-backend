@@ -34,15 +34,16 @@ class Shot:
             # Append onto the last shotData
             self.shotData[-1]["sensors"] = dict(sensorData.__dict__)
 
-    def hasValidProfileName(self):
-        return self.profile_name is not None and self.profile_name != "Init Profile"
-
     def addShotData(self, shotData: ShotData):
         from profiles import ProfileManager
 
         from machine import Machine
 
-        if not self.hasValidProfileName() and shotData.profile is not None:
+        if (
+            self.profile_name is None
+            and shotData.profile is not None
+            and shotData.status != "starting..."
+        ):
 
             # Special case the emulation case
             if (
