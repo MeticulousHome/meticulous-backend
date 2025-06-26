@@ -392,6 +392,7 @@ class Machine:
                     is_retracting = data.status == MachineStatus.RETRACTING
                     is_preparing = data.status == MachineStatus.CLOSING_VALVE
                     is_heating = data.status == MachineStatus.HEATING
+                    is_starting = data.status == MachineStatus.STARTING
 
                     # A shot started
                     if is_preparing and data.status != old_status:
@@ -438,7 +439,7 @@ class Machine:
 
                     if old_status == MachineStatus.IDLE and not Machine.is_idle:
                         ShotDebugManager.start()
-                        if is_heating or is_preparing or is_retracting:
+                        if is_heating or is_preparing or is_retracting or is_starting:
                             time_passed = 0
 
                     if Machine.is_idle and old_status != MachineStatus.IDLE:
