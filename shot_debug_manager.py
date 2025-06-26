@@ -161,7 +161,10 @@ class ShotDebugManager:
     def stop():
         if ShotDebugManager._current_data is None:
             return
-
+        
+        if ShotDebugManager._current_data.profile is None:
+            ShotDebugManager._current_data.profile = {}
+            
         # Determine the folder path based on the current date
         start_timestamp = ShotDebugManager._current_data.startTime
         start = datetime.fromtimestamp(start_timestamp)

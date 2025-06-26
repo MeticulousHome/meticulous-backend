@@ -34,12 +34,15 @@ class Shot:
             # Append onto the last shotData
             self.shotData[-1]["sensors"] = dict(sensorData.__dict__)
 
+    def hasValidProfileName(self):
+        return self.profile_name is not None and self.profile_name != "Init Profile"
+
     def addShotData(self, shotData: ShotData):
         from profiles import ProfileManager
 
         from machine import Machine
 
-        if self.profile_name is None and shotData.profile is not None:
+        if not self.hasValidProfileName() and shotData.profile is not None:
 
             # Special case the emulation case
             if (
@@ -61,8 +64,6 @@ class Shot:
                     and last_profile["profile"]["name"] == self.profile_name
                 ):
                     self.profile = last_profile["profile"]
-                else:
-                    self.profile = {}
 
         # Shotdata is not json serialziable and we dont need the profile entry multiple times
         formated_data = {
