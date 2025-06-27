@@ -12,7 +12,9 @@ RUN apt install -y build-essential libcairo2-dev libxt-dev libgirepository1.0-de
     python3-systemd \
     python3-venv \
     python3-wheel \
-    python3-pip
+    python3-pip \
+    python3-parted
+
 RUN apt-get install -y dbus systemd git
 
 ENV PATH=/root/.cargo/bin:$PATH
