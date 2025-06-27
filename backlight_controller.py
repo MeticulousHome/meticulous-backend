@@ -86,6 +86,7 @@ class BacklightController:
                 break
             BacklightController._set_raw_brightness(int(brightness))
             time.sleep(0.01)
+        BacklightController._set_raw_brightness(int(target_brightness))
 
     @staticmethod
     def adjust_brightness(target_percent, interpolation="linear", steps=50):
@@ -107,21 +108,10 @@ class BacklightController:
         BacklightController._adjust_thread.start()
 
     @staticmethod
-    def dim_down():
-        target_percent = MIN_BRIGHTNESS
+    def dim(target_percent):
         try:
             BacklightController.adjust_brightness(
                 target_percent, interpolation="curve", steps=300
-            )
-        except Exception as e:
-            logger.warning(f"An error occurred: {e}")
-
-    @staticmethod
-    def dim_up():
-        target_percent = 1.0
-        try:
-            BacklightController.adjust_brightness(
-                target_percent, interpolation="linear", steps=20
             )
         except Exception as e:
             logger.warning(f"An error occurred: {e}")

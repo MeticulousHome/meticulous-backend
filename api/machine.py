@@ -203,12 +203,9 @@ class MachineBacklightController(BaseHandler):
         if "brightness" in settings:
             brightness = settings.get("brightness")
 
-            if brightness == 1:
-                logger.info("Dimming up")
-                BacklightController.dim_up()
-            else:
-                logger.info("Dimming down")
-                BacklightController.dim_down()
+            if brightness is not None:
+                logger.info(f"Dimming to {brightness}")
+                BacklightController.dim(brightness)
 
         else:
             self.set_status(400)
