@@ -6,6 +6,8 @@ import asyncio
 from datetime import datetime, timedelta
 import shutil
 import zipfile
+import logging
+import threading
 
 import zstandard as zstd
 
@@ -29,12 +31,34 @@ DEBUG_FOLDER_FORMAT = "%Y-%m-%d"
 DEBUG_FILE_FORMAT = "%H:%M:%S"
 DEBUG_HISTORY_PATH = os.getenv("DEBUG_HISTORY_PATH", "/meticulous-user/history/debug")
 
+shot_log_lock = threading.Lock()
+
+
+class ShotLogHandle(logging.Handler):
+
+    def __init__(self, shot_start_time, log_storage: list[dict], log_lock):
+        logging.Handler.__init__(self)
+        self.log_storage = log_storage
+        self.log_lock = log_lock
+        self.shot_start_time = shot_start_time
+
+    def emit(self, record):
+        msg = self.format(record)
+        log: dict = {
+            "profile_ms": int((record.created - self.shot_start_time) * 1000.0),
+            "caller": record.name,
+            "log_message": msg,
+        }
+        with self.log_lock:
+            self.log_storage.append(log)
+
 
 class DebugShot(Shot):
     def __init__(self) -> None:
         from machine import Machine
 
         super().__init__()
+        self.logs = []
         self.config = copy.deepcopy(MeticulousConfig[CONFIG_USER])
         self.config[CONFIG_WIFI] = {}
         self.machine = {}
@@ -51,6 +75,7 @@ class DebugShot(Shot):
             "profile": self.profile,
             "config": self.config,
             "data": self.shotData,
+            "logs": self.logs,
         }
         return data
 
@@ -63,8 +88,29 @@ class DebugShot(Shot):
         self.shottype = type
 
 
+def add_logging_handler(handler: logging.Handler):
+    if handler is None:
+        return
+    for _, logger in logging.Logger.manager.loggerDict.items():
+        if not isinstance(logger, logging.Logger):
+            continue
+        logger.addHandler(handler)
+
+
+def remove_logging_handler(handler: logging.Handler):
+    if handler is None:
+        return
+    for _, logger in logging.Logger.manager.loggerDict.items():
+        if not isinstance(logger, logging.Logger):
+            continue
+        logger.removeHandler(handler)
+
+
 class ShotDebugManager:
     _current_data: DebugShot = None
+    current_shot_logs = []
+    current_shot_logs_lock = threading.Lock()
+    logging_handler = None
 
     @staticmethod
     def start():
@@ -72,9 +118,18 @@ class ShotDebugManager:
             try:
                 ShotDebugManager._current_data = DebugShot()
                 logger.info("Starting debug shot")
+                ShotDebugManager.logging_handler = ShotLogHandle(
+                    ShotDebugManager._current_data.startTime,
+                    ShotDebugManager.current_shot_logs,
+                    ShotDebugManager.current_shot_logs_lock,
+                )
+                add_logging_handler(ShotDebugManager.logging_handler)
+                # update the loggers to also save logs in the shot logger
+
             except Exception as e:
                 logger.error(f"Failed to start debug shot: {e}")
                 ShotDebugManager._current_data = None
+                remove_logging_handler(ShotDebugManager.logging_handler)
                 return
 
     @staticmethod
@@ -164,6 +219,14 @@ class ShotDebugManager:
 
         if ShotDebugManager._current_data.profile is None:
             ShotDebugManager._current_data.profile = {}
+
+        # remove the logging handlers
+        remove_logging_handler(ShotDebugManager.logging_handler)
+        # set the logs corresponding to the shot time lapse
+        ShotDebugManager._current_data.logs = copy.deepcopy(
+            ShotDebugManager.current_shot_logs
+        )
+        ShotDebugManager.current_shot_logs.clear()
 
         # Determine the folder path based on the current date
         start_timestamp = ShotDebugManager._current_data.startTime
