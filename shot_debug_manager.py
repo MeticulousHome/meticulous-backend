@@ -34,23 +34,10 @@ DEBUG_HISTORY_PATH = os.getenv("DEBUG_HISTORY_PATH", "/meticulous-user/history/d
 shot_log_lock = threading.Lock()
 
 
-class ShotLogHandle(logging.Handler):
-
-    def __init__(self, shot_start_time, log_storage: list[dict], log_lock):
-        logging.Handler.__init__(self)
-        self.log_storage = log_storage
-        self.log_lock = log_lock
-        self.shot_start_time = shot_start_time
+class ShotLogHandler(logging.Handler):
 
     def emit(self, record):
-        msg = self.format(record)
-        log: dict = {
-            "profile_ms": int((record.created - self.shot_start_time) * 1000.0),
-            "caller": record.name,
-            "log_message": msg,
-        }
-        with self.log_lock:
-            self.log_storage.append(log)
+        ShotDebugManager.handleLog(record, self.format)
 
 
 class DebugShot(Shot):
@@ -88,27 +75,8 @@ class DebugShot(Shot):
         self.shottype = type
 
 
-def add_logging_handler(handler: logging.Handler):
-    if handler is None:
-        return
-    for _, logger in logging.Logger.manager.loggerDict.items():
-        if not isinstance(logger, logging.Logger):
-            continue
-        logger.addHandler(handler)
-
-
-def remove_logging_handler(handler: logging.Handler):
-    if handler is None:
-        return
-    for _, logger in logging.Logger.manager.loggerDict.items():
-        if not isinstance(logger, logging.Logger):
-            continue
-        logger.removeHandler(handler)
-
-
 class ShotDebugManager:
     _current_data: DebugShot = None
-    current_shot_logs = []
     current_shot_logs_lock = threading.Lock()
     logging_handler = None
 
@@ -118,18 +86,17 @@ class ShotDebugManager:
             try:
                 ShotDebugManager._current_data = DebugShot()
                 logger.info("Starting debug shot")
-                ShotDebugManager.logging_handler = ShotLogHandle(
-                    ShotDebugManager._current_data.startTime,
-                    ShotDebugManager.current_shot_logs,
-                    ShotDebugManager.current_shot_logs_lock,
-                )
-                add_logging_handler(ShotDebugManager.logging_handler)
-                # update the loggers to also save logs in the shot logger
+                ShotDebugManager.logging_handler = ShotLogHandler()
+
+                # Add the log handler on the first debug shot start
+                MeticulousLogger.add_logging_handler(ShotDebugManager.logging_handler)
 
             except Exception as e:
                 logger.error(f"Failed to start debug shot: {e}")
                 ShotDebugManager._current_data = None
-                remove_logging_handler(ShotDebugManager.logging_handler)
+                MeticulousLogger.remove_logging_handler(
+                    ShotDebugManager.logging_handler
+                )
                 return
 
     @staticmethod
@@ -219,14 +186,6 @@ class ShotDebugManager:
 
         if ShotDebugManager._current_data.profile is None:
             ShotDebugManager._current_data.profile = {}
-
-        # remove the logging handlers
-        remove_logging_handler(ShotDebugManager.logging_handler)
-        # set the logs corresponding to the shot time lapse
-        ShotDebugManager._current_data.logs = copy.deepcopy(
-            ShotDebugManager.current_shot_logs
-        )
-        ShotDebugManager.current_shot_logs.clear()
 
         # Determine the folder path based on the current date
         start_timestamp = ShotDebugManager._current_data.startTime
@@ -323,3 +282,18 @@ class ShotDebugManager:
 
         # Clear tracking data after saving
         ShotDebugManager._current_data = None
+
+    @staticmethod
+    def handleLog(log_record: logging.LogRecord, formatter):
+        if ShotDebugManager._current_data is None:
+            return
+        msg = formatter(log_record)
+        log: dict = {
+            "profile_ms": int(
+                (log_record.created - ShotDebugManager._current_data.startTime) * 1000.0
+            ),
+            "caller": log_record.name,
+            "log_message": msg,
+        }
+        with ShotDebugManager.current_shot_logs_lock:
+            ShotDebugManager._current_data.logs.append(log)
