@@ -27,6 +27,7 @@ from log import MeticulousLogger
 from machine import Machine
 from profile_converter.profile_converter import ComplexProfileConverter
 from profile_preprocessor import ProfilePreprocessor
+from shot_debug_manager import ShotDebugManager
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -372,6 +373,7 @@ class ProfileManager:
 
         ProfileManager._emit_profile_event(PROFILE_EVENT.LOAD, data["id"])
 
+        ShotDebugManager.start()
         return data
 
     def refresh_profile_list():  # noqa: C901
