@@ -19,6 +19,7 @@ from config import MeticulousConfig, ALLOW_LEGACY_JSON, CONFIG_USER
 from .emulation import LEGACY_DUMMY_PROFILE
 
 logger = MeticulousLogger.getLogger(__name__)
+from shot_debug_manager import ShotDebugManager
 
 
 class ListHandler(BaseHandler):
@@ -165,6 +166,7 @@ class LegacyProfileHandler(BaseHandler):
                 ProfileManager._set_last_profile(LEGACY_DUMMY_PROFILE)
 
                 Machine.send_json_with_hash(data)
+                ShotDebugManager.start()
             except (
                 UndefinedVariableException,
                 VariableTypeException,
