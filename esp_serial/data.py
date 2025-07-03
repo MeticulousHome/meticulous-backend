@@ -4,7 +4,6 @@ import re
 import math
 
 from log import MeticulousLogger
-from config import MeticulousConfig, GET_ACCESSORY_DATA, CONFIG_USER
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -54,6 +53,7 @@ class SensorData:
     adc_3: float = 0.0
     water_status: bool = False
     motor_thermistor: float = 0.0
+    weight_prediction: float = 0.0
 
     def from_color_coded_args(colorSeperatedArgs):
         global colorSensorRegex
@@ -69,65 +69,31 @@ class SensorData:
 
     def from_args(args):
         try:
-
-            if len(args) >= 21:
-                water_status = args[20].lower() == "true"
-            else:
-                water_status = False
-
-            if len(args) >= 20:
-                data = SensorData(
-                    external_1=safeFloat(args[0]),
-                    external_2=safeFloat(args[1]),
-                    bar_up=safeFloat(args[2]),
-                    bar_mid_up=safeFloat(args[3]),
-                    bar_mid_down=safeFloat(args[4]),
-                    bar_down=safeFloat(args[5]),
-                    tube=safeFloat(args[6]),
-                    motor_temp=safeFloat(args[7]),
-                    lam_temp=safeFloat(args[8]),
-                    motor_position=safeFloat(args[9]),
-                    motor_speed=safeFloat(args[10]),
-                    motor_power=safeFloat(args[11]),
-                    motor_current=safeFloat(args[12]),
-                    bandheater_current=safeFloat(args[13]),
-                    bandheater_power=safeFloat(args[14]),
-                    pressure_sensor=safeFloat(args[15]),
-                    adc_0=safeFloat(args[16]),
-                    adc_1=safeFloat(args[17]),
-                    adc_2=safeFloat(args[18]),
-                    adc_3=safeFloat(args[19]),
-                    water_status=water_status,
-                )
-                if MeticulousConfig[CONFIG_USER][GET_ACCESSORY_DATA]:
-                    data.motor_thermistor = safeFloat(args[21])
-                else:
-                    data.motor_thermistor = 0.0
-            else:
-                data = SensorData(
-                    external_1=safeFloat(args[0]),
-                    external_2=safeFloat(args[1]),
-                    bar_up=safeFloat(args[2]),
-                    bar_mid_up=safeFloat(args[3]),
-                    bar_mid_down=safeFloat(args[4]),
-                    bar_down=safeFloat(args[5]),
-                    tube=safeFloat(args[6]),
-                    motor_position=safeFloat(args[8]),
-                    motor_speed=safeFloat(args[9]),
-                    motor_power=safeFloat(args[10]),
-                    motor_current=safeFloat(args[11]),
-                    bandheater_power=safeFloat(args[12]),
-                    pressure_sensor=safeFloat(args[13]),
-                    adc_0=safeFloat(args[14]),
-                    adc_1=safeFloat(args[15]),
-                    adc_2=safeFloat(args[16]),
-                    adc_3=safeFloat(args[17]),
-                    water_status=water_status,
-                )
-                if MeticulousConfig[CONFIG_USER][GET_ACCESSORY_DATA]:
-                    data.motor_thermistor = safeFloat(args[21])
-                else:
-                    data.motor_thermistor = 0.0
+            data = SensorData(
+                external_1=safeFloat(args[0]),
+                external_2=safeFloat(args[1]),
+                bar_up=safeFloat(args[2]),
+                bar_mid_up=safeFloat(args[3]),
+                bar_mid_down=safeFloat(args[4]),
+                bar_down=safeFloat(args[5]),
+                tube=safeFloat(args[6]),
+                motor_temp=safeFloat(args[7]),
+                lam_temp=safeFloat(args[8]),
+                motor_position=safeFloat(args[9]),
+                motor_speed=safeFloat(args[10]),
+                motor_power=safeFloat(args[11]),
+                motor_current=safeFloat(args[12]),
+                bandheater_current=safeFloat(args[13]),
+                bandheater_power=safeFloat(args[14]),
+                pressure_sensor=safeFloat(args[15]),
+                adc_0=safeFloat(args[16]),
+                adc_1=safeFloat(args[17]),
+                adc_2=safeFloat(args[18]),
+                adc_3=safeFloat(args[19]),
+                water_status=args[20].lower() == "true",
+                motor_thermistor=safe_float_with_nan(args[21]),
+                weight_prediction=safe_float_with_nan(args[22]),
+            )
 
         except Exception as e:
             logger.warning(
@@ -136,7 +102,7 @@ class SensorData:
             return None
         return data
 
-    def to_sio_temperatures(self):
+    def to_sio_sensors(self):
         return {
             "t_ext_1": self.external_1,
             "t_ext_2": self.external_2,
@@ -147,32 +113,21 @@ class SensorData:
             "t_tube": self.tube,
             "t_motor_temp": self.motor_temp,
             "lam_temp": self.lam_temp,
-        }
-
-    def to_sio_communication(self):
-        return {
             "p": self.pressure_sensor,
             "a_0": self.adc_0,
             "a_1": self.adc_1,
             "a_2": self.adc_2,
             "a_3": self.adc_3,
-        }
-
-    def to_sio_actuators(self):
-        return {
             "m_pos": self.motor_position,
             "m_spd": self.motor_speed,
             "m_pwr": self.motor_power,
             "m_cur": self.motor_current,
             "bh_pwr": self.bandheater_power,
             "bh_cur": self.bandheater_current,
+            "w_stat": self.water_status,
+            "motor_temp": self.motor_thermistor,
+            "weight_pred": self.weight_prediction,
         }
-
-    def to_sio_water_status(self):
-        return {"water_status": self.water_status}
-
-    def to_sio_accessory_data(self):
-        return {"motor_thermistor": self.motor_thermistor}
 
 
 @dataclass
