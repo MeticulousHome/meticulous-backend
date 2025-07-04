@@ -156,19 +156,19 @@ async def live():
 
         if Machine.sensor_sensors is not None:
             water_status_dict = (  # noqa: F841
-                Machine.sensor_sensors.to_sio_water_status()
+                Machine.sensor_sensors.to_sio().get("water_status", {})
             )
             # water_status_value = water_status_dict["water_status"]
             # await sio.emit("water_status", water_status_value)
 
         if Machine.sensor_sensors is not None:
-            await sio.emit("sensors", Machine.sensor_sensors.to_sio_temperatures())
+            await sio.emit("sensors", Machine.sensor_sensors.to_sio().get("thermistors",{}))
             await sio.emit(
-                "comunication", Machine.sensor_sensors.to_sio_communication()
+                "comunication", Machine.sensor_sensors.to_sio().get("comms_monitor",{})
             )
-            await sio.emit("actuators", Machine.sensor_sensors.to_sio_actuators())
+            await sio.emit("actuators", Machine.sensor_sensors.to_sio().get("actuators_monitor",{}))
             await sio.emit(
-                "accessories", Machine.sensor_sensors.to_sio_accessory_data()
+                "accessories", Machine.sensor_sensors.to_sio().get("accessories",{})
             )
 
         # current_auto_preheat = MeticulousConfig[CONFIG_USER].get('auto_preheat')

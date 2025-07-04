@@ -135,9 +135,9 @@ class SensorData:
             )
             return None
         return data
-
-    def to_sio_temperatures(self):
-        return {
+    
+    def to_sio(self):
+        thermistors = {
             "t_ext_1": self.external_1,
             "t_ext_2": self.external_2,
             "t_bar_up": self.bar_up,
@@ -149,8 +149,7 @@ class SensorData:
             "lam_temp": self.lam_temp,
         }
 
-    def to_sio_communication(self):
-        return {
+        comms = {
             "p": self.pressure_sensor,
             "a_0": self.adc_0,
             "a_1": self.adc_1,
@@ -158,8 +157,7 @@ class SensorData:
             "a_3": self.adc_3,
         }
 
-    def to_sio_actuators(self):
-        return {
+        actuators = {
             "m_pos": self.motor_position,
             "m_spd": self.motor_speed,
             "m_pwr": self.motor_power,
@@ -168,9 +166,19 @@ class SensorData:
             "bh_cur": self.bandheater_current,
         }
 
-    def to_sio_water_status(self):
-        return {"water_status": self.water_status}
+        accessory_data = {
+            "motor_thermistor": self.motor_thermistor,
+        }
 
+        return {
+            "thermistors": thermistors,
+            "comms_monitor": comms,
+            "actuators_monitor":actuators,
+            "water_status": self.water_status,
+            "accessories": accessory_data, 
+        }
+
+    # NOTE: deprecated, kept to ensure functionality on REL machines
     def to_sio_accessory_data(self):
         return {"motor_thermistor": self.motor_thermistor}
 
