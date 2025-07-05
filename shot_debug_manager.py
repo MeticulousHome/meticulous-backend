@@ -31,8 +31,6 @@ DEBUG_FOLDER_FORMAT = "%Y-%m-%d"
 DEBUG_FILE_FORMAT = "%H:%M:%S"
 DEBUG_HISTORY_PATH = os.getenv("DEBUG_HISTORY_PATH", "/meticulous-user/history/debug")
 
-shot_log_lock = threading.Lock()
-
 
 class ShotLogHandler(logging.Handler):
 
@@ -292,6 +290,7 @@ class ShotDebugManager:
             "profile_ms": int(
                 (log_record.created - ShotDebugManager._current_data.startTime) * 1000.0
             ),
+            "loglevel": log_record.levelname,
             "caller": log_record.name,
             "log_message": msg,
         }
