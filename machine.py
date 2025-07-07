@@ -434,13 +434,17 @@ class Machine:
                             SoundPlayer.play_event_sound(Sounds.BREWING_END)
                             ShotManager.stop()
 
-                    if Machine.is_idle:
-                        ShotDebugManager.stop()
+                    if Machine.is_idle and old_status != MachineStatus.IDLE:
+                        Machine.profileReady = False
 
                     if old_status == MachineStatus.IDLE and not Machine.is_idle:
-                        ShotDebugManager.start()
                         if is_heating or is_preparing or is_retracting or is_starting:
                             time_passed = 0
+                        
+                    if Machine.profileReady:
+                        ShotDebugManager.start()
+                    else:
+                        ShotDebugManager.stop()
 
                     if Machine.is_idle and old_status != MachineStatus.IDLE:
                         SoundPlayer.play_event_sound(Sounds.IDLE)
