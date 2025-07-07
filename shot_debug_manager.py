@@ -47,6 +47,7 @@ class DebugShot(Shot):
         self.config = copy.deepcopy(MeticulousConfig[CONFIG_USER])
         self.config[CONFIG_WIFI] = {}
         self.machine = {}
+        self.nodeJSON = None
         if Machine.esp_info is not None:
             self.machine = Machine.esp_info.to_sio()
         self.shottype = "shot"
@@ -58,6 +59,7 @@ class DebugShot(Shot):
             "profile_name": self.profile_name,
             "machine": self.machine,
             "profile": self.profile,
+            "nodeJSON": self.nodeJSON,
             "config": self.config,
             "data": self.shotData,
             "logs": self.logs,
@@ -197,6 +199,9 @@ class ShotDebugManager:
 
         if current_data_copy.profile is None:
             current_data_copy.profile = {}
+
+        if ShotDebugManager._current_data.nodeJSON is None:
+            ShotDebugManager._current_data.nodeJSON = {}
 
         # Determine the folder path based on the current date
         start_timestamp = current_data_copy.startTime
