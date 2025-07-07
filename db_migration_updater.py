@@ -202,6 +202,13 @@ def update_db_migrations():
         # Backup new scripts
         backup_new_scripts()
 
+        # upgrade to the target revision if the database is new
+        if current_rev is None and target_rev is not None:
+            logger.info("Initializing new database schema")
+            command.upgrade(alembic_cfg, target_rev)
+            logger.info("Database initialized successfully")
+            return
+
         # Exit if no migration is needed
         if current_rev == target_rev:
             logger.info("Database is already at target version")
