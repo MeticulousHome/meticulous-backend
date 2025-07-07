@@ -135,7 +135,7 @@ class SensorData:
             )
             return None
         return data
-    
+
     def to_sio(self):
         thermistors = {
             "t_ext_1": self.external_1,
@@ -173,9 +173,9 @@ class SensorData:
         return {
             "thermistors": thermistors,
             "comms_monitor": comms,
-            "actuators_monitor":actuators,
+            "actuators_monitor": actuators,
             "water_status": self.water_status,
-            "accessories": accessory_data, 
+            "accessories": accessory_data,
         }
 
     # NOTE: deprecated, kept to ensure functionality on REL machines

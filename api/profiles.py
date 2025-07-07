@@ -18,8 +18,9 @@ from .machine import Machine
 from config import MeticulousConfig, ALLOW_LEGACY_JSON, CONFIG_USER
 from .emulation import LEGACY_DUMMY_PROFILE
 
-logger = MeticulousLogger.getLogger(__name__)
 from shot_debug_manager import ShotDebugManager
+
+logger = MeticulousLogger.getLogger(__name__)
 
 
 class ListHandler(BaseHandler):
