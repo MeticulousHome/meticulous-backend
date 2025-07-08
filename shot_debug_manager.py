@@ -75,7 +75,6 @@ class DebugShot(Shot):
 
 class ShotDebugManager:
     _current_data: DebugShot = None
-    current_shot_logs_lock = threading.Lock()
     clear_current_data_lock = threading.Lock()
     logging_handler = None
 
