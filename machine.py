@@ -711,7 +711,6 @@ class Machine:
             time_str = f"{int(time_ms*1000)} ns"
         logger.info(f"Streaming profile to ESP32 took {time_str}")
         Machine.profileReady = True
-        ShotDebugManager.start()
         ShotDebugManager._current_data.nodeJSON = json_obj
 
     def setSerial(color, serial, batch_number, build_date):
