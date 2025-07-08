@@ -47,7 +47,6 @@ from shot_manager import ShotManager
 from sounds import SoundPlayer, Sounds
 
 from manufacturing import FORCE_MANUFACTURING_ENABLED_KEY, LAST_BOOT_MODE_KEY
-from shot_debug_manager import ShotDebugManager
 
 
 def toggle_sentry(enabled):
@@ -441,7 +440,7 @@ class Machine:
                     if old_status == MachineStatus.IDLE and not Machine.is_idle:
                         if is_heating or is_preparing or is_retracting or is_starting:
                             time_passed = 0
-                        
+
                     if Machine.profileReady:
                         ShotDebugManager.start()
                     else:
@@ -713,7 +712,7 @@ class Machine:
         logger.info(f"Streaming profile to ESP32 took {time_str}")
         Machine.profileReady = True
         ShotDebugManager.start()
-
+        ShotDebugManager._current_data.nodeJSON = json_obj
 
     def setSerial(color, serial, batch_number, build_date):
         write_request = "nvs_request,write,"
