@@ -366,7 +366,7 @@ class ProfileManager:
         Machine.send_json_with_hash(profile)
 
         logger.info(
-            f"JSON streamed to ESP32: click_to_start={click_to_start} click_to_purge={click_to_purge} data={json.dumps(profile)}"
+            f"node JSON streamed to ESP32: click_to_start={click_to_start} click_to_purge={click_to_purge} data={json.dumps(profile)}"
         )
 
         ProfileManager._set_last_profile(data)
