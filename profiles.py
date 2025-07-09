@@ -364,10 +364,11 @@ class ProfileManager:
         logger.info(time_str)
 
         logger.info(
-            f"Streaming JSON to ESP32: click_to_start={click_to_start} click_to_purge={click_to_purge} data={json.dumps(preprocessed_profile)}"
+            f"node JSON streamed to ESP32: click_to_start={click_to_start} click_to_purge={click_to_purge} data={json.dumps(profile)}"
         )
 
         Machine.send_json_with_hash(profile)
+
         ProfileManager._set_last_profile(data)
 
         ProfileManager._emit_profile_event(PROFILE_EVENT.LOAD, data["id"])
