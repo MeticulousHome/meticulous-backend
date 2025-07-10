@@ -571,7 +571,7 @@ class ComplexProfileConverter:
                 "name": "retracting",
                 "nodes": [
                     {
-                        "id": 18,
+                        "id": 17,
                         "controllers": [
                             {
                                 "kind": "temperature_controller",
@@ -583,29 +583,43 @@ class ComplexProfileConverter:
                                     "reference": {"kind": "time", "id": 2},
                                 },
                             },
+                        ],
+                        "triggers": [{"kind": "exit", "next_node_id": 18}],
+                    },
+                    {
+                        "id": 18,
+                        "controllers": [
                             {
-                                "kind": "move_piston_controller",
-                                "speed": 6,
-                                "direction": "UP",
-                                "algorithm": "Piston Ease-In",
+                                "kind": "piston_power_controller",
+                                "algorithm": "Spring v1.0",
+                                "curve": {
+                                    "id": 7,
+                                    "interpolation_kind": "linear_interpolation",
+                                    "points": [[0, -100]],
+                                    "reference": {"kind": "time", "id": 2}
+                                }
                             },
                         ],
                         "triggers": (
                             [
                                 {
-                                    "kind": "piston_speed_trigger",
+                                    "kind": "piston_position_trigger",
                                     "next_node_id": 21,
-                                    "operator": "==",
-                                    "value": 0,
+                                    "source": "Piston Position Raw",
+                                    "position_reference_id": 1,
+                                    "operator": "<=",
+                                    "value": -45,
                                 }
                             ]
                             if no_skipping
                             else [
                                 {
-                                    "kind": "piston_speed_trigger",
+                                    "kind": "piston_position_trigger",
                                     "next_node_id": 21,
-                                    "operator": "==",
-                                    "value": 0,
+                                    "source": "Piston Position Raw",
+                                    "position_reference_id": 1,
+                                    "operator": "<=",
+                                    "value": -40,
                                 },
                                 {
                                     "kind": "button_trigger",
@@ -619,6 +633,16 @@ class ComplexProfileConverter:
                     {
                         "id": 21,
                         "controllers": [
+                            {
+                                "kind": "piston_power_controller",
+                                "algorithm": "Spring v1.0",
+                                "curve": {
+                                    "id": 8,
+                                    "interpolation_kind": "linear_interpolation",
+                                    "points": [[0, 0]],
+                                    "reference": {"kind": "time", "id": 2}
+                                }
+                            },
                             {"kind": "tare_controller"},
                             {"kind": "time_reference", "id": 4},
                         ],
@@ -626,56 +650,17 @@ class ComplexProfileConverter:
                     },
                     {
                         "id": 22,
-                        "controllers": [{"kind": "weight_reference", "id": 1}],
+                        "controllers": [{"kind": "weight_reference", "id": 1},
+                                        {"kind": "position_reference", "id": 4}],
                         "triggers": [
                             {
                                 "kind": "timer_trigger",
                                 "timer_reference_id": 4,
                                 "next_node_id": 23,
                                 "operator": ">=",
-                                "value": 2,
+                                "value": 3,
                             }
                         ],
-                    },
-                    {
-                        "id": 17,
-                        "controllers": [
-                            {
-                                "kind": "move_piston_controller",
-                                "speed": 4,
-                                "direction": "UP",
-                                "algorithm": "Piston Ease-In",
-                            }
-                        ],
-                        "triggers": (
-                            [
-                                {
-                                    "kind": "piston_position_trigger",
-                                    "next_node_id": 18,
-                                    "source": "Piston Position Raw",
-                                    "position_reference_id": 1,
-                                    "operator": "<=",
-                                    "value": -2,
-                                }
-                            ]
-                            if no_skipping
-                            else [
-                                {
-                                    "kind": "piston_position_trigger",
-                                    "next_node_id": 18,
-                                    "source": "Piston Position Raw",
-                                    "position_reference_id": 1,
-                                    "operator": "<=",
-                                    "value": -2,
-                                },
-                                {
-                                    "kind": "button_trigger",
-                                    "next_node_id": 18,
-                                    "gesture": "Single Tap",
-                                    "source": "Encoder Button",
-                                },
-                            ]
-                        ),
                     },
                 ],
             },
@@ -687,7 +672,7 @@ class ComplexProfileConverter:
                         "controllers": [
                             {
                                 "kind": "move_piston_controller",
-                                "speed": 5,
+                                "speed": 6,
                                 "direction": "DOWN",
                                 "algorithm": "Piston Ease-In",
                             },
@@ -697,22 +682,22 @@ class ComplexProfileConverter:
                             [
                                 {
                                     "kind": "piston_position_trigger",
-                                    "position_reference_id": 0,
+                                    "position_reference_id": 4,
                                     "next_node_id": self.end_node_head,
                                     "source": "Piston Position Raw",
                                     "operator": ">=",
-                                    "value": 3,
+                                    "value": 4,
                                 }
                             ]
                             if no_skipping
                             else [
                                 {
                                     "kind": "piston_position_trigger",
-                                    "position_reference_id": 0,
+                                    "position_reference_id": 4,
                                     "next_node_id": self.end_node_head,
                                     "source": "Piston Position Raw",
                                     "operator": ">=",
-                                    "value": 3,
+                                    "value": 4,
                                 },
                                 {
                                     "kind": "button_trigger",
@@ -750,25 +735,6 @@ class ComplexProfileConverter:
                         "triggers": [{"kind": "exit", "next_node_id": 24}],
                     },
                     {
-                        "id": 27,
-                        "controllers": [
-                            {
-                                "kind": "move_piston_controller",
-                                "speed": 6,
-                                "direction": "UP",
-                                "algorithm": "Piston Fast",
-                            }
-                        ],
-                        "triggers": [
-                            {
-                                "kind": "piston_speed_trigger",
-                                "next_node_id": self.tail_next_node_id,
-                                "operator": "==",
-                                "value": 0,
-                            }
-                        ],
-                    },
-                    {
                         "id": 24,
                         "controllers": [
                             {
@@ -786,6 +752,29 @@ class ComplexProfileConverter:
                                 "position_reference_id": 3,
                                 "operator": "<=",
                                 "value": -4,
+                            }
+                        ],
+                    },
+                    {
+                        "id": 27,
+                        "controllers": [
+                            {
+                                "kind": "piston_power_controller",
+                                "algorithm": "Spring v1.0",
+                                "curve": {
+                                    "id": 9,
+                                    "interpolation_kind": "linear_interpolation",
+                                    "points": [[0, -100]],
+                                    "reference": {"kind": "time", "id": 8}
+                                }
+                            },
+                        ],
+                        "triggers": [
+                            {
+                                "kind": "piston_speed_trigger",
+                                "next_node_id": self.tail_next_node_id,
+                                "operator": "==",
+                                "value": 0,
                             }
                         ],
                     },
@@ -884,12 +873,6 @@ class ComplexProfileConverter:
                         "id": 31,
                         "controllers": [
                             {"kind": "time_reference", "id": 22},
-                            {
-                                "kind": "move_piston_controller",
-                                "algorithm": "Piston Fast",
-                                "direction": "DOWN",
-                                "speed": 6,
-                            },
                         ],
                         "triggers": [
                             {"kind": "exit", "next_node_id": 32},
@@ -897,51 +880,6 @@ class ComplexProfileConverter:
                     },
                     {
                         "id": 32,
-                        "controllers": [],
-                        "triggers": (
-                            [
-                                {
-                                    "kind": "pressure_value_trigger",
-                                    "source": "Pressure Raw",
-                                    "operator": ">=",
-                                    "value": 6,
-                                    "next_node_id": 33,
-                                },
-                                {
-                                    "kind": "timer_trigger",
-                                    "timer_reference_id": 22,
-                                    "operator": ">=",
-                                    "value": 1.5,
-                                    "next_node_id": 34,
-                                },
-                            ]
-                            if no_skipping
-                            else [
-                                {
-                                    "kind": "pressure_value_trigger",
-                                    "source": "Pressure Raw",
-                                    "operator": ">=",
-                                    "value": 6,
-                                    "next_node_id": 33,
-                                },
-                                {
-                                    "kind": "timer_trigger",
-                                    "timer_reference_id": 22,
-                                    "operator": ">=",
-                                    "value": 1.5,
-                                    "next_node_id": 34,
-                                },
-                                {
-                                    "kind": "button_trigger",
-                                    "next_node_id": -2,
-                                    "gesture": "Single Tap",
-                                    "source": "Encoder Button",
-                                },
-                            ]
-                        ),
-                    },
-                    {
-                        "id": 33,
                         "controllers": [
                             {
                                 "kind": "pressure_controller",
@@ -957,19 +895,21 @@ class ComplexProfileConverter:
                         "triggers": (
                             [
                                 {
-                                    "kind": "piston_speed_trigger",
-                                    "operator": "==",
-                                    "value": 0,
-                                    "next_node_id": 35,
-                                }
+                                    "kind": "timer_trigger",
+                                    "timer_reference_id": 22,
+                                    "operator": ">=",
+                                    "value": 2,
+                                    "next_node_id": 34,
+                                },
                             ]
                             if no_skipping
                             else [
                                 {
-                                    "kind": "piston_speed_trigger",
-                                    "operator": "==",
-                                    "value": 0,
-                                    "next_node_id": 35,
+                                    "kind": "timer_trigger",
+                                    "timer_reference_id": 22,
+                                    "operator": ">=",
+                                    "value": 2,
+                                    "next_node_id": 34,
                                 },
                                 {
                                     "kind": "button_trigger",
@@ -982,14 +922,7 @@ class ComplexProfileConverter:
                     },
                     {
                         "id": 34,
-                        "controllers": [
-                            {
-                                "kind": "move_piston_controller",
-                                "algorithm": "Piston Ease-In",
-                                "direction": "DOWN",
-                                "speed": 6,
-                            }
-                        ],
+                        "controllers": [],
                         "triggers": (
                             [
                                 {
@@ -997,14 +930,7 @@ class ComplexProfileConverter:
                                     "operator": "==",
                                     "value": 0,
                                     "next_node_id": 35,
-                                },
-                                {
-                                    "kind": "pressure_value_trigger",
-                                    "source": "Pressure Raw",
-                                    "operator": ">=",
-                                    "value": 6,
-                                    "next_node_id": 33,
-                                },
+                                }
                             ]
                             if no_skipping
                             else [
@@ -1013,13 +939,6 @@ class ComplexProfileConverter:
                                     "operator": "==",
                                     "value": 0,
                                     "next_node_id": 35,
-                                },
-                                {
-                                    "kind": "pressure_value_trigger",
-                                    "source": "Pressure Raw",
-                                    "operator": ">=",
-                                    "value": 6,
-                                    "next_node_id": 33,
                                 },
                                 {
                                     "kind": "button_trigger",
@@ -1032,68 +951,6 @@ class ComplexProfileConverter:
                     },
                     {
                         "id": 35,
-                        "controllers": [{"kind": "time_reference", "id": 23}],
-                        "triggers": (
-                            [
-                                {"kind": "exit", "next_node_id": 36},
-                            ]
-                            if no_skipping
-                            else [
-                                {"kind": "exit", "next_node_id": 36},
-                                {
-                                    "kind": "button_trigger",
-                                    "next_node_id": -2,
-                                    "gesture": "Single Tap",
-                                    "source": "Encoder Button",
-                                },
-                            ]
-                        ),
-                    },
-                    {
-                        "id": 36,
-                        "controllers": [],
-                        "triggers": (
-                            [
-                                {
-                                    "kind": "piston_speed_trigger",
-                                    "operator": "!=",
-                                    "value": 0,
-                                    "next_node_id": 35,
-                                },
-                                {
-                                    "kind": "timer_trigger",
-                                    "timer_reference_id": 23,
-                                    "operator": ">=",
-                                    "value": 1,
-                                    "next_node_id": 37,
-                                },
-                            ]
-                            if no_skipping
-                            else [
-                                {
-                                    "kind": "piston_speed_trigger",
-                                    "operator": "!=",
-                                    "value": 0,
-                                    "next_node_id": 35,
-                                },
-                                {
-                                    "kind": "timer_trigger",
-                                    "timer_reference_id": 23,
-                                    "operator": ">=",
-                                    "value": 1,
-                                    "next_node_id": 37,
-                                },
-                                {
-                                    "kind": "button_trigger",
-                                    "next_node_id": -2,
-                                    "gesture": "Single Tap",
-                                    "source": "Encoder Button",
-                                },
-                            ]
-                        ),
-                    },
-                    {
-                        "id": 37,
                         "controllers": [],
                         "triggers": (
                             [
@@ -1103,22 +960,22 @@ class ComplexProfileConverter:
                                     "operator": "<=",
                                     "value": 0.5,
                                     "next_node_id": -2,
-                                }
+                                },
                             ]
                             if no_skipping
                             else [
                                 {
                                     "kind": "pressure_value_trigger",
                                     "source": "Pressure Raw",
-                                    "operator": "<=",
+                                    "operator": ">=",
                                     "value": 0.5,
                                     "next_node_id": -2,
                                 },
                                 {
                                     "kind": "button_trigger",
-                                    "next_node_id": -2,
                                     "gesture": "Single Tap",
                                     "source": "Encoder Button",
+                                    "next_node_id": -2,
                                 },
                             ]
                         ),
