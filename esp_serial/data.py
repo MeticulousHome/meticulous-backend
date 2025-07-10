@@ -136,7 +136,7 @@ class SensorData:
             return None
         return data
 
-    def to_sio_temperatures(self):
+    def to_sio_sensors(self):
         return {
             "t_ext_1": self.external_1,
             "t_ext_2": self.external_2,
@@ -147,32 +147,21 @@ class SensorData:
             "t_tube": self.tube,
             "t_motor_temp": self.motor_temp,
             "lam_temp": self.lam_temp,
-        }
-
-    def to_sio_communication(self):
-        return {
             "p": self.pressure_sensor,
             "a_0": self.adc_0,
             "a_1": self.adc_1,
             "a_2": self.adc_2,
             "a_3": self.adc_3,
-        }
-
-    def to_sio_actuators(self):
-        return {
             "m_pos": self.motor_position,
             "m_spd": self.motor_speed,
             "m_pwr": self.motor_power,
             "m_cur": self.motor_current,
             "bh_pwr": self.bandheater_power,
             "bh_cur": self.bandheater_current,
+            "w_stat": self.water_status,
+            "motor_temp": self.motor_thermistor,
+            "weight_pred": self.weight_prediction,
         }
-
-    def to_sio_water_status(self):
-        return {"water_status": self.water_status}
-
-    def to_sio_accessory_data(self):
-        return {"motor_thermistor": self.motor_thermistor}
 
 
 @dataclass
