@@ -19,6 +19,7 @@ from .base_handler import BaseHandler
 from .api import API, APIVersion
 
 from log import MeticulousLogger
+import asyncio
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -48,7 +49,7 @@ class WiFiConfig:
 
 
 class WiFiQRHandler(BaseHandler):
-    def get(self):
+    def generate_wifi_qr(self):
         config = WifiManager.getCurrentConfig()
         qr_contents: str = ""
         if config.is_hotspot():
@@ -74,13 +75,18 @@ class WiFiQRHandler(BaseHandler):
             module_color=[0x00, 0x00, 0x00, 0xFF],
             background=[0xFF, 0xFF, 0xFF, 0xFF],
         )
+        return buffer.getvalue()
 
+    async def get(self):
+        loop = asyncio.get_event_loop()
+        qr = await loop.run_in_executor(None, self.generate_wifi_qr)
         self.set_header("Content-Type", "image/png")
-        self.write(buffer.getvalue())
+        self.write(qr)
 
 
 class WiFiConfigHandler(BaseHandler):
-    def get(self):
+
+    def getWifiConfig(self):
         mode = MeticulousConfig[CONFIG_WIFI][WIFI_MODE]
         apName = MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME]
         apPassword = MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
@@ -89,7 +95,12 @@ class WiFiConfigHandler(BaseHandler):
             "status": WifiManager.getCurrentConfig().to_json(),
             "known_wifis": MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS],
         }
-        self.write(json.dumps(wifi_config))
+        return wifi_config
+
+    async def get(self):
+        loop = asyncio.get_event_loop()
+        config = await loop.run_in_executor(None, self.getWifiConfig)
+        self.write(config)
 
     def post(self):
         try:
@@ -124,7 +135,8 @@ class WiFiConfigHandler(BaseHandler):
 
 
 class WiFiListHandler(BaseHandler):
-    def get(self):
+
+    def getWifiList(self):
         networks = dict()
         try:
             for s in WifiManager.scanForNetworks():
@@ -154,8 +166,7 @@ class WiFiListHandler(BaseHandler):
             response = sorted(
                 networks.values(), key=lambda x: x["signal"], reverse=True
             )
-            response = json.dumps(response)
-            self.write(response)
+            return response
         except Exception as e:
             self.set_status(400)
             self.write({"status": "error", "error": f"failed to fetch wifi list: {e}"})
@@ -163,12 +174,20 @@ class WiFiListHandler(BaseHandler):
                 "Failed to fetch / format wifi list: ", exc_info=e, stack_info=True
             )
 
+    async def get(self):
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(None, self.getWifiList)
+        if response:
+            self.write(json.dumps(response))
+
 
 class WiFiConnectHandler(BaseHandler):
-    def post(self):
+
+    async def post(self):
         try:
             data = json.loads(self.request.body)
-            success = WifiManager.connectToWifi(data)
+            loop = asyncio.get_event_loop()
+            success = await loop.run_in_executor(None, WifiManager.connectToWifi, data)
 
             if success:
                 self.write({"status": "ok"})
