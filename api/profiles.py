@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 import jsonschema
 import tornado
+import asyncio
 
 from log import MeticulousLogger
 from profile_preprocessor import (
@@ -67,16 +68,21 @@ class SaveProfileHandler(BaseHandler):
 
 
 class LoadProfileHandler(BaseHandler):
-    def get(self, profile_id):
+    async def get(self, profile_id):
+        loop = asyncio.get_event_loop()
         if not Machine.is_idle:
             self.set_status(409)
             self.write({"status": "error", "error": "machine is busy"})
             return
         try:
-            data = ProfileManager.get_profile(profile_id)
+            data = await loop.run_in_executor(
+                None, ProfileManager.get_profile, profile_id
+            )
             if data:
                 try:
-                    profile = ProfileManager.load_profile_and_send(profile_id)
+                    profile = await loop.run_in_executor(
+                        None, ProfileManager.load_profile_and_send, profile_id
+                    )
                     self.write({"name": profile["name"], "id": profile["id"]})
                     return
                 except jsonschema.exceptions.ValidationError as err:
@@ -100,11 +106,12 @@ class LoadProfileHandler(BaseHandler):
                 "Failed to execute profile in place:", exc_info=e, stack_info=True
             )
 
-    def post(self):
+    async def post(self):
         if not Machine.is_idle:
             self.set_status(409)
             self.write({"status": "error", "error": "machine is busy"})
             return
+        loop = asyncio.get_event_loop()
 
         try:
 
@@ -119,7 +126,9 @@ class LoadProfileHandler(BaseHandler):
             logger.warning(f"Parsed data: {data}")
 
             try:
-                profile = ProfileManager.send_profile_to_esp32(data)
+                profile = await loop.run_in_executor(
+                    None, ProfileManager.send_profile_to_esp32, data
+                )
             except jsonschema.exceptions.ValidationError as err:
                 errors = {
                     "status": "error",
@@ -150,7 +159,7 @@ class LoadProfileHandler(BaseHandler):
 
 
 class LegacyProfileHandler(BaseHandler):
-    def post(self):
+    async def post(self):
         if not MeticulousConfig[CONFIG_USER][ALLOW_LEGACY_JSON]:
             self.set_status(404)
             return
@@ -159,12 +168,12 @@ class LegacyProfileHandler(BaseHandler):
             self.set_status(409)
             self.write({"status": "error", "error": "machine is busy"})
             return
+        loop = asyncio.get_event_loop()
         try:
             data = json.loads(self.request.body)
             try:
                 ProfileManager._set_last_profile(LEGACY_DUMMY_PROFILE)
-
-                Machine.send_json_with_hash(data)
+                await loop.run_in_executor(None, Machine.send_json_with_hash, data)
             except (
                 UndefinedVariableException,
                 VariableTypeException,
