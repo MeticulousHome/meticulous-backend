@@ -80,11 +80,11 @@ class ShotDebugManager:
 
     @staticmethod
     def start():
-        with ShotDebugManager.clear_current_data_lock:
-            if ShotDebugManager._current_data is None:
-                try:
+        try:
+            logger.info("Starting debug shot")
+            with ShotDebugManager.clear_current_data_lock:
+                if ShotDebugManager._current_data is None:
                     ShotDebugManager._current_data = DebugShot()
-                    logger.info("Starting debug shot")
                     ShotDebugManager.logging_handler = ShotLogHandler()
 
                     # Add the log handler on the first debug shot start
@@ -92,13 +92,12 @@ class ShotDebugManager:
                         ShotDebugManager.logging_handler
                     )
 
-                except Exception as e:
-                    logger.error(f"Failed to start debug shot: {e}")
-                    ShotDebugManager._current_data = None
-                    MeticulousLogger.remove_logging_handler(
-                        ShotDebugManager.logging_handler
-                    )
-                    return
+        except Exception as e:
+            logger.error(f"Failed to start debug shot: {e}")
+            with ShotDebugManager.clear_current_data_lock:
+                ShotDebugManager._current_data = None
+            MeticulousLogger.remove_logging_handler(ShotDebugManager.logging_handler)
+            return
 
     @staticmethod
     def handleSensorData(sensoData: SensorData):
@@ -185,13 +184,16 @@ class ShotDebugManager:
 
     @staticmethod
     def stop():
+
+        current_data_copy = None
         with ShotDebugManager.clear_current_data_lock:
+            if ShotDebugManager._current_data is not None:
+                current_data_copy = copy.deepcopy(ShotDebugManager._current_data)
 
-            if ShotDebugManager._current_data is None:
-                return
+        ShotDebugManager._current_data = None
 
-            current_data_copy = copy.deepcopy(ShotDebugManager._current_data)
-            ShotDebugManager._current_data = None
+        if current_data_copy is None:
+            return
 
         if current_data_copy.profile is None:
             current_data_copy.profile = {}
@@ -292,14 +294,13 @@ class ShotDebugManager:
     @staticmethod
     def handleLog(log_record: logging.LogRecord, formatter):
         with ShotDebugManager.clear_current_data_lock:
-            if ShotDebugManager._current_data is None:
-                return
-            start_time = ShotDebugManager._current_data.startTime
-            msg = formatter(log_record)
-            log: dict = {
-                "profile_ms": int((log_record.created - start_time) * 1000.0),
-                "loglevel": log_record.levelname,
-                "caller": log_record.name,
-                "log_message": msg,
-            }
-            ShotDebugManager._current_data.logs.append(log)
+            if ShotDebugManager._current_data is not None:
+                start_time = ShotDebugManager._current_data.startTime
+                msg = formatter(log_record)
+                log: dict = {
+                    "profile_ms": int((log_record.created - start_time) * 1000.0),
+                    "loglevel": log_record.levelname,
+                    "caller": log_record.name,
+                    "log_message": msg,
+                }
+                ShotDebugManager._current_data.logs.append(log)
