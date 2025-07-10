@@ -596,8 +596,8 @@ class ComplexProfileConverter:
                                     "id": 7,
                                     "interpolation_kind": "linear_interpolation",
                                     "points": [[0, -100]],
-                                    "reference": {"kind": "time", "id": 2}
-                                }
+                                    "reference": {"kind": "time", "id": 2},
+                                },
                             },
                         ],
                         "triggers": (
@@ -640,8 +640,8 @@ class ComplexProfileConverter:
                                     "id": 8,
                                     "interpolation_kind": "linear_interpolation",
                                     "points": [[0, 0]],
-                                    "reference": {"kind": "time", "id": 2}
-                                }
+                                    "reference": {"kind": "time", "id": 2},
+                                },
                             },
                             {"kind": "tare_controller"},
                             {"kind": "time_reference", "id": 4},
@@ -650,8 +650,10 @@ class ComplexProfileConverter:
                     },
                     {
                         "id": 22,
-                        "controllers": [{"kind": "weight_reference", "id": 1},
-                                        {"kind": "position_reference", "id": 4}],
+                        "controllers": [
+                            {"kind": "weight_reference", "id": 1},
+                            {"kind": "position_reference", "id": 4},
+                        ],
                         "triggers": [
                             {
                                 "kind": "timer_trigger",
@@ -765,8 +767,8 @@ class ComplexProfileConverter:
                                     "id": 9,
                                     "interpolation_kind": "linear_interpolation",
                                     "points": [[0, -100]],
-                                    "reference": {"kind": "time", "id": 8}
-                                }
+                                    "reference": {"kind": "time", "id": 8},
+                                },
                             },
                         ],
                         "triggers": [
