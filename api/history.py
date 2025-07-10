@@ -191,13 +191,24 @@ class CurrentShotHandler(BaseHandler):
 
 
 class LastShotHandler(BaseHandler):
-    def get(self):
-        last = ShotManager.getLastShot()
-        self.write(json.dumps(last))
+    async def get(self):
+        async def fetch_last_shot():
+            loop = asyncio.get_event_loop()
+            last = await loop.run_in_executor(None, ShotManager.getLastShot)
+            return json.dumps(last)
+
+        last_shot_json = await fetch_last_shot()
+        self.write(last_shot_json)
 
 
 class HistoryHandler(BaseHandler):
-    def post(self):
+
+    async def searchHistory(self, params: SearchParams):
+        loop = asyncio.get_event_loop()
+        last = await loop.run_in_executor(None, ShotDataBase.search_history, params)
+        return json.dumps(last)
+
+    async def post(self):
         try:
             data = json.loads(self.request.body)
             params = SearchParams(**data)
@@ -210,10 +221,10 @@ class HistoryHandler(BaseHandler):
             self.write(e.json())
             return
 
-        results = ShotDataBase.search_history(params)
+        results = await self.searchHistory(params)
         self.write({"history": results})
 
-    def get(self):
+    async def get(self):
         # get all entries
         params = SearchParams(
             query=self.get_query_argument("query", None),
@@ -226,7 +237,7 @@ class HistoryHandler(BaseHandler):
             dump_data=self.get_query_argument("dump_data", True),
         )
 
-        results = ShotDataBase.search_history(params)
+        results = await self.searchHistory(params)
         self.write({"history": results})
 
 
