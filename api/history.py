@@ -206,7 +206,7 @@ class HistoryHandler(BaseHandler):
     async def searchHistory(self, params: SearchParams):
         loop = asyncio.get_event_loop()
         last = await loop.run_in_executor(None, ShotDataBase.search_history, params)
-        return json.dumps(last)
+        return last
 
     async def post(self):
         try:
