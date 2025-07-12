@@ -619,7 +619,7 @@ class ComplexProfileConverter:
                                     "source": "Piston Position Raw",
                                     "position_reference_id": 1,
                                     "operator": "<=",
-                                    "value": -40,
+                                    "value": -45,
                                 },
                                 {
                                     "kind": "button_trigger",
@@ -969,7 +969,7 @@ class ComplexProfileConverter:
                                 {
                                     "kind": "pressure_value_trigger",
                                     "source": "Pressure Raw",
-                                    "operator": ">=",
+                                    "operator": "<=",
                                     "value": 0.5,
                                     "next_node_id": -2,
                                 },
