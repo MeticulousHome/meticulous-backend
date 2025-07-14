@@ -17,4 +17,4 @@ class NamedThread(threading.Thread):
             logger.debug(f"Thread {self.name} started")
             super().run()
         except Exception as e:
-            logger.error(f"Thread {self.name} crashed: {e}")
+            logger.error(f"Thread {self.name} crashed:", exc_info=e, stack_info=True)
