@@ -201,8 +201,8 @@ class ShotDebugManager:
         if current_data_copy.profile is None:
             current_data_copy.profile = {}
 
-        if ShotDebugManager._current_data.nodeJSON is None:
-            ShotDebugManager._current_data.nodeJSON = {}
+        if current_data_copy.nodeJSON is None:
+            current_data_copy.nodeJSON = {}
 
         # Determine the folder path based on the current date
         start_timestamp = current_data_copy.startTime
