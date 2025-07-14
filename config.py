@@ -330,11 +330,18 @@ class MeticulousConfigDict(dict):
             yaml.dump(self.copy(), f, default_flow_style=False, allow_unicode=True)
 
         if self.__sio:
-            loop = (
-                asyncio.get_event_loop()
-                if asyncio.get_event_loop().is_running()
-                else asyncio.new_event_loop()
-            )
+
+            # when running in an executor asyncio.get_event_loop() might fail, as there might
+            # not be a loop in the thread created by asyncio
+            try:
+                loop = (
+                    asyncio.get_event_loop()
+                    if asyncio.get_event_loop().is_running()
+                    else asyncio.new_event_loop()
+                )
+            except:
+                loop = asyncio.new_event_loop()
+            
             asyncio.set_event_loop(loop)
 
             async def sendSettingsNotification():
