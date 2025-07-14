@@ -188,6 +188,7 @@ class ShotDebugManager:
     def stop():
 
         current_data_copy = None
+        logger.info("Stopping debug shot")
         with ShotDebugManager.clear_current_data_lock:
             if ShotDebugManager._current_data is not None:
                 current_data_copy = copy.deepcopy(ShotDebugManager._current_data)
