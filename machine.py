@@ -102,6 +102,7 @@ class Machine:
 
     infoReady = False
     profileReady = False
+    oldProfileReady = False
 
     data_sensors: ShotData = ShotData(
         state=MachineStatus.IDLE, status=MachineStatus.IDLE, profile=MachineStatus.IDLE
@@ -441,10 +442,12 @@ class Machine:
                         if is_heating or is_preparing or is_retracting or is_starting:
                             time_passed = 0
 
-                    if Machine.profileReady:
+                    if Machine.profileReady and not Machine.oldProfileReady:
                         ShotDebugManager.start()
-                    else:
+                    if not Machine.profileReady and Machine.oldProfileReady:
                         ShotDebugManager.stop()
+
+                    Machine.oldProfileReady = Machine.profileReady
 
                     if Machine.is_idle and old_status != MachineStatus.IDLE:
                         SoundPlayer.play_event_sound(Sounds.IDLE)
@@ -711,7 +714,11 @@ class Machine:
             time_str = f"{int(time_ms*1000)} ns"
         logger.info(f"Streaming profile to ESP32 took {time_str}")
         Machine.profileReady = True
-        ShotDebugManager._current_data.nodeJSON = json_obj
+        while True:
+            if ShotDebugManager._current_data is not None:
+                break
+        with ShotDebugManager.clear_current_data_lock:
+            ShotDebugManager._current_data.nodeJSON = json_obj
 
     def setSerial(color, serial, batch_number, build_date):
         write_request = "nvs_request,write,"
