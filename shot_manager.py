@@ -102,6 +102,7 @@ class Shot:
 class ShotManager:
     _last_shot: Shot = None
     _current_shot: Shot = None
+    db_history_id = None
 
     # The ShotDatabase is required to work once we use the ShotManager.
     # We therefore initialize it here
@@ -220,15 +221,19 @@ class ShotManager:
                 try:
                     dbEntry = shot_data
                     dbEntry["file"] = str(file_path)
-                    ShotDataBase.insert_history(shot_data)
+                    history_id = ShotDataBase.insert_history(shot_data)
                     ShotManager._last_shot = None
                     ShotManager.getLastShot()
+
+                    #notify the SDM that the current shot is in the db
                 except Exception as e:
                     logger.error(f"Failed to insert shot into sqlite: {e}")
                     logger.error(traceback.format_exc())
                 else:
+                    ShotManager.db_history_id = history_id
                     time_ms = (time.time() - start) * 1000
                     logger.info(f"Ingesting shot into sqlite took {time_ms} ms")
+                    logger.info(f"Shot ingested with history id: {ShotManager.db_history_id}")
                 shot_data = None
 
             compresson_thread = NamedThread(

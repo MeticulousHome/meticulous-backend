@@ -275,8 +275,17 @@ class ShotDataBase:
                     profile_id=profile_data["id"],
                     profile_key=profile_key,
                 )
-                connection.execute(ins_stmt)
-
+                result = connection.execute(ins_stmt)
+                return result.inserted_primary_key[0]
+            
+    @staticmethod
+    def link_debug_file(history_shot_id, debug_filename):
+        stmt = update(history_table).where(history_table.c.id == history_shot_id).values(debug_file=debug_filename)
+        with ShotDataBase.engine.connect() as connection:
+            with connection.begin():
+                result = connection.execute(stmt)
+                logger.info(f"debug file linked, affected rows: {{{result.rowcount}}}")
+    
     @staticmethod
     def delete_shot(shot_id):
         with ShotDataBase.engine.connect() as connection:
