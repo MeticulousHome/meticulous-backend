@@ -50,6 +50,7 @@ history = Table(
     Column("profile_name", Text, nullable=False),
     Column("profile_id", Text, nullable=False),
     Column("profile_key", Integer, ForeignKey("profile.key"), nullable=False),
+    Column("debug_file", Text, nullable=True),
 )
 
 shot_annotation = Table(
