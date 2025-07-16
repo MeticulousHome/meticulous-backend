@@ -316,7 +316,7 @@ class GetDBFileHandler(BaseHandler):
                 self.set_status(200)
                 self.write(compressed_file)
 
-
+API.register_handler(APIVersion.V1, r"/debugShot", GetDBFileHandler),
 API.register_handler(APIVersion.V1, r"/profile/list", ListHandler),
 API.register_handler(APIVersion.V1, r"/profile/save", SaveProfileHandler),
 API.register_handler(APIVersion.V1, r"/profile/load", LoadProfileHandler),
