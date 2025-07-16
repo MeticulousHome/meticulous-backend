@@ -262,6 +262,61 @@ class ListImagesHandler(BaseHandler):
         self.write(json.dumps(ProfileManager.get_default_images()))
 
 
+class GetDBFileHandler(BaseHandler):
+
+    def get(self):
+        import os
+        from shot_database import HISTORY_PATH, ShotDataBase
+        from sqlalchemy.exc import SQLAlchemyError
+
+        file_relative_path = self.get_query_argument("filename", None)
+        if file_relative_path is None:
+            self.set_status(400)
+            self.write(
+                {"status": "error", "error": "missing 'filename' query argument"}
+            )
+            return
+        file_path = os.path.join(HISTORY_PATH, file_relative_path)
+
+        if not os.path.exists(file_path) or not os.path.isfile(file_path):
+            self.set_status(500)
+            try:
+                ShotDataBase.unlink_debug_file(file_relative_path)
+            except SQLAlchemyError as e:
+                self.write(
+                    {
+                        "status": "error",
+                        "error": f"DB error while unlinking missing debug file: {e}",
+                    }
+                )
+            except Exception as e:
+                self.write(
+                    {
+                        "status": "error",
+                        "error": f"Error unlinking missing debug file: {e}",
+                    }
+                )
+            else:
+                self.write(
+                    {
+                        "status": "error",
+                        "error": "file not found or invalid file, unlinked from DB",
+                    }
+                )
+
+        with open(file_path, "rb") as db_file:
+            try:
+                compressed_file = db_file.read()
+            except Exception:
+                self.set_status(500)
+                self.write(
+                    {"status": "error", "error": "error reading compressed file"}
+                )
+            else:
+                self.set_status(200)
+                self.write(compressed_file)
+
+
 API.register_handler(APIVersion.V1, r"/profile/list", ListHandler),
 API.register_handler(APIVersion.V1, r"/profile/save", SaveProfileHandler),
 API.register_handler(APIVersion.V1, r"/profile/load", LoadProfileHandler),
