@@ -17,6 +17,7 @@ from .base_handler import BaseHandler
 import asyncio
 from shot_debug_manager import ShotDebugManager
 from pathlib import Path
+from config import MeticulousConfig, CONFIG_SYSTEM, DEVICE_IDENTIFIER
 
 logger = MeticulousLogger.getLogger(__name__)
 last_version_path = f"/api/{APIVersion.latest_version().name.lower()}"
@@ -339,9 +340,14 @@ class GetDBFileHandler(BaseHandler):
                 )
             return
         self.set_header("Content-Type", "application/octet-stream")
+        device_name = "".join(MeticulousConfig[CONFIG_SYSTEM][DEVICE_IDENTIFIER])
+        file_date_formatted = file_relative_path.split(os.path.sep)[0].replace("-", "_")
+        served_file_name = (
+            f"{device_name}_{file_date_formatted}_{os.path.basename(file_path)}"
+        )
         self.set_header(
             "Content-Disposition",
-            f'attachment; filename="{os.path.basename(file_path)}"',
+            f'attachment; filename="{served_file_name}"',
         )
         try:
             with open(file_path, "rb") as db_file:
