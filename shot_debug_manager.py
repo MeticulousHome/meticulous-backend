@@ -22,7 +22,7 @@ from config import (
 from esp_serial.data import SensorData, ShotData, MachineStatus, MachineStatusToProfile
 from telemetry_service import TelemetryService
 from log import MeticulousLogger
-from shot_manager import (Shot, ShotManager)
+from shot_manager import Shot, ShotManager
 import copy
 
 
@@ -264,13 +264,15 @@ class ShotDebugManager:
             time_ms = (time.time() - start) * 1000
             logger.info(f"Writing debug json to disc took {time_ms} ms")
 
-            #link the Debug file to the shot in the db
+            # link the Debug file to the shot in the db
             if ShotManager.db_history_id is not None:
                 debug_dir_filename = os.path.join(*file_path.split(os.path.sep)[-2:])
-                ShotDataBase.link_debug_file(ShotManager.db_history_id, debug_dir_filename)
-                
+                ShotDataBase.link_debug_file(
+                    ShotManager.db_history_id, debug_dir_filename
+                )
+
             ShotManager.db_history_id = None
-            
+
             if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] is True:
                 if Machine.emulated:
                     logger.info("Not sending emulated debug shots")

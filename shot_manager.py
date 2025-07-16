@@ -225,7 +225,7 @@ class ShotManager:
                     ShotManager._last_shot = None
                     ShotManager.getLastShot()
 
-                    #notify the SDM that the current shot is in the db
+                    # notify the SDM that the current shot is in the db
                 except Exception as e:
                     logger.error(f"Failed to insert shot into sqlite: {e}")
                     logger.error(traceback.format_exc())
@@ -233,7 +233,9 @@ class ShotManager:
                     ShotManager.db_history_id = history_id
                     time_ms = (time.time() - start) * 1000
                     logger.info(f"Ingesting shot into sqlite took {time_ms} ms")
-                    logger.info(f"Shot ingested with history id: {ShotManager.db_history_id}")
+                    logger.info(
+                        f"Shot ingested with history id: {ShotManager.db_history_id}"
+                    )
                 shot_data = None
 
             compresson_thread = NamedThread(
