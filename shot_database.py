@@ -299,7 +299,7 @@ class ShotDataBase:
         with ShotDataBase.engine.connect() as connection:
             with connection.begin():
                 result = connection.execute(stmt)
-                if result.rowscount == 0:
+                if result.rowcount == 0:
                     raise Exception("no columns affected, check relative file path")
 
     @staticmethod
