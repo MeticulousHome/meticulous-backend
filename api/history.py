@@ -310,7 +310,7 @@ class GetDBFileHandler(BaseHandler):
                 {"status": "error", "error": "missing 'filename' query argument"}
             )
             return
-        file_path = os.path.join(HISTORY_PATH, file_relative_path)
+        file_path = os.path.join(HISTORY_PATH,"debug",file_relative_path)
 
         if not os.path.exists(file_path) or not os.path.isfile(file_path):
             self.set_status(400)
