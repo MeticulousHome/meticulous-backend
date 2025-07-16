@@ -82,8 +82,6 @@ def run():
             ShotManager.init()
         except Exception as e:
             logger.error("Failed to initialize ShotManager", exc_info=e)
-
-        logger.info("Running database migrations")
         try:
             update_db_migrations()
         except Exception as e:
