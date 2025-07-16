@@ -310,7 +310,7 @@ class GetDBFileHandler(BaseHandler):
                 {"status": "error", "error": "missing 'filename' query argument"}
             )
             return
-        file_path = os.path.join(HISTORY_PATH,"debug",file_relative_path)
+        file_path = os.path.join(HISTORY_PATH, "debug", file_relative_path)
 
         if not os.path.exists(file_path) or not os.path.isfile(file_path):
             self.set_status(400)
@@ -338,18 +338,20 @@ class GetDBFileHandler(BaseHandler):
                     }
                 )
             return
-
-        with open(file_path, "rb") as db_file:
-            try:
-                compressed_file = db_file.read()
-            except Exception:
-                self.set_status(500)
-                self.write(
-                    {"status": "error", "error": "error reading compressed file"}
-                )
-            else:
-                self.set_status(200)
-                self.write(compressed_file)
+        self.set_header("Content-Type", "application/octet-stream")
+        self.set_header(
+            "Content-Disposition",
+            f'attachment; filename="{os.path.basename(file_path)}"',
+        )
+        try:
+            with open(file_path, "rb") as db_file:
+                while chunk := db_file.read(4096):
+                    self.write(chunk)
+            self.finish()
+        except Exception:
+            self.clear()
+            self.set_status(500)
+            self.write({"status": "error", "error": "error reading compressed file"})
 
 
 API.register_handler(APIVersion.V1, r"/history/debug-file", GetDBFileHandler),
