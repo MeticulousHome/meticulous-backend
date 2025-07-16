@@ -299,7 +299,7 @@ class ShotDataBase:
         with ShotDataBase.engine.connect() as connection:
             with connection.begin():
                 result = connection.execute(stmt)
-                if result.rowscount == 0:
+                if result.rowcount == 0:
                     raise Exception("no columns affected, check relative file path")
 
     @staticmethod
@@ -450,6 +450,9 @@ class ShotDataBase:
                     "db_key": row_dict.pop("history_id"),
                     "time": datetime.timestamp(row_dict.pop("history_time")),
                     "file": file_entry,
+                    "debug_file": row_dict.pop(
+                        "history_debug_file", "column not found"
+                    ),
                     "name": row_dict.pop("history_profile_name"),
                     "data": data,
                     "profile": profile,
