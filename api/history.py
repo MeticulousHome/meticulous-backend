@@ -337,6 +337,7 @@ class GetDBFileHandler(BaseHandler):
                         "error": "file not found or invalid file, unlinked from DB",
                     }
                 )
+            return
 
         with open(file_path, "rb") as db_file:
             try:
