@@ -313,7 +313,7 @@ class GetDBFileHandler(BaseHandler):
         file_path = os.path.join(HISTORY_PATH, file_relative_path)
 
         if not os.path.exists(file_path) or not os.path.isfile(file_path):
-            self.set_status(500)
+            self.set_status(400)
             try:
                 ShotDataBase.unlink_debug_file(file_relative_path)
             except SQLAlchemyError as e:
