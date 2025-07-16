@@ -90,9 +90,7 @@ class ShotDataBase:
         ShotDataBase.session = sessionmaker(bind=ShotDataBase.engine)
 
         try:
-            # Ensure tables are created
-            ShotDataBase.metadata.create_all(ShotDataBase.engine)
-
+            
             # Ensure FTS tables are created
             with ShotDataBase.engine.connect() as connection:
                 connection.execute(
