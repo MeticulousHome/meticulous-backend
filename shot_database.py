@@ -289,6 +289,20 @@ class ShotDataBase:
                 logger.info(f"debug file linked, affected rows: {{{result.rowcount}}}")
 
     @staticmethod
+    def unlink_debug_file(file_relative_path):
+
+        stmt = (
+            update(history_table)
+            .where(history_table.c.debug_file == file_relative_path)
+            .values(debug_file=None)
+        )
+        with ShotDataBase.engine.connect() as connection:
+            with connection.begin():
+                result = connection.execute(stmt)
+                if result.rowscount == 0:
+                    raise Exception("no columns affected, check relative file path")
+
+    @staticmethod
     def delete_shot(shot_id):
         with ShotDataBase.engine.connect() as connection:
             with connection.begin():
