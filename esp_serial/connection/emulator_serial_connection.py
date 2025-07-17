@@ -26,6 +26,7 @@ class EmulatorSerialConnection(SerialConnection):
         super().__init__(os.ttyname(self.us))
         self.line_counter = 0
         self.flasher = MagicMock()
+        EmulationData.init()
         self.send_data_thread = NamedThread("EmulationData", target=self.send_data)
         self.send_data_thread.start()
 
@@ -57,11 +58,6 @@ class EmulatorSerialConnection(SerialConnection):
                 if b"action,start" in host_commands:
                     logger.info("Starting espresso simulation!")
                     data_source = EmulationData.ESPRESSO_DATA
-                    self.line_counter = 0
-                    continue
-                if b"action,purge" in host_commands:
-                    logger.info("Starting purge simulation!")
-                    data_source = EmulationData.PURGE_DATA
                     self.line_counter = 0
                     continue
                 if b"action,stop" in host_commands:

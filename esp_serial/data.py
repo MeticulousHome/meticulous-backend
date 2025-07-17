@@ -102,6 +102,35 @@ class SensorData:
             return None
         return data
 
+    def to_args(self):
+        """Convert SensorData to a list of arguments for serial communication."""
+        args = [
+            str(self.external_1),
+            str(self.external_2),
+            str(self.bar_up),
+            str(self.bar_mid_up),
+            str(self.bar_mid_down),
+            str(self.bar_down),
+            str(self.tube),
+            str(self.motor_temp),
+            str(self.lam_temp),
+            str(self.motor_position),
+            str(self.motor_speed),
+            str(self.motor_power),
+            str(self.motor_current),
+            str(self.bandheater_current),
+            str(self.bandheater_power),
+            str(self.pressure_sensor),
+            str(self.adc_0),
+            str(self.adc_1),
+            str(self.adc_2),
+            str(self.adc_3),
+            "true" if self.water_status else "false",
+            str(self.motor_thermistor),
+            str(self.weight_prediction),
+        ]
+        return args
+
     def to_sio_sensors(self):
         return {
             "t_ext_1": self.external_1,
@@ -169,6 +198,20 @@ class ESPInfo:
             logger.warning(f"Failed to parse ESPInfo: {args}", exc_info=e)
             return None
         return info
+
+    def to_args(self):
+        """Convert ESPInfo to a list of arguments for serial communication."""
+        args = [
+            self.firmwareV,
+            str(self.espPinout),
+            str(self.mainVoltage),
+            self.color,
+            self.serialNumber,
+            self.batchNumber,
+            self.buildDate,
+            self.scaleModule,
+        ]
+        return args
 
     def to_sio(self):
         """Convert ESPInfo to a dictionary for socket.io communication."""
@@ -246,6 +289,38 @@ class ShotData:
 
     def clone_with_time_and_state(self, shot_start_time, is_brewing):
         return replace(self, time=shot_start_time, is_extracting=is_brewing)
+
+    def to_args(self):
+        """Convert ShotData to a list of arguments for serial communication."""
+        args = [
+            str(self.pressure),
+            str(self.flow),
+            str(self.weight),
+            "S" if self.stable_weight else "U",
+            str(self.temperature),
+            self.status or "",
+            self.profile or "",
+        ]
+
+        if self.main_controller_kind is not None:
+            args.append(self.main_controller_kind)
+            args.append(str(self.main_setpoint))
+        else:
+            args.append("none")
+            args.append("0.0")
+
+        if self.aux_controller_kind is not None:
+            args.append(self.aux_controller_kind)
+            args.append(str(self.aux_setpoint))
+            args.append("true" if self.is_aux_controller_active else "false")
+        else:
+            args.append("none")
+            args.append("0.0")
+            args.append("false")
+
+        args.append(str(self.gravimetric_flow))
+
+        return args
 
     def from_args(args):
         try:
