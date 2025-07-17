@@ -392,11 +392,12 @@ class Machine:
                     is_purge = data.status == MachineStatus.PURGE
                     is_retracting = data.status == MachineStatus.RETRACTING
                     is_preparing = data.status == MachineStatus.CLOSING_VALVE
+                    was_preparing = old_status == MachineStatus.CLOSING_VALVE
                     is_heating = data.status == MachineStatus.HEATING
                     is_starting = data.status == MachineStatus.STARTING
 
                     # A shot started
-                    if is_preparing and data.status != old_status:
+                    if was_preparing and data.status != old_status:
                         time_flag = True
                         shot_start_time = time.time()
                         logger.info("shot start_time: {:.1f}".format(shot_start_time))
