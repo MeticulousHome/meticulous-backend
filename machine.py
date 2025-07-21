@@ -79,7 +79,7 @@ class esp_nvs_keys(Enum):
 
 class Machine:
 
-    ALLOWED_BACKEND_ACTIONS = ["reset"]
+    ALLOWED_BACKEND_ACTIONS = ["reset", "abort"]
     ALLOWED_ESP_ACTIONS = [
         "start",
         "stop",
@@ -651,6 +651,7 @@ class Machine:
     def end_profile():
         if Machine.data_sensors.status == "idle":
             return
+        logger.info("Ending profile due to user request")
         if (
             Machine.data_sensors.state == "brewing"
             and Machine.data_sensors.status

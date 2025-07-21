@@ -81,6 +81,12 @@ def disconnect(sid):
 def msg(sid, data):
     if data in Machine.ALLOWED_ESP_ACTIONS:
         Machine.action(action_event=data)
+    elif data in Machine.ALLOWED_BACKEND_ACTIONS:
+        match data:
+            case "reset":
+                logger.warning("action,reset is not allowed from socket.io")
+            case "abort":
+                Machine.end_profile()
     else:
         logger.warning(f"Invalid action {data}")
 
