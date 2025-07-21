@@ -65,6 +65,16 @@ class EmulatorSerialConnection(SerialConnection):
                     data_source = EmulationData.IDLE_DATA
                     self.line_counter = 0
                     continue
+                if b"action,purge" in host_commands:
+                    logger.info("Starting purge simulation!")
+                    data_source = EmulationData.PURGE_DATA
+                    self.line_counter = 0
+                    continue
+                if b"action,home" in host_commands:
+                    logger.info("Starting purge simulation!")
+                    data_source = EmulationData.HOME_DATA
+                    self.line_counter = 0
+                    continue
             except BlockingIOError:
                 pass
 

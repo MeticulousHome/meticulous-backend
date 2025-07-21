@@ -8,6 +8,65 @@ class EmulationData:
     IDLE_DATA = []
     ESPRESSO_DATA = []
 
+    def shotToEmulation(shot, isProfile=False):
+        emulationData = []
+        shot_data = shot["data"]
+        for sample in shot_data:
+            sensor = sample["sensors"]
+            data = sample["shot"]
+            if sample["time"] <= 0:
+                continue
+
+            new_sensors = SensorData(
+                external_1=sensor["external_1"],
+                external_2=sensor["external_2"],
+                bar_up=sensor["bar_up"],
+                bar_mid_up=sensor["bar_mid_up"],
+                bar_mid_down=sensor["bar_mid_down"],
+                bar_down=sensor["bar_down"],
+                tube=sensor["tube"],
+                motor_temp=sensor["motor_temp"],
+                lam_temp=sensor["lam_temp"],
+                motor_position=sensor["motor_position"],
+                motor_speed=sensor["motor_speed"],
+                motor_power=sensor["motor_power"],
+                motor_current=sensor["motor_current"],
+                bandheater_power=sensor["bandheater_power"],
+                bandheater_current=sensor["bandheater_current"],
+                pressure_sensor=sensor["pressure_sensor"],
+                adc_0=sensor["adc_0"],
+                adc_1=sensor["adc_1"],
+                adc_2=sensor["adc_2"],
+                adc_3=sensor["adc_3"],
+                water_status=sensor.get("water_status", False),
+            )
+            setpoints_type = data["setpoints"]["active"]
+            main_setpoint = None
+
+            if setpoints_type is not None:
+                main_setpoint = data["setpoints"].get(setpoints_type, None)
+
+            new_shot = ShotData(
+                pressure=data["pressure"],
+                flow=data["flow"],
+                weight=data["weight"],
+                gravimetric_flow=data["gravimetric_flow"],
+                temperature=data.get("temperature", sensor["tube"]),
+                profile=(
+                    EmulationData.PROFILE_PLACEHOLDER
+                    if isProfile
+                    else shot["profile_name"]
+                ),
+                status=sample["status"],
+                main_controller_kind=data["setpoints"]["active"],
+                main_setpoint=main_setpoint,
+                # aux_controller_kind=data["setpoints"].get("aux", None),
+                # aux_setpoint=aux_setpoint,
+            )
+            emulationData.append("Data," + ",".join(new_shot.to_args()))
+            emulationData.append("Sensors," + ",".join(new_sensors.to_args()))
+        return emulationData
+
     def init():
         """
         Initialize the emulation data with default values.
@@ -48,62 +107,24 @@ class EmulationData:
         ]
 
         emulated_shot_path = os.path.join(
-            os.path.dirname(__file__), "emulated_shot.json"
+            os.path.dirname(__file__), "emulated.shot.json"
         )
         with open(emulated_shot_path, "r") as f:
             shot = json.load(f)
-            shot_data = shot["data"]
-            for sample in shot_data:
-                sensor = sample["sensors"]
-                data = sample["shot"]
+            EmulationData.ESPRESSO_DATA = EmulationData.shotToEmulation(shot)
 
-                new_sensors = SensorData(
-                    external_1=sensor["external_1"],
-                    external_2=sensor["external_2"],
-                    bar_up=sensor["bar_up"],
-                    bar_mid_up=sensor["bar_mid_up"],
-                    bar_mid_down=sensor["bar_mid_down"],
-                    bar_down=sensor["bar_down"],
-                    tube=sensor["tube"],
-                    motor_temp=sensor["motor_temp"],
-                    lam_temp=sensor["lam_temp"],
-                    motor_position=sensor["motor_position"],
-                    motor_speed=sensor["motor_speed"],
-                    motor_power=sensor["motor_power"],
-                    motor_current=sensor["motor_current"],
-                    bandheater_power=sensor["bandheater_power"],
-                    bandheater_current=sensor["bandheater_current"],
-                    pressure_sensor=sensor["pressure_sensor"],
-                    adc_0=sensor["adc_0"],
-                    adc_1=sensor["adc_1"],
-                    adc_2=sensor["adc_2"],
-                    adc_3=sensor["adc_3"],
-                    water_status=sensor.get("water_status", False),
-                )
-                setpoints_type = data["setpoints"]["active"]
-                main_setpoint = None
+        emulated_home_path = os.path.join(
+            os.path.dirname(__file__), "emulated.home.json"
+        )
+        with open(emulated_home_path, "r") as f:
+            shot = json.load(f)
+            EmulationData.HOME_DATA = EmulationData.shotToEmulation(shot)
 
-                if setpoints_type is not None:
-                    main_setpoint = data["setpoints"].get(setpoints_type, None)
+        emulated_purge_path = os.path.join(
+            os.path.dirname(__file__), "emulated.purge.json"
+        )
+        with open(emulated_purge_path, "r") as f:
+            shot = json.load(f)
+            EmulationData.PURGE_DATA = EmulationData.shotToEmulation(shot)
 
-                new_shot = ShotData(
-                    pressure=data["pressure"],
-                    flow=data["flow"],
-                    weight=data["weight"],
-                    gravimetric_flow=data["gravimetric_flow"],
-                    temperature=data.get("temperature", sensor["tube"]),
-                    profile=EmulationData.PROFILE_PLACEHOLDER,
-                    status=sample["status"],
-                    main_controller_kind=data["setpoints"]["active"],
-                    main_setpoint=main_setpoint,
-                    # aux_controller_kind=data["setpoints"].get("aux", None),
-                    # aux_setpoint=aux_setpoint,
-                )
-                EmulationData.ESPRESSO_DATA.append(
-                    "Data," + ",".join(new_shot.to_args())
-                )
-                EmulationData.ESPRESSO_DATA.append(
-                    "Sensors," + ",".join(new_sensors.to_args())
-                )
-            print("EmulationData initialized with IDLE and ESPRESSO data.")
-            print(EmulationData.ESPRESSO_DATA)
+        print("EmulationData initialized")
