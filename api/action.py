@@ -23,6 +23,8 @@ class ExecuteActionHandler(BaseHandler):
                 case "reset":
                     Machine.reset()
                     self.write(json.dumps({"action": action, "status": "ok"}))
+                case "abort":
+                    Machine.end_profile()
         else:
             self.set_status(400)
             self.write(
