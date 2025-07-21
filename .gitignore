@@ -12,6 +12,7 @@ config
 shots
 profiles
 images/profile-images
+db-migrations
 
 !**/__pycache__/
 
