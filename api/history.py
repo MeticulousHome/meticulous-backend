@@ -103,6 +103,7 @@ class ZstdHistoryHandler(tornado.web.StaticFileHandler):
 
     async def get(self, path):
         self.set_header("Content-Type", "application/json")
+        serve_compressed = self.get_query_argument("compressed", None) is not None
 
         # Check if the path is a directory
         full_path = self.get_absolute_path(self.root, path)
@@ -123,7 +124,7 @@ class ZstdHistoryHandler(tornado.web.StaticFileHandler):
             if os.path.exists(compressed_path) and os.path.isfile(compressed_path):
                 logger.info("File exists compressed instead")
                 self.absolute_path = compressed_path
-                return await self.serve_zstd_file(compressed_path)
+                return await self.serve_decompressed_file(compressed_path)
 
             # If the path doesn't exist or isn't a file, raise a 404 error
             self.set_status(404)
@@ -131,18 +132,32 @@ class ZstdHistoryHandler(tornado.web.StaticFileHandler):
                 {"status": "error", "error": "history entry not found", "path": path}
             )
             return
-        elif full_path.endswith(".zst"):
+        elif full_path.endswith(".zst") and not serve_compressed:
             logger.info("dealing")
             # Handle .zstd compressed file
-            return await self.serve_zstd_file(full_path)
+            return await self.serve_decompressed_file(full_path)
         else:
             logger.info("File exists on disk")
             # Fallback to default behavior for regular files
-            response = await super().get(path, True)
-            self.set_header("Content-Type", "application/json")
-            return response
+            if full_path.endswith(".zst"):
+                self.set_header("Content-Type", "application/octet-stream")
+                device_name = "".join(
+                    MeticulousConfig[CONFIG_SYSTEM][DEVICE_IDENTIFIER]
+                )
+                file_date_formatted = path.split(os.path.sep)[0].replace("-", "_")
+                served_file_name = (
+                    f"{device_name}_{file_date_formatted}_{os.path.basename(path)}"
+                )
+                self.set_header(
+                    "Content-Disposition",
+                    f'attachment; filename="{served_file_name}"',
+                )
+            else:
+                self.set_header("Content-Type", "application/json")
+            await super().get(path, True)
+            self.finish()
 
-    async def serve_zstd_file(self, full_path):
+    async def serve_decompressed_file(self, full_path):
         logger.info(f"Serving File: {full_path}")
         with open(full_path, "rb") as compressed_file:
             decompressor = zstd.ZstdDecompressor()
@@ -297,70 +312,6 @@ class ShotRatingHandler(BaseHandler):
             self.write({"status": "error", "error": "Internal server error"})
 
 
-class GetDBFileHandler(BaseHandler):
-
-    def get(self):
-        import os
-        from shot_database import HISTORY_PATH, ShotDataBase
-        from sqlalchemy.exc import SQLAlchemyError
-
-        file_relative_path = self.get_query_argument("filename", None)
-        if file_relative_path is None:
-            self.set_status(400)
-            self.write(
-                {"status": "error", "error": "missing 'filename' query argument"}
-            )
-            return
-        file_path = os.path.join(HISTORY_PATH, "debug", file_relative_path)
-
-        if not os.path.exists(file_path) or not os.path.isfile(file_path):
-            self.set_status(400)
-            try:
-                ShotDataBase.unlink_debug_file(file_relative_path)
-            except SQLAlchemyError as e:
-                self.write(
-                    {
-                        "status": "error",
-                        "error": f"DB error while unlinking missing debug file: {e}",
-                    }
-                )
-            except Exception as e:
-                self.write(
-                    {
-                        "status": "error",
-                        "error": f"Error unlinking missing debug file: {e}",
-                    }
-                )
-            else:
-                self.write(
-                    {
-                        "status": "error",
-                        "error": "file not found or invalid file, unlinked from DB",
-                    }
-                )
-            return
-        self.set_header("Content-Type", "application/octet-stream")
-        device_name = "".join(MeticulousConfig[CONFIG_SYSTEM][DEVICE_IDENTIFIER])
-        file_date_formatted = file_relative_path.split(os.path.sep)[0].replace("-", "_")
-        served_file_name = (
-            f"{device_name}_{file_date_formatted}_{os.path.basename(file_path)}"
-        )
-        self.set_header(
-            "Content-Disposition",
-            f'attachment; filename="{served_file_name}"',
-        )
-        try:
-            with open(file_path, "rb") as db_file:
-                while chunk := db_file.read(4096):
-                    self.write(chunk)
-            self.finish()
-        except Exception:
-            self.clear()
-            self.set_status(500)
-            self.write({"status": "error", "error": "error reading compressed file"})
-
-
-API.register_handler(APIVersion.V1, r"/history/debug-file", GetDBFileHandler),
 API.register_handler(APIVersion.V1, r"/history/search", ProfileSearchHandler),
 API.register_handler(APIVersion.V1, r"/history/current", CurrentShotHandler),
 API.register_handler(APIVersion.V1, r"/history/last", LastShotHandler),
