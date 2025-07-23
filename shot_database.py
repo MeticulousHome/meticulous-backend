@@ -454,9 +454,7 @@ class ShotDataBase:
                     "db_key": row_dict.pop("history_id"),
                     "time": datetime.timestamp(row_dict.pop("history_time")),
                     "file": file_entry,
-                    "debug_file": row_dict.pop(
-                        "history_debug_file", "column not found"
-                    ),
+                    "debug_file": row_dict.pop("history_debug_file", None),
                     "name": row_dict.pop("history_profile_name"),
                     "data": data,
                     "profile": profile,
