@@ -300,7 +300,10 @@ class ShotDataBase:
             with connection.begin():
                 result = connection.execute(stmt)
                 if result.rowcount == 0:
-                    raise Exception("no columns affected, check relative file path")
+                    logger.warning("no columns affected, check relative file path")
+                else:
+                    logger.info(f"debug file linked, affected rows: {{{result.rowcount}}}")
+
 
     @staticmethod
     def delete_shot(shot_id):
