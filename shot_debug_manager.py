@@ -142,9 +142,9 @@ class ShotDebugManager:
             p = datetime.strptime(f, DEBUG_FOLDER_FORMAT)
             if p < cutoff_date:
                 date_dir = os.path.join(DEBUG_HISTORY_PATH, f)
-                shutil.rmtree(date_dir)
                 for name in os.listdir(date_dir):
                     ShotDataBase.unlink_debug_file(os.path.join(f, name))
+                shutil.rmtree(date_dir)
                 logger.info(f"Deleted all shots in {f}")
 
     @staticmethod
