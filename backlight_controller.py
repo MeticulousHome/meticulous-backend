@@ -123,14 +123,12 @@ class BacklightController:
         BacklightController._adjust_thread.start()
 
     @staticmethod
-    def dim(
-        target_percent, interpolation="curve", steps_per_second=75, target_time=1.0
-    ):
+    def dim(target_percent, interpolation="curve", target_time=1.0):
         try:
             BacklightController.adjust_brightness(
                 target_percent,
                 interpolation=interpolation,
-                steps_per_second=steps_per_second,
+                steps_per_second=75,
                 target_time=target_time,
             )
         except Exception as e:
