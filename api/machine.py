@@ -204,13 +204,10 @@ class MachineBacklightController(BaseHandler):
             brightness = settings.get("brightness")
             interpolation = settings.get("interpolation", "curve")
             animation_time = settings.get("animation_time", 1)
-            steps_per_second = settings.get("fps", 75)
 
             if brightness is not None:
                 logger.info(f"Dimming to {brightness}")
-                BacklightController.dim(
-                    brightness, interpolation, steps_per_second, animation_time
-                )
+                BacklightController.dim(brightness, interpolation, animation_time)
 
         else:
             self.set_status(400)
