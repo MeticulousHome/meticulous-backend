@@ -63,7 +63,9 @@ class BacklightController:
             BacklightController._adjust_thread.join()
 
     @staticmethod
-    def adjust_brightness_thread(target_percent, interpolation="linear", steps=50):
+    def adjust_brightness_thread(
+        target_percent, interpolation="linear", steps_per_second=50, target_time=None
+    ):
         t = threading.currentThread()
         current_brightness = BacklightController._get_current_raw_brightness()
         target_brightness = round(
@@ -72,24 +74,37 @@ class BacklightController:
 
         if interpolation == "linear":
             interpolator = BacklightController.linear_interpolation(
-                current_brightness, target_brightness, steps
+                current_brightness,
+                target_brightness,
+                int(steps_per_second * target_time),
             )
         elif interpolation == "curve":
             interpolator = BacklightController.curve_interpolation(
-                current_brightness, target_brightness, steps
+                current_brightness,
+                target_brightness,
+                int(steps_per_second * target_time),
             )
         else:
             raise ValueError("Interpolation must be 'linear' or 'curve'")
 
+        time_per_step = (1 / steps_per_second) if target_time is not None else (0.013)
+
+        start = time.time()
         for brightness in interpolator:
             if getattr(t, "do_run", True) is False:
                 break
+            set_start = time.time()
             BacklightController._set_raw_brightness(int(brightness))
-            time.sleep(0.01)
+            time_writing = time.time() - set_start
+            if time_per_step > time_writing:
+                time.sleep(time_per_step - time_writing)
         BacklightController._set_raw_brightness(int(target_brightness))
+        logger.info(f"screen dimmed, took {time.time() - start}")
 
     @staticmethod
-    def adjust_brightness(target_percent, interpolation="linear", steps=50):
+    def adjust_brightness(
+        target_percent, interpolation="linear", steps_per_second=50, target_time=None
+    ):
         if target_percent < 0:
             target_percent = 0
         if target_percent > 1:
@@ -103,15 +118,20 @@ class BacklightController:
         BacklightController.stop_adjust_thread()
         BacklightController._adjust_thread = threading.Thread(
             target=BacklightController.adjust_brightness_thread,
-            args=(target_percent, interpolation, steps),
+            args=(target_percent, interpolation, steps_per_second, target_time),
         )
         BacklightController._adjust_thread.start()
 
     @staticmethod
-    def dim(target_percent):
+    def dim(
+        target_percent, interpolation="curve", steps_per_second=75, target_time=1.0
+    ):
         try:
             BacklightController.adjust_brightness(
-                target_percent, interpolation="curve", steps=300
+                target_percent,
+                interpolation=interpolation,
+                steps_per_second=steps_per_second,
+                target_time=target_time,
             )
         except Exception as e:
             logger.warning(f"An error occurred: {e}")
