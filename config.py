@@ -136,6 +136,9 @@ REVERSE_SCROLLING_DEFAULT = {
     "menus": False,
 }
 
+HOSTNAME_OVERRIDE = "hostname_override"
+HOSTNAME_OVERRIDE_DEFAULT = None
+
 
 class USB_MODES(Enum):
     CLIENT = "client"  # Client mode with network OTG
@@ -218,6 +221,7 @@ DefaultConfiguration_V1 = {
         MACHINE_DEBUG_SENDING: MACHINE_DEBUG_SENDING_DEFAULT,
         SSH_ENABLED: SSH_DEFAULT_ENABLED,
         PROFILE_ORDER: PROFILE_ORDER_DEFAULT,
+        HOSTNAME_OVERRIDE: HOSTNAME_OVERRIDE_DEFAULT,
     },
     CONFIG_WIFI: {
         WIFI_MODE: WIFI_MODE_AP,
