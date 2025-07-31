@@ -13,6 +13,8 @@ from netaddr import IPAddress, IPNetwork
 from api.zeroconf_announcement import ZeroConfAnnouncement
 from config import (
     CONFIG_WIFI,
+    CONFIG_USER,
+    HOSTNAME_OVERRIDE,
     WIFI_AP_NAME,
     WIFI_AP_PASSWORD,
     WIFI_KNOWN_WIFIS,
@@ -157,14 +159,19 @@ class WifiManager:
         # saved transient
         logger.info(f"Current hostname is '{config.hostname}'")
 
+        hostname_override = MeticulousConfig[CONFIG_USER][HOSTNAME_OVERRIDE]
         # Check if we are on a deployed machine, a container or if we are running elsewhere
         # In the later case we dont want to set the hostname
         MACHINE_HOSTNAMES = ("imx8mn-var-som", "meticulous")
-        if config.hostname.startswith(MACHINE_HOSTNAMES):
+        if config.hostname.startswith(MACHINE_HOSTNAMES) and hostname_override is None:
             new_hostname = HostnameManager.generateHostname()
             if config.hostname != new_hostname:
                 logger.info(f"Changing hostname new = {new_hostname}")
                 HostnameManager.setHostname(new_hostname)
+        elif hostname_override is not None:
+            # If we have a hostname override, we set it to the override
+            logger.info(f"Setting hostname to override: {hostname_override}")
+            HostnameManager.setHostname(str(hostname_override))
 
         ap_name = HostnameManager.generateDeviceName()
         MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME] = ap_name[:31]
