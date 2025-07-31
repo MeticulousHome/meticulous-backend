@@ -10,6 +10,7 @@ import random
 import string
 from ota import UpdateManager
 from packaging import version
+import subprocess
 
 from config import (
     CONFIG_LOGGING,
@@ -126,6 +127,21 @@ class Machine:
 
     stable_time_threshold = 2.0
 
+    @staticmethod
+    def get_somrev():
+        # Get the raw output from i2cget
+        result = subprocess.run(
+            ["i2cget", "-f", "-y", "0x0", "0x52", "0x1e"],
+            stdout=subprocess.PIPE,
+            text=True,
+            check=True,
+        )
+        raw_output = result.stdout.strip()
+        decimal_output = int(raw_output, 16)
+        major = ((decimal_output & 0xE0) >> 5) + 1
+        minor = decimal_output & 0x1F
+        return f"{major}.{minor}"
+
     def on_first_normal_boot():
         """
         Function to execute things only after exiting tha manufactuing mode
@@ -216,6 +232,10 @@ class Machine:
 
         Machine.writeStr("\x03")
         Machine.action("info")
+
+        if not Machine.emulated:
+            som = Machine.get_somrev()
+            logger.info(f"SOM revision: {som}")
 
         def startLoop():
             loop = asyncio.new_event_loop()
