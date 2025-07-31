@@ -252,11 +252,14 @@ class TimezoneManager:
     def tz_background_update():
         tz_config = MeticulousConfig[CONFIG_USER][TIMEZONE_SYNC]
         if tz_config == "automatic" and not TimezoneManager.__system_synced:
-            logger.info(
-                "Timezone is set to automatic, fetching timezone in the background"
-            )
-            loop = asyncio.get_event_loop()
-            loop.run_until_complete(TimezoneManager.request_and_sync_tz())
+            try:
+                logger.info(
+                    "Timezone is set to automatic, fetching timezone in the background"
+                )
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(TimezoneManager.request_and_sync_tz())
+            except Exception as e:
+                logger.error(f"Error while fetching timezone in the background: {e}")
 
     @staticmethod
     async def request_and_sync_tz() -> str:
