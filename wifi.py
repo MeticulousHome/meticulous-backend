@@ -168,10 +168,11 @@ class WifiManager:
             if config.hostname != new_hostname:
                 logger.info(f"Changing hostname new = {new_hostname}")
                 HostnameManager.setHostname(new_hostname)
-        elif hostname_override is not None:
-            # If we have a hostname override, we set it to the override
-            logger.info(f"Setting hostname to override: {hostname_override}")
-            HostnameManager.setHostname(str(hostname_override))
+        elif hostname_override is not None and hostname_override != "none":
+            logger.info(f"Hostname override is set to {hostname_override}")
+            if config.hostname != str(hostname_override):
+                logger.info(f"Setting hostname to override: {hostname_override}")
+                HostnameManager.setHostname(str(hostname_override))
 
         ap_name = HostnameManager.generateDeviceName()
         MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME] = ap_name[:31]
