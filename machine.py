@@ -168,6 +168,12 @@ class Machine:
         # Look for the S/N in the .yml file, if there is a SN we dont enable it by default
         serial: str | None = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
 
+        # This should never happend but some older machines had their serial as a number and dont convert properly
+        if isinstance(serial, int):
+            serial = str(serial)
+            MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER] = serial
+            MeticulousConfig.save()
+
         if (
             serial is not None
             and serial != ""
