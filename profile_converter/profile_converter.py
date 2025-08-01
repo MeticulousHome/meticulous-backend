@@ -608,7 +608,7 @@ class ComplexProfileConverter:
                                     "source": "Piston Position Raw",
                                     "position_reference_id": 1,
                                     "operator": "<=",
-                                    "value": -70,
+                                    "value": -45,
                                 }
                             ]
                             if no_skipping
@@ -619,7 +619,7 @@ class ComplexProfileConverter:
                                     "source": "Piston Position Raw",
                                     "position_reference_id": 1,
                                     "operator": "<=",
-                                    "value": -70,
+                                    "value": -40,
                                 },
                                 {
                                     "kind": "button_trigger",
