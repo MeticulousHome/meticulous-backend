@@ -1,7 +1,12 @@
 import json
-from .profile_json import *
-from .simplified_json import *
-from config import MeticulousConfig, CONFIG_USER, MACHINE_ALLOW_STAGE_SKIPPING
+from .profile_json import *  # noqa: F401, F403
+from .simplified_json import SimplifiedJson
+from config import (
+    MeticulousConfig,
+    CONFIG_USER,
+    MACHINE_ALLOW_STAGE_SKIPPING,
+    PROFILE_PARTIAL_RETRACTION,
+)
 
 
 class ComplexProfileConverter:
@@ -608,7 +613,9 @@ class ComplexProfileConverter:
                                     "source": "Piston Position Raw",
                                     "position_reference_id": 1,
                                     "operator": "<=",
-                                    "value": -45,
+                                    "value": -MeticulousConfig[CONFIG_USER][
+                                        PROFILE_PARTIAL_RETRACTION
+                                    ],
                                 }
                             ]
                             if no_skipping
@@ -619,7 +626,9 @@ class ComplexProfileConverter:
                                     "source": "Piston Position Raw",
                                     "position_reference_id": 1,
                                     "operator": "<=",
-                                    "value": -40,
+                                    "value": -MeticulousConfig[CONFIG_USER][
+                                        PROFILE_PARTIAL_RETRACTION
+                                    ],
                                 },
                                 {
                                     "kind": "button_trigger",
