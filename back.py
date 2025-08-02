@@ -8,6 +8,9 @@ BACKEND = os.getenv("BACKEND", "FIKA").upper()
 SENTRY = os.getenv("SENTRY", "False").lower() in ("true", "1", "y")
 
 
+SHSentryClient = None
+
+
 def before_breadcrumb(crumb, hint):
     # Dont log subprocess breadcrumbs
     if crumb["type"] == "subprocess":
@@ -34,14 +37,25 @@ def is_tornado_session_disconnected(event):
     return False
 
 
+# hook the SHSentryClient to the global client
 def before_send(event, hint):
     if is_tornado_session_disconnected(event):
         return None
+    if SHSentryClient is not None:
+        SHSentryClient.capture_event(event=event)
     return event
 
 
-if BACKEND == "FIKA" or SENTRY:
+if True:
     print("Initializing sentry")
+
+    # mimic the behavior of the global client
+    SHSentryClient = sentry_sdk.Client(
+        dsn="http://66287e18e4d9bb8437bd9b0a963bb882@65.109.232.162/3",
+        # before_breadcrumb=before_breadcrumb,
+    )
+
+    # main sentry instance
     sentry_sdk.init(
         dsn="https://0b7872daf08aae52a8d654472bc8bb26@o4506723336060928.ingest.us.sentry.io/4507635208224768",
         # Set traces_sample_rate to 1.0 to capture 100%
@@ -60,6 +74,8 @@ if BACKEND == "FIKA" or SENTRY:
         before_breadcrumb=before_breadcrumb,
         before_send=before_send,
     )
+
+
 else:
     print("Skipping Sentry initialization")
 
@@ -74,6 +90,7 @@ def run():
     # Add ignored errors to sentry now that the import suceeded
     client = sentry_sdk.get_client()
     client.options["ignore_errors"].append(WebSocketClosedError)
+    sentry_sdk.set_context("testing", {"deployed": "docker"})
 
     logger = MeticulousLogger.getLogger(__name__)
 
