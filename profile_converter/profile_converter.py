@@ -417,6 +417,12 @@ class ComplexProfileConverter:
                                     "operator": ">=",
                                     "value": 900,
                                 },
+                                {
+                                    "kind": "user_message_trigger",
+                                    "next_node_id": 17,
+                                    "gesture": "Single Tap",
+                                    "source": "Encoder Button",
+                                },
                             ]
                             if no_skipping
                             else [
@@ -454,6 +460,12 @@ class ComplexProfileConverter:
                         "triggers": (
                             [
                                 {"kind": "exit", "next_node_id": 7},
+                                {
+                                    "kind": "user_message_trigger",
+                                    "next_node_id": 17,
+                                    "gesture": "Single Tap",
+                                    "source": "Encoder Button",
+                                },
                             ]
                             if no_skipping
                             else [
