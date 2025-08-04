@@ -6,8 +6,7 @@ import traceback
 import uuid
 from datetime import datetime
 from pathlib import Path
-
-import zstandard as zstd
+import subprocess
 
 from esp_serial.connection.emulation_data import EmulationData
 from esp_serial.data import SensorData, ShotData
@@ -135,7 +134,6 @@ class ShotManager:
         file_name = f"{formatted_time}.shot.json.zst"
 
         file_path = folder_name.joinpath(file_name)
-
         return (folder_name, file_path)
 
     @staticmethod
@@ -199,10 +197,24 @@ class ShotManager:
                     # Create the folder if it does not exist
                     os.makedirs(SHOT_PATH.joinpath(folder_name), exist_ok=True)
                     data_json = json.dumps(shot_data, ensure_ascii=False)
-                    with open(SHOT_PATH.joinpath(file_path), "wb") as file:
-                        cctx = zstd.ZstdCompressor(level=22)
-                        with cctx.stream_writer(file) as compressor:
-                            compressor.write(data_json.encode("utf-8"))
+                    json_data = data_json.encode("utf-8")
+                    # Compress the file using zstd as all python implementations are too memory intensive
+                    result = subprocess.run(
+                        [
+                            "zstd",
+                            "-10",
+                            "-f",
+                            "-q",
+                            "-o",
+                            str(SHOT_PATH.joinpath(file_path)),
+                        ],
+                        input=json_data,
+                        capture_output=True,
+                        text=False,
+                        check=True,
+                    )
+                    if result.stderr:
+                        logger.error(f"zstd stderr: {result.stderr}")
                     data_json = None
 
                 except Exception as e:

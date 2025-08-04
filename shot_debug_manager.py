@@ -9,8 +9,7 @@ import zipfile
 import logging
 import threading
 from shot_database import ShotDataBase
-
-import zstandard as zstd
+import subprocess
 
 from config import (
     CONFIG_USER,
@@ -257,13 +256,26 @@ class ShotDebugManager:
             logger.info("Writing and compressing debug file")
             start = time.time()
 
-            # Compress to a byte array first
-            cctx = zstd.ZstdCompressor(level=8)
-            compressed_data = cctx.compress(data_json.encode("utf-8"))
-
             logger.info(f"Writing debug json to {file_path}")
-            with open(file_path, "wb") as file:
-                file.write(compressed_data)
+            json_data = data_json.encode("utf-8")
+            # Compress the file using zstd as all python implementations are too memory intensive
+            result = subprocess.run(
+                [
+                    "zstd",
+                    "-10",
+                    "-f",
+                    "-q",
+                    "-o",
+                    str(file_path),
+                ],
+                input=json_data,
+                capture_output=True,
+                text=False,
+                check=True,
+            )
+            if result.stderr:
+                logger.error(f"zstd stderr: {result.stderr}")
+
             time_ms = (time.time() - start) * 1000
             logger.info(f"Writing debug json to disc took {time_ms} ms")
 
@@ -281,16 +293,17 @@ class ShotDebugManager:
                     logger.info("Not sending emulated debug shots")
                 else:
                     try:
+                        compressed_data = None
+                        with open(file_path, "rb") as f:
+                            compressed_data = f.read()
                         await TelemetryService.upload_debug_shot(
-                            compressed_data, file_name
+                            compressed_data, file_path
                         )
                         logger.info("Debug shot data compressed and saved")
 
                     except Exception as e:
                         logger.error(f"Failed to send debug shot to server: {e}")
 
-            compressed_data = None
-            cctx = None
             data_json = None
             logger.info("Debug shot data compressed and saved")
 
