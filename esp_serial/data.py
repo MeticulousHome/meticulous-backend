@@ -275,6 +275,7 @@ class ShotData:
     status: str = ""  # Represented as "name" over socket.io
     profile: str = ""
     time: int = -1
+    profile_time: int = -1
     state: str = ""
     is_extracting: bool = False
     gravimetric_flow: float = 0.0
@@ -287,8 +288,13 @@ class ShotData:
     aux_setpoint: float = -1
     is_aux_controller_active: bool = False
 
-    def clone_with_time_and_state(self, shot_start_time, is_brewing):
-        return replace(self, time=shot_start_time, is_extracting=is_brewing)
+    def clone_with_time_and_state(self, shot_start_time, is_brewing, profile_time=-1):
+        return replace(
+            self,
+            time=shot_start_time,
+            is_extracting=is_brewing,
+            profile_time=profile_time,
+        )
 
     def to_args(self):
         """Convert ShotData to a list of arguments for serial communication."""
@@ -422,6 +428,7 @@ class ShotData:
             "setpoints": setpoints,
             "time": self.time,
             "profile": self.profile,
+            "profile_time": self.profile_time,
             "state": self.state,
             "extracting": self.is_extracting,
         }
