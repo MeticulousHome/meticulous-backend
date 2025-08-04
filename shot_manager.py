@@ -26,6 +26,7 @@ class Shot:
         self.profile = None
         self.profile_name = None
         self.startTime = time.time()
+        self.extractionTime = None
         self.id = str(uuid.uuid4())
 
     def addSensorData(self, sensorData: SensorData):
@@ -75,6 +76,11 @@ class Shot:
                 "setpoints": shotData.to_sio().get("setpoints", {}),
             },
             "time": shotData.time,
+            "profile_time": (
+                shotData.profile_time
+                if shotData.profile_time is not None
+                else shotData.time
+            ),
             "status": shotData.status,
         }
         self.append_shot_data(formated_data)
@@ -108,7 +114,6 @@ class ShotManager:
     @staticmethod
     def init():
         ShotDataBase.init()
-        logger = MeticulousLogger.getLogger(__name__)
         logger.info("ShotManager initialized successfully")
 
     @staticmethod
@@ -124,6 +129,18 @@ class ShotManager:
     def handleShotData(shotData: ShotData):
         if shotData is not None and ShotManager._current_shot is not None:
             ShotManager._current_shot.addShotData(shotData)
+
+    @staticmethod
+    def handleExtractionEnd(time):
+        if ShotManager._current_shot is None:
+            return time
+
+        if ShotManager._current_shot.extractionTime is None:
+            ShotManager._current_shot.extractionTime = time
+            logger.info(
+                f"Extraction ended at {ShotManager._current_shot.extractionTime}. Waiting for drippings to stop."
+            )
+        return ShotManager._current_shot.extractionTime
 
     @staticmethod
     def _timestampToFilePaths(timestamp: float):

@@ -297,6 +297,7 @@ class Machine:
         time_flag = False
         info_requested = False
         time_passed = 0
+        profile_time = 0
         emulated_firmware = False
         previous_preheat_remaining = None
 
@@ -468,6 +469,7 @@ class Machine:
                     if old_status == MachineStatus.IDLE and not Machine.is_idle:
                         if is_heating or is_preparing or is_retracting or is_starting:
                             time_passed = 0
+                            profile_time = 0
 
                     if Machine.profileReady and not Machine.oldProfileReady:
                         ShotDebugManager.start()
@@ -481,6 +483,7 @@ class Machine:
 
                     if is_heating and old_status != MachineStatus.HEATING:
                         time_passed = 0
+                        profile_time = 0
                         SoundPlayer.play_event_sound(Sounds.HEATING_START)
 
                     if old_status == MachineStatus.HEATING and not is_heating:
@@ -488,13 +491,17 @@ class Machine:
 
                     if time_flag:
                         time_passed = int((time.time() - shot_start_time) * 1000.0)
+                        profile_time = time_passed
+                        if is_retracting:
+                            profile_time = ShotManager.handleExtractionEnd(time_passed)
                         Machine.data_sensors = data.clone_with_time_and_state(
-                            time_passed, True
+                            time_passed, True, profile_time
                         )
                         ShotManager.handleShotData(Machine.data_sensors)
+
                     else:
                         Machine.data_sensors = data.clone_with_time_and_state(
-                            time_passed, False
+                            time_passed, False, profile_time
                         )
 
                     ShotDebugManager.handleShotData(Machine.data_sensors)
