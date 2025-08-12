@@ -315,6 +315,16 @@ class ButtonTrigger(Triggers):
         self.data["gesture"] = source_type[SourceType.GESTURE][gesture]
 
 
+class UserMessageTrigger(Triggers):
+    def __init__(
+        self,
+        next_node_id: int = 0,
+    ):
+        super().__init__()
+        self.data["kind"] = trigger_type[TriggerType.USER_MESSAGE]
+        self.data["next_node_id"] = next_node_id
+
+
 class SpeedTrigger(OperatorTriggers):
     def __init__(
         self,
