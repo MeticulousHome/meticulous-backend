@@ -681,7 +681,7 @@ class ComplexProfileConverter:
                                 "timer_reference_id": 4,
                                 "next_node_id": 23,
                                 "operator": ">=",
-                                "value": 3,
+                                "value": 6,
                             }
                         ],
                     },
