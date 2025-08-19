@@ -12,6 +12,7 @@ from config import (
     AUTOMATIC_TIMEZONE_SYNC,
     SSH_ENABLED,
     PROFILE_ORDER,
+    PROFILE_PARTIAL_RETRACTION,
 )
 
 from heater_actuator import HeaterActuator
@@ -93,7 +94,7 @@ class SettingsHandler(BaseHandler):
             error_message = f"Failed to set the USB mode: {str(e)}"
             raise Exception(error_message)
 
-    async def post(self, setting_name=None):
+    async def post(self, setting_name=None):  # noqa: C901
         try:
             settings = json.loads(self.request.body)
         except json.decoder.JSONDecodeError as e:
@@ -108,6 +109,11 @@ class SettingsHandler(BaseHandler):
         try:
             for setting_target in settings:
                 value = settings.get(setting_target)
+
+                if setting_target == PROFILE_PARTIAL_RETRACTION and isinstance(
+                    value, int
+                ):
+                    value = value if isinstance(value, float) else float(value)
 
                 self.validate_setting(setting_target, value)
 
