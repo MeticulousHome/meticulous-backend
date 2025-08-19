@@ -113,7 +113,7 @@ class SettingsHandler(BaseHandler):
                 if setting_target == PROFILE_PARTIAL_RETRACTION and isinstance(
                     value, int
                 ):
-                    value = value if isinstance(value, float) else float(value)
+                    value = float(value)
 
                 self.validate_setting(setting_target, value)
 
