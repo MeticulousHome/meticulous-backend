@@ -370,8 +370,8 @@ class ShotData:
         if profile is not None:
             if profile not in [
                 MachineStatus.IDLE,
-                MachineStatus.PURGE,
-                MachineStatus.HOME,
+                MachineStatusToProfile[MachineStatus.PURGE],
+                MachineStatusToProfile[MachineStatus.HOME],
             ]:
                 state = MachineState.BREWING
             else:
