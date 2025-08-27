@@ -1,18 +1,17 @@
 import asyncio
+import copy
 import os
 import random
 import string
 from datetime import datetime
-from pathlib import Path
 from enum import Enum
+from pathlib import Path
 
 import sentry_sdk
 import yaml
-import copy
 from mergedeep import merge
 
 from log import MeticulousLogger
-
 from manufacturing import CONFIG_MANUFACTURING, Default_manufacturing_config
 
 _config_logger = MeticulousLogger.getLogger(__name__)
