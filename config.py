@@ -248,6 +248,7 @@ class MeticulousConfigDict(dict):
 
     Args:
         path (Path): The path to the YAML configuration file. Defaults to "./config/config.yml".
+        default_config (dict): Initial dictionary values to populate the config.
 
     Raises:
         ValueError: If the provided file extension is not .yml or .yaml.
@@ -268,8 +269,8 @@ class MeticulousConfigDict(dict):
         >>> config_dict.save()
     """
 
-    def __init__(self, path: Path, default_dict={}) -> None:
-        super().__init__(default_dict)
+    def __init__(self, path: Path, default_config: dict) -> None:
+        super().__init__(default_config)
 
         # Make attributes inheritable
         self.__path: Path = path
