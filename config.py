@@ -247,7 +247,7 @@ class MeticulousConfigDict(dict):
         __configError (bool): Flag to indicate if there's an error in the configuration.
 
     Args:
-        path (str, optional): The path to the YAML configuration file. Defaults to "./config/config.yml".
+        path (Path): The path to the YAML configuration file. Defaults to "./config/config.yml".
 
     Raises:
         ValueError: If the provided file extension is not .yml or .yaml.
@@ -263,24 +263,22 @@ class MeticulousConfigDict(dict):
 
     Example:
         >>> default_config = { "key1" : "value1" }
-        >>> config_dict = MeticulousConfigDict("./my_config.yml", default_config)
+        >>> config_dict = MeticulousConfigDict(Path("./my_config.yml"), default_config)
         >>> config_dict["new_key"] = "new_value"
         >>> config_dict.save()
     """
 
-    def __init__(self, path, default_dict={}) -> None:
+    def __init__(self, path: Path, default_dict={}) -> None:
         super().__init__(default_dict)
 
         # Make attributes inheritable
-        self.__path = Path(path)
+        self.__path: Path = path
         self.__configError = False
         self.__sio = None
 
         ext = self.__path.suffix
         if ext not in [".yml", ".yaml"]:
-            raise ValueError(
-                f"Invalid Extension provided! YAML (yml / yaml) expected, {ext} found"
-            )
+            raise ValueError(f"Invalid Extension provided! YAML (yml / yaml) expected, {ext} found")
 
         self.load()
 
@@ -300,50 +298,41 @@ class MeticulousConfigDict(dict):
         return self.__configError
 
     def load(self):
-
-        if not Path(self.__path).exists():
+        if not self.__path.exists():
             self.save()
             _config_logger.info("Created new config")
         else:
-            with open(self.__path, "r") as f:
+            with self.__path.open("r") as f:
                 try:
                     disk_config = yaml.safe_load(f)
                     disk_version = disk_config.get("version")
                     if disk_version is not None and disk_version > self["version"]:
-                        _config_logger.warning(
-                            "Config on disk is newer than this software"
-                        )
+                        _config_logger.warning("Config on disk is newer than this software")
                     merge(self, disk_config)
                     # migrate partial_retraction config data from int to float
                     retraction = self[CONFIG_USER][PROFILE_PARTIAL_RETRACTION]
                     if isinstance(retraction, int):
-                        self[CONFIG_USER][PROFILE_PARTIAL_RETRACTION] = float(
-                            retraction
-                        )
+                        self[CONFIG_USER][PROFILE_PARTIAL_RETRACTION] = float(retraction)
                     _config_logger.info("Successfully loaded config from disk")
                     self.__configError = False
                 except Exception as e:
                     _config_logger.warning(f"Failed to load config: {e}")
-                    basename, extension = os.path.splitext(self.__path)
-                    backup_path = (
-                        basename
-                        + "_broken_"
-                        + datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-                        + extension
+                    self.__path.rename(
+                        self.__path.with_stem(
+                            f"{self.__path.stem}_broken_{datetime.now().strftime('%Y_%m_%d_%H_%M_%S')}"
+                        )
                     )
-                    os.rename(self.__path, backup_path)
                     self.__configError = True
                 self.save()
 
     def save(self):
         sentry_sdk.set_context("config", self.copy())
 
-        Path(self.__path).parent.mkdir(parents=True, exist_ok=True)
-        with open(self.__path, "w") as f:
+        self.__path.parent.mkdir(parents=True, exist_ok=True)
+        with self.__path.open("w") as f:
             yaml.dump(self.copy(), f, default_flow_style=False, allow_unicode=True)
 
         if self.__sio:
-
             # when running in an executor asyncio.get_event_loop() might fail, as there might
             # not be a loop in the thread created by asyncio
             try:
@@ -366,6 +355,4 @@ class MeticulousConfigDict(dict):
                 asyncio.create_task(sendSettingsNotification())
 
 
-MeticulousConfig = MeticulousConfigDict(
-    os.path.join(CONFIG_PATH, "config.yml"), DefaultConfiguration_V1
-)
+MeticulousConfig = MeticulousConfigDict((Path(CONFIG_PATH) / "config.yml"), DefaultConfiguration_V1)
