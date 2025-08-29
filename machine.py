@@ -7,6 +7,7 @@ import string
 import subprocess
 import time
 from enum import Enum
+from typing import Any
 
 import sentry_sdk
 from packaging import version
@@ -50,7 +51,7 @@ from shot_manager import ShotManager
 from sounds import SoundPlayer, Sounds
 
 
-def toggle_sentry(enabled):
+def toggle_sentry(enabled: bool) -> None:
     # Disable sentry if we are on manufacturing mode
     sentry_client = sentry_sdk.get_client()
     if sentry_client:
@@ -77,8 +78,8 @@ class esp_nvs_keys(Enum):
 
 
 class Machine:
-    ALLOWED_BACKEND_ACTIONS = ["reset", "abort"]
-    ALLOWED_ESP_ACTIONS = [
+    ALLOWED_BACKEND_ACTIONS: list[str] = ["reset", "abort"]
+    ALLOWED_ESP_ACTIONS: list[str] = [
         "start",
         "stop",
         "tare",
@@ -92,37 +93,37 @@ class Machine:
 
     _connection = None
     _thread = None
-    _stopESPcomm = False
+    _stopESPcomm: bool = False
     _sio = None
-    _espNotification = Notification("", [NotificationResponse.OK])
+    _espNotification: Notification = Notification("", [NotificationResponse.OK])
 
-    heater_timeout_info: HeaterTimeoutInfo = None
+    heater_timeout_info: HeaterTimeoutInfo | None = None
 
-    infoReady = False
-    profileReady = False
-    oldProfileReady = False
+    infoReady: bool = False
+    profileReady: bool = False
+    oldProfileReady: bool = False
 
     data_sensors: ShotData = ShotData(
         state=MachineStatus.IDLE, status=MachineStatus.IDLE, profile=MachineStatus.IDLE
     )
-    sensor_sensors: SensorData = None
-    esp_info = None
-    reset_count = 0
-    shot_start_time = 0
-    emulated = False
-    firmware_available = None
-    firmware_running = None
-    startTime = None
+    sensor_sensors: SensorData | None = None
+    esp_info: ESPInfo | None = None
+    reset_count: int = 0
+    shot_start_time: float = 0
+    emulated: bool = False
+    firmware_available: dict[str, Any] | None = None
+    firmware_running: dict[str, Any] | None = None
+    startTime: float | None = None
 
-    is_idle = True
+    is_idle: bool = True
 
-    enable_manufacturing = False
+    enable_manufacturing: bool = False
 
-    is_first_normal_boot = False
+    is_first_normal_boot: bool = False
 
-    stable_start_timestamp = None
+    stable_start_timestamp: float | None = None
 
-    stable_time_threshold = 2.0
+    stable_time_threshold: float = 2.0
 
     @staticmethod
     def get_somrev() -> str:
@@ -151,7 +152,7 @@ class Machine:
         MeticulousConfig.save()
 
     @staticmethod
-    def toggle_manufacturing_mode(enabled):
+    def toggle_manufacturing_mode(enabled: bool) -> None:
         Machine.enable_manufacturing = enabled
         toggle_sentry(enabled=not enabled)
         MeticulousConfig[CONFIG_MANUFACTURING][LAST_BOOT_MODE_KEY] = (
@@ -160,7 +161,7 @@ class Machine:
         MeticulousConfig.save()
 
     @staticmethod
-    def validate_manufacturing():
+    def validate_manufacturing() -> None:
         if MeticulousConfig[CONFIG_MANUFACTURING][FORCE_MANUFACTURING_ENABLED_KEY]:
             Machine.toggle_manufacturing_mode(enabled=True)
             return
@@ -189,7 +190,7 @@ class Machine:
         return f"999{random_digits}"
 
     @staticmethod
-    def check_machine_alive():
+    def check_machine_alive() -> None:
         if not Machine.infoReady:
             if MeticulousConfig[CONFIG_USER][DISALLOW_FIRMWARE_FLASHING]:
                 logger.warning("The ESP never send an info, but user requested no updates!")
@@ -199,7 +200,7 @@ class Machine:
         else:
             logger.info("The ESP is alive")
 
-    def init(sio):
+    def init(sio) -> None:
         Machine._sio = sio
         Machine.firmware_available = Machine._parseVersionString(
             ESPToolWrapper.get_version_from_firmware()
@@ -584,11 +585,11 @@ class Machine:
                     NotificationManager.add_notification(Machine._espNotification)
 
     @staticmethod
-    def startScaleMasterCalibration():
+    def startScaleMasterCalibration() -> None:
         Machine.action("scale_master_calibration")
 
     @staticmethod
-    def startUpdate():
+    def startUpdate() -> str | None:
         updateNotification = Notification(
             "Upgrading system realtime core. This will take around 20 seconds. The machines buttons will be disabled during the upgrade",
         )
@@ -607,7 +608,7 @@ class Machine:
         return error_msg
 
     @staticmethod
-    def end_profile():
+    def end_profile() -> None:
         if Machine.data_sensors.status == "idle":
             return
         logger.info("Ending profile due to user request")
@@ -623,7 +624,7 @@ class Machine:
         SoundPlayer.play_event_sound(Sounds.ABORT)
 
     @staticmethod
-    def action(action_event) -> bool:
+    def action(action_event: str) -> bool:
         logger.info(f"sending action,{action_event}")
         if action_event == "start" and not Machine.profileReady:
             logger.warning("No profile loaded, sending last loaded profile to esp32")
@@ -641,23 +642,23 @@ class Machine:
         return True
 
     @staticmethod
-    def writeStr(content):
+    def writeStr(content: str) -> None:
         Machine.write(str.encode(content))
 
     @staticmethod
-    def write(content):
+    def write(content: bytes) -> None:
         if not Machine._stopESPcomm:
             Machine._connection.port.write(content)
 
     @staticmethod
-    def reset():
+    def reset() -> None:
         Machine._connection.reset()
         Machine.infoReady = False
         Machine.profileReady = False
         Machine.startTime = time.time()
 
     @staticmethod
-    def send_json_with_hash(json_obj):
+    def send_json_with_hash(json_obj: dict[str, Any]) -> None:
         json_string = json.dumps(json_obj)
         json_data = "json\n" + json_string + "\x03"
 
@@ -687,7 +688,7 @@ class Machine:
             ShotDebugManager._current_data.nodeJSON = json_obj
 
     @staticmethod
-    def setSerial(color, serial, batch_number, build_date):
+    def setSerial(color: str, serial: str, batch_number: str, build_date: str) -> None:
         write_request = "nvs_request,write,"
         Machine.write((write_request + esp_nvs_keys.color.value + "," + color + "\x03").encode("utf-8"))
         Machine.write(
@@ -720,7 +721,7 @@ Build Date: {build_date}
         MeticulousConfig.save()
         # TODO FIXME IMPLEMENT THIS!!!!
 
-    def _parseVersionString(version_str: str):
+    def _parseVersionString(version_str: str) -> dict[str, Any] | None:
         release = None
         ncommits = 0
         sha = ""
