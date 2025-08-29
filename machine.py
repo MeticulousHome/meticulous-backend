@@ -2,29 +2,28 @@ import asyncio
 import hashlib
 import json
 import os
-from named_thread import NamedThread
-import time
-from enum import Enum
-import sentry_sdk
 import random
 import string
-from ota import UpdateManager
-from packaging import version
 import subprocess
+import time
+from enum import Enum
+
+import sentry_sdk
+from packaging import version
 
 from config import (
     CONFIG_LOGGING,
+    CONFIG_MANUFACTURING,
     CONFIG_SYSTEM,
     CONFIG_USER,
-    SSH_ENABLED,
-    CONFIG_MANUFACTURING,
     DISALLOW_FIRMWARE_FLASHING,
     LOGGING_SENSOR_MESSAGES,
-    MACHINE_COLOR,
-    MACHINE_SERIAL_NUMBER,
-    MACHINE_BUILD_DATE,
     MACHINE_BATCH_NUMBER,
+    MACHINE_BUILD_DATE,
+    MACHINE_COLOR,
     MACHINE_HEAT_ON_BOOT,
+    MACHINE_SERIAL_NUMBER,
+    SSH_ENABLED,
     MeticulousConfig,
 )
 from esp_serial.connection.emulator_serial_connection import EmulatorSerialConnection
@@ -34,20 +33,21 @@ from esp_serial.data import (
     ButtonEventData,
     ButtonEventEnum,
     ESPInfo,
+    HeaterTimeoutInfo,
+    MachineNotify,
     MachineStatus,
     SensorData,
     ShotData,
-    MachineNotify,
-    HeaterTimeoutInfo,
 )
 from esp_serial.esp_tool_wrapper import ESPToolWrapper
 from log import MeticulousLogger
+from manufacturing import FORCE_MANUFACTURING_ENABLED_KEY, LAST_BOOT_MODE_KEY
+from named_thread import NamedThread
 from notifications import Notification, NotificationManager, NotificationResponse
+from ota import UpdateManager
 from shot_debug_manager import ShotDebugManager
 from shot_manager import ShotManager
 from sounds import SoundPlayer, Sounds
-
-from manufacturing import FORCE_MANUFACTURING_ENABLED_KEY, LAST_BOOT_MODE_KEY
 
 
 def toggle_sentry(enabled):
@@ -282,8 +282,7 @@ class Machine:
                     r = self.buf + data[: i + 1]
                     self.buf[0:] = data[i + 1 :]
                     return r
-                else:
-                    self.buf.extend(data)
+                self.buf.extend(data)
             return self.buf
 
     async def _read_data():  # noqa: C901
@@ -427,7 +426,7 @@ class Machine:
                     if was_preparing and data.status != old_status:
                         time_flag = True
                         shot_start_time = time.time()
-                        logger.info("shot start_time: {:.1f}".format(shot_start_time))
+                        logger.info(f"shot start_time: {shot_start_time:.1f}")
                         ShotManager.start()
                         SoundPlayer.play_event_sound(Sounds.BREWING_START)
                     elif time_flag:
@@ -447,9 +446,8 @@ class Machine:
                                 ) < Machine.stable_time_threshold
                                 if not data.stable_weight:
                                     Machine.stable_start_timestamp = None
-                            else:
-                                if data.stable_weight:
-                                    Machine.stable_start_timestamp = time.time()
+                            elif data.stable_weight:
+                                Machine.stable_start_timestamp = time.time()
 
                         if time_flag is False:
                             now_time = time.time()
@@ -742,9 +740,9 @@ class Machine:
         logger.info(f"JSON Hash: {json_hash}")
 
         start = time.time()
-        Machine.write("hash,".encode("utf-8"))
+        Machine.write(b"hash,")
         Machine.write(json_hash.encode("utf-8"))
-        Machine.write("\x03".encode("utf-8"))
+        Machine.write(b"\x03")
         Machine.write(json_data.encode("utf-8"))
         end = time.time()
         time_ms = (end - start) * 1000
