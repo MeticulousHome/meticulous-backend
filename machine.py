@@ -200,6 +200,7 @@ class Machine:
         else:
             logger.info("The ESP is alive")
 
+    @staticmethod
     def init(sio) -> None:
         Machine._sio = sio
         Machine.firmware_available = Machine._parseVersionString(
@@ -721,6 +722,7 @@ Build Date: {build_date}
         MeticulousConfig.save()
         # TODO FIXME IMPLEMENT THIS!!!!
 
+    @staticmethod
     def _parseVersionString(version_str: str) -> dict[str, Any] | None:
         release = None
         ncommits = 0
