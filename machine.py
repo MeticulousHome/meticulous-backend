@@ -583,9 +583,11 @@ class Machine:
                     logger.info(f"New Notification from ESP: {Machine._espNotification.message}")
                     NotificationManager.add_notification(Machine._espNotification)
 
+    @staticmethod
     def startScaleMasterCalibration():
         Machine.action("scale_master_calibration")
 
+    @staticmethod
     def startUpdate():
         updateNotification = Notification(
             "Upgrading system realtime core. This will take around 20 seconds. The machines buttons will be disabled during the upgrade",
@@ -604,6 +606,7 @@ class Machine:
         NotificationManager.add_notification(updateNotification)
         return error_msg
 
+    @staticmethod
     def end_profile():
         if Machine.data_sensors.status == "idle":
             return
@@ -619,6 +622,7 @@ class Machine:
             Machine.action("stop")
         SoundPlayer.play_event_sound(Sounds.ABORT)
 
+    @staticmethod
     def action(action_event) -> bool:
         logger.info(f"sending action,{action_event}")
         if action_event == "start" and not Machine.profileReady:
@@ -636,13 +640,16 @@ class Machine:
         Machine.writeStr(machine_msg)
         return True
 
+    @staticmethod
     def writeStr(content):
         Machine.write(str.encode(content))
 
+    @staticmethod
     def write(content):
         if not Machine._stopESPcomm:
             Machine._connection.port.write(content)
 
+    @staticmethod
     def reset():
         Machine._connection.reset()
         Machine.infoReady = False
@@ -679,6 +686,7 @@ class Machine:
         with ShotDebugManager.clear_current_data_lock:
             ShotDebugManager._current_data.nodeJSON = json_obj
 
+    @staticmethod
     def setSerial(color, serial, batch_number, build_date):
         write_request = "nvs_request,write,"
         Machine.write((write_request + esp_nvs_keys.color.value + "," + color + "\x03").encode("utf-8"))
