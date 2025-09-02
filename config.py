@@ -18,7 +18,7 @@ _config_logger = MeticulousLogger.getLogger(__name__)
 
 CONFIG_PATH = os.getenv("CONFIG_PATH", "/meticulous-user/config")
 
-# Config Compontents
+# Config Components
 CONFIG_LOGGING = "logging"
 CONFIG_SYSTEM = "system"
 CONFIG_USER = "user"
@@ -158,14 +158,14 @@ LOGGING_SENSOR_MESSAGES = "log_all_sensor_messages"
 LOGGING_DEFAULT_SENSOR_MESSAGES = False
 
 #
-# WIFI related config items
+# Wi-Fi related config items
 #
-# Wifi Config items
+# Wi-Fi Config items
 WIFI_MODE = "mode"
 WIFI_MODE_AP = "AP"
 WIFI_MODE_CLIENT = "CLIENT"
 
-# Wifi access point configuration
+# Wi-Fi access point configuration
 WIFI_AP_NAME = "APName"
 WIFI_DEFAULT_AP_NAME = "MeticulousEspresso"
 WIFI_AP_PASSWORD = "APPassword"
