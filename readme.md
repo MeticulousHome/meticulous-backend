@@ -2,7 +2,27 @@
 ## Introduction
 This repository is used to run the backend of **meticulous**.
 
+## Install development tools
+
+To keep code format uniform, we make use of `black` formatter and `flake8` linter. You can install and run them
+manually or automate that by using the pre-commit hooks that are available in the repo, for that You must install the requirements listed in `requirements-dev.txt`.
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+Once the requirements are installed, install the pre-commit script using the pre-commit module
+
+
+```bash
+pre-commit install
+```
+
+And with that You are good to go. `blake` and `flake8` will be run on every commit attempt
+
 ## Backend: For Development
+
+
 
 To allow developers to run the backend without a physical coffee machine, we have implemented a Docker configuration. Follow these steps:
 
