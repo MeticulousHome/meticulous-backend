@@ -22,7 +22,7 @@
                 "interpolation": "linear",
                 "over": "time",
                 "points": [
-                    [ 
+                    [
                         0,
                         4
                     ]

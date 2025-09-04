@@ -1,17 +1,17 @@
 import json
 import os
-from named_thread import NamedThread
+import subprocess
 import time
 import traceback
 import uuid
 from datetime import datetime
 from pathlib import Path
-import subprocess
 
 from esp_serial.connection.emulation_data import EmulationData
 from esp_serial.data import SensorData, ShotData
 from log import MeticulousLogger
-from shot_database import ShotDataBase, SearchParams, SearchOrder
+from named_thread import NamedThread
+from shot_database import SearchOrder, SearchParams, ShotDataBase
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -35,16 +35,14 @@ class Shot:
             self.shotData[-1]["sensors"] = dict(sensorData.__dict__)
 
     def addShotData(self, shotData: ShotData):
-        from profiles import ProfileManager
-
         from machine import Machine
+        from profiles import ProfileManager
 
         if (
             self.profile_name is None
             and shotData.profile is not None
             and shotData.status != "starting..."
         ):
-
             # Special case the emulation case
             if (
                 Machine.emulated
@@ -56,7 +54,6 @@ class Shot:
                 self.profile_name = shotData.profile
 
             if self.profile is None:
-
                 last_profile = ProfileManager.get_last_profile()
 
                 if (
@@ -77,9 +74,7 @@ class Shot:
             },
             "time": shotData.time,
             "profile_time": (
-                shotData.profile_time
-                if shotData.profile_time is not None
-                else shotData.time
+                shotData.profile_time if shotData.profile_time is not None else shotData.time
             ),
             "status": shotData.status,
         }
@@ -191,7 +186,6 @@ class ShotManager:
     @staticmethod
     def stop():
         if ShotManager._current_shot is not None:
-
             shot_data = ShotManager._current_shot.to_json()
             if shot_data.get("profile") is None:
                 from profiles import ProfileManager
@@ -202,9 +196,7 @@ class ShotManager:
 
             def write_current_shot(shot_data):
                 # Determine the paths based on the shot start
-                (folder_name, file_path) = ShotManager._timestampToFilePaths(
-                    shot_data["time"]
-                )
+                (folder_name, file_path) = ShotManager._timestampToFilePaths(shot_data["time"])
 
                 # Compress and write the shot to disk
                 logger.info("Writing and compressing shot file")
@@ -262,9 +254,7 @@ class ShotManager:
                     ShotManager.db_history_id = history_id
                     time_ms = (time.time() - start) * 1000
                     logger.info(f"Ingesting shot into sqlite took {time_ms} ms")
-                    logger.info(
-                        f"Shot ingested with history id: {ShotManager.db_history_id}"
-                    )
+                    logger.info(f"Shot ingested with history id: {ShotManager.db_history_id}")
                 shot_data = None
 
             compresson_thread = NamedThread(

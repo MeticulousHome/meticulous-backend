@@ -2,8 +2,9 @@ import json
 import os
 from copy import deepcopy
 
-from config import CONFIG_PATH
 from jsonschema import ValidationError, validate
+
+from config import CONFIG_PATH
 from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -33,7 +34,6 @@ SCHEMA_FILENAME = "schema.json"
 
 
 class ProfilePreprocessor:
-
     _json_schema = None
     _json_schema_last_modified = None
 
@@ -93,8 +93,7 @@ class ProfilePreprocessor:
 
         # Map of variables for quick lookup
         variables_map = {
-            var["key"]: (var["value"], var["type"])
-            for var in profile.get("variables", [])
+            var["key"]: (var["value"], var["type"]) for var in profile.get("variables", [])
         }
         try:
             # Iterate over stages to replace variables in points and exit triggers
@@ -104,9 +103,7 @@ class ProfilePreprocessor:
                     raise FormatException(f"stage {stage_index} missing 'type' field")
 
                 if "dynamics" not in stage:
-                    raise FormatException(
-                        f"stage {stage_index} missing 'dynamics' field"
-                    )
+                    raise FormatException(f"stage {stage_index} missing 'dynamics' field")
 
                 if "points" not in stage["dynamics"]:
                     raise FormatException(
@@ -144,13 +141,9 @@ class ProfilePreprocessor:
                 # Process limits
                 for limit_index, limit in enumerate(stage.get("limits", [])):
                     if "type" not in limit:
-                        raise FormatException(
-                            f"limit {limit_index} missing 'type' field"
-                        )
+                        raise FormatException(f"limit {limit_index} missing 'type' field")
                     if "value" not in limit:
-                        raise FormatException(
-                            f"limit {limit_index} missing 'value' field"
-                        )
+                        raise FormatException(f"limit {limit_index} missing 'value' field")
 
                     limit["value"] = ProfilePreprocessor._replace_variable(
                         limit["value"], limit["type"], variables_map

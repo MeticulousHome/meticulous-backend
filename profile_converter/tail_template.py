@@ -1,14 +1,38 @@
 import json
-from stages import *
+
+from profile_converter.controllers import (
+    EndProfile,
+    LogController,
+    PositionReferenceController,
+    PressureController,
+    SpeedController,
+    TimeReferenceController,
+    WeightReferenceController,
+)
+from profile_converter.enums import (
+    ButtonSourceType,
+    DirectionType,
+    MessageType,
+    TriggerOperatorType,
+)
+from profile_converter.nodes import Nodes
+from profile_converter.stages import Stages
+from profile_converter.triggers import (
+    ButtonTrigger,
+    ExitTrigger,
+    PistonPositionTrigger,
+    PressureValueTrigger,
+    SpeedTrigger,
+    TimerTrigger,
+    WeightTrigger,
+)
 
 
 class TailTemplate:
-
     def __init__(self):
         self.data = {}
 
     def retracting_stage(self, click_to_purge: bool):
-
         self.retracting_stage_build = Stages("retracting")
         self.init_node_retracting = Nodes(25)
         self.position_reference_retracting = PositionReferenceController(3)
@@ -18,9 +42,7 @@ class TailTemplate:
         self.init_node_retracting.add_controller(self.weight_reference_retracting)
         self.init_node_retracting.add_trigger(self.exit_retracting)
         self.node_24_retracting = Nodes(24)
-        self.move_piston_retracting = SpeedController(
-            speed=4, direction=DirectionType.BACKWARD
-        )
+        self.move_piston_retracting = SpeedController(speed=4, direction=DirectionType.BACKWARD)
         self.piston_position_retracting = PistonPositionTrigger(
             TriggerOperatorType.LESS_THAN_OR_EQUAL, -4, 3, 27
         )
@@ -54,7 +76,6 @@ class TailTemplate:
         return self.retracting_stage_build.get_stage()
 
     def click_to_purge_stage(self):
-
         self.click_to_purge_build = Stages("click to purge")
         self.init_node_click_to_purge = Nodes(30)
         self.log_click_to_purge = LogController(MessageType.PURGE_CLICK)
@@ -68,7 +89,6 @@ class TailTemplate:
         return self.click_to_purge_build.get_stage()
 
     def remove_cup_stage(self):
-
         self.remove_cup_build = Stages("remove cup")
         self.init_node_remove_cup = Nodes(48)
         self.time_reference_remove_cup = TimeReferenceController(15)
@@ -99,7 +119,6 @@ class TailTemplate:
         return self.remove_cup_build.get_stage()
 
     def purge_stage(self):
-
         self.purge_build = Stages("purge")
         self.init_node_purge = Nodes(31)
         self.move_piston_purge = SpeedController(speed=6)
@@ -135,7 +154,6 @@ class TailTemplate:
         return self.purge_build.get_stage()
 
     def end_stage(self):
-
         self.end_build = Stages("end stage")
         self.init_node_end = Nodes(-2)
         self.end_profile = EndProfile()
@@ -146,7 +164,6 @@ class TailTemplate:
 
 
 if __name__ == "__main__":
-
     tail_template = TailTemplate()
     retracting_stage = tail_template.retracting_stage(True)
     print(json.dumps(retracting_stage, indent=2))

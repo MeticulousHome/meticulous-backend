@@ -1,18 +1,18 @@
+import asyncio
+import base64
+import io
+import json
+import queue
 import time
 import uuid
-import json
-import base64
-import pyqrcode
-import io
-import queue
-import asyncio
 from datetime import datetime
 
-from sounds import SoundPlayer, Sounds
-from named_thread import NamedThread
-from config import MeticulousConfig, CONFIG_SYSTEM, NOTIFICATION_KEEPALIVE
+import pyqrcode
 
+from config import CONFIG_SYSTEM, NOTIFICATION_KEEPALIVE, MeticulousConfig
 from log import MeticulousLogger
+from named_thread import NamedThread
+from sounds import SoundPlayer, Sounds
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -27,7 +27,6 @@ class NotificationResponse:
 
 
 class Notification:
-
     def __init__(
         self,
         message,
@@ -113,9 +112,7 @@ class NotificationManager:
                     await asyncio.sleep(0.1)
                 else:
                     # Emit the notification over socketIO as json
-                    await NotificationManager._sio.emit(
-                        "notification", notification.to_json()
-                    )
+                    await NotificationManager._sio.emit("notification", notification.to_json())
                     logger.info(f"send notification: {notification.to_json()}")
 
         # Create and run the asyncio event loop
@@ -133,13 +130,9 @@ class NotificationManager:
         return False
 
     def add_notification(notification: Notification):
-
         updating = False
         for idx, old_notfication in enumerate(NotificationManager._notifications):
-            if (
-                notification.id == old_notfication.id
-                and not old_notfication.acknowledged
-            ):
+            if notification.id == old_notfication.id and not old_notfication.acknowledged:
                 del NotificationManager._notifications[idx]
                 updating = True
 

@@ -40,7 +40,6 @@ class BaseHandler(tornado.web.RequestHandler):
         self.finish()
 
     def prepare(self):
-
         return
 
         # Skip the check if the request is from localhost
@@ -56,23 +55,14 @@ class BaseHandler(tornado.web.RequestHandler):
 
         # TODO test me well!
         if (
-            len(
-                [
-                    network
-                    for network in allowed_networks
-                    if self.request.remote_ip in network
-                ]
-            )
+            len([network for network in allowed_networks if self.request.remote_ip in network])
             > 0
         ):
             return
 
         # Validate the X-Authorized header
         x_authorized = self.request.headers.get("X-Authorized")
-        if (
-            not x_authorized
-            or x_authorized != MeticulousConfig[CONFIG_SYSTEM][HTTP_AUTH_KEY]
-        ):
+        if not x_authorized or x_authorized != MeticulousConfig[CONFIG_SYSTEM][HTTP_AUTH_KEY]:
             self.set_status(401)
             self.finish("Unauthorized: Missing X-Authorized header")
             return
@@ -89,9 +79,7 @@ class LocalAccessHandler(BaseHandler):
             "localhost",
             "127.0.0.1",
         ):
-            logger.warning(
-                f"Unauthorized access to the password endpoint from {remote_ip}"
-            )
+            logger.warning(f"Unauthorized access to the password endpoint from {remote_ip}")
             self.set_status(403)
             self.write(
                 {

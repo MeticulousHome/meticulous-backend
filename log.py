@@ -3,6 +3,7 @@ import logging
 import logging.handlers
 import os
 import shutil
+
 import coloredlogs
 
 LOGLEVEL = os.getenv("LOGLEVEL", "DEBUG").upper()
@@ -42,10 +43,7 @@ class MeticulousLogger:
         logger = logging.getLogger(name=name)
 
         # This will lead to double logging on some systems, so it is disabled by default
-        if (
-            MeticulousLogger.FORCE_STDOUT_LOG
-            and MeticulousLogger._sh not in logger.handlers
-        ):
+        if MeticulousLogger.FORCE_STDOUT_LOG and MeticulousLogger._sh not in logger.handlers:
             logger.addHandler(MeticulousLogger._sh)
         logger.setLevel(LOGLEVEL)
         return logger
@@ -65,9 +63,7 @@ class MeticulousLogger:
             logger.addHandler(handler)
 
     @staticmethod
-    def remove_logging_handler(
-        handler: logging.Handler, logger_name: str | None = None
-    ):
+    def remove_logging_handler(handler: logging.Handler, logger_name: str | None = None):
         if handler is None:
             return
         if logger_name is not None:

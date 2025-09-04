@@ -1,15 +1,15 @@
 import logging
 import os
+import struct
 import sys
 from enum import Enum, auto
 from typing import Optional
 
 import esptool
 import esptool.targets
+from esptool.bin_image import LoadFirmwareImage
 
 from log import MeticulousLogger
-from esptool.bin_image import LoadFirmwareImage
-import struct
 
 UPDATE_PATH = os.getenv("UPDATE_PATH", "/opt/meticulous-firmware")
 
@@ -225,12 +225,10 @@ class ESPToolWrapper:
 
             if magic_word == 0xABCD5432:
                 logger.info("On-disk firmware file:")
-                logger.info(f'Project name: {project_name.decode("utf-8")}')
-                logger.info(f'App version: {version.decode("utf-8")}')
-                logger.info(
-                    f'Compile time: {date.decode("utf-8")} {time.decode("utf-8")}'
-                )
-                logger.info(f'ESP-IDF: {idf_ver.decode("utf-8")}')
+                logger.info(f"Project name: {project_name.decode('utf-8')}")
+                logger.info(f"App version: {version.decode('utf-8')}")
+                logger.info(f"Compile time: {date.decode('utf-8')} {time.decode('utf-8')}")
+                logger.info(f"ESP-IDF: {idf_ver.decode('utf-8')}")
                 logger.info(f"Secure version: {secure_version}")
                 return version.decode("utf-8").strip(" \x00\t")
         return None

@@ -1,18 +1,17 @@
 import asyncio
+import copy
 import os
 import random
 import string
 from datetime import datetime
-from pathlib import Path
 from enum import Enum
+from pathlib import Path
 
 import sentry_sdk
 import yaml
-import copy
 from mergedeep import merge
 
 from log import MeticulousLogger
-
 from manufacturing import CONFIG_MANUFACTURING, Default_manufacturing_config
 
 _config_logger = MeticulousLogger.getLogger(__name__)
@@ -300,7 +299,6 @@ class MeticulousConfigDict(dict):
         return self.__configError
 
     def load(self):
-
         if not Path(self.__path).exists():
             self.save()
             _config_logger.info("Created new config")
@@ -310,16 +308,12 @@ class MeticulousConfigDict(dict):
                     disk_config = yaml.safe_load(f)
                     disk_version = disk_config.get("version")
                     if disk_version is not None and disk_version > self["version"]:
-                        _config_logger.warning(
-                            "Config on disk is newer than this software"
-                        )
+                        _config_logger.warning("Config on disk is newer than this software")
                     merge(self, disk_config)
                     # migrate partial_retraction config data from int to float
                     retraction = self[CONFIG_USER][PROFILE_PARTIAL_RETRACTION]
                     if isinstance(retraction, int):
-                        self[CONFIG_USER][PROFILE_PARTIAL_RETRACTION] = float(
-                            retraction
-                        )
+                        self[CONFIG_USER][PROFILE_PARTIAL_RETRACTION] = float(retraction)
                     _config_logger.info("Successfully loaded config from disk")
                     self.__configError = False
                 except Exception as e:
@@ -343,7 +337,6 @@ class MeticulousConfigDict(dict):
             yaml.dump(self.copy(), f, default_flow_style=False, allow_unicode=True)
 
         if self.__sio:
-
             # when running in an executor asyncio.get_event_loop() might fail, as there might
             # not be a loop in the thread created by asyncio
             try:

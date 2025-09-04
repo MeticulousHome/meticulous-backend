@@ -1,8 +1,9 @@
-from ..esp_tool_wrapper import ESPToolWrapper
 import serial
 import serial.tools.list_ports
 
 from log import MeticulousLogger
+
+from ..esp_tool_wrapper import ESPToolWrapper
 
 logger = MeticulousLogger.getLogger(__name__)
 

@@ -1,15 +1,14 @@
-import json
-import os
-from named_thread import NamedThread
-import time
 import asyncio
-from datetime import datetime, timedelta
-import shutil
-import zipfile
+import copy
+import json
 import logging
-import threading
-from shot_database import ShotDataBase
+import os
+import shutil
 import subprocess
+import threading
+import time
+import zipfile
+from datetime import datetime, timedelta
 
 from config import (
     CONFIG_USER,
@@ -18,12 +17,12 @@ from config import (
     MACHINE_DEBUG_SENDING,
     MeticulousConfig,
 )
-from esp_serial.data import SensorData, ShotData, MachineStatus, MachineStatusToProfile
-from telemetry_service import TelemetryService
+from esp_serial.data import MachineStatus, MachineStatusToProfile, SensorData, ShotData
 from log import MeticulousLogger
+from named_thread import NamedThread
+from shot_database import ShotDataBase
 from shot_manager import Shot, ShotManager
-import copy
-
+from telemetry_service import TelemetryService
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -33,7 +32,6 @@ DEBUG_HISTORY_PATH = os.getenv("DEBUG_HISTORY_PATH", "/meticulous-user/history/d
 
 
 class ShotLogHandler(logging.Handler):
-
     def emit(self, record):
         ShotDebugManager.handleLog(record, self.format)
 
@@ -90,9 +88,7 @@ class ShotDebugManager:
                     ShotDebugManager.logging_handler = ShotLogHandler()
 
                     # Add the log handler on the first debug shot start
-                    MeticulousLogger.add_logging_handler(
-                        ShotDebugManager.logging_handler
-                    )
+                    MeticulousLogger.add_logging_handler(ShotDebugManager.logging_handler)
 
         except Exception as e:
             logger.error(f"Failed to start debug shot: {e}")
@@ -115,8 +111,7 @@ class ShotDebugManager:
                 status = shotData.status
                 profile = shotData.profile
                 if (
-                    status
-                    in [MachineStatus.PURGE, MachineStatus.HOME, MachineStatus.BOOT]
+                    status in [MachineStatus.PURGE, MachineStatus.HOME, MachineStatus.BOOT]
                     and MachineStatusToProfile.get(status, "") == profile
                 ):
                     ShotDebugManager._current_data.set_shot_type(status)
@@ -125,9 +120,7 @@ class ShotDebugManager:
     def deleteOldDebugShotData():
         retention_days = MeticulousConfig[CONFIG_USER][DEBUG_SHOT_DATA_RETENTION]
         if retention_days < 0:
-            logger.info(
-                "Debug shot data retention is disabled, not deleting old files"
-            )  #
+            logger.info("Debug shot data retention is disabled, not deleting old files")  #
             return
 
         logger.info(
@@ -150,9 +143,7 @@ class ShotDebugManager:
     def zipAllDebugShots():
         retention_days = MeticulousConfig[CONFIG_USER][DEBUG_SHOT_DATA_RETENTION]
         if retention_days < 0:
-            logger.info(
-                "Debug shot data retention is disabled, not deleting old files"
-            )  #
+            logger.info("Debug shot data retention is disabled, not deleting old files")  #
             return
 
         logger.info("Zipping all debug files")
@@ -189,7 +180,6 @@ class ShotDebugManager:
 
     @staticmethod
     def stop():
-
         current_data_copy = None
         logger.info("Stopping debug shot")
         with ShotDebugManager.clear_current_data_lock:
@@ -223,10 +213,7 @@ class ShotDebugManager:
         file_path = os.path.join(folder_path, file_name)
 
         debug_shot_data = current_data_copy.to_json()
-        if (
-            not bool(debug_shot_data.get("profile"))
-            and debug_shot_data.get("type") == "shot"
-        ):
+        if not bool(debug_shot_data.get("profile")) and debug_shot_data.get("type") == "shot":
             from profiles import ProfileManager
 
             last_profile = ProfileManager.get_last_profile()
@@ -240,9 +227,7 @@ class ShotDebugManager:
                     )
                 else:
                     last_profile_name = last_profile.get("profile", {}).get("name")
-                    logger.info(
-                        f"Using last profile {last_profile_name} for debug shot"
-                    )
+                    logger.info(f"Using last profile {last_profile_name} for debug shot")
                     debug_shot_data["profile"] = last_profile.get("profile")
                     if last_profile_name is not None and last_profile_name != "":
                         debug_shot_data["profile_name"] = last_profile_name
@@ -282,9 +267,7 @@ class ShotDebugManager:
             # link the Debug file to the shot in the db
             if ShotManager.db_history_id is not None:
                 debug_dir_filename = os.path.join(*file_path.split(os.path.sep)[-2:])
-                ShotDataBase.link_debug_file(
-                    ShotManager.db_history_id, debug_dir_filename
-                )
+                ShotDataBase.link_debug_file(ShotManager.db_history_id, debug_dir_filename)
 
             ShotManager.db_history_id = None
 
@@ -296,9 +279,7 @@ class ShotDebugManager:
                         compressed_data = None
                         with open(file_path, "rb") as f:
                             compressed_data = f.read()
-                        await TelemetryService.upload_debug_shot(
-                            compressed_data, file_path
-                        )
+                        await TelemetryService.upload_debug_shot(compressed_data, file_path)
                         logger.info("Debug shot data compressed and saved")
 
                     except Exception as e:

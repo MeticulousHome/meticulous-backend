@@ -1,11 +1,12 @@
-from logging.config import fileConfig
 import os
+from logging.config import fileConfig
 from pathlib import Path
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+
+from sqlalchemy import engine_from_config, pool
+
 from alembic import context
-from database_models import metadata, FTS_TABLES
-from shot_database import HISTORY_PATH, DATABASE_FILE
+from database_models import FTS_TABLES, metadata
+from shot_database import DATABASE_FILE, HISTORY_PATH
 
 config = context.config
 db_path = Path(HISTORY_PATH).joinpath(DATABASE_FILE).resolve()
