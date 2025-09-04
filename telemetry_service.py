@@ -1,5 +1,6 @@
-from datetime import datetime
 import json
+from datetime import datetime
+
 import aiohttp
 from sentry_sdk import capture_message
 
@@ -10,9 +11,9 @@ from config import (
     MACHINE_SERIAL_NUMBER,
     MeticulousConfig,
 )
+from hostname import HostnameManager
 from log import MeticulousLogger
 from notifications import Notification, NotificationManager, NotificationResponse
-from hostname import HostnameManager
 
 logger = MeticulousLogger.getLogger(__name__)
 

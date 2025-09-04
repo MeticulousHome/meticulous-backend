@@ -1,54 +1,47 @@
-from tornado.options import parse_command_line
-import socketio
-import tornado.log
-import tornado.web
-import tornado.ioloop
-from named_thread import NamedThread
-import time
+import asyncio
 import json
 import os
 import os.path
+import time
+
 import pyprctl
-import asyncio
 import sentry_sdk
-
-from esp_serial.data import ButtonEventData
-
-from ble_gatt import GATTServer
-from wifi import WifiManager
-from notifications import Notification, NotificationManager
-from profiles import ProfileManager
-from hostname import HostnameManager
-from config import (
-    MeticulousConfig,
-    CONFIG_SYSTEM,
-    DEVICE_IDENTIFIER,
-    MACHINE_SERIAL_NUMBER,
-    CONFIG_LOGGING,
-    LOGGING_SENSOR_MESSAGES,
-)
-
-from machine import Machine
-from sounds import SoundPlayer
-from imager import DiscImager
-from ota import UpdateManager
-from esp_serial.connection.emulation_data import EmulationData
-from usb import USBManager
+import socketio
+import tornado.ioloop
+import tornado.log
+import tornado.web
+from tornado.options import parse_command_line
 
 from api.api import API
 from api.emulation import register_emulation_handlers
-from api.web_ui import WEB_UI_HANDLER
-
-from log import MeticulousLogger
-
-from dbus_monitor import DBusMonitor
-
 from api.machine import UpdateOSStatus
-
-from timezone_manager import TimezoneManager
-
+from api.web_ui import WEB_UI_HANDLER
+from ble_gatt import GATTServer
+from config import (
+    CONFIG_LOGGING,
+    CONFIG_SYSTEM,
+    DEVICE_IDENTIFIER,
+    LOGGING_SENSOR_MESSAGES,
+    MACHINE_SERIAL_NUMBER,
+    MeticulousConfig,
+)
+from dbus_monitor import DBusMonitor
+from esp_serial.connection.emulation_data import EmulationData
+from esp_serial.data import ButtonEventData
+from hostname import HostnameManager
+from imager import DiscImager
+from log import MeticulousLogger
+from machine import Machine
+from named_thread import NamedThread
+from notifications import Notification, NotificationManager
+from ota import UpdateManager
+from profiles import ProfileManager
+from sounds import SoundPlayer
 from ssh_manager import SSHManager
 from telemetry_service import TelemetryService
+from timezone_manager import TimezoneManager
+from usb import USBManager
+from wifi import WifiManager
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -129,7 +122,6 @@ async def live():
     # previous_auto_preheat = MeticulousConfig[CONFIG_USER].get('auto_preheat', None)
 
     while True:
-
         elapsed_time = time.time() - _time
         if elapsed_time > 2 and not Machine.infoReady:
             _time = time.time()
@@ -205,9 +197,7 @@ async def send_data():  # noqa: C901
             Machine.action(_input)
 
         elif _input == "test":
-            previous_sensor_status = MeticulousConfig[CONFIG_LOGGING][
-                LOGGING_SENSOR_MESSAGES
-            ]
+            previous_sensor_status = MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES]
             MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES] = True
             for i in range(0, 10):
                 _input = "action," + "purge" + "\x03"
@@ -220,9 +210,7 @@ async def send_data():  # noqa: C901
                 contador = "Numero de prueba: " + str(i + 1)
                 logger.info(_input)
                 logger.info(contador)
-            MeticulousConfig[CONFIG_LOGGING][
-                LOGGING_SENSOR_MESSAGES
-            ] = previous_sensor_status
+            MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES] = previous_sensor_status
 
         elif _input[:11] == "calibration":
             _input = "action," + _input + "\x03"
@@ -283,9 +271,7 @@ def main():
         sentry_sdk.set_tag(
             "machine", "".join(MeticulousConfig[CONFIG_SYSTEM][DEVICE_IDENTIFIER])
         )
-        sentry_sdk.set_tag(
-            "serial", MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
-        )
+        sentry_sdk.set_tag("serial", MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER])
     except Exception as e:
         logger.error(f"Failed to set sentry context: {e}")
 

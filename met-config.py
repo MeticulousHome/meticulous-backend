@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-import sys
 import argparse
 import json
 import pprint
+import sys
 
 
 def get_nested(config, keys):
@@ -60,21 +60,15 @@ def main():
     # Global flag for JSON output.
     parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
-    subparsers = parser.add_subparsers(
-        dest="command", required=True, help="Sub-command to run"
-    )
+    subparsers = parser.add_subparsers(dest="command", required=True, help="Sub-command to run")
 
     # 'get' command
     parser_get = subparsers.add_parser("get", help="Retrieve a configuration value.")
-    parser_get.add_argument(
-        "keypath", help="Dot-separated key path (e.g., machine.version)"
-    )
+    parser_get.add_argument("keypath", help="Dot-separated key path (e.g., machine.version)")
 
     # 'set' command
     parser_set = subparsers.add_parser("set", help="Set a configuration value.")
-    parser_set.add_argument(
-        "keypath", help="Dot-separated key path (e.g., machine.version)"
-    )
+    parser_set.add_argument("keypath", help="Dot-separated key path (e.g., machine.version)")
     parser_set.add_argument("value", help="Value to set")
 
     args = parser.parse_args()

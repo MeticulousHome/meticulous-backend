@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os.path
-import parted
-import subprocess
 import json
-import traceback
+import os.path
+import subprocess
 import time
-from named_thread import NamedThread
+import traceback
 
-from notifications import NotificationManager, Notification, NotificationResponse
+import parted
 
 from log import MeticulousLogger
+from named_thread import NamedThread
+from notifications import Notification, NotificationManager, NotificationResponse
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -187,15 +187,12 @@ class DiscImager:
         result = subprocess.run("sync", check=True)
 
     def mount_partition(self, partition_number):
-
         part_device = f"{self.device}p{partition_number}"
         mountpoint = f"mount/part{partition_number}"
         os.makedirs(mountpoint, exist_ok=True)
 
         if os.path.ismount(mountpoint):
-            logger.info(
-                f"Partition {partition_number} is already mounted at {mountpoint}."
-            )
+            logger.info(f"Partition {partition_number} is already mounted at {mountpoint}.")
             return mountpoint
 
         cmd = f"mount {part_device} {mountpoint}"
@@ -203,9 +200,7 @@ class DiscImager:
         result = subprocess.run(cmd.split(), capture_output=True, text=True)
         logger.info(result.stdout)
         if result.returncode != 0:
-            logger.error(
-                f"Failed to mount partition {partition_number}: {result.stderr}"
-            )
+            logger.error(f"Failed to mount partition {partition_number}: {result.stderr}")
             raise RuntimeError(
                 f"Failed to mount partition {partition_number} with command '{cmd}'"
             )
@@ -219,9 +214,7 @@ class DiscImager:
         result = subprocess.run(cmd.split(), capture_output=True, text=True)
         logger.info(result.stdout)
         if result.returncode != 0:
-            logger.info(
-                f"Failed to unmount partition {partition_number}: {result.stderr}"
-            )
+            logger.info(f"Failed to unmount partition {partition_number}: {result.stderr}")
             raise RuntimeError(
                 f"Failed to unmount partition {partition_number} with command '{cmd}'"
             )

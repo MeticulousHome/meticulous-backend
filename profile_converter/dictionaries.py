@@ -1,4 +1,23 @@
-from .enums import *
+from profile_converter.enums import (
+    AlgorithmType,
+    ButtonGestureSourceType,
+    ButtonSourceType,
+    ControllerType,
+    CurveInterpolationType,
+    DirectionType,
+    FlowAlgorithmType,
+    MessageType,
+    PowerAlgorithmType,
+    PressureAlgorithmType,
+    ReferenceType,
+    SourceType,
+    SpeedAlgorithmType,
+    TemperatureAlgorithmType,
+    TemperatureSourceType,
+    TriggerOperatorType,
+    TriggerType,
+    WeightAlgorithmType,
+)
 
 controllers_type = {
     ControllerType.POWER: "piston_power_controller",

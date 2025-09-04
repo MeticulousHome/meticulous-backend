@@ -1,0 +1,18 @@
+[tool.ruff]
+exclude = ["__pycache__", "build", "dist", ".eggs", "*.egg-info", ".git", ".mypy_cache", ".pytest_cache", ".tox", ".venv", "venv"]
+line-length = 96
+target-version = "py312"
+lint.select = [
+    # To see more info about these rules, visit https://docs.astral.sh/ruff/rules/
+#    "B",  # flake8-bugbear rules (useful for finding likely bugs and design problems in your program)
+#    "C",  # mccabe (enforces that functions have a low mccabe complexity)
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "I",  # isort
+    "W",  # pycodestyle warnings
+]
+
+lint.ignore = [
+     "E501", # line too long
+]
+lint.flake8-type-checking.runtime-evaluated-base-classes = ["pydantic.BaseModel"]

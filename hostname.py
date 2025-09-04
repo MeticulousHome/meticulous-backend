@@ -1,14 +1,13 @@
-import subprocess
 import random
+import subprocess
 
-from config import CONFIG_SYSTEM, MeticulousConfig, DEVICE_IDENTIFIER
+from config import CONFIG_SYSTEM, DEVICE_IDENTIFIER, MeticulousConfig
 from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
 
 
 class HostnameManager:
-
     # We are using random identifier here instead of deriving it from something
     def _generateRandomIdentifierComponents() -> tuple[str, str]:
         byte1 = random.randint(0x00, 0xFF)
