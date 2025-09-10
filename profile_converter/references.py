@@ -1,4 +1,5 @@
 import json
+
 from dictionaries import reference_type
 
 
@@ -8,7 +9,6 @@ class References:
         self.id = 0
 
     def generate_reference_id(self, value: int):
-
         return value
 
     def get_reference_id(self, value: int):
@@ -78,7 +78,6 @@ class ReferencePosition(References):
 
 
 if __name__ == "__main__":
-
     reference_time = ReferenceTime()
     weight_reference = ReferenceWeight()
     position_reference = ReferencePosition()

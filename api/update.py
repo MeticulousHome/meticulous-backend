@@ -1,16 +1,16 @@
-from esp_serial.esp_tool_wrapper import ESPToolWrapper, FikaSupportedESP32
-from machine import Machine
 import os
 import tempfile
 import zipfile
-from named_thread import NamedThread
 
 from tornado.web import MissingArgumentError
 
-from .base_handler import BaseHandler
-from .api import API, APIVersion
-
+from esp_serial.esp_tool_wrapper import ESPToolWrapper, FikaSupportedESP32
 from log import MeticulousLogger
+from machine import Machine
+from named_thread import NamedThread
+
+from .api import API, APIVersion
+from .base_handler import BaseHandler
 
 logger = MeticulousLogger.getLogger(__name__)
 

@@ -1,5 +1,4 @@
 from config import CONFIG_USER, USB_MODE, USB_MODES, MeticulousConfig
-
 from log import MeticulousLogger
 from machine import Machine
 from PTN5150 import PTN5150H, PortState, RpSelection
@@ -20,9 +19,7 @@ class USBManager:
             USB_MODES(MeticulousConfig[CONFIG_USER][USB_MODE])
             USBManager.setUSBMode(MeticulousConfig[CONFIG_USER][USB_MODE])
         except RuntimeError as error:
-            logger.error(
-                f"error initializing USB Manager: f{error}, starting USB as client"
-            )
+            logger.error(f"error initializing USB Manager: f{error}, starting USB as client")
             USBManager.setUSBMode(USB_MODES.CLIENT.value)
 
     @staticmethod

@@ -1,7 +1,8 @@
+import os
+
+import tornado.escape
 import tornado.ioloop
 import tornado.web
-import tornado.escape
-import os
 
 WEB_UI_HANDLER = [
     (r"", tornado.web.RedirectHandler, {"url": "/"}),

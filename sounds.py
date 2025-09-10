@@ -1,17 +1,18 @@
-from enum import Enum, auto
-import os
 import json
-from play_sound import playsound
+import os
+from enum import Enum, auto
+
 import gpiod
 
-from log import MeticulousLogger
 from config import (
-    MeticulousConfig,
-    CONFIG_USER,
     CONFIG_SYSTEM,
-    SOUNDS_THEME,
+    CONFIG_USER,
     SOUNDS_ENABLED,
+    SOUNDS_THEME,
+    MeticulousConfig,
 )
+from log import MeticulousLogger
+from play_sound import playsound
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -116,9 +117,7 @@ class SoundPlayer:
         :param theme_name: The name of the theme to set as the current theme.
         """
         if SoundPlayer.KNOWN_THEMES is None:
-            logger.warning(
-                "Manipulating theme before SoundPlayer was initialized. Ignoring."
-            )
+            logger.warning("Manipulating theme before SoundPlayer was initialized. Ignoring.")
             return False
 
         if theme_name in SoundPlayer.availableThemes() or theme_name is None:
@@ -166,16 +165,11 @@ class SoundPlayer:
             return True
 
         if SoundPlayer.KNOWN_THEMES is None:
-            logger.warning(
-                "Playing sound before SoundPlayer was initialized. Ignoring."
-            )
+            logger.warning("Playing sound before SoundPlayer was initialized. Ignoring.")
             return False
 
         # Just in case we have a stale mapping
-        if (
-            SoundPlayer.CURRENT_THEME_NAME
-            != MeticulousConfig[CONFIG_SYSTEM][SOUNDS_THEME]
-        ):
+        if SoundPlayer.CURRENT_THEME_NAME != MeticulousConfig[CONFIG_SYSTEM][SOUNDS_THEME]:
             SoundPlayer.set_theme(MeticulousConfig[CONFIG_SYSTEM][SOUNDS_THEME])
 
         if sound_name not in SoundPlayer.CURRENT_THEME_CONFIG:

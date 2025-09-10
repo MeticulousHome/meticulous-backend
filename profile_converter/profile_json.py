@@ -1,10 +1,22 @@
 import json
-from .stages import *
+
+from profile_converter.controllers import (
+    FlowController,
+    PressureController,
+    TimeReferenceController,
+)
+from profile_converter.enums import (
+    CurveInterpolationType,
+    PressureAlgorithmType,
+    ReferenceType,
+)
+from profile_converter.nodes import Nodes
+from profile_converter.stages import Stages
+from profile_converter.triggers import SpeedTrigger
 
 
 class Profile:
     def __init__(self, name: str = "", complex_stages: list = None):
-
         if complex_stages is None:
             complex_stages = []
         self.data = {"name": name, "stages": complex_stages}

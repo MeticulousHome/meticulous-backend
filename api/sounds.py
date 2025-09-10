@@ -1,16 +1,15 @@
 import json
-from io import BytesIO
-import zipfile
 import os
+import zipfile
+from io import BytesIO
 
-from .base_handler import BaseHandler
-from .api import API, APIVersion
-from .machine import Machine
-
-from sounds import SoundPlayer, USER_SOUNDS
-from config import MeticulousConfig, CONFIG_SYSTEM, SOUNDS_THEME
-
+from config import CONFIG_SYSTEM, SOUNDS_THEME, MeticulousConfig
 from log import MeticulousLogger
+from sounds import USER_SOUNDS, SoundPlayer
+
+from .api import API, APIVersion
+from .base_handler import BaseHandler
+from .machine import Machine
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -55,13 +54,10 @@ class SetThemeHandler(BaseHandler):
 
 class UploadThemeHandler(BaseHandler):
     def post(self):
-
         # Ensure there is a file in the request
         if "file" not in self.request.files:
             self.set_status(400)
-            self.write(
-                {"error": "invalid zip", "details": "'file' not found in request"}
-            )
+            self.write({"error": "invalid zip", "details": "'file' not found in request"})
             return
 
         fileinfo = self.request.files["file"][0]
@@ -97,7 +93,6 @@ class UploadThemeHandler(BaseHandler):
 
                 # Check for subfolders and validate config.json
                 for name in zip_ref.namelist():
-
                     if name.endswith("config.json"):
                         config_data = zip_ref.read(name)
                         try:
@@ -133,9 +128,9 @@ class UploadThemeHandler(BaseHandler):
             self.write({"error": "unknown issue", "details": str(e)})
 
 
-API.register_handler(APIVersion.V1, r"/sounds/play/(.*)", PlaySoundHandler),
-API.register_handler(APIVersion.V1, r"/sounds/list", ListSoundsHandler),
-API.register_handler(APIVersion.V1, r"/sounds/theme/list", ListThemesHandler),
-API.register_handler(APIVersion.V1, r"/sounds/theme/get", GetThemeHandler),
-API.register_handler(APIVersion.V1, r"/sounds/theme/set/(.*)", SetThemeHandler),
-API.register_handler(APIVersion.V1, r"/sounds/theme/upload", UploadThemeHandler),
+(API.register_handler(APIVersion.V1, r"/sounds/play/(.*)", PlaySoundHandler),)
+(API.register_handler(APIVersion.V1, r"/sounds/list", ListSoundsHandler),)
+(API.register_handler(APIVersion.V1, r"/sounds/theme/list", ListThemesHandler),)
+(API.register_handler(APIVersion.V1, r"/sounds/theme/get", GetThemeHandler),)
+(API.register_handler(APIVersion.V1, r"/sounds/theme/set/(.*)", SetThemeHandler),)
+(API.register_handler(APIVersion.V1, r"/sounds/theme/upload", UploadThemeHandler),)

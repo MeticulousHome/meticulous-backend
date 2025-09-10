@@ -1,7 +1,3 @@
-import json
-from dictionaries import curve_interpolation, reference_type
-
-
 class Curve:
     def __init__(self):
         self.data = {}

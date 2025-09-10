@@ -1,9 +1,10 @@
 import json
-from machine import Machine
-from .base_handler import BaseHandler
-from .api import API, APIVersion
 
 from log import MeticulousLogger
+from machine import Machine
+
+from .api import API, APIVersion
+from .base_handler import BaseHandler
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -41,4 +42,4 @@ class ExecuteActionHandler(BaseHandler):
         return self.post(action)
 
 
-API.register_handler(APIVersion.V1, r"/action/(.*)", ExecuteActionHandler),
+(API.register_handler(APIVersion.V1, r"/action/(.*)", ExecuteActionHandler),)

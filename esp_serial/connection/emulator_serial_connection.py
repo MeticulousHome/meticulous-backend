@@ -1,13 +1,14 @@
-from .serial_connection import SerialConnection
-from unittest.mock import MagicMock
-from named_thread import NamedThread
-import time
+import fcntl
 import os
 import pty
-import fcntl
-from .emulation_data import EmulationData
+import time
+from unittest.mock import MagicMock
 
 from log import MeticulousLogger
+from named_thread import NamedThread
+
+from .emulation_data import EmulationData
+from .serial_connection import SerialConnection
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -39,9 +40,7 @@ class EmulatorSerialConnection(SerialConnection):
         logger.info("Emulation thread started, sleeping 2 seconds")
         time.sleep(2.0)
         data_source = EmulationData.IDLE_DATA
-        sleep_time = EmulatorSerialConnection.DEFAULT_SLEEP_TIME / (
-            EMULATION_SPEED / 100.0
-        )
+        sleep_time = EmulatorSerialConnection.DEFAULT_SLEEP_TIME / (EMULATION_SPEED / 100.0)
         while True:
             line = ""
 
