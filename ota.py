@@ -11,7 +11,6 @@ from config import (
     CONFIG_SYSTEM,
     LAST_SYSTEM_VERSIONS,
 )
-from notifications import Notification, NotificationManager, NotificationResponse
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -81,16 +80,6 @@ class UpdateManager:
             while len(MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS]) > 30:
                 MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS].pop(0)
             MeticulousConfig.save()
-
-            NotificationManager.add_notification(
-                Notification(
-                    message=f"System updated to [{build_channel}] build '{this_build_time}'. The UI will now be restarted to optimize the graphical performance.",
-                    responses=[NotificationResponse.OK],
-                    callback=lambda: subprocess.run(
-                        ["systemctl", "restart", "meticulous-dial"]
-                    ),
-                )
-            )
 
     @staticmethod
     def setChannel(channel: str):
