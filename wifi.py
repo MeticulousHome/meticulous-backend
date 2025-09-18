@@ -341,9 +341,14 @@ class WifiManager:
     @staticmethod
     def deleteWifi(ssid: str) -> bool:
         if ssid in MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS]:
-            nmcli.connection.delete(ssid)
             del MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS][ssid]
             MeticulousConfig.save()
+            for connection in nmcli.connection():
+                if connection.name == ssid:
+                    nmcli.connection.delete(ssid)
+                    return True
+            return False
+        return False
 
     @staticmethod
     def fixWifiConnection(ssid, wifi_type: WifiType):
