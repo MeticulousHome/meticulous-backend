@@ -33,6 +33,15 @@ class UpdateManager:
 
     @staticmethod
     def init():
+        build_channel = UpdateManager.getImageChannel()
+
+        if MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL] == "":
+            if build_channel is None:
+                MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL] = "stable"
+            else:
+                MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL] = build_channel
+            MeticulousConfig.save()
+
         UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
 
         build_time = UpdateManager.getBuildTimestamp()
@@ -40,7 +49,6 @@ class UpdateManager:
             logger.error("Could not get build timestamp")
             return
 
-        build_channel = UpdateManager.getImageChannel()
         if build_channel is None:
             logger.error("Could not get build channel")
             return
