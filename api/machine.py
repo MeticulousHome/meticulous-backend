@@ -151,6 +151,7 @@ class MachineInfoHandler(BaseHandler):
             response["software_version"] = None
 
         response["image_build_channel"] = UpdateManager.getImageChannel()
+        response["image_version"] = UpdateManager.getImageVersion()
         response["repository_info"] = {}
         repo_info = UpdateManager.getRepositoryInfo()
         if repo_info is not None:

@@ -21,6 +21,7 @@ HAWKBIT_CHANNEL_FILE = "channel"
 BUILD_DATE_FILE = "/opt/ROOTFS_BUILD_DATE"
 REPO_INFO_FILE = "/opt/summary.txt"
 BUILD_CHANNEL_FILE = "/opt/image-build-channel"
+BUILD_VERSION_FILE = "/opt/image-build-version"
 
 
 class UpdateManager:
@@ -28,6 +29,7 @@ class UpdateManager:
     ROOTFS_BUILD_DATE = None
     CHANNEL = None
     REPO_INFO = None
+    VERSION = None
 
     is_changed = False
 
@@ -139,6 +141,22 @@ class UpdateManager:
             logger.error(f"Error reading image build channel: {e}")
 
         return UpdateManager.CHANNEL
+
+    @staticmethod
+    def getImageVersion():
+        if UpdateManager.VERSION is not None:
+            return UpdateManager.VERSION
+        try:
+            with open(BUILD_VERSION_FILE, "r") as file:
+                UpdateManager.VERSION = file.read().strip()
+                logger.info(f"Read image build Version: {UpdateManager.VERSION}")
+        except FileNotFoundError:
+            logger.warning(f"{BUILD_VERSION_FILE} file not found")
+
+        except Exception as e:
+            logger.error(f"Error reading image build Version: {e}")
+
+        return UpdateManager.VERSION
 
     @staticmethod
     def parse_summary_file(summary: str):
