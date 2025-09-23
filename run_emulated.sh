@@ -15,9 +15,13 @@ export DEFAULT_PROFILES=./default_profiles
 export TIMEZONE_JSON_FILE_PATH=./UI_timezones.json
 export USER_DB_MIGRATION_DIR=./db-migrations
 
+if [[ -z "${MET_VENV}" ]]; then
+    MET_VENV=".venv"
+fi
+
 PYTHON=python3
-if [[ -e .venv ]]; then
-	PYTHON=.venv/bin/python3
+if [[ -e "${MET_VENV}" ]]; then
+	PYTHON="${MET_VENV}/bin/python3"
 fi
 
 if [[ "$@" == *"--memory"* ]]; then
