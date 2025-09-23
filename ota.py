@@ -12,7 +12,6 @@ from config import (
     MeticulousConfig,
 )
 from log import MeticulousLogger
-from notifications import Notification, NotificationManager, NotificationResponse
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -22,17 +21,32 @@ HAWKBIT_CHANNEL_FILE = "channel"
 BUILD_DATE_FILE = "/opt/ROOTFS_BUILD_DATE"
 REPO_INFO_FILE = "/opt/summary.txt"
 BUILD_CHANNEL_FILE = "/opt/image-build-channel"
+BUILD_VERSION_FILE = "/opt/image-build-version"
 
 
 class UpdateManager:
     ROOTFS_BUILD_DATE = None
     CHANNEL = None
     REPO_INFO = None
+    VERSION = None
 
     is_changed = False
 
     @staticmethod
     def init():
+        build_channel = UpdateManager.getImageChannel()
+        if build_channel is None:
+            logger.error("Could not get build channel")
+            return
+
+        if MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL] == "":
+            if build_channel in ["stable", "factory"]:
+                MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL] = build_channel
+            else:
+                MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL] = "stable"
+            MeticulousConfig.save()
+            logger.warning(f"Set update channel to {build_channel} based on image")
+
         UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
 
         build_time = UpdateManager.getBuildTimestamp()
@@ -40,10 +54,6 @@ class UpdateManager:
             logger.error("Could not get build timestamp")
             return
 
-        build_channel = UpdateManager.getImageChannel()
-        if build_channel is None:
-            logger.error("Could not get build channel")
-            return
         this_build_time = build_time.strftime("%Y%m%d_%H%M%S")
         this_version_string = build_channel + "-" + this_build_time
         try:
@@ -65,16 +75,6 @@ class UpdateManager:
             while len(MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS]) > 30:
                 MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS].pop(0)
             MeticulousConfig.save()
-
-            NotificationManager.add_notification(
-                Notification(
-                    message=f"System updated to [{build_channel}] build '{this_build_time}'. The UI will now be restarted to optimize the graphical performance.",
-                    responses=[NotificationResponse.OK],
-                    callback=lambda: subprocess.run(
-                        ["systemctl", "restart", "meticulous-dial"]
-                    ),
-                )
-            )
 
     @staticmethod
     def setChannel(channel: str):
@@ -133,6 +133,22 @@ class UpdateManager:
             logger.error(f"Error reading image build channel: {e}")
 
         return UpdateManager.CHANNEL
+
+    @staticmethod
+    def getImageVersion():
+        if UpdateManager.VERSION is not None:
+            return UpdateManager.VERSION
+        try:
+            with open(BUILD_VERSION_FILE, "r") as file:
+                UpdateManager.VERSION = file.read().strip()
+                logger.info(f"Read image build Version: {UpdateManager.VERSION}")
+        except FileNotFoundError:
+            logger.warning(f"{BUILD_VERSION_FILE} file not found")
+
+        except Exception as e:
+            logger.error(f"Error reading image build Version: {e}")
+
+        return UpdateManager.VERSION
 
     @staticmethod
     def parse_summary_file(summary: str):

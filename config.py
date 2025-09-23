@@ -104,7 +104,7 @@ ALLOW_LEGACY_JSON_DEFAULT = False
 
 # Updates
 UPDATE_CHANNEL = "update_channel"
-UPDATE_CHANNEL_DEFAULT = "stable"
+UPDATE_CHANNEL_DEFAULT = ""
 
 # Brewing
 PROFILE_AUTO_START = "auto_start_shot"

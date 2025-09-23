@@ -677,6 +677,9 @@ class Machine:
 
             ProfileManager.send_profile_to_esp32(last_profile["profile"])
 
+        if action_event == "home" or action_event == "purge":
+            Machine.profileReady = True
+
         machine_msg = f"action,{action_event}\x03"
         Machine.writeStr(machine_msg)
         return True

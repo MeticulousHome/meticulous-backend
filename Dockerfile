@@ -1,4 +1,4 @@
-FROM debian:bookworm
+FROM debian:trixie
 
 RUN apt update
 RUN apt-get update -y
@@ -33,11 +33,5 @@ COPY UI_timezones.json /usr/share/zoneinfo
 RUN /opt/venv/bin/pip install -r requirements.txt
 
 WORKDIR /app
-# Copy Application files
-# FIXME use src-layout
-COPY . .
-
 RUN mkdir /run/dbus
-RUN chmod +x /app/start_container.sh
-
 CMD ["/bin/bash", "/app/start_container.sh"]
