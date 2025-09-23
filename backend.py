@@ -280,6 +280,8 @@ def main():
         # Tags are indexed and searchable
         sentry_sdk.set_tag("build-timestamp", UpdateManager.getBuildTimestamp())
         sentry_sdk.set_tag("build-channel", UpdateManager.getImageChannel())
+        sentry_sdk.set_tag("build-version", UpdateManager.getImageVersion())
+
         sentry_sdk.set_tag(
             "machine", "".join(MeticulousConfig[CONFIG_SYSTEM][DEVICE_IDENTIFIER])
         )
