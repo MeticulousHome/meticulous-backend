@@ -75,6 +75,11 @@ class SoundPlayer:
             SoundPlayer.DEFAULT_THEME_NAME
         )
 
+        try:
+            subprocess.run(["pactl", "--", "set-sink-volume", "0", "100%"])
+        except Exception as e:
+            logger.error(f"failed to set audio volume: {e}");
+
         SoundPlayer.set_theme(MeticulousConfig[CONFIG_SYSTEM][SOUNDS_THEME])
         if play_startup_sound:
             SoundPlayer.play_event_sound(Sounds.STARTUP)
