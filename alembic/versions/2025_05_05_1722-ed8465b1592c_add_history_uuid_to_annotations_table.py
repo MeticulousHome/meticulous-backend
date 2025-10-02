@@ -8,9 +8,9 @@ Create Date: 2025-05-05 22:00:42.393323
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "1a598cd3ace3"
@@ -20,7 +20,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-
     # Get the table constraints up to date with the new naming convention
     with op.batch_alter_table("shot_annotation", schema=None) as batch_op:
         batch_op.create_unique_constraint(None, ["history_id"])
@@ -37,9 +36,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-
     with op.batch_alter_table("shot_annotation", schema=None) as batch_op:
-
         batch_op.drop_constraint("fk_shot_annotation_history_id_history")
         batch_op.drop_constraint("uq_shot_annotation_history_id")
         batch_op.drop_constraint("fk_shot_annotation_history_uuid_history")

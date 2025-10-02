@@ -1,16 +1,17 @@
 import json
-from .profile_json import *  # noqa: F401, F403
-from .simplified_json import SimplifiedJson
+
 from config import (
-    MeticulousConfig,
     CONFIG_USER,
     MACHINE_ALLOW_STAGE_SKIPPING,
     PROFILE_PARTIAL_RETRACTION,
+    MeticulousConfig,
 )
+
+from .profile_json import *  # noqa: F401, F403
+from .simplified_json import SimplifiedJson
 
 
 class ComplexProfileConverter:
-
     def __init__(
         self,
         click_to_start: bool,
@@ -19,7 +20,6 @@ class ComplexProfileConverter:
         init_node_tail: int,
         parameters: dict = None,
     ):
-
         self.data = None
         self.parameters = parameters if parameters is not None else {}
         self.click_to_purge = click_to_purge if click_to_purge is not None else True
@@ -1007,15 +1007,12 @@ class ComplexProfileConverter:
             },
             {
                 "name": "END_STAGE",
-                "nodes": [
-                    {"id": -2, "controllers": [{"kind": "end_profile"}], "triggers": []}
-                ],
+                "nodes": [{"id": -2, "controllers": [{"kind": "end_profile"}], "triggers": []}],
             },
         ]
         return self.stages_tail
 
     def complex_stages(self):
-
         return self.complex.to_complex(self.end_node_head, self.init_node_tail)
 
     def get_profile(self):
@@ -1023,9 +1020,7 @@ class ComplexProfileConverter:
             self.head_template() + self.complex_stages() + self.tail_template()
         )
         self.name_profile = (
-            self.complex.get_name()
-            if self.complex.get_name() is not None
-            else "Profile"
+            self.complex.get_name() if self.complex.get_name() is not None else "Profile"
         )
 
         self.profile_complex = {
@@ -1037,7 +1032,6 @@ class ComplexProfileConverter:
 
 
 if __name__ == "__main__":
-
     file_path = "simplified_json_example.json"
     with open(file_path, "r") as file:
         data = json.load(file)

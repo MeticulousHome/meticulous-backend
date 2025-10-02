@@ -1,8 +1,7 @@
-import sentry_sdk
-from sentry_sdk.integrations.asyncio import AsyncioIntegration
-
 import os
 
+import sentry_sdk
+from sentry_sdk.integrations.asyncio import AsyncioIntegration
 
 BACKEND = os.getenv("BACKEND", "FIKA").upper()
 SENTRY = os.getenv("SENTRY", "False").lower() in ("true", "1", "y")
@@ -82,9 +81,10 @@ else:
 
 def run():
     from tornado.websocket import WebSocketClosedError
+
+    from backend import main as backend_main
     from db_migration_updater import update_db_migrations
     from log import MeticulousLogger
-    from backend import main as backend_main
     from shot_manager import ShotManager
 
     # Add ignored errors to sentry now that the import suceeded

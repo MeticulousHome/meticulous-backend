@@ -1,16 +1,17 @@
-import subprocess
 import os
 import re
-from pathlib import Path
+import subprocess
 from datetime import datetime
-from log import MeticulousLogger
+from pathlib import Path
+
 from config import (
-    MeticulousConfig,
-    CONFIG_USER,
-    UPDATE_CHANNEL,
     CONFIG_SYSTEM,
+    CONFIG_USER,
     LAST_SYSTEM_VERSIONS,
+    UPDATE_CHANNEL,
+    MeticulousConfig,
 )
+from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -24,7 +25,6 @@ BUILD_VERSION_FILE = "/opt/image-build-version"
 
 
 class UpdateManager:
-
     ROOTFS_BUILD_DATE = None
     CHANNEL = None
     REPO_INFO = None
@@ -34,7 +34,6 @@ class UpdateManager:
 
     @staticmethod
     def init():
-
         build_channel = UpdateManager.getImageChannel()
         if build_channel is None:
             logger.error("Could not get build channel")
@@ -59,9 +58,7 @@ class UpdateManager:
         this_version_string = build_channel + "-" + this_build_time
         try:
             # We might not have anything in the list, so we accept the exception
-            last_known_version = MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS][
-                -1
-            ]
+            last_known_version = MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS][-1]
             is_changed = last_known_version != this_version_string
         except IndexError:
             is_changed = 1
@@ -74,9 +71,7 @@ class UpdateManager:
             logger.info(
                 f"System was updated to {this_version_string} from {last_known_version}"
             )
-            MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS].append(
-                this_version_string
-            )
+            MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS].append(this_version_string)
             while len(MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS]) > 30:
                 MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS].pop(0)
             MeticulousConfig.save()
@@ -99,9 +94,7 @@ class UpdateManager:
             try:
                 with open(channel_file, "w") as f:
                     f.write(channel)
-                logger.info(
-                    f"Changed update channel from {current_channel} to {channel}"
-                )
+                logger.info(f"Changed update channel from {current_channel} to {channel}")
                 subprocess.run(["systemctl", "restart", "rauc-hawkbit-updater"])
             except Exception as e:
                 logger.error(f"Failed to change update channel: {e}")
@@ -159,7 +152,6 @@ class UpdateManager:
 
     @staticmethod
     def parse_summary_file(summary: str):
-
         data = {}
         current_repo_key = None
         modified_files_section = False

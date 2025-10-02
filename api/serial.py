@@ -86,5 +86,5 @@ class ScaleCalibrateHandler(BaseHandler):
         return
 
 
-API.register_handler(APIVersion.V1, r"/serial", SerialNumberHandler),
-API.register_handler(APIVersion.V1, r"/scaleCalibrate", ScaleCalibrateHandler),
+(API.register_handler(APIVersion.V1, r"/serial", SerialNumberHandler),)
+(API.register_handler(APIVersion.V1, r"/scaleCalibrate", ScaleCalibrateHandler),)

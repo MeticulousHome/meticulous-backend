@@ -1,4 +1,4 @@
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from typing import Any
 
 from log import MeticulousLogger
@@ -53,9 +53,7 @@ dial_schema: dict = {
                 label="Skip Stage",
                 options=[
                     asdict(SettingOptions(name="enabled", type="boolean", value=True)),
-                    asdict(
-                        SettingOptions(name="disabled", type="boolean", value=False)
-                    ),
+                    asdict(SettingOptions(name="disabled", type="boolean", value=False)),
                 ],
             )
         ),
@@ -65,9 +63,7 @@ dial_schema: dict = {
                 label="Enable Manufacturing",
                 options=[
                     asdict(SettingOptions(name="enabled", type="boolean", value=True)),
-                    asdict(
-                        SettingOptions(name="disabled", type="boolean", value=False)
-                    ),
+                    asdict(SettingOptions(name="disabled", type="boolean", value=False)),
                 ],
             )
         ),

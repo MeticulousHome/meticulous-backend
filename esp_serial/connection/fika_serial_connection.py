@@ -1,10 +1,12 @@
 import time
+
 import gpiod
-from .serial_connection import SerialConnection
 import serial
 import serial.tools.list_ports
 
 from log import MeticulousLogger
+
+from .serial_connection import SerialConnection
 
 logger = MeticulousLogger.getLogger(__name__)
 

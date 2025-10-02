@@ -1,19 +1,17 @@
 import json
-from notifications import NotificationManager
-from .base_handler import BaseHandler
-from .api import API, APIVersion
 
 from log import MeticulousLogger
+from notifications import NotificationManager
+
+from .api import API, APIVersion
+from .base_handler import BaseHandler
 
 logger = MeticulousLogger.getLogger(__name__)
 
 
 class GetNotificationsHandler(BaseHandler):
-
     def get(self):
-        include_acknowledged = (
-            self.get_argument("acknowledged", "false").lower() == "true"
-        )
+        include_acknowledged = self.get_argument("acknowledged", "false").lower() == "true"
 
         if include_acknowledged:
             # Return all notifications
@@ -52,7 +50,5 @@ class GetNotificationsHandler(BaseHandler):
             )
 
 
-API.register_handler(APIVersion.V1, r"/notifications", GetNotificationsHandler),
-API.register_handler(
-    APIVersion.V1, r"/notifications/acknowledge", GetNotificationsHandler
-),
+(API.register_handler(APIVersion.V1, r"/notifications", GetNotificationsHandler),)
+(API.register_handler(APIVersion.V1, r"/notifications/acknowledge", GetNotificationsHandler),)

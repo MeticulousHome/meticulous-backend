@@ -1,9 +1,43 @@
 import json
-from stages import *
+
+from profile_converter.controllers import (
+    LogController,
+    PositionReferenceController,
+    PressureController,
+    SpeedController,
+    TareController,
+    TemperatureController,
+    TimeReferenceController,
+    WeightReferenceController,
+)
+from profile_converter.enums import (
+    ButtonSourceType,
+    CurveInterpolationType,
+    DirectionType,
+    MessageType,
+    PressureAlgorithmType,
+    ReferenceType,
+    SourceType,
+    SpeedAlgorithmType,
+    TemperatureAlgorithmType,
+    TemperatureSourceType,
+    TriggerOperatorType,
+)
+from profile_converter.nodes import Nodes
+from profile_converter.stages import Stages
+from profile_converter.triggers import (
+    ButtonTrigger,
+    ExitTrigger,
+    PistonPositionTrigger,
+    PressureValueTrigger,
+    SpeedTrigger,
+    TemperatureValueTrigger,
+    TimerTrigger,
+    WaterDetectionTrigger,
+)
 
 
 class HeadProfile:
-
     def __init__(self):
         self.data = {}
         # try:
@@ -13,7 +47,6 @@ class HeadProfile:
         #     print('Warning: click_to_start is not defined, defaulting to True')
 
     def purge_stage(self):
-
         self.purge_stage_build = Stages("purge")
         self.initial_node_purge = Nodes(-1)
         self.piston_position_purge = PistonPositionTrigger(
@@ -71,14 +104,11 @@ class HeadProfile:
         return self.purge_stage_build.get_stage()
 
     def water_detection_stage(self, water_detection: bool):
-
         self.water_detection_stage_build = Stages("water detection")
         self.initial_node_water_detection = Nodes(45)
         self.time_reference_water_detection = TimeReferenceController(12)
         self.exit_water_detection = ExitTrigger(9)
-        self.initial_node_water_detection.add_controller(
-            self.time_reference_water_detection
-        )
+        self.initial_node_water_detection.add_controller(self.time_reference_water_detection)
         self.initial_node_water_detection.add_trigger(self.exit_water_detection)
         self.node_9_water_detection = Nodes(9)
         self.time_reference_water_detection_1 = TimeReferenceController(2)
@@ -92,9 +122,7 @@ class HeadProfile:
         self.button_trigger_water_detection = ButtonTrigger(
             ButtonSourceType.ENCODER_BUTTON, next_node_id=15
         )
-        self.node_9_water_detection.add_controller(
-            self.time_reference_water_detection_1
-        )
+        self.node_9_water_detection.add_controller(self.time_reference_water_detection_1)
         self.node_9_water_detection.add_trigger(self.water_detection_trigger)
         self.node_9_water_detection.add_trigger(self.button_trigger_water_detection)
         self.node_12_water_detection = Nodes(12)
@@ -119,7 +147,6 @@ class HeadProfile:
         return self.water_detection_stage_build.get_stage()
 
     def heating_stage(self, target_temperature: float, click_to_start: bool):
-
         self.heating_stage_build = Stages("heating")
         self.heating_node = Nodes(15)
         self.points_heating = [0, target_temperature]
@@ -153,7 +180,6 @@ class HeadProfile:
         return self.heating_stage_build.get_stage()
 
     def click_to_start_stage(self):
-
         self.click_start_stage_build = Stages("click to start")
         self.initial_node_click_to_start = Nodes(16)
         self.log_click_to_start = LogController(MessageType.START_CLICK)
@@ -167,12 +193,9 @@ class HeadProfile:
         return self.click_start_stage_build.get_stage()
 
     def retracting_stage(self):
-
         self.retracting_stage_build = Stages("retracting")
         self.initial_node_retracting = Nodes(17)
-        self.move_piston_retracting = SpeedController(
-            speed=4, direction=DirectionType.BACKWARD
-        )
+        self.move_piston_retracting = SpeedController(speed=4, direction=DirectionType.BACKWARD)
         self.piston_position_retracting = PistonPositionTrigger(
             TriggerOperatorType.LESS_THAN_OR_EQUAL, -2, 1, 18
         )
@@ -186,9 +209,7 @@ class HeadProfile:
         self.move_piston_retracting_1 = SpeedController(
             speed=6, direction=DirectionType.BACKWARD
         )
-        self.piston_speed_trigger_retracting = SpeedTrigger(
-            TriggerOperatorType.EQUAL, 0, 21
-        )
+        self.piston_speed_trigger_retracting = SpeedTrigger(TriggerOperatorType.EQUAL, 0, 21)
         self.button_trigger_retracting_1 = ButtonTrigger(
             ButtonSourceType.ENCODER_BUTTON, next_node_id=23
         )
@@ -241,7 +262,6 @@ class HeadProfile:
 
 
 if __name__ == "__main__":
-
     head_profile = HeadProfile()
     purge_stage_example = head_profile.purge_stage()
     print(json.dumps(purge_stage_example, indent=2))
