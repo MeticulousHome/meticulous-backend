@@ -295,6 +295,7 @@ def main():
     SSHManager.init()
 
     USBManager.init()
+    DBusMonitor.enableUSBTest()
 
     send_data_thread = NamedThread("SendSocketIO", target=send_data_loop)
     send_data_thread.start()
