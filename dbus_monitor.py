@@ -242,7 +242,7 @@ class DBusMonitor:
         USB_DEVICE = parameters[0]
         logger.info(f"Device '{USB_DEVICE}' connected")
         usb_device_notification.message = f"{USB_DEVICE}"
-        usb_device_notification.respone_options[NotificationResponse.OK]
+        usb_device_notification.respone_options = [NotificationResponse.OK]
 
         NotificationManager.add_notification(usb_device_notification)
 
