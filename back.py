@@ -51,7 +51,7 @@ if True:
 
     # mimic the behavior of the global client
     SHSentryClient = sentry_sdk.Client(
-        dsn="http://66287e18e4d9bb8437bd9b0a963bb882@65.109.232.162/3",
+        dsn="https://66287e18e4d9bb8437bd9b0a963bb882@sentry.meticulousespresso.com/3",
         # before_breadcrumb=before_breadcrumb,
     )
 
