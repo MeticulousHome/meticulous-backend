@@ -1,14 +1,14 @@
-import unittest
-import os
 import json
+import logging
+import os
+import unittest
 
 from profile_preprocessor import (
-    ProfilePreprocessor,
     FormatException,
+    ProfilePreprocessor,
     UndefinedVariableException,
     VariableTypeException,
 )
-import logging
 
 # Setup logging as required by your ProfilePreprocessor implementation
 logger = logging.getLogger()
@@ -16,7 +16,6 @@ logging.basicConfig(level=logging.INFO)
 
 
 class TestProfilePreprocessor(unittest.TestCase):
-
     def setUp(self):
         os.environ["LOG_PATH"] = "/tmp"
         os.environ["CONFIG_PATH"] = "/tmp"

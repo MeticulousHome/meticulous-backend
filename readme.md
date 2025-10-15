@@ -4,8 +4,8 @@ This repository is used to run the backend of **meticulous**.
 
 ## Install development tools
 
-To keep code format uniform, we make use of `black` formatter and `flake8` linter. You can install and run them
-manually or automate that by using the pre-commit hooks that are available in the repo, for that You must install the requirements listed in `requirements-dev.txt`.
+To keep code format uniform, we use the `Ruff` linter and formatter, configured in `pyproject.toml`.  You can install
+and run `Ruff` manually, or automate it using the pre-commit hooks that are available in the repo:
 
 ```bash
 pip install -r requirements-dev.txt
@@ -13,12 +13,15 @@ pip install -r requirements-dev.txt
 
 Once the requirements are installed, install the pre-commit script using the pre-commit module
 
-
 ```bash
 pre-commit install
 ```
 
-And with that You are good to go. `blake` and `flake8` will be run on every commit attempt
+Now `Ruff` will be run on every commit attempt, or you can trigger it manually with:
+
+```bash
+pre-commit run --all-files
+```
 
 ## Backend: For Development
 
@@ -65,12 +68,12 @@ This project uses Alembic for managing database migrations. Follow these steps t
 
 ### Making Database Changes
 
-1. **Modify Database Models:**  
+1. **Modify Database Models:**
    Edit `database_models.py` to reflect the required changes in your database structure. You can:
    - Add or modify tables, columns, or constraints.
    - Remember, this file is the single source of truth for the database schema.
 
-2. **Generate a Migration Script:**  
+2. **Generate a Migration Script:**
    Run the following command to create a new migration script:
    ```bash
    alembic revision --autogenerate -m "Brief description of change"
@@ -79,7 +82,7 @@ This project uses Alembic for managing database migrations. Follow these steps t
    - Open the generated script and review the `upgrade()` and `downgrade()` functions.
    - Ensure these functions accurately reflect your intended changes, and modify them if necessary.
 
-3. **Apply the Migration:**  
+3. **Apply the Migration:**
    Update your local database to the latest version with:
    ```bash
    alembic upgrade head
@@ -94,16 +97,16 @@ This project uses Alembic for managing database migrations. Follow these steps t
 
 If you need to revert to a previous database version:
 
-1. **Identify the Revision:**  
+1. **Identify the Revision:**
    Find the desired revision ID from the scripts in the `alembic/versions` directory.
 
-2. **Set the Stable Version:**  
+2. **Set the Stable Version:**
    Update the version in `db_migration_updater.py`:
    ```python
    MIGRATION_VERSION_STABLE = "revision_id"  # e.g., "ebb6a77afd0e"
    ```
 
-3. **Automatic Downgrade:**  
+3. **Automatic Downgrade:**
    The system will automatically downgrade the database to the specified version.
 
 ## Additional Notes

@@ -1,12 +1,12 @@
 import threading
-from log import MeticulousLogger
+
 import gi
+
+from log import MeticulousLogger
 
 # Setup GStreamer version before importing
 gi.require_version("Gst", "1.0")
-# noqa: E402
-from gi.repository import Gst  # noqa: E402
-from gi.repository import GLib  # noqa: E402
+from gi.repository import GLib, Gst  # noqa: E402
 
 logger = MeticulousLogger.getLogger(__name__)
 

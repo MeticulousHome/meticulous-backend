@@ -1,10 +1,11 @@
-from pydbus import SystemBus
-import subprocess
 import re
-from config import MeticulousConfig, CONFIG_SYSTEM, ROOT_PASSWORD
-from machine import Machine
+import subprocess
 
+from pydbus import SystemBus
+
+from config import CONFIG_SYSTEM, ROOT_PASSWORD, MeticulousConfig
 from log import MeticulousLogger
+from machine import Machine
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -38,7 +39,6 @@ class SSHManager:
 
     @staticmethod
     def init():
-
         # First of all, I get the password from the current configuration
         current_password = SSHManager.get_root_password()
 
@@ -129,9 +129,7 @@ class SSHManager:
             with open(SSHManager.ISSUE_PATH, "w") as issue_file:
                 issue_file.write(content)
 
-            logger.info(
-                f"Successfully updated {SSHManager.ISSUE_PATH} with root password"
-            )
+            logger.info(f"Successfully updated {SSHManager.ISSUE_PATH} with root password")
             return True
         except Exception as e:
             logger.error(f"Error updating {SSHManager.ISSUE_PATH} file: {e}")

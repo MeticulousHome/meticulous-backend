@@ -1,7 +1,7 @@
+import math
+import re
 from dataclasses import dataclass, replace
 from enum import Enum, auto, unique
-import re
-import math
 
 from log import MeticulousLogger
 
@@ -96,9 +96,7 @@ class SensorData:
             )
 
         except Exception as e:
-            logger.warning(
-                f"Failed to parse SensorData ({len(args)}): {args}", exc_info=e
-            )
+            logger.warning(f"Failed to parse SensorData ({len(args)}): {args}", exc_info=e)
             return None
         return data
 
@@ -511,9 +509,7 @@ class ButtonEventData:
             except ValueError:
                 pass
 
-            event = ButtonEventData(
-                ButtonEventEnum.from_str(args[0]), time_since_last_event
-            )
+            event = ButtonEventData(ButtonEventEnum.from_str(args[0]), time_since_last_event)
         except Exception as e:
             logger.warning(f"Failed to parse EncoderEventData: {args}", exc_info=e)
             return None

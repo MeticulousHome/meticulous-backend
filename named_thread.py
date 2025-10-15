@@ -1,5 +1,6 @@
-import pyprctl
 import threading
+
+import pyprctl
 
 from log import MeticulousLogger
 

@@ -1,36 +1,32 @@
+import copy
 import json
 
 from config import (
-    CONFIG_USER,
-    MeticulousConfig,
-    UPDATE_CHANNEL,
-    MACHINE_HEATING_TIMEOUT,
-    USB_MODE,
-    USB_MODES,
-    TIMEZONE_SYNC,
-    TIME_ZONE,
     AUTOMATIC_TIMEZONE_SYNC,
-    SSH_ENABLED,
+    CONFIG_USER,
+    MACHINE_HEATING_TIMEOUT,
     PROFILE_ORDER,
     PROFILE_PARTIAL_RETRACTION,
+    SSH_ENABLED,
+    TIME_ZONE,
+    TIMEZONE_SYNC,
+    UPDATE_CHANNEL,
+    USB_MODE,
+    USB_MODES,
+    MeticulousConfig,
 )
-
 from heater_actuator import HeaterActuator
-from ssh_manager import SSHManager
-from profiles import ProfileManager
-
-from .base_handler import BaseHandler
-from .api import API, APIVersion
-
-from manufacturing import dial_schema, CONFIG_MANUFACTURING
-
-from ota import UpdateManager
 from log import MeticulousLogger
-from usb import USBManager
-import copy
-from timezone_manager import TimezoneManager
-
 from machine import Machine
+from manufacturing import CONFIG_MANUFACTURING, dial_schema
+from ota import UpdateManager
+from profiles import ProfileManager
+from ssh_manager import SSHManager
+from timezone_manager import TimezoneManager
+from usb import USBManager
+
+from .api import API, APIVersion
+from .base_handler import BaseHandler
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -99,9 +95,7 @@ class SettingsHandler(BaseHandler):
             settings = json.loads(self.request.body)
         except json.decoder.JSONDecodeError as e:
             self.set_status(403)
-            self.write(
-                {"status": "error", "error": "invalid json", "json_error": f"{e}"}
-            )
+            self.write({"status": "error", "error": "invalid json", "json_error": f"{e}"})
             return
 
         workConfig = copy.deepcopy(MeticulousConfig[CONFIG_USER])
@@ -110,9 +104,7 @@ class SettingsHandler(BaseHandler):
             for setting_target in settings:
                 value = settings.get(setting_target)
 
-                if setting_target == PROFILE_PARTIAL_RETRACTION and isinstance(
-                    value, int
-                ):
+                if setting_target == PROFILE_PARTIAL_RETRACTION and isinstance(value, int):
                     value = float(value)
 
                 self.validate_setting(setting_target, value)
@@ -184,7 +176,6 @@ class SettingsHandler(BaseHandler):
 
 
 class TimezoneUIHandler(BaseHandler):
-
     __timezone_map: dict = {}
 
     def get(self, region_type=None):
@@ -213,8 +204,7 @@ class TimezoneUIHandler(BaseHandler):
                 cities_in_country: dict = self.__timezone_map.get(conditional_filter)
                 if cities_in_country is not None:
                     return_array = [
-                        {city: cities_in_country.get(city)}
-                        for city in cities_in_country.keys()
+                        {city: cities_in_country.get(city)} for city in cities_in_country.keys()
                     ]
                 else:
                     error = "invalid country requested"
@@ -230,7 +220,6 @@ class TimezoneUIHandler(BaseHandler):
 
 
 class ManufacturingSettingsHandler(BaseHandler):
-
     # When the dial request data from the endpoint it will provide the schema if
     # the machine is on manufacturing mode
     def get(self):
@@ -255,7 +244,6 @@ class ManufacturingSettingsHandler(BaseHandler):
     #   <key>: <value>
     # }
     def post(self):
-
         if Machine.enable_manufacturing is False:
             self.set_status(410)
             self.write({"status": "error", "error": "no configuration available"})
@@ -265,9 +253,7 @@ class ManufacturingSettingsHandler(BaseHandler):
             config = json.loads(self.request.body)
         except json.decoder.JSONDecodeError as e:
             self.set_status(403)
-            self.write(
-                {"status": "error", "error": "invalid json", "json_error": f"{e}"}
-            )
+            self.write({"status": "error", "error": "invalid json", "json_error": f"{e}"})
             return
 
         workConfig = copy.deepcopy(MeticulousConfig[CONFIG_MANUFACTURING])
@@ -293,5 +279,5 @@ class ManufacturingSettingsHandler(BaseHandler):
 
 
 API.register_handler(APIVersion.V1, r"/manufacturing[/]*", ManufacturingSettingsHandler)
-API.register_handler(APIVersion.V1, r"/settings[/]*(.*)", SettingsHandler),
-API.register_handler(APIVersion.V1, r"/timezones/(.*)", TimezoneUIHandler),
+(API.register_handler(APIVersion.V1, r"/settings[/]*(.*)", SettingsHandler),)
+(API.register_handler(APIVersion.V1, r"/timezones/(.*)", TimezoneUIHandler),)
