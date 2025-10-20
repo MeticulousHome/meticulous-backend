@@ -1,5 +1,5 @@
-from machine import Machine
 from log import MeticulousLogger
+from machine import Machine
 
 logger = MeticulousLogger.getLogger(__name__)
 

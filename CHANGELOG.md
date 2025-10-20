@@ -77,4 +77,3 @@ In this pull request, significant enhancements have been made to support the rec
 
 ### [v0.1.4] - 2023-05-19
 Added workflow to generate releases
-

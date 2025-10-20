@@ -6,9 +6,9 @@ from threading import Thread
 from typing import Dict, Optional
 
 import psutil
-from bless import BlessServer  # type: ignore
 from bless import (
     BlessGATTCharacteristic,
+    BlessServer,  # type: ignore
     GATTAttributePermissions,
     GATTCharacteristicProperties,
 )
@@ -243,9 +243,7 @@ class GATTServer:
         # proper sdio power sequencing
         # After boot we need to was 10 or so seconds for the variscite wifi service
         # to enable bluetooth again
-        uptime_missing = round(
-            GATTServer.MIN_BOOT_TIME - (time.time() - psutil.boot_time())
-        )
+        uptime_missing = round(GATTServer.MIN_BOOT_TIME - (time.time() - psutil.boot_time()))
         if uptime_missing > 0:
             logger.info(
                 f"GattServer started to fast after system boot. Waiting {uptime_missing} seconds"
@@ -265,9 +263,7 @@ class GATTServer:
 
         # Power on the hci device if it is powered off
         try:
-            interface = self.bless_gatt_server.adapter.get_interface(
-                "org.bluez.Adapter1"
-            )
+            interface = self.bless_gatt_server.adapter.get_interface("org.bluez.Adapter1")
             powered = await interface.get_powered()
             if not powered:
                 logger.info("bluetooth device is not powered, powering now!")
@@ -307,28 +303,23 @@ class GATTServer:
                 GATTServer.MACHINE_IDENT_UUID: {
                     "Properties": (GATTCharacteristicProperties.read),
                     "Permissions": (
-                        GATTAttributePermissions.readable
-                        | GATTAttributePermissions.writeable
+                        GATTAttributePermissions.readable | GATTAttributePermissions.writeable
                     ),
                 },
                 ImprovUUID.STATUS_UUID.value: {
                     "Properties": (
-                        GATTCharacteristicProperties.read
-                        | GATTCharacteristicProperties.notify
+                        GATTCharacteristicProperties.read | GATTCharacteristicProperties.notify
                     ),
                     "Permissions": (
-                        GATTAttributePermissions.readable
-                        | GATTAttributePermissions.writeable
+                        GATTAttributePermissions.readable | GATTAttributePermissions.writeable
                     ),
                 },
                 ImprovUUID.ERROR_UUID.value: {
                     "Properties": (
-                        GATTCharacteristicProperties.read
-                        | GATTCharacteristicProperties.notify
+                        GATTCharacteristicProperties.read | GATTCharacteristicProperties.notify
                     ),
                     "Permissions": (
-                        GATTAttributePermissions.readable
-                        | GATTAttributePermissions.writeable
+                        GATTAttributePermissions.readable | GATTAttributePermissions.writeable
                     ),
                 },
                 ImprovUUID.RPC_COMMAND_UUID.value: {
@@ -338,14 +329,12 @@ class GATTServer:
                         | GATTCharacteristicProperties.write_without_response
                     ),
                     "Permissions": (
-                        GATTAttributePermissions.readable
-                        | GATTAttributePermissions.writeable
+                        GATTAttributePermissions.readable | GATTAttributePermissions.writeable
                     ),
                 },
                 ImprovUUID.RPC_RESULT_UUID.value: {
                     "Properties": (
-                        GATTCharacteristicProperties.read
-                        | GATTCharacteristicProperties.notify
+                        GATTCharacteristicProperties.read | GATTCharacteristicProperties.notify
                     ),
                     "Permissions": (GATTAttributePermissions.readable),
                 },
@@ -424,7 +413,6 @@ class GATTServer:
     def machine_ident_read_request(
         characteristic: BlessGATTCharacteristic,
     ) -> bytearray:
-
         config = WifiManager.getCurrentConfig()
         current_response = HostnameManager.generateDeviceName() + ","
         current_response += config.hostname + ","
@@ -448,23 +436,17 @@ class GATTServer:
                 value = GATTServer.machine_ident_read_request(characteristic)
             else:
                 GATTServer.getServer().updateAuthentication()
-                value = GATTServer.getServer().improv_server.handle_read(
-                    characteristic.uuid
-                )
+                value = GATTServer.getServer().improv_server.handle_read(characteristic.uuid)
             return value
 
         return characteristic.value
 
-    def write_request(
-        characteristic: BlessGATTCharacteristic, value: bytearray, **kwargs
-    ):
+    def write_request(characteristic: BlessGATTCharacteristic, value: bytearray, **kwargs):
         if characteristic.service_uuid == ImprovUUID.SERVICE_UUID.value:
             (
                 target_uuid,
                 target_values,
-            ) = GATTServer.getServer().improv_server.handle_write(
-                characteristic.uuid, value
-            )
+            ) = GATTServer.getServer().improv_server.handle_write(characteristic.uuid, value)
             if target_uuid is not None and target_values is not None:
                 for value in target_values:
                     logger.debug(f"Setting {ImprovUUID(target_uuid)} to {value}")
@@ -475,6 +457,4 @@ class GATTServer:
                         ImprovUUID.SERVICE_UUID.value, target_uuid
                     )
                     if not success:
-                        logger.warning(
-                            f"Updating characteristic return status={success}"
-                        )
+                        logger.warning(f"Updating characteristic return status={success}")

@@ -1,9 +1,11 @@
-import json
-import pyqrcode
+import asyncio
 import io
+import json
 
+import pyqrcode
+
+from ble_gatt import PORT
 from config import (
-    MeticulousConfig,
     CONFIG_WIFI,
     WIFI_AP_NAME,
     WIFI_AP_PASSWORD,
@@ -11,15 +13,13 @@ from config import (
     WIFI_MODE,
     WIFI_MODE_AP,
     WIFI_MODE_CLIENT,
+    MeticulousConfig,
 )
-from wifi import WifiManager, WifiType
-from ble_gatt import PORT
-
-from .base_handler import BaseHandler
-from .api import API, APIVersion
-
 from log import MeticulousLogger
-import asyncio
+from wifi import WifiManager, WifiType
+
+from .api import API, APIVersion
+from .base_handler import BaseHandler
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -85,7 +85,6 @@ class WiFiQRHandler(BaseHandler):
 
 
 class WiFiConfigHandler(BaseHandler):
-
     def getWifiConfig(self):
         mode = MeticulousConfig[CONFIG_WIFI][WIFI_MODE]
         apName = MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME]
@@ -129,13 +128,10 @@ class WiFiConfigHandler(BaseHandler):
         except Exception as e:
             self.set_status(400)
             self.write("Failed to write config")
-            logger.warning(
-                "Failed to accept passed config: ", exc_info=e, stack_info=True
-            )
+            logger.warning("Failed to accept passed config: ", exc_info=e, stack_info=True)
 
 
 class WiFiListHandler(BaseHandler):
-
     def getWifiList(self):
         networks = dict()
         try:
@@ -163,16 +159,12 @@ class WiFiListHandler(BaseHandler):
                             continue
                         if s.signal > exists["signal"]:
                             networks[s.ssid] = formated
-            response = sorted(
-                networks.values(), key=lambda x: x["signal"], reverse=True
-            )
+            response = sorted(networks.values(), key=lambda x: x["signal"], reverse=True)
             return response
         except Exception as e:
             self.set_status(400)
             self.write({"status": "error", "error": f"failed to fetch wifi list: {e}"})
-            logger.warning(
-                "Failed to fetch / format wifi list: ", exc_info=e, stack_info=True
-            )
+            logger.warning("Failed to fetch / format wifi list: ", exc_info=e, stack_info=True)
 
     async def get(self):
         loop = asyncio.get_event_loop()
@@ -182,7 +174,6 @@ class WiFiListHandler(BaseHandler):
 
 
 class WiFiConnectHandler(BaseHandler):
-
     async def post(self):
         try:
             data = json.loads(self.request.body)
@@ -210,17 +201,15 @@ class WiFiDeleteHandler(BaseHandler):
                 self.write({"status": "ok"})
             else:
                 self.set_status(400)
-                self.write(
-                    {"status": "error", "error": "failed to delete unknown wifi"}
-                )
+                self.write({"status": "error", "error": "failed to delete unknown wifi"})
         except Exception as e:
             self.set_status(400)
             self.write({"status": "error", "error": f"failed to delete wifi: {e}"})
             logger.warning("Failed to connect: ", exc_info=e, stack_info=True)
 
 
-API.register_handler(APIVersion.V1, r"/wifi/config", WiFiConfigHandler),
-API.register_handler(APIVersion.V1, r"/wifi/config/qr.png", WiFiQRHandler),
-API.register_handler(APIVersion.V1, r"/wifi/list", WiFiListHandler),
-API.register_handler(APIVersion.V1, r"/wifi/connect", WiFiConnectHandler),
-API.register_handler(APIVersion.V1, r"/wifi/delete", WiFiDeleteHandler),
+(API.register_handler(APIVersion.V1, r"/wifi/config", WiFiConfigHandler),)
+(API.register_handler(APIVersion.V1, r"/wifi/config/qr.png", WiFiQRHandler),)
+(API.register_handler(APIVersion.V1, r"/wifi/list", WiFiListHandler),)
+(API.register_handler(APIVersion.V1, r"/wifi/connect", WiFiConnectHandler),)
+(API.register_handler(APIVersion.V1, r"/wifi/delete", WiFiDeleteHandler),)

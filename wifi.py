@@ -12,8 +12,8 @@ from netaddr import IPAddress, IPNetwork
 
 from api.zeroconf_announcement import ZeroConfAnnouncement
 from config import (
-    CONFIG_WIFI,
     CONFIG_USER,
+    CONFIG_WIFI,
     HOSTNAME_OVERRIDE,
     WIFI_AP_NAME,
     WIFI_AP_PASSWORD,
@@ -24,11 +24,10 @@ from config import (
     MeticulousConfig,
 )
 from hostname import HostnameManager
-from timezone_manager import TimezoneManager
-from machine import Machine
-
 from log import MeticulousLogger
+from machine import Machine
 from named_thread import NamedThread
+from timezone_manager import TimezoneManager
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -93,9 +92,7 @@ class WifiWpaPskCredentials(BaseWiFiCredentials):
 
 
 # Define a union type for WiFi credentials
-WiFiCredentials = (
-    WifiWpaEnterpriseCredentials | WifiOpenCredentials | WifiWpaPskCredentials
-)
+WiFiCredentials = WifiWpaEnterpriseCredentials | WifiOpenCredentials | WifiWpaPskCredentials
 
 
 @dataclass
@@ -207,9 +204,7 @@ class WifiManager:
         if server and server.loop and server.loop.is_running():
             asyncio.run_coroutine_threadsafe(server.update_advertisement(), server.loop)
         else:
-            logger.warning(
-                "Cannot update GATT advertisement - server or loop not ready"
-            )
+            logger.warning("Cannot update GATT advertisement - server or loop not ready")
 
     def networking_available():
         return WifiManager._networking_available
@@ -240,9 +235,7 @@ class WifiManager:
             for network in networks:
                 # Check if we are looking for a specific network in the factory
                 if manufacturing_mode and network.ssid == "MeticulousEPW":
-                    credentials = WifiWpaPskCredentials(
-                        ssid=network.ssid, password="23456789"
-                    )
+                    credentials = WifiWpaPskCredentials(ssid=network.ssid, password="23456789")
                     success = WifiManager.connectToWifi(credentials)
                     if success:
                         break
@@ -376,7 +369,6 @@ class WifiManager:
         nmcli.connection.up(ssid, wait=10)
 
     def connectToWifi(credentials: WiFiCredentials) -> bool:  # noqa: C901
-
         if not WifiManager._networking_available:
             return False
 
@@ -419,10 +411,7 @@ class WifiManager:
 
             except Exception as e:
                 error_msg = str(e)
-                if (
-                    "802-11-wireless-security.key-mgmt: property is missing"
-                    in error_msg
-                ):
+                if "802-11-wireless-security.key-mgmt: property is missing" in error_msg:
                     needs_fix = True
                 else:
                     logger.error(f"Failed to connect to wifi: {e}")
@@ -462,9 +451,7 @@ class WifiManager:
         if type(credentials.get("type")) is WifiType:
             credentials["type"] = credentials["type"].value
 
-        MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS][
-            credentials.get("ssid")
-        ] = credentials
+        MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS][credentials.get("ssid")] = credentials
         MeticulousConfig.save()
 
     # Reads the IP from ZEROCONF_OVERWRITE and announces that instead
@@ -495,7 +482,6 @@ class WifiManager:
         )
 
     def getCurrentConfig() -> WifiSystemConfig:
-
         if ZEROCONF_OVERWRITE != "":
             return WifiManager.mockCurrentConfig()
 

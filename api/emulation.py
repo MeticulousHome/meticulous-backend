@@ -1,19 +1,20 @@
 import json
+
 from config import (
-    MeticulousConfig,
     CONFIG_WIFI,
-    WIFI_MODE,
-    WIFI_MODE_AP,
-    WIFI_MODE_CLIENT,
     WIFI_AP_NAME,
     WIFI_AP_PASSWORD,
     WIFI_KNOWN_WIFIS,
+    WIFI_MODE,
+    WIFI_MODE_AP,
+    WIFI_MODE_CLIENT,
+    MeticulousConfig,
 )
-from .wifi import WiFiConfig, WiFiQRHandler, WifiManager
+from log import MeticulousLogger
+
 from .api import API, APIVersion
 from .base_handler import BaseHandler
-
-from log import MeticulousLogger
+from .wifi import WiFiConfig, WifiManager, WiFiQRHandler
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -97,9 +98,7 @@ class WiFiConfigHandler(BaseHandler):
         except Exception as e:
             self.set_status(400)
             self.write("Failed to write config")
-            logger.warning(
-                "Failed to accept passed config: ", exc_info=e, stack_info=True
-            )
+            logger.warning("Failed to accept passed config: ", exc_info=e, stack_info=True)
 
 
 class WiFiListHandler(BaseHandler):
@@ -132,10 +131,10 @@ class WiFiConnectHandler(BaseHandler):
 
 
 def register_emulation_handlers():
-    API.register_handler(APIVersion.V1, r"/wifi/config", WiFiConfigHandler),
-    API.register_handler(APIVersion.V1, r"/wifi/list", WiFiListHandler),
-    API.register_handler(APIVersion.V1, r"/wifi/connect", WiFiConnectHandler),
-    API.register_handler(APIVersion.V1, r"/wifi/config/qr.png", WiFiQRHandler),
+    (API.register_handler(APIVersion.V1, r"/wifi/config", WiFiConfigHandler),)
+    (API.register_handler(APIVersion.V1, r"/wifi/list", WiFiListHandler),)
+    (API.register_handler(APIVersion.V1, r"/wifi/connect", WiFiConnectHandler),)
+    (API.register_handler(APIVersion.V1, r"/wifi/config/qr.png", WiFiQRHandler),)
 
 
 LEGACY_DUMMY_PROFILE = {

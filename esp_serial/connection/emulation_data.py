@@ -1,6 +1,7 @@
-from ..data import ShotData, SensorData, ESPInfo
 import json
 import os
+
+from ..data import ESPInfo, SensorData, ShotData
 
 
 class EmulationData:
@@ -53,9 +54,7 @@ class EmulationData:
                 gravimetric_flow=data["gravimetric_flow"],
                 temperature=data.get("temperature", sensor["tube"]),
                 profile=(
-                    EmulationData.PROFILE_PLACEHOLDER
-                    if isProfile
-                    else shot["profile_name"]
+                    EmulationData.PROFILE_PLACEHOLDER if isProfile else shot["profile_name"]
                 ),
                 status=sample["status"],
                 main_controller_kind=data["setpoints"]["active"],
@@ -106,23 +105,17 @@ class EmulationData:
             "ESPInfo," + ",".join(ESPInfo().to_args()),
         ]
 
-        emulated_shot_path = os.path.join(
-            os.path.dirname(__file__), "emulated.shot.json"
-        )
+        emulated_shot_path = os.path.join(os.path.dirname(__file__), "emulated.shot.json")
         with open(emulated_shot_path, "r") as f:
             shot = json.load(f)
             EmulationData.ESPRESSO_DATA = EmulationData.shotToEmulation(shot)
 
-        emulated_home_path = os.path.join(
-            os.path.dirname(__file__), "emulated.home.json"
-        )
+        emulated_home_path = os.path.join(os.path.dirname(__file__), "emulated.home.json")
         with open(emulated_home_path, "r") as f:
             shot = json.load(f)
             EmulationData.HOME_DATA = EmulationData.shotToEmulation(shot)
 
-        emulated_purge_path = os.path.join(
-            os.path.dirname(__file__), "emulated.purge.json"
-        )
+        emulated_purge_path = os.path.join(os.path.dirname(__file__), "emulated.purge.json")
         with open(emulated_purge_path, "r") as f:
             shot = json.load(f)
             EmulationData.PURGE_DATA = EmulationData.shotToEmulation(shot)

@@ -11,6 +11,7 @@ import pytz
 import zstandard as zstd
 from pydantic import BaseModel, Field
 from sqlalchemy import (
+    Table,
     asc,
     create_engine,
     delete,
@@ -21,14 +22,14 @@ from sqlalchemy import (
     or_,
     select,
     text,
-    Table,
+    update,
 )
 from sqlalchemy import event as sqlEvent
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import update
-from database_models import metadata, profile as profile_table, history as history_table
-from database_models import shot_annotation, shot_rating
 
+from database_models import history as history_table
+from database_models import metadata, shot_annotation, shot_rating
+from database_models import profile as profile_table
 from log import MeticulousLogger
 
 HISTORY_PATH = os.getenv("HISTORY_PATH", "/meticulous-user/history")
@@ -69,7 +70,6 @@ class ShotDataBase:
 
     @staticmethod
     def init():
-
         os.makedirs(HISTORY_PATH, exist_ok=True)
         # Initialize database connection
         ShotDataBase.engine = create_engine(
@@ -90,7 +90,6 @@ class ShotDataBase:
         ShotDataBase.session = sessionmaker(bind=ShotDataBase.engine)
 
         try:
-
             # Ensure FTS tables are created
             with ShotDataBase.engine.connect() as connection:
                 connection.execute(
@@ -260,7 +259,6 @@ class ShotDataBase:
         profile_key = ShotDataBase.insert_profile(profile_data)
         with ShotDataBase.engine.connect() as connection:
             with connection.begin():
-
                 # Convert to UTC
                 time_obj = datetime.fromtimestamp(entry["time"])
                 time_obj = pytz.timezone("UTC").localize(time_obj)
@@ -290,7 +288,6 @@ class ShotDataBase:
 
     @staticmethod
     def unlink_debug_file(file_relative_path):
-
         stmt = (
             update(history_table)
             .where(history_table.c.debug_file == file_relative_path)
@@ -302,9 +299,7 @@ class ShotDataBase:
                 if result.rowcount == 0:
                     logger.warning("no columns affected, check relative file path")
                 else:
-                    logger.info(
-                        f"debug file linked, affected rows: {{{result.rowcount}}}"
-                    )
+                    logger.info(f"debug file linked, affected rows: {{{result.rowcount}}}")
 
     @staticmethod
     def delete_shot(shot_id):
@@ -317,18 +312,16 @@ class ShotDataBase:
                 connection.execute(del_stmt)
 
                 # Get the profile_key of the deleted shot
-                profile_key_stmt = select(
-                    [ShotDataBase.history_table.c.profile_key]
-                ).where(history_table.c.id == shot_id)
+                profile_key_stmt = select([ShotDataBase.history_table.c.profile_key]).where(
+                    history_table.c.id == shot_id
+                )
                 connection.execute(profile_key_stmt).fetchone()
 
                 # Check for orphaned profiles
                 orphaned_profiles_stmt = select([profile_table.c.key]).where(
                     ~profile_table.c.key.in_(select([history_table.c.profile_key]))
                 )
-                orphaned_profiles = connection.execute(
-                    orphaned_profiles_stmt
-                ).fetchall()
+                orphaned_profiles = connection.execute(orphaned_profiles_stmt).fetchall()
                 for orphan in orphaned_profiles:
                     del_profile_stmt = delete(profile_table).where(
                         profile_table.c.key == orphan[0]
@@ -429,9 +422,7 @@ class ShotDataBase:
                     data_file = Path(SHOT_PATH).joinpath(file_entry)
                     with open(data_file, "rb") as compressed_file:
                         decompressor = zstd.ZstdDecompressor()
-                        decompressed_content = decompressor.stream_reader(
-                            compressed_file
-                        )
+                        decompressed_content = decompressor.stream_reader(compressed_file)
                         file_contents = json.loads(decompressed_content.read())
                         data = file_contents.get("data")
 
@@ -497,9 +488,7 @@ class ShotDataBase:
             profile_results = session.execute(stmt_profile).fetchall()
             stage_results = session.execute(stmt_stage).fetchall()
 
-            results = [
-                {"profile": res.name, "type": "profile"} for res in profile_results
-            ]
+            results = [{"profile": res.name, "type": "profile"} for res in profile_results]
             for result in stage_results:
                 results.append(
                     {
@@ -518,9 +507,7 @@ class ShotDataBase:
                 select(
                     history_table.c.profile_name.label("profile_name"),
                     func.count(history_table.c.profile_name).label("profile_count"),
-                    func.count(distinct(history_table.c.profile_id)).label(
-                        "profile_versions"
-                    ),
+                    func.count(distinct(history_table.c.profile_id)).label("profile_versions"),
                 )
                 .group_by(
                     history_table.c.profile_name,
@@ -544,21 +531,15 @@ class ShotDataBase:
 
     @staticmethod
     def rate_shot(history_uuid: str, rating: Optional[str]) -> bool:
-
         if rating not in ("like", "dislike", None):
-            logger.error(
-                f"Invalid rating: {rating}. Must be 'like', 'dislike', or None."
-            )
+            logger.error(f"Invalid rating: {rating}. Must be 'like', 'dislike', or None.")
             return False
 
         try:
             with ShotDataBase.engine.connect() as connection:
                 with connection.begin():
-
                     shot_exists = connection.execute(
-                        select(history_table.c.id).where(
-                            history_table.c.uuid == history_uuid
-                        )
+                        select(history_table.c.id).where(history_table.c.uuid == history_uuid)
                     ).fetchone()
 
                     if not shot_exists:
@@ -617,7 +598,6 @@ class ShotDataBase:
     def get_shot_rating(history_uuid: str) -> Optional[str]:
         try:
             with ShotDataBase.engine.connect() as connection:
-
                 query = (
                     select(shot_rating.c.basic)
                     .select_from(
