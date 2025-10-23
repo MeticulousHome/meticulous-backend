@@ -91,6 +91,9 @@ class TimezoneManager:
             logger.info(
                 f"new system time zone: {TimezoneManager.get_system_timezone()}"
             )
+        except subprocess.CalledProcessError as e:
+            message = f"Error setting system time zone: {e} [ Out: {e.stdout} | Err: {e.stderr} ]"
+            raise TimezoneManagerError(message)
         except Exception as e:
             message = f"Error setting system time zone: {e}"
             logger.error(message)
