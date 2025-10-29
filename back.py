@@ -46,7 +46,7 @@ def before_send(event, hint):
     return event
 
 
-if True:
+if BACKEND == "FIKA" or SENTRY:
     print("Initializing sentry")
 
     # mimic the behavior of the global client
@@ -90,7 +90,6 @@ def run():
     # Add ignored errors to sentry now that the import suceeded
     client = sentry_sdk.get_client()
     client.options["ignore_errors"].append(WebSocketClosedError)
-    sentry_sdk.set_context("testing", {"deployed": "docker"})
 
     logger = MeticulousLogger.getLogger(__name__)
 
