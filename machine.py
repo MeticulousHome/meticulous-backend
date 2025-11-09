@@ -664,21 +664,17 @@ class Machine:
         Machine.action("scale_master_calibration")
 
     def startUpdate():
-        updateNotification = Notification(
-            "Upgrading system realtime core. This will take around 20 seconds. The machines buttons will be disabled during the upgrade",
-        )
-        NotificationManager.add_notification(updateNotification)
 
         Machine._stopESPcomm = True
         error_msg = Machine._connection.sendUpdate()
         Machine._stopESPcomm = False
 
         if error_msg:
-            updateNotification.message = f"Realtime core upgrade failed: {error_msg}. The machine will ensure a good state on next start. If you encounter any errors please reach out to product support!"
-        else:
-            updateNotification.message = "The realtime core was upgraded sucessfully! Buttons will be enabled again in around 5 seconds"
-        updateNotification.respone_options = [NotificationResponse.OK]
-        NotificationManager.add_notification(updateNotification)
+            updateNotification = Notification(
+                f"Realtime core upgrade failed: {error_msg}. The machine will ensure a good state on next start. If you encounter any errors please reach out to product support!"
+            )
+            updateNotification.respone_options = [NotificationResponse.OK]
+            NotificationManager.add_notification(updateNotification)
         return error_msg
 
     def end_profile():
