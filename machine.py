@@ -47,7 +47,22 @@ from shot_debug_manager import ShotDebugManager
 from shot_manager import ShotManager
 from sounds import SoundPlayer, Sounds
 
+from sentry_sdk.integrations.asyncio import AsyncioIntegration
+
+
 from manufacturing import FORCE_MANUFACTURING_ENABLED_KEY, LAST_BOOT_MODE_KEY
+
+ESPSentryClient = sentry_sdk.Client(
+    dsn="https://ae0d66689e4445a4af7de61ab576d17c@sentry.meticulousespresso.com/6",
+    traces_sample_rate=0.0,
+    # Set profiles_sample_rate to 1.0 to profile 100%
+    # of sampled transactions.
+    # We recommend adjusting this value in production.
+    profiles_sample_rate=0.0,
+    integrations=[
+        AsyncioIntegration(),
+    ],
+)
 
 
 def toggle_sentry(enabled):
@@ -409,6 +424,50 @@ class Machine:
                                 f"Error processing HeaterTimeoutInfo: {e}",
                                 exc_info=True,
                             )
+                    case ["Log", *log_data]:
+                        logger.info(data_str.strip("\r\n"))
+                        if len(log_data) > 1:
+                            log_level = log_data[0]
+                            message = log_data[1]
+                            items: dict[str, str] = {}
+                            send_to_sentry = False
+
+                            def get_log_items(log_data: list[str]):
+                                for data_str in log_data[2:]:
+                                    # data in the form: <key>=<value>
+                                    data = data_str.split("=")
+                                    if len(data) < 2:
+                                        logger.warning(
+                                            f"Error parsing ESP log item: {data_str}"
+                                        )
+                                        continue
+                                    key = data[0]
+                                    value = data[1]
+                                    items.setdefault(key, value)
+
+                            try:
+                                if len(log_data) > 2:
+                                    get_log_items(log_data=log_data)
+                                    send_to_sentry = (
+                                        items.get("sentry", "false") == "true"
+                                    )
+                                    new_dict = {
+                                        k: v for k, v in items.items() if k != "sentry"
+                                    }
+                                    if send_to_sentry:
+                                        with sentry_sdk.new_scope() as scope:
+                                            scope.set_context("esp-data", new_dict)
+                                            scope.set_client(ESPSentryClient)
+                                            scope.capture_message(
+                                                message=message,
+                                                level=log_level.lower(),
+                                            )
+                                # if we want to send to sentry
+                            except Exception as e:
+                                logger.error(
+                                    f"Error processing Log from ESP: {e}",
+                                    exc_info=True,
+                                )
                     case [*_]:
                         logger.info(data_str.strip("\r\n"))
 
