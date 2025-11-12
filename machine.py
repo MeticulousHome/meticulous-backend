@@ -487,11 +487,15 @@ class Machine:
                                     logger.info(full_message)
                                 case "warning":
                                     logger.warning(full_message)
-                            new_dict = None
+                                case "error":
+                                    logger.error(
+                                        f"ESP error: {full_message}"
+                                    )  # Sends the error to the backend project in sentry
+                            items_filtered = None
                             if len(log_data) > 2:
                                 get_log_items(log_data=log_data)
                                 send_to_sentry = items.get("sentry", "false") == "true"
-                                new_dict = {
+                                items_filtered = {
                                     k: v for k, v in items.items() if k != "sentry"
                                 }
 
@@ -499,8 +503,8 @@ class Machine:
 
                             if send_to_sentry:
                                 with sentry_sdk.new_scope() as scope:
-                                    if new_dict is not None:
-                                        scope.set_context("esp-data", new_dict)
+                                    if items_filtered is not None:
+                                        scope.set_context("esp-data", items_filtered)
                                     scope.set_client(ESPSentryClient)
                                     if log_level == "error":
                                         logger.error(full_message)
