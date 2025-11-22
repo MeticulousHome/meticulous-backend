@@ -1,5 +1,6 @@
 bidict>=0.22.1
 bless>=0.2.6
+bleak<1.0.0
 coloredlogs
 datauri
 esptool==4.6.2
