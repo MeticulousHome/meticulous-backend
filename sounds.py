@@ -77,7 +77,7 @@ class SoundPlayer:
         )
 
         try:
-            subprocess.run(["pactl", "--", "set-sink-volume", "0", "100%"])
+            subprocess.run(["pactl", "--", "set-sink-volume", "0", "70%"])
         except Exception as e:
             logger.error(f"failed to set audio volume: {e}")
 
