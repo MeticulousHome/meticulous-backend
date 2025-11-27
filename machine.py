@@ -47,7 +47,22 @@ from shot_debug_manager import ShotDebugManager
 from shot_manager import ShotManager
 from sounds import SoundPlayer, Sounds
 
+from sentry_sdk.integrations.asyncio import AsyncioIntegration
+
+
 from manufacturing import FORCE_MANUFACTURING_ENABLED_KEY, LAST_BOOT_MODE_KEY
+
+ESPSentryClient = sentry_sdk.Client(
+    dsn="https://ae0d66689e4445a4af7de61ab576d17c@sentry.meticulousespresso.com/6",
+    traces_sample_rate=0.0,
+    # Set profiles_sample_rate to 1.0 to profile 100%
+    # of sampled transactions.
+    # We recommend adjusting this value in production.
+    profiles_sample_rate=0.0,
+    integrations=[
+        AsyncioIntegration(),
+    ],
+)
 
 
 def toggle_sentry(enabled):
@@ -407,6 +422,68 @@ class Machine:
                         except Exception as e:
                             logger.error(
                                 f"Error processing HeaterTimeoutInfo: {e}",
+                                exc_info=True,
+                            )
+                    case ["Log", *log_data]:
+
+                        def get_log_items(log_data: list[str]):
+                            for data_str in log_data[2:]:
+                                # data in the form: <key>=<value>
+                                data = data_str.split("=")
+                                if len(data) < 2:
+                                    logger.warning(
+                                        f"Error parsing ESP log item: {data_str}"
+                                    )
+                                    continue
+                                key = data[0]
+                                value = data[1]
+                                items.setdefault(key, value)
+
+                        # logger.info(data_str.strip("\r\n"))
+                        try:
+                            log_level = log_data[0].lower()
+                            message = log_data[1]
+                            full_message = ",".join(log_data[1:])
+                            items: dict[str, str] = {}
+                            send_to_sentry = False
+
+                            match log_level:
+
+                                case "debug":
+                                    logger.debug(full_message)
+                                case "info":
+                                    logger.info(full_message)
+                                case "warning":
+                                    logger.warning(full_message)
+                                case "error":
+                                    logger.error(
+                                        f"ESP error: {full_message}"
+                                    )  # Sends the error to the backend project in sentry
+                            items_filtered = None
+                            if len(log_data) > 2:
+                                get_log_items(log_data=log_data)
+                                send_to_sentry = items.get("sentry", "false") == "true"
+                                items_filtered = {
+                                    k: v for k, v in items.items() if k != "sentry"
+                                }
+
+                            send_to_sentry = send_to_sentry or log_level == "error"
+
+                            if send_to_sentry:
+                                with sentry_sdk.new_scope() as scope:
+                                    if items_filtered is not None:
+                                        scope.set_context("esp-data", items_filtered)
+                                    scope.set_client(ESPSentryClient)
+                                    if log_level == "error":
+                                        logger.error(full_message)
+                                    else:
+                                        scope.capture_message(
+                                            message=message,
+                                            level=log_level,
+                                        )
+                        except Exception as e:
+                            logger.error(
+                                f"Error '{e}' processing Log from ESP: 'Log,{",".join(log_data)}'",
                                 exc_info=True,
                             )
                     case [*_]:
