@@ -360,7 +360,17 @@ class GATTServer:
     def wifi_connect(ssid: str, passwd: str) -> Optional[list[str]]:
         try:
             ssid = ssid.decode("utf-8")
+        except Exception as e:
+            logger.error(f"Failed to decode SSID: {e}")
+            return None
+
+        try:
             passwd = passwd.decode("utf-8")
+        except Exception as e:
+            logger.error(f"Failed to decode password: {e}")
+            return None
+
+        try:
             logger.info(f"Connecting to '{ssid}' with password: '{passwd}'")
             credentials = WifiWpaPskCredentials(ssid=ssid, password=passwd)
             if WifiManager.connectToWifi(credentials):
@@ -376,7 +386,7 @@ class GATTServer:
                 return localServer
             return None
         except Exception as e:
-            logger.error(f"Failed to connect to WiFi: {e}")
+            logger.error(f"Failed to connect to WiFi: {e}, ssid={ssid} passwd={passwd}")
             logger.exception("WiFi connection failed", exc_info=e, stack_info=True)
             return None
 
