@@ -8,6 +8,8 @@ import json
 import traceback
 import time
 from named_thread import NamedThread
+import datetime
+from timezone_manager import TimezoneManager
 
 from notifications import NotificationManager, Notification, NotificationResponse
 
@@ -287,6 +289,33 @@ class DiscImager:
             # '\'{"elapsed":%t,"bytes":%b,"rate":%r,"percentage":%{progress-amount-only}}\'',
             ROOTFS_ARCHIVE,
         ]
+
+        # get fs creation date
+        date_cmd = f"stat {ROOTFS_ARCHIVE} | grep Birth"
+        try:
+            ROOTFS_BIRTH = subprocess.run(
+                date_cmd, shell=True, text=True, capture_output=True, check=True
+            )
+            birth_str = ROOTFS_BIRTH.stdout.strip()
+            if birth_str.find("Birth") == -1:
+                raise Exception("unexpected result from 'stat'")
+            birth_data = birth_str.split()[1:3]
+            logger.warning(f"birth data: {birth_data}")
+            if "." in birth_data[1]:
+                b_time = birth_data[1].split(".")[0]
+            birth_date = datetime.datetime.strptime(
+                f"{birth_data[0]} {b_time}", "%Y-%m-%d %H:%M:%S"
+            )
+            new_date = birth_date + datetime.timedelta(days=1)
+            TimezoneManager.set_system_datetime(new_date)
+            logger.warning(
+                f'system date set to {new_date.strftime("%Y-%m-%d %H:%M:%S")}'
+            )
+
+        except Exception as e:
+            logger.warning(
+                f"could not set system dat to ${ROOTFS_ARCHIVE} birth date: {e}"
+            )
 
         tar_cmd = f"tar -x -C {mountpoint}"
         pv = subprocess.Popen(
