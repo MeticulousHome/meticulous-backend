@@ -302,7 +302,7 @@ class DiscImager:
             tar_cmd.split(),
             shell=False,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
             stdin=pv.stdout,
         )
         pv.stdout.close()  # Allow pv to receive a SIGPIPE if mysql exits.
