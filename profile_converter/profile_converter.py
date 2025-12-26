@@ -432,7 +432,16 @@ class ComplexProfileConverter:
                                 },
                             },
                         ],
-                        "triggers": [{"kind": "exit", "next_node_id": 18}],
+                        "triggers": [
+                            {
+                                "kind": "exit",
+                                "next_node_id": 18
+                            },
+                            {
+                                "kind": "user_message_trigger",
+                                "next_node_id": 18,
+                            },
+                            ],
                     },
                     {
                         "id": 18,
@@ -576,7 +585,11 @@ class ComplexProfileConverter:
                                 "position_reference_id": 3,
                                 "operator": "<=",
                                 "value": -4,
-                            }
+                            },
+                            {
+                                "kind": "user_message_trigger",
+                                "next_node_id": 27,
+                            },
                         ],
                     },
                     {
