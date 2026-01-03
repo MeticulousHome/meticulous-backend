@@ -11,6 +11,7 @@ import string
 from ota import UpdateManager
 from packaging import version
 import subprocess
+from monitoring.motor_power_monitoring import motor_energy_calculator
 
 from config import (
     CONFIG_LOGGING,
@@ -509,11 +510,24 @@ class Machine:
                     Machine.infoReady = True
 
                 if sensor is not None:
+                    def stopMotorIfHot(_sensorData: SensorData):
+                        MAX_ENERGY_ALLOWED = 200
+                        energy_consumed_by_motor = motor_energy_calculator.calculate_motor_energy(_sensorData)
+                        if energy_consumed_by_motor >= MAX_ENERGY_ALLOWED:
+                            logger.warning(f"Motor might be hot, has consumed {energy_consumed_by_motor}. Stopping profile")
+                            motorHotNotification = Notification(
+                                f"Motor might be hot, has consumed {energy_consumed_by_motor}. Stopping profile"
+                            )
+                            motorHotNotification.respone_options = [NotificationResponse.OK]
+                            NotificationManager.add_notification(motorHotNotification)
+                            Machine.end_profile()
+
                     Machine.sensor_sensors = sensor
                     Machine.reset_count = 0
                     ShotDebugManager.handleSensorData(Machine.sensor_sensors)
                     if time_flag:
                         ShotManager.handleSensorData(Machine.sensor_sensors)
+                    stopMotorIfHot(Machine.sensor_sensors)
 
                 if info is not None:
                     Machine.esp_info = info
