@@ -511,9 +511,11 @@ class Machine:
                 if sensor is not None:
 
                     def stopMotorIfHot(_sensorData: SensorData):
-                        MAX_ENERGY_ALLOWED = 250
+                        MAX_ENERGY_ALLOWED = 2000
                         energy_consumed_by_motor = (
-                            motor_energy_calculator.calculate_motor_energy(_sensorData)
+                            motor_energy_calculator.calculate_motor_energy(
+                                _sensorData, data
+                            )
                         )
                         if energy_consumed_by_motor >= MAX_ENERGY_ALLOWED:
                             logger.warning(
