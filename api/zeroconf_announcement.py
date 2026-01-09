@@ -6,7 +6,7 @@ from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
 
 # FIXME: remove once the tornado server logic moved to its own file
-PORT = int(os.getenv("PORT", "8080"))
+ZEROCONF_PORT = int(os.getenv("ZEROCONF_PORT", "80"))
 
 
 class ZeroConfAnnouncement:
@@ -34,7 +34,7 @@ class ZeroConfAnnouncement:
             "_http._tcp.local.",
             f"{machine_name}._http._tcp.local.",
             parsed_addresses=ips,
-            port=PORT,
+            port=ZEROCONF_PORT,
             # We can announce arbitrary information here (e.g. version numbers or features or state)
             properties={
                 "server_name": machine_name,
@@ -49,7 +49,7 @@ class ZeroConfAnnouncement:
             "_meticulous._tcp.local.",
             f"{machine_name}._meticulous._tcp.local.",
             parsed_addresses=ips,
-            port=PORT,
+            port=ZEROCONF_PORT,
             # We can announce arbitrary information here (e.g. version numbers or features or state)
             properties={
                 "server_name": machine_name,
@@ -70,14 +70,14 @@ class ZeroConfAnnouncement:
                 self.zeroconf.register_service(
                     self.http_service_info, allow_name_change=True
                 )
-                logger.info(f"zeroconf service http announced on port {PORT}")
+                logger.info(f"zeroconf service http announced on port {ZEROCONF_PORT}")
             else:
                 logger.warning("Could not fetch machine informations for http zeroconf")
             if self.met_service_info is not None:
                 self.zeroconf.register_service(
                     self.met_service_info, allow_name_change=True
                 )
-                logger.info(f"zeroconf service meticulous announced on port {PORT}")
+                logger.info(f"zeroconf service meticulous announced on port {ZEROCONF_PORT}")
             else:
                 logger.warning(
                     "Could not fetch machine informations for meticulous zeroconf"
@@ -86,7 +86,7 @@ class ZeroConfAnnouncement:
             return
         except zeroconf.NonUniqueNameException:
             logger.warning(
-                f"zeroconf failed to start on port {PORT} error='NonUniqueNameException'"
+                f"zeroconf failed to start on port {ZEROCONF_PORT} error='NonUniqueNameException'"
             )
 
     def stop(self):

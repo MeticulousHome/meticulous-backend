@@ -7,6 +7,7 @@ export HISTORY_PATH=./history
 export DEBUG_HISTORY_PATH=./history/debug
 export UPDATE_PATH=/tmp/firmware
 export PORT=8080
+export ZEROCONF_PORT=8080
 export DEBUG=y
 export USER_SOUNDS=./sounds
 export DEFAULT_IMAGES=./images/default
