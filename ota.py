@@ -83,6 +83,7 @@ class UpdateManager:
 
     @staticmethod
     def setChannel(channel: str):
+        channel = channel.strip()
         hawkbit_dir = Path(HAWKBIT_CONFIG_DIR)
         if not Path(hawkbit_dir).exists():
             logger.info(f"{hawkbit_dir} does not exist, not changing update channel")
@@ -91,14 +92,14 @@ class UpdateManager:
         channel_file = hawkbit_dir.joinpath(HAWKBIT_CHANNEL_FILE)
         try:
             with open(channel_file, "r") as f:
-                current_channel = f.read()
+                current_channel = f.read().strip()
         except FileNotFoundError:
             current_channel = None
 
         if current_channel != channel:
             try:
                 with open(channel_file, "w") as f:
-                    f.write(channel)
+                    f.write(channel + "\n")
                 logger.info(
                     f"Changed update channel from {current_channel} to {channel}"
                 )
