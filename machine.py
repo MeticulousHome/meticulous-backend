@@ -8,7 +8,6 @@ from enum import Enum
 import sentry_sdk
 import random
 import string
-from ota import UpdateManager
 from packaging import version
 import subprocess
 
@@ -566,43 +565,10 @@ class Machine:
                             f"Backend available firmware version: {Machine.firmware_available}"
                         )
                         emulated_firmware = Machine.emulated
-                    needs_update = False
-                    if (
-                        Machine.firmware_available is not None
-                        and Machine.firmware_available is not None
-                    ):
 
-                        if (
-                            Machine.firmware_running["Release"]
-                            < Machine.firmware_available["Release"]
-                        ):
-                            needs_update = True
-
-                        if (
-                            Machine.firmware_running["Release"]
-                            != Machine.firmware_available["Release"]
-                        ) and UpdateManager.is_changed:
-                            needs_update = True
-
-                        if (
-                            Machine.firmware_running["Release"]
-                            == Machine.firmware_available["Release"]
-                        ):
-                            try:
-                                running_extra = int(
-                                    Machine.firmware_running["ExtraCommits"]
-                                )
-                                available_extra = int(
-                                    Machine.firmware_available["ExtraCommits"]
-                                )
-                                if running_extra < available_extra:
-                                    needs_update = True
-                                if (
-                                    running_extra != available_extra
-                                ) and UpdateManager.is_changed:
-                                    needs_update = True
-                            except Exception:
-                                pass
+                    needs_update = Machine.firmware_available is not None and (
+                        Machine.firmware_available != Machine.firmware_running
+                    )
 
                     if (
                         needs_update
