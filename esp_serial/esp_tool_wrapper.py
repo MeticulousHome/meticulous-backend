@@ -225,12 +225,12 @@ class ESPToolWrapper:
 
             if magic_word == 0xABCD5432:
                 logger.info("On-disk firmware file:")
-                logger.info(f'Project name: {project_name.decode("utf-8")}')
-                logger.info(f'App version: {version.decode("utf-8")}')
+                logger.info(f'Project name: {project_name.decode("utf-8").strip()}')
+                logger.info(f'App version: {version.decode("utf-8").strip()}')
                 logger.info(
-                    f'Compile time: {date.decode("utf-8")} {time.decode("utf-8")}'
+                    f'Compile time: {date.decode("utf-8").strip()} {time.decode("utf-8").strip()}'
                 )
-                logger.info(f'ESP-IDF: {idf_ver.decode("utf-8")}')
+                logger.info(f'ESP-IDF: {idf_ver.decode("utf-8").strip()}')
                 logger.info(f"Secure version: {secure_version}")
                 return version.decode("utf-8").strip(" \x00\t")
         return None
