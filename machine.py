@@ -518,6 +518,9 @@ class Machine:
                                 _sensorData, data
                             )
                         )
+                        logger.debug(
+                            f"motor energy consumed = {energy_consumed_by_motor}"
+                        )
                         if energy_consumed_by_motor >= MAX_ENERGY_ALLOWED:
                             logger.warning(
                                 f"Motor might be hot, has consumed {energy_consumed_by_motor}. Stopping profile"
