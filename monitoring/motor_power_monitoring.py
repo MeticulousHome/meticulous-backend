@@ -41,9 +41,7 @@ class EnergyCalculator:
         if dT < 0:
             dT = 0.0
 
-        added_energy = (
-            power * dT * abs(shot.pressure) if shot and shot.pressure else power * dT
-        )
+        added_energy = power * dT * abs(shot.pressure) if shot else power * dT
         self.history.append((added_energy, now))
 
         self.total_energy += added_energy
