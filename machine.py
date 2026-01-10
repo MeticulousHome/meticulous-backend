@@ -531,10 +531,12 @@ class Machine:
                                     f"Motor might be hot, has consumed {energy_consumed_by_motor:.2f}. Stopping profile"
                                 )
                                 motorHotNotification = Notification(
-                                    "Motor stressed: Brewing paused to reduce strain in the motor. Let the machine cool down for 5 minutes. Before brewing again, adjust to a coarser, less fine grind",
+                                    "Brewing paused because of high strain in the motor. Let the machine rest for 5 min and use a coarser grind before trying again",
                                     callback=clearMotorAbortFlag,
                                 )
-                                motorHotNotification.respone_options = []
+                                motorHotNotification.respone_options = [
+                                    NotificationResponse.OK
+                                ]
                                 NotificationManager.add_notification(
                                     motorHotNotification
                                 )
