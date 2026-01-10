@@ -28,7 +28,9 @@ class EnergyCalculator:
         """
 
         now = time.monotonic()
-        power = abs(sensors.motor_power / 100.0) * abs(sensors.motor_current)
+
+        flow = min(abs(shot.flow), 0.05)
+        power = abs(sensors.motor_power / 100.0) * abs(sensors.motor_current) / flow
         if len(self.history) == 0:
             self.history.append((0, now))
             return float(0.0)
