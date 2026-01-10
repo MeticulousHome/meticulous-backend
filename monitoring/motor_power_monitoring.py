@@ -55,7 +55,7 @@ class EnergyCalculator:
 
         energy_to_remove = 0.0
         while self.history and (now - self.history[0][1] > self.window_seconds):
-            energy_to_remove -= self.history.popleft()[0]
+            energy_to_remove += self.history.popleft()[0]
 
         self.total_energy -= energy_to_remove
 
