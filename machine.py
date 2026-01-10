@@ -514,11 +514,8 @@ class Machine:
                         MAX_ENERGY_ALLOWED = 2000
                         energy_consumed_by_motor = (
                             motor_energy_calculator.calculate_motor_energy(
-                                _sensorData, data
+                                _sensorData, Machine.data_sensors
                             )
-                        )
-                        logger.debug(
-                            f"motor energy consumed = {energy_consumed_by_motor}"
                         )
                         if energy_consumed_by_motor >= MAX_ENERGY_ALLOWED:
                             logger.warning(

@@ -28,7 +28,7 @@ class EnergyCalculator:
         """
 
         now = time.monotonic()
-        power = (sensors.motor_power / 100.0) * sensors.motor_current
+        power = abs(sensors.motor_power / 100.0) * abs(sensors.motor_current)
         if len(self.history) == 0:
             self.history.append((0, now))
             return float(0.0)
@@ -40,7 +40,7 @@ class EnergyCalculator:
             dT = 0.0
 
         added_energy = (
-            power * dT * shot.pressure if shot and shot.pressure else power * dT
+            power * dT * abs(shot.pressure) if shot and shot.pressure else power * dT
         )
         self.history.append((added_energy, now))
 
@@ -51,10 +51,16 @@ class EnergyCalculator:
             else self.total_energy
         )
 
+        energy_to_remove = 0.0
         while self.history and (now - self.history[0][1] > self.window_seconds):
-            self.total_energy -= self.history.popleft()[0]
+            energy_to_remove -= self.history.popleft()[0]
+
+        self.total_energy -= energy_to_remove
 
         # remove oldest energy contribution
+        logger.debug(
+            f"energy = {self.total_energy} -> [+ {added_energy}] [- {energy_to_remove}] <---> mp: {sensors.motor_power}, mc: {sensors.motor_current}, dt: {dT}, p: {shot.pressure if shot else 'None'}"
+        )
         return self.total_energy
 
     def restart(self):
