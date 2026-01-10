@@ -128,6 +128,8 @@ class Machine:
 
     stable_time_threshold = 2.0
 
+    aborted_by_motor_consumtion = False
+
     @staticmethod
     def get_somrev():
         # Get the raw output from i2cget
@@ -518,18 +520,27 @@ class Machine:
                                 _sensorData, Machine.data_sensors
                             )
                         )
+
+                        def clearMotorAbortFlag():
+                            Machine.aborted_by_motor_consumtion = False
+
                         if energy_consumed_by_motor >= MAX_ENERGY_ALLOWED:
-                            logger.warning(
-                                f"Motor might be hot, has consumed {energy_consumed_by_motor}. Stopping profile"
-                            )
-                            motorHotNotification = Notification(
-                                f"Motor might be hot, has consumed {energy_consumed_by_motor}. Stopping profile"
-                            )
-                            motorHotNotification.respone_options = [
-                                NotificationResponse.OK
-                            ]
-                            NotificationManager.add_notification(motorHotNotification)
-                            Machine.end_profile()
+                            if not Machine.aborted_by_motor_consumtion:
+                                Machine.aborted_by_motor_consumtion = True
+                                logger.warning(
+                                    f"Motor might be hot, has consumed {energy_consumed_by_motor:.2f}. Stopping profile"
+                                )
+                                motorHotNotification = Notification(
+                                    "Motor stressed: Brewing paused to reduce strain in the motor. Let the machine cool down for 5 minutes. Before brewing again, adjust to a coarser, less fine grind",
+                                    callback=clearMotorAbortFlag,
+                                )
+                                motorHotNotification.respone_options = []
+                                NotificationManager.add_notification(
+                                    motorHotNotification
+                                )
+                                if Machine.data_sensors.status != MachineStatus.IDLE:
+                                    Machine.end_profile()
+                                    Machine.action("home")
 
                     Machine.sensor_sensors = sensor
                     Machine.reset_count = 0
