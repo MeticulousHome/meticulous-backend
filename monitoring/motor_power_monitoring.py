@@ -58,9 +58,6 @@ class EnergyCalculator:
         self.total_energy -= energy_to_remove
 
         # remove oldest energy contribution
-        logger.debug(
-            f"energy = {self.total_energy} -> [+ {added_energy}] [- {energy_to_remove}] <---> mp: {sensors.motor_power}, mc: {sensors.motor_current}, dt: {dT}, p: {shot.pressure if shot else 'None'}"
-        )
         return self.total_energy
 
     def restart(self):
