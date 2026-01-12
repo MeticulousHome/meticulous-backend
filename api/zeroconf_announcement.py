@@ -77,7 +77,9 @@ class ZeroConfAnnouncement:
                 self.zeroconf.register_service(
                     self.met_service_info, allow_name_change=True
                 )
-                logger.info(f"zeroconf service meticulous announced on port {ZEROCONF_PORT}")
+                logger.info(
+                    f"zeroconf service meticulous announced on port {ZEROCONF_PORT}"
+                )
             else:
                 logger.warning(
                     "Could not fetch machine informations for meticulous zeroconf"
