@@ -614,9 +614,29 @@ class ComplexProfileConverter:
                     {
                         "id": 18,
                         "controllers": [
+                            # {
+                            #     "kind": "piston_power_controller",
+                            #     "algorithm": "Spring v1.0",
+                            #     "curve": {
+                            #         "id": 7,
+                            #         "interpolation_kind": "linear_interpolation",
+                            #         "points": [
+                            #             [
+                            #                 0,
+                            #                 (
+                            #                     -self.retractionSpeedMultiplier
+                            #                     if abs(self.retractionSpeedMultiplier)
+                            #                     <= 100
+                            #                     else -100
+                            #                 ),
+                            #             ]
+                            #         ],
+                            #         "reference": {"kind": "time", "id": 2},
+                            #     },
+                            # },
                             {
-                                "kind": "piston_power_controller",
-                                "algorithm": "Spring v1.0",
+                                "kind": "flow_controller",
+                                "algorithm": "Flow PID v1.0",
                                 "curve": {
                                     "id": 7,
                                     "interpolation_kind": "linear_interpolation",
@@ -626,14 +646,14 @@ class ComplexProfileConverter:
                                             (
                                                 -self.retractionSpeedMultiplier
                                                 if abs(self.retractionSpeedMultiplier)
-                                                <= 100
-                                                else -100
+                                                <= 22
+                                                else -22
                                             ),
                                         ]
                                     ],
                                     "reference": {"kind": "time", "id": 2},
                                 },
-                            },
+                            }
                         ],
                         "triggers": (
                             [
