@@ -42,15 +42,19 @@ ZEROCONF_OVERWRITE = os.getenv("ZEROCONF_OVERWRITE", "")
 class WifiType(str, Enum):
     Open = "OPEN"
     PreSharedKey = "PSK"
+    PSK_SAE = "SAE"
     Enterprise = "802.1X"
     WEP = "WEP"
 
     @staticmethod
     def from_nmcli_security(security):
+        security = security.strip().upper()
         if security == "":
             return WifiType.Open
         elif "802.1X" in security:
             return WifiType.Enterprise
+        elif "WPA3" in security:
+            return WifiType.PSK_SAE
         elif "WPA" in security:
             return WifiType.PreSharedKey
         # WEP is ancient and needs to die. (Well it already mostly did).
@@ -92,9 +96,17 @@ class WifiWpaPskCredentials(BaseWiFiCredentials):
     password: str = ""
 
 
+@dataclass
+class WifiWpaSaeCredentials(WifiWpaPskCredentials):
+    type: Literal["SAE"] = "SAE"
+
+
 # Define a union type for WiFi credentials
 WiFiCredentials = (
-    WifiWpaEnterpriseCredentials | WifiOpenCredentials | WifiWpaPskCredentials
+    WifiWpaEnterpriseCredentials
+    | WifiOpenCredentials
+    | WifiWpaPskCredentials
+    | WifiWpaSaeCredentials
 )
 
 
@@ -364,6 +376,8 @@ class WifiManager:
                 keymgmt = "802-1x"
             case WifiType.WEP:
                 keymgmt = "wep"
+            case WifiType.PSK_SAE:
+                keymgmt = "sae"
             case _:
                 raise ValueError(f"Unknown WifiType: {wifi_type}")
         nmcli.connection.modify(
@@ -406,12 +420,25 @@ class WifiManager:
                 WifiManager.update_gatt_advertisement()
                 return True
 
+            for network in networks:
+                if network.ssid == ssid:
+                    if (
+                        wifi_type == WifiType.PreSharedKey
+                        and "WPA3" in network.security.upper()
+                    ):
+                        wifi_type = WifiType.PSK_SAE
+                        credentials["type"] = WifiType.PSK_SAE
+                        logger.info("Network supports WPA3, switching to SAE")
+                        break
+
             logger.info("Target network online, connecting now")
             needs_fix = False
             try:
                 if wifi_type == WifiType.Open:
                     nmcli.device.wifi_connect(ssid, None)
-                elif wifi_type == WifiType.PreSharedKey:
+                elif (
+                    wifi_type == WifiType.PreSharedKey or wifi_type == WifiType.PSK_SAE
+                ):
                     nmcli.device.wifi_connect(ssid, credentials.get("password", ""))
                 elif wifi_type == WifiType.Enterprise:
                     logger.error("Enterprise wifi not yet implemented")
