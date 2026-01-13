@@ -18,6 +18,7 @@ class ComplexProfileConverter:
         end_node_head: int,
         init_node_tail: int,
         parameters: dict = None,
+        retractionSpeedMultiplier: float = 10,
     ):
 
         self.data = None
@@ -30,8 +31,15 @@ class ComplexProfileConverter:
         # Use this value to prevent overshooting with a global offset
         self.offset_temperature = 2
         self.max_piston_position = 75
+        self.retractionSpeedMultiplier = retractionSpeedMultiplier * 10
 
     def head_template(self):
+        from log import MeticulousLogger
+
+        logger = MeticulousLogger.getLogger(__name__)
+        logger.debug(
+            f"starting profile with retraction speed: {self.retractionSpeedMultiplier}"
+        )
         no_skipping = not MeticulousConfig[CONFIG_USER][MACHINE_ALLOW_STAGE_SKIPPING]
         self.head_next_node_id = 16
         self.stages_head = [
@@ -612,7 +620,17 @@ class ComplexProfileConverter:
                                 "curve": {
                                     "id": 7,
                                     "interpolation_kind": "linear_interpolation",
-                                    "points": [[0, -100]],
+                                    "points": [
+                                        [
+                                            0,
+                                            (
+                                                -self.retractionSpeedMultiplier
+                                                if abs(self.retractionSpeedMultiplier)
+                                                <= 100
+                                                else -100
+                                            ),
+                                        ]
+                                    ],
                                     "reference": {"kind": "time", "id": 2},
                                 },
                             },

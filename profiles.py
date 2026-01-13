@@ -332,7 +332,9 @@ class ProfileManager:
 
         start = time.time()
         try:
-            preprocessed_profile = ProfilePreprocessor.processVariables(data)
+            preprocessed_profile, multiplier = ProfilePreprocessor.processVariables(
+                data
+            )
         except Exception as err:
             logger.info(
                 f"Profile variables could not be processed: {err.__class__.__name__}: {err}"
@@ -343,7 +345,7 @@ class ProfileManager:
 
         # Conver to nodeJSON
         converter = ComplexProfileConverter(
-            click_to_start, click_to_purge, 1000, 7000, preprocessed_profile
+            click_to_start, click_to_purge, 1000, 7000, preprocessed_profile, multiplier
         )
         profile = converter.get_profile()
         end = time.time()

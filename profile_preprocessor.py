@@ -88,14 +88,23 @@ class ProfilePreprocessor:
         return value_or_variable
 
     @staticmethod
-    def processVariables(in_profile):
+    def processVariables(in_profile: dict):
         profile = deepcopy(in_profile)
-
+        rs_multiplier: float = 10
         # Map of variables for quick lookup
         variables_map = {
             var["key"]: (var["value"], var["type"])
             for var in profile.get("variables", [])
         }
+
+        rs_variable = variables_map.get("retraction_speed", (float(10), "errorType"))
+        try:
+            rs_multiplier = float(rs_variable[0])
+            logger.debug(f"new retraction speed {rs_multiplier*100}")
+        except Exception:
+            logger.warning("failed getting retraction speed as int, setting to 10")
+            rs_multiplier = 10.0
+
         try:
             # Iterate over stages to replace variables in points and exit triggers
             for stage_index, stage in enumerate(profile.get("stages", [])):
@@ -161,4 +170,4 @@ class ProfilePreprocessor:
         except TypeError as e:
             raise FormatException(f"Invalid format detected: {e}")
 
-        return profile
+        return (profile, rs_multiplier)
