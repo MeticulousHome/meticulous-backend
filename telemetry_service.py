@@ -32,14 +32,15 @@ class TelemetryService:
     @staticmethod
     def init():
         current_date = datetime.now()
-        if (
-            MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING]
-            and current_date.year > 2025
-            or (current_date.month > 8 and current_date.year == 2025)
+        if current_date.year > 2025 or (
+            current_date.month > 8 and current_date.year == 2025
         ):
-            logger.info("Telemetry service is disabled, as testing period is over")
-            MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] = False
-            MeticulousConfig.save()
+            if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING]:
+                logger.info("Telemetry service is disabled, as testing period is over")
+                MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] = False
+                MeticulousConfig.save()
+            else:
+                logger.info("Skipping telemetry upload as testing period is over")
             return
 
         if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] is not None:
