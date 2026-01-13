@@ -97,10 +97,12 @@ class ProfilePreprocessor:
             for var in profile.get("variables", [])
         }
 
-        rs_variable = variables_map.get("retraction_speed", (float(10), "errorType"))
+        rs_variable = variables_map.get(
+            "pressure_retraction_speed", (float(10), "errorType")
+        )
         try:
             rs_multiplier = float(rs_variable[0])
-            logger.debug(f"new retraction speed {rs_multiplier*100}")
+            logger.debug(f"new retraction speed {rs_multiplier*10}")
         except Exception:
             logger.warning("failed getting retraction speed as int, setting to 10")
             rs_multiplier = 10.0
