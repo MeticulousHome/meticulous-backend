@@ -16,7 +16,6 @@ logging.basicConfig(level=logging.INFO)
 
 
 class TestProfilePreprocessor(unittest.TestCase):
-
     def setUp(self):
         os.environ["LOG_PATH"] = "/tmp"
         os.environ["CONFIG_PATH"] = "/tmp"

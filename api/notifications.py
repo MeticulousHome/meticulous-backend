@@ -9,7 +9,6 @@ logger = MeticulousLogger.getLogger(__name__)
 
 
 class GetNotificationsHandler(BaseHandler):
-
     def get(self):
         include_acknowledged = (
             self.get_argument("acknowledged", "false").lower() == "true"

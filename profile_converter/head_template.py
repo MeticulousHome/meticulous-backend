@@ -3,7 +3,6 @@ from stages import *
 
 
 class HeadProfile:
-
     def __init__(self):
         self.data = {}
         # try:

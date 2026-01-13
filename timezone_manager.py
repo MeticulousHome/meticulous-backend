@@ -266,7 +266,6 @@ class TimezoneManager:
 
     @staticmethod
     async def request_and_sync_tz() -> str:
-
         async def request_tz_task() -> str:
             # nonlocal error
             import aiohttp

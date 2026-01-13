@@ -33,7 +33,6 @@ DEBUG_HISTORY_PATH = os.getenv("DEBUG_HISTORY_PATH", "/meticulous-user/history/d
 
 
 class ShotLogHandler(logging.Handler):
-
     def emit(self, record):
         ShotDebugManager.handleLog(record, self.format)
 
