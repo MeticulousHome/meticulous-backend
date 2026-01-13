@@ -88,7 +88,6 @@ class CompressedDebugHistoryHandler(BaseHandler):
 
 
 class ZstdHistoryHandler(tornado.web.StaticFileHandler):
-
     def set_default_headers(self):
         BaseHandler.set_default_headers(self)
 
@@ -218,7 +217,6 @@ class LastShotHandler(BaseHandler):
 
 
 class HistoryHandler(BaseHandler):
-
     async def searchHistory(self, params: SearchParams):
         loop = asyncio.get_event_loop()
         last = await loop.run_in_executor(None, ShotDataBase.search_history, params)
@@ -264,7 +262,6 @@ class StatisticsHandler(BaseHandler):
 
 
 class ShotRatingHandler(BaseHandler):
-
     def get(self, shot_id):
         try:
             rating = ShotDataBase.get_shot_rating(shot_id)

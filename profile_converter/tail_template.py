@@ -3,7 +3,6 @@ from stages import *
 
 
 class TailTemplate:
-
     def __init__(self):
         self.data = {}
 

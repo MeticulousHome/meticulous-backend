@@ -10,7 +10,6 @@ from config import (
 
 
 class ComplexProfileConverter:
-
     def __init__(
         self,
         click_to_start: bool,

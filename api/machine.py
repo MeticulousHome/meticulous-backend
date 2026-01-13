@@ -175,7 +175,6 @@ class MachineInfoHandler(BaseHandler):
 
 
 class MachineResetHandler(LocalAccessHandler):
-
     def get(self):
         confirm = self.get_argument("confirm", None)
         if confirm != "true":

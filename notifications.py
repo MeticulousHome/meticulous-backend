@@ -27,7 +27,6 @@ class NotificationResponse:
 
 
 class Notification:
-
     def __init__(
         self,
         message,

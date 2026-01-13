@@ -4,7 +4,6 @@ from .dictionaries import *
 
 # This class is used to create the triggers for the complex JSON
 class Triggers:
-
     def __init__(self, data=None):
         if data is None:
             data = {}
@@ -21,7 +20,6 @@ class Triggers:
 
 
 class OperatorTriggers(Triggers):
-
     def __init__(self):
         self.data = {
             "kind": "",

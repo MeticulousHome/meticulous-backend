@@ -85,7 +85,6 @@ class WiFiQRHandler(BaseHandler):
 
 
 class WiFiConfigHandler(BaseHandler):
-
     def getWifiConfig(self):
         mode = MeticulousConfig[CONFIG_WIFI][WIFI_MODE]
         apName = MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME]
@@ -135,7 +134,6 @@ class WiFiConfigHandler(BaseHandler):
 
 
 class WiFiListHandler(BaseHandler):
-
     def getWifiList(self):
         networks = dict()
         try:
@@ -182,7 +180,6 @@ class WiFiListHandler(BaseHandler):
 
 
 class WiFiConnectHandler(BaseHandler):
-
     async def post(self):
         try:
             data = json.loads(self.request.body)
