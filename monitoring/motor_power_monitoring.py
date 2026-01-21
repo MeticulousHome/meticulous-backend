@@ -3,7 +3,7 @@ from esp_serial.data import SensorData, ShotData
 from log import MeticulousLogger
 import time
 
-INTEGRATION_WINDOW_TIME = 360
+INTEGRATION_WINDOW_TIME = 600
 CONSTANT_DISSIPATED_ENERGY = 0
 logger = MeticulousLogger.getLogger(name=__name__)
 
@@ -29,7 +29,7 @@ class EnergyCalculator:
 
         now = time.monotonic()
 
-        flow = max(abs(shot.flow if shot else 0.0), 0.05)
+        flow = max(abs(shot.flow if shot else 0.0), 0.005)
         power = abs(sensors.motor_power / 100.0) * abs(sensors.motor_current) / flow
         if len(self.history) == 0:
             self.history.append((0, now))
