@@ -105,7 +105,7 @@ class EnergyCalculator:
     def save_data_thread(instance):
         if not isinstance(instance, EnergyCalculator):
             return
-        logger.log("save_data_thread started")
+        logger.info("save_data_thread started")
         # infinite loop, save data every second
         while True:
             instance.save_data_nvs()
