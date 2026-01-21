@@ -11,6 +11,8 @@ logger = MeticulousLogger.getLogger(name=__name__)
 
 MOTOR_ENERGY_PATH = "/meticulous-user/energy"
 
+MAX_ENERGY_ALLOWED = 12000
+
 # energy consumtion calculator
 # numerically integrates the value provided in real time using the timestamp deltas as dT
 # along an integration window of INTEGRATION_WINDOW_TIME seconds
@@ -29,13 +31,29 @@ class EnergyCalculator:
         if os.path.exists(self.save_file_path):
             try:
                 with open(self.save_file_path, "r") as e_file:
-                    data = e_file.read()
-                    self.total_energy = float(data)
+                    self.total_energy = float(e_file.read().strip())
+                    logger.debug(f"{self.name} stored in nvs: {self.total_energy}")
+
+                    # compensate for OFF time
+                    last_modified_at = os.path.getmtime(self.save_file_path)
+                    m = (0 - MAX_ENERGY_ALLOWED) / (self.window_seconds)
+                    dt = float(time.time()) - float(last_modified_at)
+                    if dt > 0:
+                        self.total_energy = max(self.total_energy + dt * m, 0.0)
+                        logger.debug(f"machine was OFF for {dt}s")
+                        logger.debug(
+                            f"{self.name} after OFF compensation: {self.total_energy}"
+                        )
+                    else:
+                        logger.warning(
+                            f"{self.name} date comes from the future, cannot calculate time spent OFF"
+                        )
+
             except Exception as e:
                 logger.warning(f"cannot read motor energy stored file: {e}")
-        logger.debug(f"starting {self.name}: {self.total_energy}")
 
         # start saving data thread
+        logger.debug(f"starting {self.name}: {self.total_energy}")
         self.start_data_save_thread()
 
     def calculate_motor_energy(self, sensors: SensorData, shot: ShotData):
