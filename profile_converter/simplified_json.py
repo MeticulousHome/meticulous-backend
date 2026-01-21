@@ -212,7 +212,7 @@ class SimplifiedJson:
                         if exits["relative"]:
                             reference_id = init_node.get_time_id()
                         else:
-                            reference_id = 4
+                            reference_id = 1
                         time_comparison = self.set_comparison_type(json_comparison)
                         exit_trigger = TimerTrigger(
                             time_comparison,
