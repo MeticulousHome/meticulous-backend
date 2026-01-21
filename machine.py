@@ -11,6 +11,7 @@ import string
 from packaging import version
 import subprocess
 from monitoring.motor_power_monitoring import motor_energy_calculator
+from images.notificationImages.base64 import WARNING_TRIANGLE_IMAGE
 
 from config import (
     CONFIG_LOGGING,
@@ -531,6 +532,7 @@ class Machine:
                                 )
                                 motorHotNotification = Notification(
                                     "Brewing paused because of high strain in the motor. Let the machine rest for 5 min and use a coarser grind before trying again",
+                                    image=WARNING_TRIANGLE_IMAGE,
                                     callback=clearMotorAbortFlag,
                                 )
                                 motorHotNotification.respone_options = [
