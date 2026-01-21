@@ -114,7 +114,7 @@ class EnergyCalculator:
     def start_data_save_thread(self):
         if self.save_thread is None:
             self.save_thread = Thread(
-                target=EnergyCalculator.save_data_thread, args=(self)
+                target=EnergyCalculator.save_data_thread, args=(self,)
             )
             self.save_thread.start()
         else:
