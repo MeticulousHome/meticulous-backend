@@ -50,6 +50,8 @@ from timezone_manager import TimezoneManager
 from ssh_manager import SSHManager
 from telemetry_service import TelemetryService
 
+from api.alarms import AlarmManager
+
 logger = MeticulousLogger.getLogger(__name__)
 
 tornado.log.access_log = MeticulousLogger.getLogger("tornado.access")
@@ -291,6 +293,7 @@ def main():
     except Exception as e:
         logger.error(f"Failed to set sentry context: {e}")
 
+    AlarmManager.init()
     Machine.init(sio)
     SSHManager.init()
 

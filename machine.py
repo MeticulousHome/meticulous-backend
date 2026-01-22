@@ -11,7 +11,6 @@ import string
 from packaging import version
 import subprocess
 from monitoring.motor_power_monitoring import motor_energy_calculator
-from images.notificationImages.base64 import WARNING_TRIANGLE_IMAGE
 
 from config import (
     CONFIG_LOGGING,
@@ -47,6 +46,9 @@ from notifications import Notification, NotificationManager, NotificationRespons
 from shot_debug_manager import ShotDebugManager
 from shot_manager import ShotManager
 from sounds import SoundPlayer, Sounds
+from api.alarms import AlarmManager, AlarmType
+from images.notificationImages.base64 import WARNING_TRIANGLE_IMAGE
+import math
 
 from manufacturing import FORCE_MANUFACTURING_ENABLED_KEY, LAST_BOOT_MODE_KEY
 
@@ -522,25 +524,15 @@ class Machine:
                             )
                         )
 
-                        def clearMotorAbortFlag():
-                            Machine.aborted_by_motor_consumtion = False
-
                         if energy_consumed_by_motor >= MAX_ENERGY_ALLOWED:
-                            if not Machine.aborted_by_motor_consumtion:
-                                Machine.aborted_by_motor_consumtion = True
-                                logger.warning(
-                                    f"Motor might be hot, has consumed {energy_consumed_by_motor:.2f}. Stopping profile"
-                                )
-                                motorHotNotification = Notification(
-                                    "Brewing paused because of high strain in the motor. Let the machine rest for 5 min and use a coarser grind before trying again",
-                                    image=WARNING_TRIANGLE_IMAGE,
-                                    callback=clearMotorAbortFlag,
-                                )
-                                motorHotNotification.respone_options = [
-                                    NotificationResponse.OK
-                                ]
-                                NotificationManager.add_notification(
-                                    motorHotNotification
+                            if (
+                                AlarmManager.is_alarm_set(AlarmType.MOTOR_STRESSED)
+                                is None
+                            ):
+                                AlarmManager.set_alarm(
+                                    AlarmType.MOTOR_STRESSED,
+                                    time.time() + 60 * 10,
+                                    force=True,
                                 )
                                 if Machine.data_sensors.status != MachineStatus.IDLE:
                                     Machine.end_profile()
@@ -702,6 +694,16 @@ class Machine:
         SoundPlayer.play_event_sound(Sounds.ABORT)
 
     def action(action_event) -> bool:
+        alarm_set = AlarmManager.is_alarm_set(AlarmType.MOTOR_STRESSED)
+        refuse_action = action_event == "purge" and alarm_set is not None
+        if refuse_action:
+            logger.error(f"refusing action {action_event}, there is an alarm up")
+            AlarmManager._notify_user(
+                message=f"Brewing has been disabled because of a recent high strain on the motor, let it rest for {math.ceil((alarm_set - time.time())/60.0)} more minutes",
+                image=WARNING_TRIANGLE_IMAGE,
+            )
+            return False
+
         logger.info(f"sending action,{action_event}")
         if action_event == "start" and not Machine.profileReady:
             logger.warning("No profile loaded, sending last loaded profile to esp32")
