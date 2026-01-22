@@ -129,6 +129,10 @@ class LoadProfileHandler(BaseHandler):
                 profile = await loop.run_in_executor(
                     None, ProfileManager.send_profile_to_esp32, data
                 )
+                if not profile:
+                    self.set_status(403)
+                    self.write({"status": "error", "error": "high strain on motor"})
+                    return
             except jsonschema.exceptions.ValidationError as err:
                 errors = {
                     "status": "error",

@@ -27,6 +27,9 @@ from log import MeticulousLogger
 from machine import Machine
 from profile_converter.profile_converter import ComplexProfileConverter
 from profile_preprocessor import ProfilePreprocessor
+from api.alarms import AlarmManager, AlarmType
+from images.notificationImages.base64 import WARNING_TRIANGLE_IMAGE
+import math
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -317,6 +320,15 @@ class ProfileManager:
     def send_profile_to_esp32(data):
         click_to_start = not MeticulousConfig[CONFIG_USER][PROFILE_AUTO_START]
         click_to_purge = not MeticulousConfig[CONFIG_USER][PROFILE_AUTO_PURGE]
+
+        if (
+            end_time := AlarmManager.is_alarm_set(AlarmType.MOTOR_STRESSED)
+        ) is not None:
+            AlarmManager._notify_user(
+                message=f"Brewing has been disabled because of a recent high strain on the motor, let it rest for {math.ceil((end_time - time.time())/60.0)} more minutes",
+                image=WARNING_TRIANGLE_IMAGE,
+            )
+            return False
 
         if "id" not in data:
             data["id"] = str(uuid.uuid4())
