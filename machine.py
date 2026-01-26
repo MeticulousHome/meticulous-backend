@@ -502,48 +502,29 @@ class Machine:
                         Machine.data_sensors = data.clone_with_time_and_state(
                             time_passed, True, profile_time
                         )
-                        ShotManager.handleShotData(Machine.data_sensors)
 
                     else:
                         Machine.data_sensors = data.clone_with_time_and_state(
                             time_passed, False, profile_time
                         )
 
-                    ShotDebugManager.handleShotData(Machine.data_sensors)
                     old_status = Machine.data_sensors.status
                     Machine.infoReady = True
 
                 if sensor is not None:
 
-                    def stopMotorIfHot(_sensorData: SensorData):
-                        from monitoring.motor_power_monitoring import MAX_ENERGY_ALLOWED
-
-                        energy_consumed_by_motor = (
-                            motor_energy_calculator.calculate_motor_energy(
-                                _sensorData, Machine.data_sensors
-                            )
-                        )
-
-                        if energy_consumed_by_motor >= MAX_ENERGY_ALLOWED:
-                            if (
-                                AlarmManager.is_alarm_set(AlarmType.MOTOR_STRESSED)
-                                is None
-                            ):
-                                AlarmManager.set_alarm(
-                                    AlarmType.MOTOR_STRESSED,
-                                    time.time() + 60 * 10,
-                                    force=True,
-                                )
-                                if Machine.data_sensors.status != MachineStatus.IDLE:
-                                    Machine.end_profile()
-                                    Machine.action("home")
-
                     Machine.sensor_sensors = sensor
                     Machine.reset_count = 0
+                    # Analyze / save data for analysis only when the sensor data is received
+                    # ESP sends first "Data" data followed by "Sensors" data, so, by this time, the
+                    # Machine.data_sensors must be up to date
+
+                    Machine.stopMotorIfHot(Machine.data_sensors, Machine.sensor_sensors)
                     ShotDebugManager.handleSensorData(Machine.sensor_sensors)
+                    ShotDebugManager.handleShotData(Machine.data_sensors)
                     if time_flag:
                         ShotManager.handleSensorData(Machine.sensor_sensors)
-                    stopMotorIfHot(Machine.sensor_sensors)
+                        ShotManager.handleShotData(Machine.data_sensors)
 
                 if info is not None:
                     Machine.esp_info = info
@@ -656,6 +637,24 @@ class Machine:
                         f"New Notification from ESP: {Machine._espNotification.message}"
                     )
                     NotificationManager.add_notification(Machine._espNotification)
+
+    def stopMotorIfHot(_shotData: ShotData, _sensorData: SensorData):
+        from monitoring.motor_power_monitoring import MAX_ENERGY_ALLOWED
+
+        energy_consumed_by_motor = motor_energy_calculator.calculate_motor_energy(
+            _sensorData, _shotData
+        )
+
+        if energy_consumed_by_motor >= MAX_ENERGY_ALLOWED:
+            if AlarmManager.is_alarm_set(AlarmType.MOTOR_STRESSED) is None:
+                AlarmManager.set_alarm(
+                    AlarmType.MOTOR_STRESSED,
+                    time.time() + 60 * 10,
+                    force=True,
+                )
+                if Machine.data_sensors.status != MachineStatus.IDLE:
+                    Machine.end_profile()
+                    Machine.action("home")
 
     def startScaleMasterCalibration():
         Machine.action("scale_master_calibration")
