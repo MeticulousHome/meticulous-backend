@@ -3,7 +3,7 @@ from esp_serial.data import SensorData, ShotData
 from log import MeticulousLogger
 import time
 import os
-from threading import Thread
+from named_thread import NamedThread
 
 INTEGRATION_WINDOW_TIME = 600
 CONSTANT_DISSIPATED_ENERGY = 0
@@ -28,7 +28,7 @@ class EnergyCalculator:
         )
         self.history: deque[tuple[float, float]] = deque()
         self.total_energy: float = 0.0
-        self.save_thread: Thread = None
+        self.save_thread: NamedThread = None
         self.name: str = f"{name}_energy"
         self.save_file_path = os.path.join(MOTOR_ENERGY_PATH, self.name)
         # read the saved data from the nvs if it exist
@@ -147,8 +147,10 @@ class EnergyCalculator:
 
     def start_data_save_thread(self):
         if self.save_thread is None:
-            self.save_thread = Thread(
-                target=EnergyCalculator.save_data_thread, args=(self,)
+            self.save_thread = NamedThread(
+                name="save motor energy",
+                target=EnergyCalculator.save_data_thread,
+                args=(self,),
             )
             self.save_thread.start()
         else:

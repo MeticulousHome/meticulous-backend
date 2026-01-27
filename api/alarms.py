@@ -3,7 +3,7 @@ import os
 from log import MeticulousLogger
 import math
 from enum import Enum
-from threading import Thread
+from named_thread import NamedThread
 
 from images.notificationImages.base64 import WARNING_TRIANGLE_IMAGE
 from notifications import Notification, NotificationManager, NotificationResponse
@@ -61,7 +61,7 @@ class Alarm:
 
 class AlarmManager:
     alarms: dict[str, Alarm] = {}
-    thread: Thread = None
+    thread: NamedThread = None
     initialized = False
 
     @staticmethod
@@ -104,7 +104,9 @@ class AlarmManager:
     @staticmethod
     def start_thread():
         if AlarmManager.thread is None:
-            AlarmManager.thread = Thread(target=AlarmManager.monitoring_task)
+            AlarmManager.thread = NamedThread(
+                name="alarm manager", target=AlarmManager.monitoring_task
+            )
             AlarmManager.thread.start()
         else:
             logger.warning("Alarm manager task has already started")
