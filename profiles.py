@@ -325,7 +325,7 @@ class ProfileManager:
             end_time := AlarmManager.is_alarm_set(AlarmType.MOTOR_STRESSED)
         ) is not None:
             AlarmManager._notify_user(
-                message=f"Brewing has been disabled because of a recent high strain on the motor, let it rest for {math.ceil((end_time - time.time())/60.0)} more minutes",
+                message=f"Brewing has been disabled because of a recent high strain on the motor, let it rest for {math.ceil((end_time - time.time())/60.0) if math.isfinite(end_time) else 10} more minutes",
                 image=WARNING_TRIANGLE_IMAGE,
             )
             return False

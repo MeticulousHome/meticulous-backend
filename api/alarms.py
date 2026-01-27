@@ -151,7 +151,7 @@ class AlarmManager:
 
             match type:
                 case AlarmType.MOTOR_STRESSED:
-                    msg = f"Brewing paused because of high strain in the motor. Let the machine rest for {math.ceil((end_time - time.time())/60.0)} mins and use a coarser grind before trying again"
+                    msg = f"Brewing paused because of high strain in the motor. Let the machine rest for {math.ceil((end_time - time.time())/60.0) if math.isfinite(end_time) else 10} mins and use a coarser grind before trying again"
 
             AlarmManager._notify_user(message=msg, image=img)
 
