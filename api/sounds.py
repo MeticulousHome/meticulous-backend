@@ -8,7 +8,8 @@ from .api import API, APIVersion
 from .machine import Machine
 
 from sounds import SoundPlayer, USER_SOUNDS
-from config import MeticulousConfig, CONFIG_SYSTEM, SOUNDS_THEME
+from config import MeticulousConfig, CONFIG_SYSTEM, SOUNDS_THEME, SOUNDS_VOLUME
+from sound_volume_controller import SoundVolumeController
 
 from log import MeticulousLogger
 
@@ -133,9 +134,49 @@ class UploadThemeHandler(BaseHandler):
             self.write({"error": "unknown issue", "details": str(e)})
 
 
+class SoundVolumeHandler(BaseHandler):
+    def get(self):
+        saved_volume = MeticulousConfig[CONFIG_SYSTEM].get(SOUNDS_VOLUME)
+        if saved_volume is not None:
+            self.write({"volume": int(saved_volume)})
+            return
+
+        volume = SoundVolumeController.get_volume()
+        if volume is not None:
+            self.write({"volume": volume})
+        else:
+            self.set_status(500)
+            self.write({"error": "Failed to get volume"})
+
+    def post(self):
+        try:
+            settings = json.loads(self.request.body)
+            volume_level = int(settings.get("volume", 0))
+        except:
+            self.set_status(400)
+            self.write({"error": "invalid request"})
+            return
+
+        if volume_level < 0 or volume_level > 100:
+            self.set_status(400)
+            self.write({"error": "volume must be between 0 and 100"})
+            return
+
+        try:
+            SoundVolumeController.set_volume(volume_level)
+            MeticulousConfig[CONFIG_SYSTEM][SOUNDS_VOLUME] = volume_level
+            MeticulousConfig.save()
+            self.write({"status": "okay", "volume": volume_level})
+        except Exception as e:
+            logger.error(f"Failed to set volume: {e}", exc_info=True)
+            self.set_status(500)
+            self.write({"error": "Failed to set volume", "details": str(e)})
+
+
 API.register_handler(APIVersion.V1, r"/sounds/play/(.*)", PlaySoundHandler),
 API.register_handler(APIVersion.V1, r"/sounds/list", ListSoundsHandler),
 API.register_handler(APIVersion.V1, r"/sounds/theme/list", ListThemesHandler),
 API.register_handler(APIVersion.V1, r"/sounds/theme/get", GetThemeHandler),
 API.register_handler(APIVersion.V1, r"/sounds/theme/set/(.*)", SetThemeHandler),
 API.register_handler(APIVersion.V1, r"/sounds/theme/upload", UploadThemeHandler),
+API.register_handler(APIVersion.V1, r"/sounds/volume", SoundVolumeHandler)

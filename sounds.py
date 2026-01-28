@@ -12,6 +12,7 @@ from config import (
     CONFIG_SYSTEM,
     SOUNDS_THEME,
     SOUNDS_ENABLED,
+    SOUNDS_VOLUME,
 )
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -77,7 +78,10 @@ class SoundPlayer:
         )
 
         try:
-            subprocess.run(["pactl", "--", "set-sink-volume", "0", "70%"])
+            saved_volume = MeticulousConfig[CONFIG_SYSTEM].get(SOUNDS_VOLUME)
+            if saved_volume is None:
+                saved_volume = 70  # Default fallback
+            subprocess.run(["pactl", "--", "set-sink-volume", "0", f"{saved_volume}%"])
         except Exception as e:
             logger.error(f"failed to set audio volume: {e}")
 
