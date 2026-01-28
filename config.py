@@ -48,6 +48,9 @@ DEVICE_DEFAULT_IDENTIFIER = []
 MACHINE_SERIAL_NUMBER = "serial"
 MACHINE_DEFAULT_SERIAL_NUMBER = None
 
+# Piston configuration
+MAX_PISTON_POSITION = 75  # Maximum piston travel in mm
+
 MACHINE_BATCH_NUMBER = "batch_number"
 MACHINE_DEFAULT_BATCH_NUMBER = None
 

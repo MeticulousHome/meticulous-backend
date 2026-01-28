@@ -1,7 +1,7 @@
 import json
 from .stages import *
 from .dictionaries_simplified import *
-from config import MeticulousConfig, CONFIG_USER, MACHINE_ALLOW_STAGE_SKIPPING
+from config import MeticulousConfig, CONFIG_USER, MACHINE_ALLOW_STAGE_SKIPPING, MAX_PISTON_POSITION
 
 
 current_node_id = 1
@@ -262,7 +262,9 @@ class SimplifiedJson:
                         exit_triggers.append(exit_trigger.get_trigger())
 
                     case "piston_position":
-                        exit_trigger_value = exits["value"]
+                        # Convert percentage (0-100) to position in mm
+                        exit_trigger_value_percent = exits["value"]
+                        exit_trigger_value = (exit_trigger_value_percent / 100) * (MAX_PISTON_POSITION - 2)
                         if exits["relative"]:
                             reference_id = init_node.get_position_id()
                         else:
