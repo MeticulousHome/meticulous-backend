@@ -17,6 +17,8 @@ from config import (
     DEBUG_SHOT_DATA_RETENTION,
     MACHINE_DEBUG_SENDING,
     MeticulousConfig,
+    CONFIG_SYSTEM,
+    LAST_SYSTEM_VERSIONS,
 )
 from esp_serial.data import SensorData, ShotData, MachineStatus, MachineStatusToProfile
 from telemetry_service import TelemetryService
@@ -40,6 +42,9 @@ class ShotLogHandler(logging.Handler):
 class DebugShot(Shot):
     def __init__(self) -> None:
         from machine import Machine
+        from wifi import WifiManager
+        from ota import UpdateManager
+        from hostname import HostnameManager
 
         super().__init__()
         self.logs = []
@@ -47,8 +52,44 @@ class DebugShot(Shot):
         self.config[CONFIG_WIFI] = {}
         self.machine = {}
         self.nodeJSON = None
-        if Machine.esp_info is not None:
-            self.machine = Machine.esp_info.to_sio()
+        self.esp_info = (
+            Machine.esp_info.to_sio() if Machine.esp_info is not None else None
+        )
+
+        self.machine = {}
+        config = WifiManager.getCurrentConfig()
+        self.machine["name"] = HostnameManager.generateDeviceName()
+        self.machine["hostname"] = config.hostname
+
+        software_version = UpdateManager.getBuildTimestamp()
+        if software_version is not None:
+            self.machine["software_version"] = software_version.strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+        else:
+            self.machine["software_version"] = None
+
+        self.machine["image_build_channel"] = UpdateManager.getImageChannel()
+        self.machine["image_version"] = UpdateManager.getImageVersion()
+        self.machine["repository_info"] = {}
+        repo_info = UpdateManager.getRepositoryInfo()
+        if repo_info is not None:
+            for repo in repo_info.keys():
+                info = repo_info[repo]
+                self.machine["repository_info"][repo] = {
+                    "branch": info.get("branch", None),
+                    "commit": info.get("last_commit", None),
+                }
+        self.machine["manufacturing"] = Machine.enable_manufacturing
+        self.machine["upgrade_first_boot"] = UpdateManager.is_changed
+        self.machine["version_history"] = []
+        if MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS] is not None:
+            self.machine["version_history"] = MeticulousConfig[CONFIG_SYSTEM][
+                LAST_SYSTEM_VERSIONS
+            ]
+        else:
+            self.machine["version_history"] = []
+
         self.shottype = "shot"
 
     def to_json(self):
