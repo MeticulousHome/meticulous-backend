@@ -20,7 +20,13 @@ from config import (
     CONFIG_SYSTEM,
     LAST_SYSTEM_VERSIONS,
 )
-from esp_serial.data import SensorData, ShotData, MachineStatus, MachineStatusToProfile
+from esp_serial.data import (
+    SensorData,
+    ShotData,
+    MachineStatus,
+    MachineStatusToProfile,
+    ESPInfo,
+)
 from telemetry_service import TelemetryService
 from log import MeticulousLogger
 from shot_manager import Shot, ShotManager
@@ -53,7 +59,9 @@ class DebugShot(Shot):
         self.machine = {}
         self.nodeJSON = None
         self.esp_info = (
-            Machine.esp_info.to_sio() if Machine.esp_info is not None else None
+            Machine.esp_info.to_sio()
+            if Machine.esp_info is not None
+            else ESPInfo().to_sio()
         )
 
         self.machine = {}
@@ -89,6 +97,7 @@ class DebugShot(Shot):
             ]
         else:
             self.machine["version_history"] = []
+        self.machine.update(self.esp_info)
 
         self.shottype = "shot"
 
