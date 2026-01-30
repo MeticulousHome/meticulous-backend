@@ -132,6 +132,8 @@ class Machine:
 
     aborted_by_motor_consumtion = False
 
+    esp_task_info: dict[str, dict] = {}
+
     @staticmethod
     def get_somrev():
         # Get the raw output from i2cget
@@ -390,6 +392,40 @@ class Machine:
                         notify = MachineNotify(
                             notifyArgs[0], ",".join(notifyArgs[1:]).replace(";", "\n")
                         )
+                    case ["TaskInfo", task_info]:
+                        try:
+                            task_info_data = task_info.replace(";", ",")
+                            new_esp_task_info = json.loads(task_info_data)
+
+                            if not isinstance(new_esp_task_info, dict):
+                                logger.warning("invalid data from esp tasks info")
+                            else:
+                                # for task_name, task_data in new_esp_task_info.items():
+                                tasks: dict = new_esp_task_info.get("tasks")
+                                for task_name, task_info in tasks.items():
+
+                                    old_data = (
+                                        Machine.esp_task_info.get("tasks", {})
+                                        .get(task_name, {})
+                                        .get("highWaterMark")
+                                    )
+                                    new_data = task_info.get("highWaterMark")
+                                    if new_data is None:
+                                        logger.warning(
+                                            f"Cannot found 'highWaterMark' attribute in {task_name} task info"
+                                        )
+                                        continue
+                                    if old_data is None or int(old_data) > int(
+                                        new_data
+                                    ):
+                                        logger.warning(
+                                            f"new high water mark for {task_name} task: [{new_data} bytes]"
+                                        )
+                            Machine.esp_task_info = new_esp_task_info
+
+                        except Exception as e:
+                            logger.warning(f"error decoding task info json: {e}")
+                            logger.debug(f"json received: {task_info_data}")
 
                     case ["HeaterTimeoutInfo", *timeoutArgs]:
                         try:
