@@ -259,8 +259,26 @@ class MachineTimeHandler(BaseHandler):
         self.write({"status": "success"})
 
 
+class MachineESPStatusHandler(BaseHandler):
+    async def get(self):
+        # Decode the JSON body
+        try:
+            esp_data = {"taskInfo": Machine.esp_task_info.get("tasks", {})}
+            esp_data.update(
+                Machine.esp_info.to_sio() if Machine.esp_info is not None else {}
+            )
+            self.set_status(200)
+            self.write(esp_data)
+        except Exception as e:
+            logger.warning(f"error getting esp information: {e}")
+            self.set_status(500)
+            self.write({"error": "Error getting esp information"})
+            return
+
+
 API.register_handler(APIVersion.V1, r"/machine", MachineInfoHandler)
 API.register_handler(APIVersion.V1, r"/machine/backlight", MachineBacklightController)
 API.register_handler(APIVersion.V1, r"/machine/factory_reset", MachineResetHandler)
 API.register_handler(APIVersion.V1, r"/machine/OS_update_status", UpdateOSStatus)
 API.register_handler(APIVersion.V1, r"/machine/time", MachineTimeHandler)
+API.register_handler(APIVersion.V1, r"/machine/ESPStatus", MachineESPStatusHandler)
