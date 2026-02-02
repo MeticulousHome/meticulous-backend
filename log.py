@@ -59,10 +59,8 @@ class MeticulousLogger:
             if isinstance(target_logger, logging.Logger):
                 target_logger.addHandler(handler)
                 return
-        for _, logger in logging.Logger.manager.loggerDict.items():
-            if not isinstance(logger, logging.Logger):
-                continue
-            logger.addHandler(handler)
+        # Add to root logger only - child loggers propagate up automatically
+        logging.getLogger().addHandler(handler)
 
     @staticmethod
     def remove_logging_handler(
@@ -75,7 +73,5 @@ class MeticulousLogger:
             if isinstance(target_logger, logging.Logger):
                 target_logger.removeHandler(handler)
                 return
-        for _, logger in logging.Logger.manager.loggerDict.items():
-            if not isinstance(logger, logging.Logger):
-                continue
-            logger.removeHandler(handler)
+        # Remove from root logger only - matches add_logging_handler behavior
+        logging.getLogger().removeHandler(handler)

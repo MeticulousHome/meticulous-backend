@@ -6,7 +6,6 @@ import gi
 gi.require_version("Gst", "1.0")
 # noqa: E402
 from gi.repository import Gst  # noqa: E402
-from gi.repository import GLib  # noqa: E402
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -21,19 +20,22 @@ class SoundPlayer:
         Gst.init(None)
         self._lock = threading.Lock()
         self._pipeline = None
-        self._loop = GLib.MainLoop()
         self._bus = None
 
     def _on_message(self, bus, message):
+        """Callback from GStreamer thread - must acquire lock before cleanup."""
         t = message.type
         if t == Gst.MessageType.EOS:
-            self._cleanup()
+            with self._lock:
+                self._cleanup_internal()
         elif t == Gst.MessageType.ERROR:
             err, debug = message.parse_error()
             logger.error(f"Error: {err}, Debug: {debug}")
-            self._cleanup()
+            with self._lock:
+                self._cleanup_internal()
 
-    def _cleanup(self):
+    def _cleanup_internal(self):
+        """Internal cleanup - caller must hold self._lock."""
         if self._pipeline:
             self._pipeline.set_state(Gst.State.NULL)
             self._pipeline = None
@@ -45,7 +47,7 @@ class SoundPlayer:
         with self._lock:
             try:
                 # Cleanup any existing playback
-                self._cleanup()
+                self._cleanup_internal()
 
                 # Create new pipeline
                 self._pipeline = Gst.ElementFactory.make("playbin", "player")
@@ -72,21 +74,24 @@ class SoundPlayer:
                     self._bus.timed_pop_filtered(
                         Gst.CLOCK_TIME_NONE, Gst.MessageType.ERROR | Gst.MessageType.EOS
                     )
-                    self._cleanup()
+                    self._cleanup_internal()
 
                 return True
 
             except Exception as e:
                 logger.exception(f"Error playing sound: {e}")
-                self._cleanup()
+                self._cleanup_internal()
                 raise
 
 
 _player = None
+_player_lock = threading.Lock()
 
 
 def playsound(sound_path, block=True):
     global _player
     if _player is None:
-        _player = SoundPlayer()
+        with _player_lock:
+            if _player is None:  # Double-check after acquiring lock
+                _player = SoundPlayer()
     return _player.play(sound_path, block)
