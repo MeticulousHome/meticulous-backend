@@ -15,6 +15,8 @@ class PlaysoundException(Exception):
     pass
 
 
+playsound_lock = threading.Lock()
+
 class SoundPlayer:
     def __init__(self):
         logger.info("Initializing SoundPlayer")
@@ -41,7 +43,7 @@ class SoundPlayer:
             self._bus.remove_signal_watch()
             self._bus = None
 
-    def play(self, sound_path, block=True):
+    def play(self, sound_path):
         with self._lock:
             try:
                 # Cleanup any existing playback
@@ -67,13 +69,6 @@ class SoundPlayer:
                 if ret == Gst.StateChangeReturn.FAILURE:
                     raise PlaysoundException("Could not play")
 
-                if block:
-                    # Wait for EOS or ERROR
-                    self._bus.timed_pop_filtered(
-                        Gst.CLOCK_TIME_NONE, Gst.MessageType.ERROR | Gst.MessageType.EOS
-                    )
-                    self._cleanup()
-
                 return True
 
             except Exception as e:
@@ -85,8 +80,18 @@ class SoundPlayer:
 _player = None
 
 
-def playsound(sound_path, block=True):
+def playsound(sound_path):
     global _player
-    if _player is None:
-        _player = SoundPlayer()
-    return _player.play(sound_path, block)
+    if (playsound_lock.acquire(timeout=5)):
+        # We dont want multiple glib main loops so ensure it is in the lock
+        if _player is None:
+            _player = SoundPlayer()
+
+        # This will block until done
+        play =_player.play(sound_path)
+
+        playsound_lock.release()
+        return play
+    else:
+        logger.error("Could not acquire playsound lock")
+        return False

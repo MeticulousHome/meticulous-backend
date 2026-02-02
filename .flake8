@@ -12,7 +12,7 @@ exclude =
     .tox,
     .mypy_cache,
     .pytest_cache
-    profile_converter
+    profile_converter/
 
 # Set the maximum allowed line length
 max-line-length = 96

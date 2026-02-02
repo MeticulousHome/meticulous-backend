@@ -206,7 +206,7 @@ class SoundPlayer:
             return False
 
         try:
-            playsound(file_path, block=False)
+            playsound(file_path)
         except Exception as e:
             logger.exception(f"Failed to play sound: {e}")
             return False
