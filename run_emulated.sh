@@ -15,6 +15,7 @@ export IMAGES_PATH=./images/profile-images
 export DEFAULT_PROFILES=./default_profiles
 export TIMEZONE_JSON_FILE_PATH=./UI_timezones.json
 export USER_DB_MIGRATION_DIR=./db-migrations
+export ALARMS_PATH=./alarms
 
 if [[ -z "${MET_VENV}" ]]; then
     MET_VENV=".venv"
