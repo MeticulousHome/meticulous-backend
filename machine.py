@@ -39,6 +39,7 @@ from esp_serial.data import (
     ShotData,
     MachineNotify,
     HeaterTimeoutInfo,
+    ESPTasks,
 )
 from esp_serial.esp_tool_wrapper import ESPToolWrapper
 from log import MeticulousLogger
@@ -132,7 +133,7 @@ class Machine:
 
     aborted_by_motor_consumtion = False
 
-    esp_task_info: dict[str, dict] = {}
+    esp_task_info: ESPTasks = None
 
     @staticmethod
     def get_somrev():
@@ -392,41 +393,8 @@ class Machine:
                         notify = MachineNotify(
                             notifyArgs[0], ",".join(notifyArgs[1:]).replace(";", "\n")
                         )
-                    case ["TaskInfo", task_info]:
-                        try:
-                            task_info_data = task_info.replace(";", ",")
-                            new_esp_task_info = json.loads(task_info_data)
-
-                            if not isinstance(new_esp_task_info, dict):
-                                logger.warning("invalid data from esp tasks info")
-                            else:
-                                # for task_name, task_data in new_esp_task_info.items():
-                                tasks: dict = new_esp_task_info.get("tasks")
-                                for task_name, task_info in tasks.items():
-
-                                    old_data = (
-                                        Machine.esp_task_info.get("tasks", {})
-                                        .get(task_name, {})
-                                        .get("highWaterMark")
-                                    )
-                                    new_data = task_info.get("highWaterMark")
-                                    if new_data is None:
-                                        logger.warning(
-                                            f"Cannot found 'highWaterMark' attribute in {task_name} task info"
-                                        )
-                                        continue
-                                    if old_data is None or int(old_data) > int(
-                                        new_data
-                                    ):
-                                        logger.warning(
-                                            f"new high water mark for {task_name} task: [{new_data} bytes]"
-                                        )
-                            Machine.esp_task_info = new_esp_task_info
-
-                        except Exception as e:
-                            logger.warning(f"error decoding task info json: {e}")
-                            logger.debug(f"json received: {task_info_data}")
-
+                    case ["TaskInfo", *task_info]:
+                        new_esp_task_info = ESPTasks.from_args(task_info)
                     case ["HeaterTimeoutInfo", *timeoutArgs]:
                         try:
                             heater_timeout_info = HeaterTimeoutInfo.from_args(
@@ -454,6 +422,21 @@ class Machine:
                         logger.info(data_str.strip("\r\n"))
 
                 old_ready = Machine.infoReady
+
+                if new_esp_task_info is not None:
+                    if isinstance(new_esp_task_info, ESPTasks):
+                        for name, task_hwm in new_esp_task_info.tasks.items():
+                            old_task_hwm = Machine.esp_task_info.tasks[name]
+
+                            if old_task_hwm is None or int(old_task_hwm) > int(
+                                task_hwm
+                            ):
+                                logger.warning(
+                                    f"new high water mark for {name} task: [{task_hwm} bytes]"
+                                )
+                        Machine.esp_task_info = new_esp_task_info
+                    else:
+                        logger.warning("new_esp_task_info is not from the correct type")
 
                 if data is not None:
                     Machine.is_idle = data.status == MachineStatus.IDLE
