@@ -426,15 +426,17 @@ class Machine:
 
                 if new_esp_task_info is not None:
                     if isinstance(new_esp_task_info, ESPTasks):
-                        for name, task_hwm in new_esp_task_info.tasks.items():
-                            old_task_hwm = Machine.esp_task_info.tasks[name]
+                        if Machine.esp_task_info is not None:
 
-                            if old_task_hwm is None or int(old_task_hwm) > int(
-                                task_hwm
-                            ):
-                                logger.warning(
-                                    f"new high water mark for {name} task: [{task_hwm} bytes]"
-                                )
+                            for name, task_hwm in new_esp_task_info.tasks.items():
+                                old_task_hwm = Machine.esp_task_info.tasks[name]
+
+                                if old_task_hwm is None or int(old_task_hwm) > int(
+                                    task_hwm
+                                ):
+                                    logger.warning(
+                                        f"new high water mark for {name} task: [{task_hwm} bytes]"
+                                    )
                         Machine.esp_task_info = new_esp_task_info
                     else:
                         logger.warning("new_esp_task_info is not from the correct type")
