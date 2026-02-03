@@ -227,6 +227,25 @@ class ESPInfo:
         }
 
 
+@dataclass
+class ESPTasks:
+
+    tasks: dict[str, int]
+
+    def from_args(args: list[str]):
+        tasks: dict[str, int] = {}
+        try:
+            for arg in args:
+                task_data = arg.split(":")
+                tasks[str(task_data[0])] = int(task_data[1])
+
+            return ESPTasks(tasks=tasks)
+
+        except Exception as e:
+            logger.warning(f"Failed to parse ESP tasks info: {e}")
+            return None
+
+
 # From ESP32 to backend
 class MachineStatus:
     # Enum representing the events from the machine

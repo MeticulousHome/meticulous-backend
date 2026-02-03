@@ -263,7 +263,7 @@ class MachineESPStatusHandler(BaseHandler):
     async def get(self):
         # Decode the JSON body
         try:
-            esp_data = {"taskInfo": Machine.esp_task_info.get("tasks", {})}
+            esp_data = {"taskHighWaterMark": Machine.esp_task_info.tasks}
             esp_data.update(
                 Machine.esp_info.to_sio() if Machine.esp_info is not None else {}
             )
