@@ -237,7 +237,7 @@ class ESPTasks:
         try:
             for arg in args:
                 task_data = arg.split(":")
-                tasks[task_data[0]] = task_data[1]
+                tasks[str(task_data[0])] = int(task_data[1])
 
             return ESPTasks(tasks=tasks)
 
