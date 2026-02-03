@@ -261,7 +261,6 @@ class MachineTimeHandler(BaseHandler):
 
 class MachineESPStatusHandler(BaseHandler):
     async def get(self):
-        # Decode the JSON body
         try:
             esp_data = {"taskHighWaterMark": Machine.esp_task_info.tasks}
             esp_data.update(
