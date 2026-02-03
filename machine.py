@@ -308,6 +308,7 @@ class Machine:
         profile_time = 0
         emulated_firmware = False
         previous_preheat_remaining = None
+        new_esp_task_info: ESPTasks = None
 
         logger.info("Starting to listen for esp32 messages")
         Machine.startTime = time.time()
