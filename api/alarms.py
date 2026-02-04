@@ -16,19 +16,25 @@ logger = MeticulousLogger.getLogger(name=__name__)
 
 class AlarmType(Enum):
     MOTOR_STRESSED = "motor_stress_alarm"
+    ESP_RESTART = "esp_restart_alarm"
+    ESP_DISCONNECTED = "esp_disconected_alarm"
 
     @staticmethod
     def from_file_name(name):
         match name:
             case "motor_stress_alarm":
                 return AlarmType.MOTOR_STRESSED
+            case "esp_restart_alarm":
+                return AlarmType.ESP_RESTART
+            case "esp_disconected_alarm":
+                return AlarmType.ESP_DISCONNECTED
             case _:
                 return None
 
 
 class Alarm:
 
-    def __init__(self, type: AlarmType, end_time: float):
+    def __init__(self, type: AlarmType, end_time: float | None):
         self.start_time = time.time()
         self.end_time = end_time
         self.type = type
@@ -122,7 +128,7 @@ class AlarmManager:
             for type, alarm in AlarmManager.alarms.items():
                 if alarm is None:
                     continue
-                if not math.isinf(alarm.end_time) and alarm.end_time < now:
+                if math.isfinite(alarm.end_time) and alarm.end_time < now:
                     alarm.remove_file()
                     to_remove.append(type)
 
@@ -132,8 +138,22 @@ class AlarmManager:
             time.sleep(1)
 
     @staticmethod
-    def set_alarm(type: AlarmType, end_time: float, force: bool):
-        new_alarm: Alarm = Alarm(type, end_time)
+    def set_alarm(
+        type: AlarmType, end_time: float | None, force: bool, quiet: bool = False
+    ):
+        new_alarm: Alarm = Alarm(type, end_time if end_time is not None else -math.inf)
+        msg = ""
+        img = WARNING_TRIANGLE_IMAGE
+
+        match type:
+            case AlarmType.MOTOR_STRESSED:
+                msg = f"Brewing paused because of high strain in the motor. Let the machine rest for {math.ceil((end_time - time.time())/60.0) if math.isfinite(end_time) else 10} mins and use a coarser grind before trying again"
+            case AlarmType.ESP_RESTART:
+                msg = (
+                    "Digital controller seems to be unresponsive, buttons are disabled."
+                )
+            case AlarmType.ESP_DISCONNECTED:
+                msg = "Digital controller seems disconnected, buttons are disabled"
 
         if not AlarmManager.initialized:
             logger.warning("The alarm manager is not initialized")
@@ -144,16 +164,16 @@ class AlarmManager:
             )
 
         if not os.path.exists(new_alarm.alarm_path) or force:
-            new_alarm.create_file()
+            if end_time is not None:
+                new_alarm.create_file()
+            else:
+                logger.info(
+                    f"setting alarm {type.value} with the duration of the session"
+                )
+
             AlarmManager.alarms[type.value] = new_alarm
-            msg = ""
-            img = WARNING_TRIANGLE_IMAGE
-
-            match type:
-                case AlarmType.MOTOR_STRESSED:
-                    msg = f"Brewing paused because of high strain in the motor. Let the machine rest for {math.ceil((end_time - time.time())/60.0) if math.isfinite(end_time) else 10} mins and use a coarser grind before trying again"
-
-            AlarmManager._notify_user(message=msg, image=img)
+            if not quiet:
+                AlarmManager._notify_user(message=msg, image=img)
 
         else:
             try:
