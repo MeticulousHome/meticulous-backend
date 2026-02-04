@@ -132,6 +132,8 @@ class Machine:
 
     aborted_by_motor_consumtion = False
 
+    esp_restart_request = False
+
     @staticmethod
     def get_somrev():
         # Get the raw output from i2cget
@@ -214,6 +216,7 @@ class Machine:
             logger.info("The ESP is alive")
 
     def init(sio):
+        Machine.esp_restart_request = True
         Machine._sio = sio
         Machine.firmware_available = Machine._parseVersionString(
             ESPToolWrapper.get_version_from_firmware()
@@ -292,6 +295,7 @@ class Machine:
                 else:
                     self.buf.extend(data)
                 if timeout is not None and now - start_time > timeout:
+                    logger.warning("timeout on readline")
                     return None
             return self.buf
 
@@ -309,6 +313,9 @@ class Machine:
         profile_time = 0
         emulated_firmware = False
         previous_preheat_remaining = None
+        ESP_tracing_info = []
+        collect_tracing_info = False
+        previous_valid_message_timestamp = time.monotonic()
 
         logger.info("Starting to listen for esp32 messages")
         Machine.startTime = time.time()
@@ -318,13 +325,13 @@ class Machine:
                 Machine.startTime = time.time()
                 continue
 
-            data = uart.readline(timeout=500)
-            if data is not None and len(data) > 0:
+            data_bytes = uart.readline(timeout=0.5)
+            if data_bytes is not None and len(data_bytes) > 0:
                 # data_bit = bytes(data)
                 try:
-                    data_str = data.decode("utf-8")
+                    data_str = data_bytes.decode("utf-8")
                 except Exception:
-                    logger.info(f"decoding fails, message: {data}")
+                    logger.info(f"decoding fails, message: {data_bytes}")
                     continue
 
                 if MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES]:
@@ -338,10 +345,11 @@ class Machine:
                 data = None
                 info = None
                 notify = None
+                is_valid_message = True
 
-                if (
-                    data_str.startswith("rst:0x")
-                    and "boot:0x16 (SPI_FAST_FLASH_BOOT)" in data_str
+                if data_str.startswith("rst:0x") and all(
+                    boot_check in data_str
+                    for boot_check in ["boot:0x", " (SPI_FAST_FLASH_BOOT)"]
                 ):
                     Machine.reset_count += 1
                     Machine.startTime = time.time()
@@ -349,11 +357,26 @@ class Machine:
                     info_requested = False
                     Machine.infoReady = False
                     Machine.profileReady = False
+                    is_valid_message = False
+                    collect_tracing_info = False
 
                 if Machine.reset_count >= 3:
                     logger.warning("The ESP seems to be resetting, sending update now")
                     Machine.startUpdate()
                     Machine.reset_count = 0
+
+                if any(
+                    crash_check in data_str.lower()
+                    for crash_check in [
+                        "backtrace",
+                        "guru meditation error",
+                        "register dump",
+                    ]
+                ):
+                    collect_tracing_info = True
+
+                if collect_tracing_info:
+                    ESP_tracing_info.append(data_str)
 
                 if (
                     Machine.infoReady
@@ -420,6 +443,7 @@ class Machine:
                             )
                     case [*_]:
                         logger.info(data_str.strip("\r\n"))
+                        is_valid_message = False
 
                 old_ready = Machine.infoReady
 
@@ -642,6 +666,56 @@ class Machine:
                     )
                     NotificationManager.add_notification(Machine._espNotification)
 
+            # healthcheck:
+            # Notify Sentry if
+            # ESP has not sent a valid message in the last 500ms
+            # ESP has rebooted (append backtrace if there is one)
+            #
+            # - NOTE: If the ESP is rebooting, it will not send messages within those 500ms
+            #         So after a reboot we disable this timeout check and re-enable it once
+            #         it starts sending valid messages
+            #
+            # Notify user if
+            # ESP has rebooted
+
+            if Machine.reset_count > 0 and not Machine.esp_restart_request:
+                if AlarmManager.is_alarm_set(AlarmType.ESP_RESTART) is None:
+                    # notify sentry
+                    with sentry_sdk.new_scope() as scope:
+                        if len(ESP_tracing_info) > 0:
+                            tracing_info = "\n".join(ESP_tracing_info)
+                            scope.set_extra("Tracing Info", tracing_info)
+                        sentry_sdk.capture_message(
+                            "ESP has restarted unexpectedly", "critical"
+                        )
+                    AlarmManager.set_alarm(
+                        AlarmType.ESP_RESTART, end_time=None, force=True
+                    )
+                    ESP_tracing_info = []
+
+            now = time.monotonic()
+            if (
+                now - previous_valid_message_timestamp > 0.5
+                and not Machine.esp_restart_request
+            ):
+                if AlarmManager.is_alarm_set(AlarmType.ESP_DISCONNECTED) is None:
+                    # notify sentry
+                    sentry_sdk.capture_message("ESP has stopped communicating", "error")
+                    AlarmManager.set_alarm(
+                        AlarmType.ESP_DISCONNECTED,
+                        end_time=None,
+                        force=True,
+                        quiet=True,
+                    )
+
+            if data_bytes is not None and is_valid_message:
+                previous_valid_message_timestamp = now
+                if Machine.esp_restart_request:
+                    logger.debug("clearing Machine.esp_restart_request flag")
+                Machine.esp_restart_request = False
+                AlarmManager.clear_alarm(AlarmType.ESP_DISCONNECTED)
+                AlarmManager.clear_alarm(AlarmType.ESP_RESTART)
+
     def stopMotorIfHot(_shotData: ShotData, _sensorData: SensorData):
         from monitoring.motor_power_monitoring import MAX_ENERGY_ALLOWED
 
@@ -738,6 +812,7 @@ class Machine:
         Machine.infoReady = False
         Machine.profileReady = False
         Machine.startTime = time.time()
+        Machine.esp_restart_request = True
 
     def send_json_with_hash(json_obj):
         json_string = json.dumps(json_obj)
