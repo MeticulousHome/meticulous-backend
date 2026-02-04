@@ -273,13 +273,15 @@ class Machine:
             self.buf = bytearray()
             self.s = s
 
-        def readline(self):
+        def readline(self, timeout=None):
             i = self.buf.find(b"\n")
             if i >= 0:
                 r = self.buf[: i + 1]
                 self.buf = self.buf[i + 1 :]
                 return r
+            start_time = time.monotonic()
             while not Machine._stopESPcomm:
+                now = time.monotonic()
                 i = max(1, min(2048, self.s.in_waiting))
                 data = self.s.read(i)
                 i = data.find(b"\n")
@@ -289,6 +291,8 @@ class Machine:
                     return r
                 else:
                     self.buf.extend(data)
+                if timeout is not None and now - start_time > timeout:
+                    return None
             return self.buf
 
     async def _read_data():  # noqa: C901
@@ -314,8 +318,8 @@ class Machine:
                 Machine.startTime = time.time()
                 continue
 
-            data = uart.readline()
-            if len(data) > 0:
+            data = uart.readline(timeout=500)
+            if data is not None and len(data) > 0:
                 # data_bit = bytes(data)
                 try:
                     data_str = data.decode("utf-8")
