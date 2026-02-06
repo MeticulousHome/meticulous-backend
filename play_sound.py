@@ -17,6 +17,7 @@ class PlaysoundException(Exception):
 
 playsound_lock = threading.Lock()
 
+
 class SoundPlayer:
     def __init__(self):
         logger.info("Initializing SoundPlayer")
@@ -82,13 +83,13 @@ _player = None
 
 def playsound(sound_path):
     global _player
-    if (playsound_lock.acquire(timeout=5)):
+    if playsound_lock.acquire(timeout=5):
         # We dont want multiple glib main loops so ensure it is in the lock
         if _player is None:
             _player = SoundPlayer()
 
         # This will block until done
-        play =_player.play(sound_path)
+        play = _player.play(sound_path)
 
         playsound_lock.release()
         return play
