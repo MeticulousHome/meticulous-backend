@@ -10,9 +10,8 @@ CONSTANT_DISSIPATED_ENERGY = 0
 logger = MeticulousLogger.getLogger(name=__name__)
 
 MOTOR_ENERGY_PATH = "/meticulous-user/syslog/energy"
-ALARMS_PATH = "/meticulous-user/syslog/alarms"
 
-MAX_ENERGY_ALLOWED = 12000
+MAX_ENERGY_ALLOWED = 25000
 
 APPROX_SAMPLE_RATE = 10  # ESP updates per second  #! never set to 0
 
