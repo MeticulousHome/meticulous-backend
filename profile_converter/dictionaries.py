@@ -68,6 +68,7 @@ trigger_type = {
     TriggerType.WEIGHT: "weight_value_trigger",
     TriggerType.BUTTON: "button_trigger",
     TriggerType.WATER_DETECTION: "water_detection_trigger",
+    TriggerType.USER_MESSAGE: "user_message_trigger",
     TriggerType.CURVE: {
         TriggerType.FLOW: "flow_curve_trigger",
         TriggerType.PRESSURE: "pressure_curve_trigger",
