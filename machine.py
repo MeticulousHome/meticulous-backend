@@ -515,7 +515,7 @@ class Machine:
                                         )
                         except Exception as e:
                             logger.error(
-                                f"Error '{e}' processing Log from ESP: 'Log,{",".join(log_data)}'",
+                                f"Error '{e}' processing Log from ESP: 'Log,{','.join(log_data)}'",
                                 exc_info=True,
                             )
                     case [*_]:
