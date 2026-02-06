@@ -4,6 +4,9 @@ This repository is used to run the backend of **meticulous**.
 
 ## Install development tools
 
+
+**NOTE: As we are running the backend on a debian `bookworm` system, the installed `python3` binary is set automatically set to `3.11.2`. In order to avoid possible syntax issues or feature missmatches, install the aforementioned version in the system you develop in, preferably in a virtual environment, its possible to make use of the `pyenv` tool to help with the installation and management of multiple python versions** 
+
 To keep code format uniform, we make use of `black` formatter and `flake8` linter. You can install and run them
 manually or automate that by using the pre-commit hooks that are available in the repo, for that You must install the requirements listed in `requirements-dev.txt`.
 
