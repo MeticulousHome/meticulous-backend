@@ -1,6 +1,7 @@
 import json
 import os
 import sqlite3
+import threading
 import uuid
 from datetime import datetime
 from enum import Enum
@@ -68,6 +69,7 @@ class ShotDataBase:
     session = None
     stage_fts_table = None
     profile_fts_table = None
+    db_write_lock = threading.Lock()
 
     @staticmethod
     def init():
