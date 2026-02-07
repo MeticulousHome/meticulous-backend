@@ -70,17 +70,14 @@ class ShotDataBase:
     db_write_lock = threading.Lock()
 
     @staticmethod
-    def init():
-
-        os.makedirs(HISTORY_PATH, exist_ok=True)
-        # Initialize database connection
+    def setup_engine():
         ShotDataBase.engine = create_engine(
             DATABASE_URL, echo=False, connect_args={"check_same_thread": False}
         )
 
         @sqlEvent.listens_for(ShotDataBase.engine, "connect")
         def setupDatabase(dbapi_connection, _connection_record):
-            # Connfigure the DB for most safety
+            # Configure the DB for most safety
             dbapi_connection.execute("PRAGMA auto_vacuum=full;")
             dbapi_connection.execute("PRAGMA journal_mode=WAL;")
             dbapi_connection.execute("PRAGMA synchronous=EXTRA;")
@@ -91,6 +88,11 @@ class ShotDataBase:
         sqlEvent.listen(ShotDataBase.engine, "connect", setupDatabase)
         ShotDataBase.session = sessionmaker(bind=ShotDataBase.engine)
 
+    @staticmethod
+    def init():
+        os.makedirs(HISTORY_PATH, exist_ok=True)
+        ShotDataBase.setup_engine()
+
         # Validate database integrity
         try:
             with ShotDataBase.engine.connect() as connection:
@@ -99,43 +101,34 @@ class ShotDataBase:
                     logger.info("Database integrity check passed")
                 else:
                     logger.error("Database integrity check failed: %s", result)
-                    ShotDataBase.handle_error(Exception("database disk image is malformed"))
-                    return
+                    ShotDataBase.rebuild_database()
         except Exception as e:
             logger.error("Database integrity check failed with exception: %s", e)
-            ShotDataBase.handle_error(e)
-            return
+            ShotDataBase.rebuild_database()
 
-        try:
-
-            # Ensure FTS tables are created
-            with ShotDataBase.engine.connect() as connection:
-                connection.execute(
-                    text(
-                        "CREATE VIRTUAL TABLE IF NOT EXISTS profile_fts USING fts5(profile_key, profile_id, name)"
-                    )
+        # Ensure FTS tables are created
+        with ShotDataBase.engine.connect() as connection:
+            connection.execute(
+                text(
+                    "CREATE VIRTUAL TABLE IF NOT EXISTS profile_fts USING fts5(profile_key, profile_id, name)"
                 )
-                connection.execute(
-                    text(
-                        "CREATE VIRTUAL TABLE IF NOT EXISTS stage_fts USING fts5(profile_key, profile_id, profile_name, stage_key, stage_name)"
-                    )
+            )
+            connection.execute(
+                text(
+                    "CREATE VIRTUAL TABLE IF NOT EXISTS stage_fts USING fts5(profile_key, profile_id, profile_name, stage_key, stage_name)"
                 )
-                # Register FTS tables with SQLAlchemy
-                ShotDataBase.profile_fts_table = Table(
-                    "profile_fts",
-                    ShotDataBase.metadata,
-                    autoload_with=ShotDataBase.engine,
-                )
-                ShotDataBase.stage_fts_table = Table(
-                    "stage_fts",
-                    ShotDataBase.metadata,
-                    autoload_with=ShotDataBase.engine,
-                )
-
-        except sqlite3.DatabaseError as e:
-            logger.error("Database error: %s", e)
-            ShotDataBase.handle_error(e)
-            return
+            )
+            # Register FTS tables with SQLAlchemy
+            ShotDataBase.profile_fts_table = Table(
+                "profile_fts",
+                ShotDataBase.metadata,
+                autoload_with=ShotDataBase.engine,
+            )
+            ShotDataBase.stage_fts_table = Table(
+                "stage_fts",
+                ShotDataBase.metadata,
+                autoload_with=ShotDataBase.engine,
+            )
 
         # Log number of history entries
         try:
@@ -148,35 +141,63 @@ class ShotDataBase:
             logger.error("Failed to count history entries: %s", e)
 
     @staticmethod
-    def handle_error(e):
-        if "database disk image is malformed" in str(e):
-            logger.error("Database corrupted, reinitializing by deleteing...")
-            ShotDataBase.delete_and_rebuild()
-        elif "unable to open database file" in str(e):
-            logger.error(
-                "Cannot open database file, attempting to delete and completely rebuild the ShotDataBase..."
-            )
-            ShotDataBase.delete_and_rebuild()
-        else:
-            logger.error("Unhandled database error: %s", e)
+    def rebuild_database():
+        with ShotDataBase.db_write_lock:
+            try:
+                if ShotDataBase.engine is not None:
+                    ShotDataBase.engine.dispose()
+
+                if os.path.exists(ABSOLUTE_DATABASE_FILE):
+                    os.remove(ABSOLUTE_DATABASE_FILE)
+                    logger.info("Database file deleted successfully.")
+
+                ShotDataBase.setup_engine()
+                logger.info("Database engine recreated after rebuild")
+            except sqlite3.DatabaseError as e:
+                logger.error("Failed to completely rebuild the database: %s", e)
+            except OSError as e:
+                logger.error("Failed to delete the database file: %s", e)
+
+        rescan_thread = threading.Thread(
+            target=ShotDataBase.rescan_shots,
+            name="DBRescan",
+            daemon=True,
+        )
+        rescan_thread.start()
 
     @staticmethod
-    def delete_and_rebuild():
-        try:
-            # Close the ShotDataBase.engine connection before deleting the file
-            ShotDataBase.engine.dispose()
+    def rescan_shots():
+        from shot_manager import SHOT_PATH
 
-            # Delete the database file
-            if os.path.exists(DATABASE_FILE):
-                os.remove(DATABASE_FILE)
-                logger.info("Database file deleted successfully.")
+        logger.info("Starting rescan of shot files from disk")
+        shot_path = Path(SHOT_PATH)
+        if not shot_path.exists():
+            logger.info("Shot path does not exist, nothing to rescan")
+            return
 
-            # Recreate the entire database
-            ShotDataBase.init()
-        except sqlite3.DatabaseError as e:
-            logger.error("Failed to completely rebuild the database: %s", e)
-        except OSError as e:
-            logger.error("Failed to delete the database file: %s", e)
+        count = 0
+        errors = 0
+        for shot_file in sorted(shot_path.rglob("*.shot.json.zst")):
+            try:
+                relative_path = shot_file.relative_to(shot_path)
+                with open(shot_file, "rb") as f:
+                    decompressor = zstd.ZstdDecompressor()
+                    content = json.loads(decompressor.stream_reader(f).read())
+
+                entry = {
+                    "id": content.get("id", str(uuid.uuid4())),
+                    "file": str(relative_path),
+                    "time": content["time"],
+                    "profile_name": content["profile_name"],
+                    "profile": content.get("profile"),
+                }
+                ShotDataBase.insert_history(entry)
+                count += 1
+            except Exception as e:
+                errors += 1
+                logger.error("Failed to rescan shot file %s: %s", shot_file, e)
+
+        logger.info("Rescan complete: %d shots ingested, %d errors", count, errors)
 
     @staticmethod
     def profile_exists(profile_data):
