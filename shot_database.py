@@ -249,43 +249,44 @@ class ShotDataBase:
                 f"Profile with id {profile_data['id']}, name {profile_data['name']}, and author_id {profile_data['author_id']} already exists."
             )
             return existing_profile[0]
-        with ShotDataBase.engine.connect() as connection:
-            with connection.begin():
-                ins_stmt = insert(profile_table).values(
-                    id=profile_data["id"],
-                    author=profile_data["author"],
-                    author_id=profile_data["author_id"],
-                    display=profile_data["display"],
-                    final_weight=profile_data["final_weight"],
-                    last_changed=profile_data.get("last_changed", 0),
-                    name=profile_data["name"],
-                    temperature=profile_data["temperature"],
-                    stages=profile_data.get("stages", []),
-                    variables=profile_data.get("variables", []),
-                    previous_authors=profile_data.get("previous_authors", []),
-                )
-                result = connection.execute(ins_stmt)
-                profile_key = result.inserted_primary_key[0]
+        with ShotDataBase.db_write_lock:
+            with ShotDataBase.engine.connect() as connection:
+                with connection.begin():
+                    ins_stmt = insert(profile_table).values(
+                        id=profile_data["id"],
+                        author=profile_data["author"],
+                        author_id=profile_data["author_id"],
+                        display=profile_data["display"],
+                        final_weight=profile_data["final_weight"],
+                        last_changed=profile_data.get("last_changed", 0),
+                        name=profile_data["name"],
+                        temperature=profile_data["temperature"],
+                        stages=profile_data.get("stages", []),
+                        variables=profile_data.get("variables", []),
+                        previous_authors=profile_data.get("previous_authors", []),
+                    )
+                    result = connection.execute(ins_stmt)
+                    profile_key = result.inserted_primary_key[0]
 
-                # Insert into profile FTS table
-                fts_ins_stmt = insert(ShotDataBase.profile_fts_table).values(
-                    profile_key=profile_key,
-                    profile_id=profile_data["id"],
-                    name=profile_data["name"],
-                )
-                connection.execute(fts_ins_stmt)
-
-                # Insert stages into stage_fts
-                for stage in profile_data["stages"]:
-                    stage_fts_ins_stmt = insert(ShotDataBase.stage_fts_table).values(
+                    # Insert into profile FTS table
+                    fts_ins_stmt = insert(ShotDataBase.profile_fts_table).values(
                         profile_key=profile_key,
                         profile_id=profile_data["id"],
-                        profile_name=profile_data["name"],
-                        stage_key=stage["key"],
-                        stage_name=stage["name"],
+                        name=profile_data["name"],
                     )
-                    connection.execute(stage_fts_ins_stmt)
-                return profile_key
+                    connection.execute(fts_ins_stmt)
+
+                    # Insert stages into stage_fts
+                    for stage in profile_data["stages"]:
+                        stage_fts_ins_stmt = insert(ShotDataBase.stage_fts_table).values(
+                            profile_key=profile_key,
+                            profile_id=profile_data["id"],
+                            profile_name=profile_data["name"],
+                            stage_key=stage["key"],
+                            stage_name=stage["name"],
+                        )
+                        connection.execute(stage_fts_ins_stmt)
+                    return profile_key
 
     @staticmethod
     def history_exists(entry):
@@ -307,23 +308,24 @@ class ShotDataBase:
 
         profile_data = entry.get("profile")
         profile_key = ShotDataBase.insert_profile(profile_data)
-        with ShotDataBase.engine.connect() as connection:
-            with connection.begin():
+        with ShotDataBase.db_write_lock:
+            with ShotDataBase.engine.connect() as connection:
+                with connection.begin():
 
-                # Convert to UTC
-                time_obj = datetime.fromtimestamp(entry["time"])
-                time_obj = pytz.timezone("UTC").localize(time_obj)
+                    # Convert to UTC
+                    time_obj = datetime.fromtimestamp(entry["time"])
+                    time_obj = pytz.timezone("UTC").localize(time_obj)
 
-                ins_stmt = insert(history_table).values(
-                    uuid=entry["id"],
-                    file=entry.get("file"),
-                    time=time_obj,
-                    profile_name=entry["profile_name"],
-                    profile_id=profile_data["id"],
-                    profile_key=profile_key,
-                )
-                result = connection.execute(ins_stmt)
-                return result.inserted_primary_key[0]
+                    ins_stmt = insert(history_table).values(
+                        uuid=entry["id"],
+                        file=entry.get("file"),
+                        time=time_obj,
+                        profile_name=entry["profile_name"],
+                        profile_id=profile_data["id"],
+                        profile_key=profile_key,
+                    )
+                    result = connection.execute(ins_stmt)
+                    return result.inserted_primary_key[0]
 
     @staticmethod
     def link_debug_file(history_shot_id, debug_filename):
@@ -332,10 +334,11 @@ class ShotDataBase:
             .where(history_table.c.id == history_shot_id)
             .values(debug_file=debug_filename)
         )
-        with ShotDataBase.engine.connect() as connection:
-            with connection.begin():
-                result = connection.execute(stmt)
-                logger.info(f"debug file linked, affected rows: {{{result.rowcount}}}")
+        with ShotDataBase.db_write_lock:
+            with ShotDataBase.engine.connect() as connection:
+                with connection.begin():
+                    result = connection.execute(stmt)
+                    logger.info(f"debug file linked, affected rows: {{{result.rowcount}}}")
 
     @staticmethod
     def unlink_debug_file(file_relative_path):
@@ -345,56 +348,58 @@ class ShotDataBase:
             .where(history_table.c.debug_file == file_relative_path)
             .values(debug_file=None)
         )
-        with ShotDataBase.engine.connect() as connection:
-            with connection.begin():
-                result = connection.execute(stmt)
-                if result.rowcount == 0:
-                    logger.warning("no columns affected, check relative file path")
-                else:
-                    logger.info(
-                        f"debug file linked, affected rows: {{{result.rowcount}}}"
-                    )
+        with ShotDataBase.db_write_lock:
+            with ShotDataBase.engine.connect() as connection:
+                with connection.begin():
+                    result = connection.execute(stmt)
+                    if result.rowcount == 0:
+                        logger.warning("no columns affected, check relative file path")
+                    else:
+                        logger.info(
+                            f"debug file linked, affected rows: {{{result.rowcount}}}"
+                        )
 
     @staticmethod
     def delete_shot(shot_id):
-        with ShotDataBase.engine.connect() as connection:
-            with connection.begin():
-                # Delete from history
-                del_stmt = delete(ShotDataBase.history_table).where(
-                    history_table.c.id == shot_id
-                )
-                connection.execute(del_stmt)
-
-                # Get the profile_key of the deleted shot
-                profile_key_stmt = select(
-                    [ShotDataBase.history_table.c.profile_key]
-                ).where(history_table.c.id == shot_id)
-                connection.execute(profile_key_stmt).fetchone()
-
-                # Check for orphaned profiles
-                orphaned_profiles_stmt = select([profile_table.c.key]).where(
-                    ~profile_table.c.key.in_(select([history_table.c.profile_key]))
-                )
-                orphaned_profiles = connection.execute(
-                    orphaned_profiles_stmt
-                ).fetchall()
-                for orphan in orphaned_profiles:
-                    del_profile_stmt = delete(profile_table).where(
-                        profile_table.c.key == orphan[0]
+        with ShotDataBase.db_write_lock:
+            with ShotDataBase.engine.connect() as connection:
+                with connection.begin():
+                    # Delete from history
+                    del_stmt = delete(ShotDataBase.history_table).where(
+                        history_table.c.id == shot_id
                     )
-                    connection.execute(del_profile_stmt)
+                    connection.execute(del_stmt)
 
-                    # Delete from profile_fts
-                    del_profile_fts_stmt = delete(ShotDataBase.profile_fts_table).where(
-                        ShotDataBase.profile_fts_table.c.key == orphan[0]
-                    )
-                    connection.execute(del_profile_fts_stmt)
+                    # Get the profile_key of the deleted shot
+                    profile_key_stmt = select(
+                        [ShotDataBase.history_table.c.profile_key]
+                    ).where(history_table.c.id == shot_id)
+                    connection.execute(profile_key_stmt).fetchone()
 
-                    # Delete stages from stage_fts
-                    del_stage_fts_stmt = delete(ShotDataBase.stage_fts_table).where(
-                        ShotDataBase.stage_fts_table.c.profile_key == orphan[0]
+                    # Check for orphaned profiles
+                    orphaned_profiles_stmt = select([profile_table.c.key]).where(
+                        ~profile_table.c.key.in_(select([history_table.c.profile_key]))
                     )
-                    connection.execute(del_stage_fts_stmt)
+                    orphaned_profiles = connection.execute(
+                        orphaned_profiles_stmt
+                    ).fetchall()
+                    for orphan in orphaned_profiles:
+                        del_profile_stmt = delete(profile_table).where(
+                            profile_table.c.key == orphan[0]
+                        )
+                        connection.execute(del_profile_stmt)
+
+                        # Delete from profile_fts
+                        del_profile_fts_stmt = delete(ShotDataBase.profile_fts_table).where(
+                            ShotDataBase.profile_fts_table.c.key == orphan[0]
+                        )
+                        connection.execute(del_profile_fts_stmt)
+
+                        # Delete stages from stage_fts
+                        del_stage_fts_stmt = delete(ShotDataBase.stage_fts_table).where(
+                            ShotDataBase.stage_fts_table.c.profile_key == orphan[0]
+                        )
+                        connection.execute(del_stage_fts_stmt)
 
     @staticmethod
     def search_history(params: SearchParams):
@@ -601,63 +606,64 @@ class ShotDataBase:
             return False
 
         try:
-            with ShotDataBase.engine.connect() as connection:
-                with connection.begin():
+            with ShotDataBase.db_write_lock:
+                with ShotDataBase.engine.connect() as connection:
+                    with connection.begin():
 
-                    shot_exists = connection.execute(
-                        select(history_table.c.id).where(
-                            history_table.c.uuid == history_uuid
-                        )
-                    ).fetchone()
-
-                    if not shot_exists:
-                        logger.error(f"Shot with ID {history_uuid} does not exist")
-                        return False
-
-                    annotation = connection.execute(
-                        select(shot_annotation.c.id).where(
-                            shot_annotation.c.history_uuid == history_uuid
-                        )
-                    ).fetchone()
-
-                    if not annotation:
-                        result = connection.execute(
-                            insert(shot_annotation).values(
-                                history_id=shot_exists[0], history_uuid=history_uuid
+                        shot_exists = connection.execute(
+                            select(history_table.c.id).where(
+                                history_table.c.uuid == history_uuid
                             )
-                        )
-                        annotation_id = result.inserted_primary_key[0]
-                    else:
-                        annotation_id = annotation[0]
+                        ).fetchone()
 
-                    existing_rating = connection.execute(
-                        select(shot_rating.c.id).where(
-                            shot_rating.c.annotation_id == annotation_id
-                        )
-                    ).fetchone()
+                        if not shot_exists:
+                            logger.error(f"Shot with ID {history_uuid} does not exist")
+                            return False
 
-                    if rating is None:
-                        if existing_rating:
-                            connection.execute(
-                                delete(shot_rating).where(
-                                    shot_rating.c.annotation_id == annotation_id
+                        annotation = connection.execute(
+                            select(shot_annotation.c.id).where(
+                                shot_annotation.c.history_uuid == history_uuid
+                            )
+                        ).fetchone()
+
+                        if not annotation:
+                            result = connection.execute(
+                                insert(shot_annotation).values(
+                                    history_id=shot_exists[0], history_uuid=history_uuid
                                 )
                             )
-                    else:
-                        if existing_rating:
-                            connection.execute(
-                                update(shot_rating)
-                                .where(shot_rating.c.annotation_id == annotation_id)
-                                .values(basic=rating)
-                            )
+                            annotation_id = result.inserted_primary_key[0]
                         else:
-                            connection.execute(
-                                insert(shot_rating).values(
-                                    annotation_id=annotation_id, basic=rating
-                                )
-                            )
+                            annotation_id = annotation[0]
 
-                    return True
+                        existing_rating = connection.execute(
+                            select(shot_rating.c.id).where(
+                                shot_rating.c.annotation_id == annotation_id
+                            )
+                        ).fetchone()
+
+                        if rating is None:
+                            if existing_rating:
+                                connection.execute(
+                                    delete(shot_rating).where(
+                                        shot_rating.c.annotation_id == annotation_id
+                                    )
+                                )
+                        else:
+                            if existing_rating:
+                                connection.execute(
+                                    update(shot_rating)
+                                    .where(shot_rating.c.annotation_id == annotation_id)
+                                    .values(basic=rating)
+                                )
+                            else:
+                                connection.execute(
+                                    insert(shot_rating).values(
+                                        annotation_id=annotation_id, basic=rating
+                                    )
+                                )
+
+                        return True
         except Exception as e:
             logger.error(f"Error rating shot: {e}")
             return False
