@@ -91,6 +91,21 @@ class ShotDataBase:
         sqlEvent.listen(ShotDataBase.engine, "connect", setupDatabase)
         ShotDataBase.session = sessionmaker(bind=ShotDataBase.engine)
 
+        # Validate database integrity
+        try:
+            with ShotDataBase.engine.connect() as connection:
+                result = connection.execute(text("PRAGMA integrity_check")).fetchone()
+                if result and result[0] == "ok":
+                    logger.info("Database integrity check passed")
+                else:
+                    logger.error("Database integrity check failed: %s", result)
+                    ShotDataBase.handle_error(Exception("database disk image is malformed"))
+                    return
+        except Exception as e:
+            logger.error("Database integrity check failed with exception: %s", e)
+            ShotDataBase.handle_error(e)
+            return
+
         try:
 
             # Ensure FTS tables are created
@@ -120,6 +135,17 @@ class ShotDataBase:
         except sqlite3.DatabaseError as e:
             logger.error("Database error: %s", e)
             ShotDataBase.handle_error(e)
+            return
+
+        # Log number of history entries
+        try:
+            with ShotDataBase.engine.connect() as connection:
+                count = connection.execute(
+                    select(func.count()).select_from(history_table)
+                ).scalar() or 0
+                logger.info("Number of history entries in database: %d", count)
+        except Exception as e:
+            logger.error("Failed to count history entries: %s", e)
 
     @staticmethod
     def handle_error(e):
