@@ -14,6 +14,7 @@ import subprocess
 from config import (
     CONFIG_USER,
     CONFIG_WIFI,
+    DEBUG_HISTORY_PATH,
     DEBUG_SHOT_DATA_RETENTION,
     MACHINE_DEBUG_SENDING,
     MeticulousConfig,
@@ -37,7 +38,6 @@ logger = MeticulousLogger.getLogger(__name__)
 
 DEBUG_FOLDER_FORMAT = "%Y-%m-%d"
 DEBUG_FILE_FORMAT = "%H:%M:%S"
-DEBUG_HISTORY_PATH = os.getenv("DEBUG_HISTORY_PATH", "/meticulous-user/history/debug")
 
 
 class ShotLogHandler(logging.Handler):

@@ -9,8 +9,8 @@ from typing import Optional
 
 from log import MeticulousLogger
 from shot_database import SearchParams, ShotDataBase, SearchOrder, SearchOrderBy
-from shot_debug_manager import DEBUG_HISTORY_PATH
-from shot_manager import ShotManager, SHOT_PATH
+from config import DEBUG_HISTORY_PATH, SHOT_PATH
+from shot_manager import ShotManager
 
 from .api import API, APIVersion
 from .base_handler import BaseHandler
