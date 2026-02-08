@@ -1,4 +1,3 @@
-import math
 import pytest
 
 from esp_serial.data import (

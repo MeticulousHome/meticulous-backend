@@ -12,7 +12,7 @@ if [ "$(uname)" = "Darwin" ]; then
         --no-deps \
         -v "$SCRIPT_DIR:/app" \
         backend \
-        bash -c "$RUN_COMMAND"
+        bash -c "black . && flake8 && $RUN_COMMAND"
 else
     pip install -r "$SCRIPT_DIR/requirements-dev.txt"
     $RUN_COMMAND

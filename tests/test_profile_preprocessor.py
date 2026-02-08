@@ -98,4 +98,3 @@ class TestProfilePreprocessor(unittest.TestCase):
         self.profile["stages"][0]["dynamics"]["points"] = 1234
         with self.assertRaises(FormatException):
             ProfilePreprocessor.processVariables(self.profile)
-
