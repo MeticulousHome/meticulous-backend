@@ -141,8 +141,8 @@ class ShotDataBase:
             ShotDataBase.engine.dispose()
 
             # Delete the database file
-            if os.path.exists(DATABASE_FILE):
-                os.remove(DATABASE_FILE)
+            if os.path.exists(ABSOLUTE_DATABASE_FILE):
+                os.remove(ABSOLUTE_DATABASE_FILE)
                 logger.info("Database file deleted successfully.")
 
             # Recreate the entire database
@@ -313,9 +313,7 @@ class ShotDataBase:
         with ShotDataBase.engine.connect() as connection:
             with connection.begin():
                 # Delete from history
-                del_stmt = delete(history_table).where(
-                    history_table.c.id == shot_id
-                )
+                del_stmt = delete(history_table).where(history_table.c.id == shot_id)
                 connection.execute(del_stmt)
 
                 # Check for orphaned profiles

@@ -1,7 +1,5 @@
 import json
-import os
 import time
-import tempfile
 from pathlib import Path
 
 import zstandard as zstd
@@ -10,7 +8,7 @@ import pytest
 
 import config as cfg
 import shot_database as sdb_module
-from shot_database import ShotDataBase, SearchParams, SearchOrder, SearchOrderBy
+from shot_database import ShotDataBase, SearchParams, SearchOrder
 from database_models import metadata
 
 
@@ -290,14 +288,10 @@ class TestStatistics:
         p1 = make_profile(id="p1", name="Espresso")
         p2 = make_profile(id="p2", name="Lungo")
         for i in range(3):
-            e = make_history_entry(
-                profile=p1, id=f"h-esp-{i}", file=f"esp_{i}.zst"
-            )
+            e = make_history_entry(profile=p1, id=f"h-esp-{i}", file=f"esp_{i}.zst")
             ShotDataBase.insert_history(e)
         for i in range(2):
-            e = make_history_entry(
-                profile=p2, id=f"h-lng-{i}", file=f"lng_{i}.zst"
-            )
+            e = make_history_entry(profile=p2, id=f"h-lng-{i}", file=f"lng_{i}.zst")
             ShotDataBase.insert_history(e)
 
         stats = ShotDataBase.statistics()
@@ -440,9 +434,7 @@ class TestSearchHistoryDateFilters:
             e = make_history_entry(id=f"h{i}", file=f"s{i}.zst", time=t)
             ShotDataBase.insert_history(e)
 
-        params = SearchParams(
-            start_date=1200000.0, end_date=1800000.0, dump_data=False
-        )
+        params = SearchParams(start_date=1200000.0, end_date=1800000.0, dump_data=False)
         results = ShotDataBase.search_history(params)
         assert len(results) == 1
         assert results[0]["id"] == "h1"
