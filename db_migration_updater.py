@@ -4,7 +4,7 @@ from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine
 from log import MeticulousLogger
-from shot_database import DATABASE_URL
+from config import DATABASE_URL
 import os
 import shutil
 

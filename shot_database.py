@@ -29,12 +29,14 @@ from sqlalchemy import update
 from database_models import metadata, profile as profile_table, history as history_table
 from database_models import shot_annotation, shot_rating
 
-from log import MeticulousLogger
+from config import (
+    HISTORY_PATH,
+    ABSOLUTE_DATABASE_FILE,
+    DATABASE_URL,
+    SHOT_PATH,
+)
 
-HISTORY_PATH = os.getenv("HISTORY_PATH", "/meticulous-user/history")
-DATABASE_FILE = "history.sqlite"
-ABSOLUTE_DATABASE_FILE = Path(HISTORY_PATH).joinpath(DATABASE_FILE).resolve()
-DATABASE_URL = f"sqlite:///{ABSOLUTE_DATABASE_FILE}"
+from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -424,8 +426,6 @@ class ShotDataBase:
                 file_entry = row_dict.pop("history_file")
 
                 if params.dump_data:
-                    from shot_manager import SHOT_PATH
-
                     data_file = Path(SHOT_PATH).joinpath(file_entry)
                     with open(data_file, "rb") as compressed_file:
                         decompressor = zstd.ZstdDecompressor()
