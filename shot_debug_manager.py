@@ -32,7 +32,6 @@ from log import MeticulousLogger
 from shot_manager import Shot, ShotManager
 import copy
 
-
 logger = MeticulousLogger.getLogger(__name__)
 
 DEBUG_FOLDER_FORMAT = "%Y-%m-%d"

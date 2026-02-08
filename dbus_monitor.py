@@ -126,7 +126,7 @@ class DBusMonitor:
         attribute,
         status: tuple[int, str, int],
     ):
-        (progress, message, depth) = status
+        progress, message, depth = status
         progress_notification.message = f"Updating OS:\n {progress}%"
         progress_notification.respone_options = [NotificationResponse.OK]
         progress_notification.image = notification_image
