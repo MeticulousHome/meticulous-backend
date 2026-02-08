@@ -157,7 +157,7 @@ class ShotDataBase:
         stages_json = json.dumps(profile_data.get("stages", []))
         variables_json = json.dumps(profile_data.get("variables", []))
         previous_authors_json = json.dumps(profile_data.get("previous_authors", []))
-        display_json = json.dumps(profile_data.get("previous_authors", []))
+        display_json = json.dumps(profile_data.get("display", {}))
 
         query = (
             select(profile_table.c.key)
@@ -313,20 +313,14 @@ class ShotDataBase:
         with ShotDataBase.engine.connect() as connection:
             with connection.begin():
                 # Delete from history
-                del_stmt = delete(ShotDataBase.history_table).where(
+                del_stmt = delete(history_table).where(
                     history_table.c.id == shot_id
                 )
                 connection.execute(del_stmt)
 
-                # Get the profile_key of the deleted shot
-                profile_key_stmt = select(
-                    [ShotDataBase.history_table.c.profile_key]
-                ).where(history_table.c.id == shot_id)
-                connection.execute(profile_key_stmt).fetchone()
-
                 # Check for orphaned profiles
-                orphaned_profiles_stmt = select([profile_table.c.key]).where(
-                    ~profile_table.c.key.in_(select([history_table.c.profile_key]))
+                orphaned_profiles_stmt = select(profile_table.c.key).where(
+                    ~profile_table.c.key.in_(select(history_table.c.profile_key))
                 )
                 orphaned_profiles = connection.execute(
                     orphaned_profiles_stmt
@@ -339,7 +333,7 @@ class ShotDataBase:
 
                     # Delete from profile_fts
                     del_profile_fts_stmt = delete(ShotDataBase.profile_fts_table).where(
-                        ShotDataBase.profile_fts_table.c.key == orphan[0]
+                        ShotDataBase.profile_fts_table.c.profile_key == orphan[0]
                     )
                     connection.execute(del_profile_fts_stmt)
 
