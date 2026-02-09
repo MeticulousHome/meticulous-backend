@@ -817,6 +817,7 @@ class Machine:
     def startUpdate():
 
         Machine._stopESPcomm = True
+        Machine.esp_restart_request = True
         error_msg = Machine._connection.sendUpdate()
         Machine._stopESPcomm = False
 
