@@ -502,7 +502,17 @@ class Machine:
 
                     if Machine.profileReady and not Machine.oldProfileReady:
                         ShotDebugManager.start()
+                        with ShotDebugManager.clear_current_data_lock:
+                            if ShotDebugManager._current_data is not None:
+                                ShotDebugManager._current_data.EspTaskData["start"] = (
+                                    Machine.esp_task_info.tasks
+                                )
                     if not Machine.profileReady and Machine.oldProfileReady:
+                        with ShotDebugManager.clear_current_data_lock:
+                            if ShotDebugManager._current_data is not None:
+                                ShotDebugManager._current_data.EspTaskData["end"] = (
+                                    Machine.esp_task_info.tasks
+                                )
                         ShotDebugManager.stop()
 
                     Machine.oldProfileReady = Machine.profileReady

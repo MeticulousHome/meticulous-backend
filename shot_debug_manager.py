@@ -100,6 +100,7 @@ class DebugShot(Shot):
         self.machine.update(self.esp_info)
 
         self.shottype = "shot"
+        self.EspTaskData: dict[str, dict[str, int]] = {}
 
     def to_json(self):
         data = {
@@ -112,6 +113,10 @@ class DebugShot(Shot):
             "config": self.config,
             "data": self.shotData,
             "logs": self.logs,
+            "ESPTasks": {
+                "start": (self.EspTaskData.get("start", {})),
+                "end": (self.EspTaskData.get("end", {})),
+            },
         }
         return data
 
