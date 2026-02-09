@@ -619,7 +619,6 @@ class Machine:
                 if sensor is not None:
 
                     Machine.sensor_sensors = sensor
-                    Machine.reset_count = 0
                     # Analyze / save data for analysis only when the sensor data is received
                     # ESP sends first "Data" data followed by "Sensors" data, so, by this time, the
                     # Machine.data_sensors must be up to date
@@ -633,7 +632,6 @@ class Machine:
 
                 if info is not None:
                     Machine.esp_info = info
-                    Machine.reset_count = 0
                     Machine.infoReady = True
                     info_requested = False
                     Machine.firmware_running = Machine._parseVersionString(
@@ -755,6 +753,17 @@ class Machine:
             # Notify user if
             # ESP has rebooted
 
+            now = time.monotonic()
+
+            if data_bytes is not None and is_valid_message:
+                previous_valid_message_timestamp = now
+                if Machine.esp_restart_request:
+                    logger.debug("clearing Machine.esp_restart_request flag")
+                Machine.esp_restart_request = False
+                Machine.reset_count = 0
+                AlarmManager.clear_alarm(AlarmType.ESP_DISCONNECTED)
+                AlarmManager.clear_alarm(AlarmType.ESP_RESTART)
+
             if Machine.reset_count > 0 and not Machine.esp_restart_request:
                 if AlarmManager.is_alarm_set(AlarmType.ESP_RESTART) is None:
                     # notify sentry
@@ -766,11 +775,10 @@ class Machine:
                             "ESP has restarted unexpectedly", "critical"
                         )
                     AlarmManager.set_alarm(
-                        AlarmType.ESP_RESTART, end_time=None, force=True
+                        AlarmType.ESP_RESTART, end_time=None, force=False
                     )
                     ESP_tracing_info = []
 
-            now = time.monotonic()
             if (
                 now - previous_valid_message_timestamp > 0.5
                 and not Machine.esp_restart_request
@@ -784,14 +792,6 @@ class Machine:
                         force=True,
                         quiet=True,
                     )
-
-            if data_bytes is not None and is_valid_message:
-                previous_valid_message_timestamp = now
-                if Machine.esp_restart_request:
-                    logger.debug("clearing Machine.esp_restart_request flag")
-                Machine.esp_restart_request = False
-                AlarmManager.clear_alarm(AlarmType.ESP_DISCONNECTED)
-                AlarmManager.clear_alarm(AlarmType.ESP_RESTART)
 
     def stopMotorIfHot(_shotData: ShotData, _sensorData: SensorData):
         from monitoring.motor_power_monitoring import MAX_ENERGY_ALLOWED
