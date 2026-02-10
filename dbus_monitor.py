@@ -7,6 +7,7 @@ from hostname import HostnameManager
 import os
 import time
 from manufacturing import LAST_BOOT_MODE_KEY
+from config import CONFIG_SYSTEM, MACHINE_SERIAL_NUMBER
 
 from dbus_client import AsyncDBUSClient
 from api.machine import OSStatus, UpdateOSStatus
@@ -252,7 +253,8 @@ class DBusMonitor:
         os.makedirs(MOUNT_PATH, exist_ok=True)
         try:
             subprocess.run(["mount", USB_PATH, MOUNT_PATH], check=True)
-            machine_name = HostnameManager.generateHostname()
+            serial_number = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
+            machine_name = f"{HostnameManager.generateHostname()}-{serial_number if serial_number is not None else 'unknownSN'}"
             test_path = os.path.join(MOUNT_PATH, machine_name)
             with open(test_path, "w") as f:
                 f.write(machine_name)
