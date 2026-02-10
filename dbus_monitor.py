@@ -3,6 +3,9 @@ from notifications import NotificationManager, Notification, NotificationRespons
 import subprocess
 
 from config import MeticulousConfig, CONFIG_MANUFACTURING
+from hostname import HostnameManager
+import os
+import time
 from manufacturing import LAST_BOOT_MODE_KEY
 
 from dbus_client import AsyncDBUSClient
@@ -78,7 +81,7 @@ class DBusMonitor:
             logger.info("subscribing to usb test signal on dbus")
             self.dbus_object.new_signal_subscription(
                 "com.Meticulous.Handler.MassStorage",
-                "Detection",
+                "NewUSB",
                 self.notify_usb_test,
             )
 
@@ -241,12 +244,33 @@ class DBusMonitor:
     async def notify_usb_test(
         connection, sender_name, object_path, interface_name, signal_name, parameters
     ):
-        USB_DEVICE = parameters[0]
-        logger.info(f"Device '{USB_DEVICE}' connected")
-        usb_device_notification.message = f"{USB_DEVICE}"
+        USB_PATH = parameters[0]
+        logger.info(f"USB Device connected, {USB_PATH}")
+        usb_device_notification.message = "USB valid"
         usb_device_notification.respone_options = [NotificationResponse.OK]
+        MOUNT_PATH = "/tmp/test_device"
+        os.makedirs(MOUNT_PATH, exist_ok=True)
+        try:
+            subprocess.run(["mount", USB_PATH, MOUNT_PATH], check=True)
+            machine_name = HostnameManager.generateHostname()
+            test_path = os.path.join(MOUNT_PATH, machine_name)
+            with open(test_path, "w") as f:
+                f.write(machine_name)
 
-        NotificationManager.add_notification(usb_device_notification)
+            time.sleep(2)
+            with open(test_path, "r") as f:
+                read_str = f.read()
+            if read_str == machine_name:
+                NotificationManager.add_notification(usb_device_notification)
+        except subprocess.CalledProcessError as e:
+            logger.warning(f"Cannot mount '{USB_PATH}' device: {e}")
+        except Exception as e:
+            logger.warning(f"error testing '{USB_PATH}' device: {e}")
+
+        try:
+            subprocess.run(["umount", MOUNT_PATH], check=True)
+        except subprocess.CalledProcessError as e:
+            logger.warning(f"error unmounting '{MOUNT_PATH}': {e}")
 
     @staticmethod
     async def recovery_update_failed(
