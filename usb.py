@@ -1,4 +1,4 @@
-from config import CONFIG_USER, USB_MODE, USB_MODES, MeticulousConfig
+from config import USB_MODES
 
 from log import MeticulousLogger
 from machine import Machine
@@ -17,8 +17,10 @@ class USBManager:
         USBManager.usbPdController = PTN5150H()
         logger.info("USB PD Controller initialized")
         try:
-            USB_MODES(MeticulousConfig[CONFIG_USER][USB_MODE])
-            USBManager.setUSBMode(MeticulousConfig[CONFIG_USER][USB_MODE])
+            USB_MODES(
+                USB_MODES.HOST.value
+            )  # hardcode as host (DTS sets it as host only)
+            USBManager.setUSBMode(USB_MODES.HOST.value)
         except RuntimeError as error:
             logger.error(
                 f"error initializing USB Manager: f{error}, starting USB as client"

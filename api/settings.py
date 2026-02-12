@@ -5,7 +5,6 @@ from config import (
     MeticulousConfig,
     UPDATE_CHANNEL,
     MACHINE_HEATING_TIMEOUT,
-    USB_MODE,
     USB_MODES,
     TIMEZONE_SYNC,
     TIME_ZONE,
@@ -151,9 +150,6 @@ class SettingsHandler(BaseHandler):
 
                 if setting_target == MACHINE_HEATING_TIMEOUT:
                     self.update_heater_timeout(value)
-
-                if setting_target == USB_MODE:
-                    self.update_usb_mode(value)
 
                 if setting_target == UPDATE_CHANNEL:
                     UpdateManager.setChannel(value)
