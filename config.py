@@ -236,7 +236,6 @@ DefaultConfiguration_V1 = {
         REVERSE_SCROLLING: REVERSE_SCROLLING_DEFAULT,
         ALLOW_LEGACY_JSON: ALLOW_LEGACY_JSON_DEFAULT,
         MACHINE_ALLOW_STAGE_SKIPPING: MACHINE_ALLOW_STAGE_SKIPPING_DEFAULT,
-        USB_MODE: USB_MODE_DEFAULT,
         TIMEZONE_SYNC: DEFAULT_TIMEZONE_SYNC,
         TIME_ZONE: DEFAULT_TIME_ZONE,
         MACHINE_DEBUG_SENDING: MACHINE_DEBUG_SENDING_DEFAULT,
@@ -335,7 +334,15 @@ class MeticulousConfigDict(dict):
                     # migrate partial_retraction config data from int to float
                     retraction = self[CONFIG_USER][PROFILE_PARTIAL_RETRACTION]
                     if isinstance(retraction, int):
-                        self[CONFIG_USER][PROFILE_PARTIAL_RETRACTION] = float(retraction)
+                        self[CONFIG_USER][PROFILE_PARTIAL_RETRACTION] = float(
+                            retraction
+                        )
+                    # remove usb_mode setting from yml file
+                    if self[CONFIG_USER].get(USB_MODE) is not None:
+                        _config_logger.info(
+                            "usb_mode attribute found in config, removing"
+                        )
+                        self[CONFIG_USER].pop(USB_MODE)
                     _config_logger.info("Successfully loaded config from disk")
                     self.__configError = False
                 except Exception as e:
