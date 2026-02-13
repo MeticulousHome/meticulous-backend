@@ -213,3 +213,7 @@ class SoundPlayer:
             return False
 
         return True
+
+    @staticmethod
+    def is_playing():
+        return playsound_lock.locked()

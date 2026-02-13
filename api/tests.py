@@ -8,6 +8,7 @@ from enum import StrEnum
 
 from machine import Machine
 import subprocess
+import time
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -35,6 +36,7 @@ class TestsHandler(BaseHandler):
                     subprocess.run(
                         ["pactl", "--", "set-sink-volume", "0", "50%"], check=True
                     )
+                    time.sleep(0.5)
                 except Exception:
                     logger.warning(
                         "could not set the volume to 50%, please cover your ears"
@@ -48,7 +50,10 @@ class TestsHandler(BaseHandler):
                         self.write(
                             {"error": "sound not found", "details": "speaker_test"}
                         )
-                # return the volume to 70%
+                start = time.monotonic()
+                while SoundPlayer.is_playing() and time.monotonic() - start < 3.5:
+                    time.sleep(0.1)
+                logger.debug("speaker test finished")
                 try:
                     subprocess.run(
                         ["pactl", "--", "set-sink-volume", "0", "70%"], check=True
