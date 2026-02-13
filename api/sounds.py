@@ -14,10 +14,12 @@ from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
 
+FORBIDDEN_SOUNDS = ["speaker_test"]
+
 
 class PlaySoundHandler(BaseHandler):
     def get(self, sound):
-        if SoundPlayer.play_sound(sound):
+        if sound not in FORBIDDEN_SOUNDS and SoundPlayer.play_sound(sound):
             self.write({"status": "okay"})
             self.finish()
         else:
