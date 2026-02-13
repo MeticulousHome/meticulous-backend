@@ -50,6 +50,7 @@ class API:
         from . import machine as _machine  # noqa
         from . import serial as _serial  # noqa
         from . import password_handler as _password_handler  # noqa
+        from . import tests as _tests  # noqa
 
         routes = []
         logger.info("API Routes registered:")
