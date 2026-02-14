@@ -1,6 +1,6 @@
 from sounds import SoundPlayer
 
-from .base_handler import BaseHandler
+from .base_handler import LocalAccessHandler
 from .api import API, APIVersion
 
 from log import MeticulousLogger
@@ -19,7 +19,7 @@ class HardwareTests(StrEnum):
     SPEAKER = "speaker"
 
 
-class TestsHandler(BaseHandler):
+class TestsHandler(LocalAccessHandler):
     speaker_test_thread = None
     speaker_test_status = "idle"
 
