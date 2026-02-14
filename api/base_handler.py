@@ -90,7 +90,7 @@ class LocalAccessHandler(BaseHandler):
             "127.0.0.1",
         ):
             logger.warning(
-                f"Unauthorized access to the password endpoint from {remote_ip}"
+                f"Unauthorized access to the {self.request.uri} endpoint from {remote_ip}"
             )
             self.set_status(403)
             self.write(
