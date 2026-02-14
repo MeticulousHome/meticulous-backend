@@ -1,7 +1,7 @@
 from enum import Enum, auto
 import os
 import json
-from play_sound import playsound, playsound_lock
+from play_sound import playsound, get_sound_player_status, SoundPlayerStatus
 import gpiod
 import subprocess
 
@@ -215,4 +215,4 @@ class SoundPlayer:
 
     @staticmethod
     def is_playing():
-        return playsound_lock.locked()
+        return get_sound_player_status() == SoundPlayerStatus.PLAYING

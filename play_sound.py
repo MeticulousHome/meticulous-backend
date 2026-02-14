@@ -1,5 +1,6 @@
 import threading
 from log import MeticulousLogger
+from enum import StrEnum
 import gi
 
 # Setup GStreamer version before importing
@@ -18,7 +19,14 @@ class PlaysoundException(Exception):
 playsound_lock = threading.Lock()
 
 
-class SoundPlayer:
+class SoundPlayerStatus(StrEnum):
+    PLAYING = "playing"
+    IDLE = "idle"
+    PAUSED = "paused"
+    UNKNOWN = "unknown"
+
+
+class SoundPlayerConnector:
     def __init__(self):
         logger.info("Initializing SoundPlayer")
         Gst.init(None)
@@ -26,11 +34,27 @@ class SoundPlayer:
         self._pipeline = None
         self._loop = GLib.MainLoop()
         self._bus = None
+        self._status = SoundPlayerStatus.IDLE
 
     def _on_message(self, bus, message):
         t = message.type
         if t == Gst.MessageType.EOS:
+            self._status = SoundPlayerStatus.IDLE
             self._cleanup()
+        elif t == Gst.MessageType.ASYNC_START:
+            self._status = SoundPlayerStatus.PLAYING
+            logger.info("Playback async start")
+        elif t == Gst.MessageType.STATE_CHANGED and message.src == self._pipeline:
+            old_state, new_state, _ = message.parse_state_changed()
+            if new_state == Gst.State.PLAYING:
+                self._status = SoundPlayerStatus.PLAYING
+            elif new_state == Gst.State.PAUSED:
+                self._status = SoundPlayerStatus.PAUSED
+            elif new_state in (Gst.State.READY, Gst.State.NULL):
+                self._status = SoundPlayerStatus.IDLE
+            logger.info(
+                f"State changed: {old_state.value_nick} -> {new_state.value_nick}"
+            )
         elif t == Gst.MessageType.ERROR:
             err, debug = message.parse_error()
             logger.error(f"Error: {err}, Debug: {debug}")
@@ -43,6 +67,7 @@ class SoundPlayer:
         if self._bus:
             self._bus.remove_signal_watch()
             self._bus = None
+        self._status = SoundPlayerStatus.IDLE
 
     def play(self, sound_path):
         with self._lock:
@@ -86,7 +111,7 @@ def playsound(sound_path):
     if playsound_lock.acquire(timeout=5):
         # We dont want multiple glib main loops so ensure it is in the lock
         if _player is None:
-            _player = SoundPlayer()
+            _player = SoundPlayerConnector()
 
         # This will block until done
         play = _player.play(sound_path)
@@ -96,3 +121,7 @@ def playsound(sound_path):
     else:
         logger.error("Could not acquire playsound lock")
         return False
+
+
+def get_sound_player_status():
+    return _player._status if _player is not None else SoundPlayerStatus.UNKNOWN

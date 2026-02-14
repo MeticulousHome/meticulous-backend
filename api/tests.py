@@ -36,7 +36,6 @@ class TestsHandler(BaseHandler):
                     subprocess.run(
                         ["pactl", "--", "set-sink-volume", "0", "50%"], check=True
                     )
-                    time.sleep(0.5)
                 except Exception:
                     logger.warning(
                         "could not set the volume to 50%, please cover your ears"
@@ -50,8 +49,11 @@ class TestsHandler(BaseHandler):
                         self.write(
                             {"error": "sound not found", "details": "speaker_test"}
                         )
+                while not SoundPlayer.is_playing():
+                    pass
+                logger.debug("Playing audio stream")
                 start = time.monotonic()
-                while SoundPlayer.is_playing() and time.monotonic() - start < 3.5:
+                while SoundPlayer.is_playing() and time.monotonic() - start < 4:
                     time.sleep(0.1)
                 logger.debug("speaker test finished")
                 try:
