@@ -216,4 +216,4 @@ class SoundPlayer:
 
     @staticmethod
     def is_playing():
-        return playsound_lock.locked()
+        return get_sound_player_status() == SoundPlayerStatus.PLAYING
