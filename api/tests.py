@@ -10,6 +10,8 @@ from machine import Machine
 import subprocess
 import time
 
+from named_thread import NamedThread
+
 logger = MeticulousLogger.getLogger(__name__)
 
 
@@ -18,6 +20,34 @@ class HardwareTests(StrEnum):
 
 
 class TestsHandler(BaseHandler):
+    speaker_test_thread = None
+    speaker_test_status = "idle"
+
+    @staticmethod
+    def test_speaker(cls):
+        # set the volume to 50%
+        cls.speaker_test_status = "running"
+        try:
+            subprocess.run(["pactl", "--", "set-sink-volume", "0", "50%"], check=True)
+        except Exception:
+            logger.warning("could not set the volume to 50%, please cover your ears")
+        finally:
+            SoundPlayer.play_sound("speaker_test")
+        start = time.monotonic()
+        while not SoundPlayer.is_playing():
+            if time.monotonic() - start > 1:
+                logger.warning("timeout starting to play test audio")
+                return
+
+        logger.debug("Playing audio stream")
+        while SoundPlayer.is_playing() or time.monotonic() - start < 1:
+            time.sleep(0.1)
+        logger.debug("speaker test finished")
+        try:
+            subprocess.run(["pactl", "--", "set-sink-volume", "0", "70%"], check=True)
+        except Exception:
+            logger.warning("could not set the volume to 70%")
+
     async def get(self, test_name=None):  # noqa: C901
         if not Machine.is_idle:
             self.write(
@@ -31,37 +61,23 @@ class TestsHandler(BaseHandler):
             return
         match test_name:
             case HardwareTests.SPEAKER:
-                # set the volume to 50%
                 try:
-                    subprocess.run(
-                        ["pactl", "--", "set-sink-volume", "0", "50%"], check=True
+                    self.speaker_test_thread = NamedThread(
+                        name="speaker test",
+                        target=TestsHandler.test_speaker,
+                        args=(self,),
                     )
-                except Exception:
-                    logger.warning(
-                        "could not set the volume to 50%, please cover your ears"
+                    self.speaker_test_thread.start()
+                    self.write({"status": "okay"})
+                    self.finish()
+                except Exception as e:
+                    self.write(
+                        {
+                            "error": "issue encountered testing speaker",
+                            "details": f"{e}",
+                        }
                     )
-                finally:
-                    if SoundPlayer.play_sound("speaker_test"):
-                        self.write({"status": "okay"})
-                        self.finish()
-                    else:
-                        self.set_status(404)
-                        self.write(
-                            {"error": "sound not found", "details": "speaker_test"}
-                        )
-                while not SoundPlayer.is_playing():
-                    pass
-                logger.debug("Playing audio stream")
-                start = time.monotonic()
-                while SoundPlayer.is_playing() and time.monotonic() - start < 4:
-                    time.sleep(0.1)
-                logger.debug("speaker test finished")
-                try:
-                    subprocess.run(
-                        ["pactl", "--", "set-sink-volume", "0", "70%"], check=True
-                    )
-                except Exception:
-                    logger.warning("could not set the volume to 70%")
+                    self.set_status(400)
 
 
 API.register_handler(APIVersion.V1, r"/test[/]*(.*)", TestsHandler)
