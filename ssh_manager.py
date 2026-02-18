@@ -1,8 +1,8 @@
-from pydbus import SystemBus
 import subprocess
 import re
 from config import MeticulousConfig, CONFIG_SYSTEM, ROOT_PASSWORD
 from machine import Machine
+from system_services import SystemServices
 
 from log import MeticulousLogger
 
@@ -17,24 +17,7 @@ class SSHManager:
         """
         Enable or disable SSH service using systemd D-Bus interface.
         """
-        try:
-            bus = SystemBus()
-            systemd = bus.get(".systemd1")
-
-            if enabled:
-                systemd.EnableUnitFiles(["ssh.service"], False, False)
-                systemd.StartUnit("ssh.service", "fail")
-                logger.info("SSH service enabled and started")
-            else:
-                systemd.StopUnit("ssh.service", "fail")
-                systemd.DisableUnitFiles(["ssh.service"], False)
-                logger.info("SSH service stopped and disabled")
-
-            systemd.Reload()
-            return True
-        except Exception as e:
-            logger.error(f"Error while managing SSH service: {e}")
-            return False
+        return SystemServices.set_service_state("ssh.service", enabled)
 
     @staticmethod
     def init():

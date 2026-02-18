@@ -31,6 +31,7 @@ class TelemetryService:
 
     @staticmethod
     def init():
+        return
         current_date = datetime.now()
         if current_date.year > 2025 or (
             current_date.month > 8 and current_date.year == 2025

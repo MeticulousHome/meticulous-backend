@@ -48,6 +48,7 @@ from api.machine import UpdateOSStatus
 from timezone_manager import TimezoneManager
 
 from ssh_manager import SSHManager
+from system_services import SystemServices
 from telemetry_service import TelemetryService
 
 from api.alarms import AlarmManager
@@ -296,6 +297,7 @@ def main():
     AlarmManager.init()
     Machine.init(sio)
     SSHManager.init()
+    SystemServices.init()
 
     USBManager.init()
     DBusMonitor.enableUSBTest()
