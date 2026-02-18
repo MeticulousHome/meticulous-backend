@@ -136,12 +136,11 @@ class ShotDebugManager:
             with ShotDebugManager.clear_current_data_lock:
                 if ShotDebugManager._current_data is None:
                     ShotDebugManager._current_data = DebugShot()
-                    ShotDebugManager.logging_handler = ShotLogHandler()
+            if ShotDebugManager.logging_handler is None:
+                ShotDebugManager.logging_handler = ShotLogHandler()
 
-                    # Add the log handler on the first debug shot start
-                    MeticulousLogger.add_logging_handler(
-                        ShotDebugManager.logging_handler
-                    )
+            # Add the log handler on the first debug shot start
+            MeticulousLogger.add_logging_handler(ShotDebugManager.logging_handler)
 
         except Exception as e:
             logger.error(f"Failed to start debug shot: {e}")
