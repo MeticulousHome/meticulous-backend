@@ -97,6 +97,8 @@ class ZstdHistoryHandler(tornado.web.StaticFileHandler):
             return None
         if not os.path.exists(self.absolute_path):
             return None
+        if self.absolute_path.endswith(".zst"):
+            return None
 
         return super().compute_etag()
 
