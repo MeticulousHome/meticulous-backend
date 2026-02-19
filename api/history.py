@@ -162,11 +162,15 @@ class ZstdHistoryHandler(tornado.web.StaticFileHandler):
             decompressor = zstd.ZstdDecompressor()
             decompressed_content = decompressor.stream_reader(compressed_file)
             logger.warning(full_path)
+            raw = decompressed_content.read()
+            if b": Infinity" in raw:
+                logger.warning(f"Patching Infinity token in shot file: {full_path}")
+                raw = raw.replace(b": Infinity", b": 0.0")
             if full_path.endswith(".csv.zst"):
                 self.set_header("Content-Type", "text/csv")
             else:
                 self.set_header("Content-Type", "application/json")
-            self.write(decompressed_content.read())
+            self.write(raw)
             self.finish()
 
     async def list_directory(self, full_path):
