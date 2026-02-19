@@ -427,13 +427,23 @@ class ShotDataBase:
                     from shot_manager import SHOT_PATH
 
                     data_file = Path(SHOT_PATH).joinpath(file_entry)
-                    with open(data_file, "rb") as compressed_file:
-                        decompressor = zstd.ZstdDecompressor()
-                        decompressed_content = decompressor.stream_reader(
-                            compressed_file
-                        )
-                        file_contents = json.loads(decompressed_content.read())
-                        data = file_contents.get("data")
+                    try:
+                        with open(data_file, "rb") as compressed_file:
+                            decompressor = zstd.ZstdDecompressor()
+                            decompressed_content = decompressor.stream_reader(
+                                compressed_file
+                            )
+                            raw = decompressed_content.read()
+                            if b": Infinity" in raw:
+                                logger.warning(
+                                    f"Patching Infinity token in shot file: {file_entry}"
+                                )
+                                raw = raw.replace(b": Infinity", b": 0.0")
+                            file_contents = json.loads(raw)
+                            data = file_contents.get("data")
+                    except Exception as e:
+                        logger.error(f"Failed to read shot file {file_entry}: {e}")
+                        continue
 
                 profile = {
                     "id": row_dict.pop("profile_id"),
