@@ -12,7 +12,7 @@ colorSensorRegex = None
 
 def safeFloat(val):
     convert = float(val)
-    if math.isnan(convert):
+    if not math.isfinite(convert):
         return 0
     return convert
 
@@ -354,12 +354,12 @@ class ShotData:
                 if main_controller_kind == "none":
                     main_controller_kind = None
 
-                main_setpoint = float(args[8].strip("\r\n"))
+                main_setpoint = safeFloat(args[8].strip("\r\n"))
                 aux_controller_kind = args[9].strip("\r\n")
                 if aux_controller_kind == "none":
                     aux_controller_kind = None
 
-                aux_setpoint = float(args[10].strip("\r\n"))
+                aux_setpoint = safeFloat(args[10].strip("\r\n"))
                 is_aux_controller_active = args[11].strip("\r\n") == "true"
                 gravimetric_flow = safe_float_with_nan(args[12])
             except Exception as e:
