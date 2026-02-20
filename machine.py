@@ -886,11 +886,11 @@ class Machine:
             Machine._connection.port.write(content)
 
     def reset():
+        Machine.esp_restart_request = True
         Machine._connection.reset()
         Machine.infoReady = False
         Machine.profileReady = False
         Machine.startTime = time.time()
-        Machine.esp_restart_request = True
 
     def send_json_with_hash(json_obj):
         json_string = json.dumps(json_obj)
