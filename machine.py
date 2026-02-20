@@ -775,7 +775,7 @@ class Machine:
                             "ESP has restarted unexpectedly", "critical"
                         )
                     AlarmManager.set_alarm(
-                        AlarmType.ESP_RESTART, end_time=None, force=False
+                        AlarmType.ESP_RESTART, end_time=None, force=False, quiet=True
                     )
                     ESP_tracing_info = []
 
