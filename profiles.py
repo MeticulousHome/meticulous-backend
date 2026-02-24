@@ -3,6 +3,7 @@ import json
 import os
 import shutil
 import urllib.parse
+from dataclasses import dataclass
 from named_thread import NamedThread
 import time
 import uuid
@@ -32,6 +33,25 @@ from images.notificationImages.base64 import WARNING_TRIANGLE_IMAGE
 import math
 
 logger = MeticulousLogger.getLogger(__name__)
+
+
+@dataclass
+class ProfileHover:
+    id: str = ""
+    type: str = ""
+    from_: str = ""
+
+    def to_dict(self) -> dict:
+        return {"id": self.id, "type": self.type, "from": self.from_}
+
+    @staticmethod
+    def from_dict(data: dict) -> "ProfileHover":
+        return ProfileHover(
+            id=data.get("id", ""),
+            type=data.get("type", ""),
+            from_=data.get("from", ""),
+        )
+
 
 PROFILE_PATH = os.getenv("PROFILE_PATH", "/meticulous-user/profiles")
 IMAGES_PATH = os.getenv("IMAGES_PATH", "/meticulous-user/profile-images/")
@@ -68,6 +88,7 @@ class ProfileManager:
     _thread: NamedThread = None
     _last_profile_changes = []
     _schema = None
+    _profile_hover: ProfileHover = ProfileHover()
 
     def init(sio: socketio.AsyncServer):
         ProfileManager._sio = sio
@@ -95,6 +116,16 @@ class ProfileManager:
         ProfileManager.refresh_default_profile_list()
         ProfileManager.refresh_profile_list()
         ProfileManager._delete_unused_images()
+
+        # Seed hover state from last loaded profile
+        last = ProfileManager.get_last_profile()
+        if last and "profile" in last:
+            profile = last["profile"]
+            ProfileManager._profile_hover = ProfileHover(
+                id=profile.get("id", ""),
+                type="focus",
+                from_="dial",
+            )
 
     def _register_profile_change(
         change: PROFILE_EVENT,
@@ -282,6 +313,18 @@ class ProfileManager:
 
         ProfileManager._emit_profile_event(change_type, data["id"], change_id)
 
+        # New profile is auto-selected by the dial — emit profileHover so clients update
+        if change_type == PROFILE_EVENT.CREATE:
+            ProfileManager._profile_hover = ProfileHover(
+                id=data["id"],
+                type="focus",
+                from_="dial",
+            )
+            asyncio.run_coroutine_threadsafe(
+                ProfileManager._async_emit_profile_hover(),
+                ProfileManager._loop,
+            )
+
         return {"profile": data, "change_id": change_id}
 
     def delete_profile(id: str, change_id: Optional[str] = None) -> Optional[dict]:
@@ -303,6 +346,12 @@ class ProfileManager:
         ProfileManager._emit_profile_event(PROFILE_EVENT.DELETE, profile["id"])
 
         ProfileManager._delete_unused_images()
+
+        # If deleted profile was hovered, clear the stale hover state silently.
+        # Do not emit — the dial handles carousel position on deletion itself,
+        # and an empty profileHover payload would disrupt its focus state.
+        if ProfileManager._profile_hover.id == id:
+            ProfileManager._profile_hover = ProfileHover()
 
         return {"profile": profile, "change_id": change_id}
 
@@ -384,6 +433,17 @@ class ProfileManager:
         ProfileManager._set_last_profile(data)
 
         ProfileManager._emit_profile_event(PROFILE_EVENT.LOAD, data["id"])
+
+        # Loading auto-selects the profile — emit profileHover so clients update
+        ProfileManager._profile_hover = ProfileHover(
+            id=data["id"],
+            type="focus",
+            from_="dial",
+        )
+        asyncio.run_coroutine_threadsafe(
+            ProfileManager._async_emit_profile_hover(),
+            ProfileManager._loop,
+        )
 
         return data
 
@@ -623,6 +683,28 @@ class ProfileManager:
 
     def get_last_profile():
         return MeticulousConfig[CONFIG_PROFILES][PROFILE_LAST]
+
+    async def handle_profile_hover(data, sid=None) -> None:
+        ProfileManager._profile_hover = ProfileHover.from_dict(data)
+        logger.info(f"Profile hover updated: {ProfileManager._profile_hover.to_dict()}")
+        await ProfileManager._async_emit_profile_hover(skip_sid=sid)
+
+    async def _async_emit_profile_hover(skip_sid=None, to=None) -> None:
+        if not ProfileManager._sio:
+            return
+        payload = ProfileManager._profile_hover.to_dict()
+        if to:
+            # Always emit as "dial" on connect so the dial's self-filter
+            # ignores it; other clients still receive and process it
+            dial_payload = {**payload, "from": "dial"}
+            await ProfileManager._sio.emit("profileHover", dial_payload, to=to)
+        elif skip_sid:
+            await ProfileManager._sio.emit("profileHover", payload, skip_sid=skip_sid)
+        else:
+            await ProfileManager._sio.emit("profileHover", payload)
+
+    def get_profile_hover() -> dict:
+        return ProfileManager._profile_hover.to_dict()
 
     def _get_md5_hash(image_path):
         hash_md5 = hashlib.md5()
