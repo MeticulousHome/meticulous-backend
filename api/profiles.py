@@ -243,6 +243,15 @@ class LastProfileHandler(BaseHandler):
         self.write(json.dumps(last_profile))
 
 
+class SelectedProfileHandler(BaseHandler):
+    def get(self):
+        hover = ProfileManager.get_profile_hover()
+        if not hover.get("id"):
+            self.set_status(204)
+            return
+        self.write(json.dumps(hover))
+
+
 class ListImagesHandler(BaseHandler):
     def get(self, ignored):
         self.write(json.dumps(ProfileManager.get_default_images()))
@@ -264,4 +273,5 @@ API.register_handler(APIVersion.V1, r"/profile/get/([0-9a-fA-F-]+)", GetProfileH
 API.register_handler(APIVersion.V1, r"/profile/delete/([0-9a-fA-F-]+)", DeleteProfileHandler),
 API.register_handler(APIVersion.V1, r"/profile/changes", ChangesHandler),
 API.register_handler(APIVersion.V1, r"/profile/last", LastProfileHandler),
+API.register_handler(APIVersion.V1, r"/profile/selected", SelectedProfileHandler),
 API.register_handler(APIVersion.V1, r"/profile/legacy", LegacyProfileHandler),
