@@ -19,6 +19,14 @@ _config_logger = MeticulousLogger.getLogger(__name__)
 
 CONFIG_PATH = os.getenv("CONFIG_PATH", "/meticulous-user/config")
 
+# History and database paths
+HISTORY_PATH = os.getenv("HISTORY_PATH", "/meticulous-user/history")
+DATABASE_FILE = "history.sqlite"
+ABSOLUTE_DATABASE_FILE = Path(HISTORY_PATH).joinpath(DATABASE_FILE).resolve()
+DATABASE_URL = f"sqlite:///{ABSOLUTE_DATABASE_FILE}"
+SHOT_PATH = Path(HISTORY_PATH).joinpath("shots")
+DEBUG_HISTORY_PATH = os.getenv("DEBUG_HISTORY_PATH", "/meticulous-user/history/debug")
+
 # Config Compontents
 CONFIG_LOGGING = "logging"
 CONFIG_SYSTEM = "system"

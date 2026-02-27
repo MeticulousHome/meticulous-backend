@@ -5,7 +5,7 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
 from database_models import metadata, FTS_TABLES
-from shot_database import HISTORY_PATH, DATABASE_FILE
+from config import HISTORY_PATH, DATABASE_FILE
 
 config = context.config
 db_path = Path(HISTORY_PATH).joinpath(DATABASE_FILE).resolve()
