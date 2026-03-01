@@ -71,8 +71,9 @@ UpdateOSStatus.setSio(sio)
 
 
 @sio.event
-def connect(sid, environ):
+async def connect(sid, environ):
     logger.info("connect %s", sid)
+    await ProfileManager._async_emit_profile_hover(to=sid)
 
 
 @sio.event
@@ -106,7 +107,7 @@ def notification(sid, noti_json):
 @sio.on("profileHover")
 async def forwardProfileHover(sid, data):
     logger.info(f"Hovering Profile {json.dumps(data, indent=1, sort_keys=False)}")
-    await sio.emit("profileHover", data, skip_sid=sid)
+    await ProfileManager.handle_profile_hover(data, sid=sid)
 
 
 @sio.on("calibrate")  # Use when calibration it is implemented
