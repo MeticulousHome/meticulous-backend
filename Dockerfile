@@ -1,4 +1,4 @@
-FROM debian:trixie
+FROM debian:bookworm
 
 RUN apt update
 RUN apt-get update -y

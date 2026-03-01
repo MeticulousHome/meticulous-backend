@@ -8,7 +8,6 @@ from named_thread import NamedThread
 from images.notificationImages.base64 import WARNING_TRIANGLE_IMAGE
 from notifications import Notification, NotificationManager, NotificationResponse
 
-
 ALARMS_PATH = os.getenv("ALARMS_PATH", "/meticulous-user/syslog/alarms")
 
 logger = MeticulousLogger.getLogger(name=__name__)

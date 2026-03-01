@@ -23,7 +23,7 @@ class HostnameManager:
         if len(MeticulousConfig[CONFIG_SYSTEM][DEVICE_IDENTIFIER]) == 2:
             return
 
-        (adjective, noun) = HostnameManager._generateRandomIdentifierComponents()
+        adjective, noun = HostnameManager._generateRandomIdentifierComponents()
         logger.info("Created new device identifier pair:")
         MeticulousConfig[CONFIG_SYSTEM][DEVICE_IDENTIFIER] = [adjective, noun]
         MeticulousConfig.save()

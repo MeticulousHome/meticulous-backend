@@ -61,19 +61,16 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
         )
 
-    op.execute(
-        """
+    op.execute("""
         CREATE VIRTUAL TABLE IF NOT EXISTS profile_fts
         USING fts5(
             profile_key,
             profile_id,
             name
         )
-    """
-    )
+    """)
 
-    op.execute(
-        """
+    op.execute("""
         CREATE VIRTUAL TABLE IF NOT EXISTS stage_fts
         USING fts5(
             profile_key,
@@ -82,8 +79,7 @@ def upgrade() -> None:
             stage_key,
             stage_name
         )
-    """
-    )
+    """)
 
     op.execute("PRAGMA auto_vacuum=full")
     op.execute("PRAGMA journal_mode=WAL")
