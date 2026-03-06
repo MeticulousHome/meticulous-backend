@@ -12,12 +12,9 @@ from esp_serial.connection.emulation_data import EmulationData
 from esp_serial.data import SensorData, ShotData
 from log import MeticulousLogger
 from shot_database import ShotDataBase, SearchParams, SearchOrder
+from config import SHOT_PATH
 
 logger = MeticulousLogger.getLogger(__name__)
-
-HISTORY_PATH = os.getenv("HISTORY_PATH", "/meticulous-user/history")
-SHOT_FOLDER = "shots"
-SHOT_PATH = Path(HISTORY_PATH).joinpath(SHOT_FOLDER)
 
 
 class Shot:
