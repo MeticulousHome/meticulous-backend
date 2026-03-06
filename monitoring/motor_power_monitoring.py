@@ -9,7 +9,7 @@ INTEGRATION_WINDOW_TIME = 600
 CONSTANT_DISSIPATED_ENERGY = 0
 logger = MeticulousLogger.getLogger(name=__name__)
 
-MOTOR_ENERGY_PATH = "/meticulous-user/syslog/energy"
+MOTOR_ENERGY_PATH = os.getenv("MOTOR_ENERGY_PATH", "/meticulous-user/syslog/energy")
 
 MAX_ENERGY_ALLOWED = 25000
 

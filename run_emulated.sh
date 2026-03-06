@@ -5,6 +5,7 @@ export LOG_PATH=./logs
 export PROFILE_PATH=./profiles
 export HISTORY_PATH=./history
 export DEBUG_HISTORY_PATH=./history/debug
+export MOTOR_ENERGY_PATH=./history/energy
 export UPDATE_PATH=/tmp/firmware
 export PORT=8080
 export ZEROCONF_PORT=8080
