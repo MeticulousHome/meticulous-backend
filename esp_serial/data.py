@@ -5,6 +5,8 @@ import math
 
 from log import MeticulousLogger
 
+from urllib.parse import unquote as urlDecode
+
 logger = MeticulousLogger.getLogger(__name__)
 
 colorSensorRegex = None
@@ -330,13 +332,13 @@ class ShotData:
 
     def from_args(args):
         try:
-            s = args[5].strip("\r\n")
+            s = urlDecode(args[5].strip("\r\n"))
             status = s
         except Exception:
             status = None
 
         try:
-            profile = args[6].strip("\r\n")
+            profile = urlDecode(args[6].strip("\r\n"))
         except Exception:
             profile = None
 
