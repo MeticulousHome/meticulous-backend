@@ -25,6 +25,7 @@ from config import (
     MACHINE_BUILD_DATE,
     MACHINE_BATCH_NUMBER,
     MACHINE_HEAT_ON_BOOT,
+    PROFILE_PARTIAL_RETRACTION,
     MeticulousConfig,
 )
 from esp_serial.connection.emulator_serial_connection import EmulatorSerialConnection
@@ -94,6 +95,7 @@ class esp_nvs_keys(Enum):
     serial_number = "serial_number_key"
     batch_number = "batch_number_key"
     build_date = "build_date_key"
+    partial_retraction = "partial_retraction_key"
 
 
 class Machine:
@@ -638,6 +640,11 @@ class Machine:
                         info.firmwareV
                     )
 
+                    backend_partial_retraction = float(
+                        MeticulousConfig[CONFIG_USER][PROFILE_PARTIAL_RETRACTION]
+                    )
+                    Machine.setPartialRetraction(backend_partial_retraction)
+
                     if (
                         info.serialNumber != ""
                         and info.serialNumber != "NOT_ASSIGNED"
@@ -970,6 +977,44 @@ Build Date: {build_date}
 
         MeticulousConfig.save()
         # TODO FIXME IMPLEMENT THIS!!!!
+
+    def setPartialRetraction(partial_retraction: float):
+        desired_value = float(partial_retraction)
+
+        if (
+            Machine.esp_info is not None
+            and Machine.esp_info.partialRetraction is not None
+            and math.isfinite(Machine.esp_info.partialRetraction)
+            and abs(Machine.esp_info.partialRetraction - desired_value) <= 1e-6
+        ):
+            return
+
+        if (
+            Machine._connection is None
+            or Machine._connection.port is None
+            or Machine._stopESPcomm
+        ):
+            logger.warning(
+                "Cannot sync partial_retraction to ESP32 because serial connection is not ready"
+            )
+            return
+
+        write_request = "nvs_request,write,"
+        payload = (
+            write_request
+            + esp_nvs_keys.partial_retraction.value
+            + ","
+            + str(desired_value)
+            + "\x03"
+        )
+        Machine.write(payload.encode("utf-8"))
+        logger.info(
+            "Synced partial_retraction to ESP32: "
+            + f"requested={desired_value:.2f}"
+        )
+
+        if Machine.esp_info is not None:
+            Machine.esp_info.partialRetraction = desired_value
 
     def _parseVersionString(version_str: str):
         release = None

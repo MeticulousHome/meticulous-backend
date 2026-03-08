@@ -186,6 +186,9 @@ class SettingsHandler(BaseHandler):
                 if setting_target == PROFILE_ORDER:
                     ProfileManager.on_profile_order_changed()
 
+                if setting_target == PROFILE_PARTIAL_RETRACTION:
+                    Machine.setPartialRetraction(value)
+
                 # If we made it here without exception we can update the setting
                 workConfig[setting_target] = value
 
