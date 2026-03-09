@@ -5,6 +5,7 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Literal
+from copy import deepcopy
 
 import nmcli
 import sentry_sdk
@@ -67,6 +68,14 @@ class WifiType(str, Enum):
         sentry_sdk.capture_message(error_msg, level="error")
 
         return None
+
+    @staticmethod
+    def is_valid_wifi_type(type: str):
+        match type:
+            case "OPEN" | "PSK" | "SAE" | "802.1X" | "WEP":
+                return True
+            case _:
+                return False
 
 
 @dataclass
@@ -247,7 +256,9 @@ class WifiManager:
                 continue
 
             networks = WifiManager.scanForNetworks(timeout=10)
-            previousNetworks = MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS]
+
+            # to assert immutability of the list if we need to delete a wifi connection
+            previousNetworks = deepcopy(MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS])
 
             for network in networks:
                 # Check if we are looking for a specific network in the factory
@@ -262,6 +273,25 @@ class WifiManager:
                 if network.ssid in previousNetworks:
                     logger.info(f"Found known WIFI {network.ssid}. Connecting")
                     credentials = previousNetworks[network.ssid]
+                    # Mark WiFi connection if the security type has changed or is missing
+                    if type(credentials) is dict:
+                        try:
+                            if (
+                                (saved_type := credentials.get("type")) is None
+                                or not WifiType.is_valid_wifi_type(str(saved_type))
+                                or str(saved_type)
+                                != WifiType.from_nmcli_security(network.security).value
+                            ):
+                                logger.warning(
+                                    f"known WI-FI ({network.ssid}) has changed its security, forgetting connection"
+                                )
+                                WifiManager.deleteWifi(network.ssid)
+                                continue
+                        except Exception as e:
+                            logger.error(
+                                f"failure validating known ({network.ssid}) WI-FI security: {e}"
+                            )
+
                     if type(credentials) is str:
                         credentials = WifiWpaPskCredentials(
                             ssid=network.ssid, password=credentials
