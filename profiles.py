@@ -17,15 +17,12 @@ from config import (
     MeticulousConfig,
     CONFIG_USER,
     CONFIG_PROFILES,
-    PROFILE_AUTO_PURGE,
-    PROFILE_AUTO_START,
     PROFILE_LAST,
     PROFILE_ORDER,
 )
 import asyncio
 from log import MeticulousLogger
 from machine import Machine
-from profile_converter.profile_converter import ComplexProfileConverter
 from profile_preprocessor import ProfilePreprocessor
 from api.alarms import AlarmManager, AlarmType
 from images.notificationImages.base64 import WARNING_TRIANGLE_IMAGE
@@ -318,9 +315,6 @@ class ProfileManager:
         return profile
 
     def send_profile_to_esp32(data):
-        click_to_start = not MeticulousConfig[CONFIG_USER][PROFILE_AUTO_START]
-        click_to_purge = not MeticulousConfig[CONFIG_USER][PROFILE_AUTO_PURGE]
-
         if (
             end_time := AlarmManager.is_alarm_set(AlarmType.MOTOR_STRESSED)
         ) is not None:
@@ -351,35 +345,23 @@ class ProfileManager:
             )
             raise err
 
-        after_variables = time.time()
-
-        # Conver to nodeJSON
-        converter = ComplexProfileConverter(
-            click_to_start, click_to_purge, 1000, 7000, preprocessed_profile
-        )
-        profile = converter.get_profile()
         end = time.time()
 
-        time_str = "Preprocessing of the profile took "
-        full_time_ms = (end - start) * 1000
-        if full_time_ms > 10:
-            time_str += f"{int(full_time_ms)} ms"
+        preprocessing_time_ms = (end - start) * 1000
+        if preprocessing_time_ms > 10:
+            logger.info(
+                f"Preprocessing and variable expansion took {int(preprocessing_time_ms)} ms"
+            )
         else:
-            time_str += f"{int(full_time_ms*1000)} ns"
-
-        variable_time_ms = (end - after_variables) * 1000
-        time_str += " out of that variables were processed in "
-        if variable_time_ms > 10:
-            time_str += f"{int(variable_time_ms)} ms"
-        else:
-            time_str += f"{int(variable_time_ms*1000)} ns"
-        logger.info(time_str)
+            logger.info(
+                f"Preprocessing and variable expansion took {int(preprocessing_time_ms*1000)} ns"
+            )
 
         logger.info(
-            f"node JSON streamed to ESP32: click_to_start={click_to_start} click_to_purge={click_to_purge} data={json.dumps(profile)}"
+            f"simplified profile streamed to ESP32: data={json.dumps(preprocessed_profile)}"
         )
 
-        Machine.send_json_with_hash(profile)
+        Machine.send_json_with_hash(preprocessed_profile)
 
         ProfileManager._set_last_profile(data)
 
