@@ -32,7 +32,6 @@ class ComplexProfileConverter:
         self.max_piston_position = MAX_PISTON_POSITION
 
     def head_template(self):
-        no_skipping = not MeticulousConfig[CONFIG_USER][MACHINE_ALLOW_STAGE_SKIPPING]
         self.head_next_node_id = 16
         self.stages_head = [
             {
@@ -77,15 +76,11 @@ class ComplexProfileConverter:
                             },
                         ],
                         "triggers": (
-                            [{"kind": "exit", "next_node_id": 1}]
-                            if no_skipping
-                            else [
+                            [
                                 {"kind": "exit", "next_node_id": 1},
                                 {
-                                    "kind": "button_trigger",
+                                    "kind": "user_message_trigger",
                                     "next_node_id": 45,
-                                    "gesture": "Single Tap",
-                                    "source": "Encoder Button",
                                 },
                             ]
                         ),
@@ -109,28 +104,9 @@ class ComplexProfileConverter:
                                     "value": 1.5,
                                     "next_node_id": 40,
                                 },
-                            ]
-                            if no_skipping
-                            else [
                                 {
-                                    "kind": "pressure_value_trigger",
-                                    "next_node_id": 2,
-                                    "source": "Pressure Raw",
-                                    "operator": ">=",
-                                    "value": 6,
-                                },
-                                {
-                                    "kind": "timer_trigger",
-                                    "timer_reference_id": 20,
-                                    "operator": ">=",
-                                    "value": 1.5,
-                                    "next_node_id": 40,
-                                },
-                                {
-                                    "kind": "button_trigger",
+                                    "kind": "user_message_trigger",
                                     "next_node_id": 45,
-                                    "gesture": "Single Tap",
-                                    "source": "Encoder Button",
                                 },
                             ]
                         ),
@@ -156,21 +132,10 @@ class ComplexProfileConverter:
                                     "operator": "==",
                                     "value": 0,
                                     "next_node_id": 3,
-                                }
-                            ]
-                            if no_skipping
-                            else [
-                                {
-                                    "kind": "piston_speed_trigger",
-                                    "operator": "==",
-                                    "value": 0,
-                                    "next_node_id": 3,
                                 },
                                 {
-                                    "kind": "button_trigger",
+                                    "kind": "user_message_trigger",
                                     "next_node_id": 45,
-                                    "gesture": "Single Tap",
-                                    "source": "Encoder Button",
                                 },
                             ]
                         ),
@@ -200,27 +165,9 @@ class ComplexProfileConverter:
                                     "value": 6,
                                     "next_node_id": 2,
                                 },
-                            ]
-                            if no_skipping
-                            else [
                                 {
-                                    "kind": "piston_speed_trigger",
-                                    "operator": "==",
-                                    "value": 0,
-                                    "next_node_id": 3,
-                                },
-                                {
-                                    "kind": "pressure_value_trigger",
-                                    "source": "Pressure Raw",
-                                    "operator": ">=",
-                                    "value": 6,
-                                    "next_node_id": 2,
-                                },
-                                {
-                                    "kind": "button_trigger",
+                                    "kind": "user_message_trigger",
                                     "next_node_id": 45,
-                                    "gesture": "Single Tap",
-                                    "source": "Encoder Button",
                                 },
                             ]
                         ),
@@ -248,27 +195,9 @@ class ComplexProfileConverter:
                                     "value": 1,
                                     "next_node_id": 4,
                                 },
-                            ]
-                            if no_skipping
-                            else [
                                 {
-                                    "kind": "piston_speed_trigger",
-                                    "operator": "!=",
-                                    "value": 0,
-                                    "next_node_id": 3,
-                                },
-                                {
-                                    "kind": "timer_trigger",
-                                    "timer_reference_id": 21,
-                                    "operator": ">=",
-                                    "value": 1,
-                                    "next_node_id": 4,
-                                },
-                                {
-                                    "kind": "button_trigger",
+                                    "kind": "user_message_trigger",
                                     "next_node_id": 45,
-                                    "gesture": "Single Tap",
-                                    "source": "Encoder Button",
                                 },
                             ]
                         ),
@@ -284,22 +213,10 @@ class ComplexProfileConverter:
                                     "operator": ">=",
                                     "value": 1,
                                     "next_node_id": 45,
-                                }
-                            ]
-                            if no_skipping
-                            else [
-                                {
-                                    "kind": "timer_trigger",
-                                    "timer_reference_id": 20,
-                                    "operator": ">=",
-                                    "value": 1,
-                                    "next_node_id": 45,
                                 },
                                 {
-                                    "kind": "button_trigger",
+                                    "kind": "user_message_trigger",
                                     "next_node_id": 45,
-                                    "gesture": "Single Tap",
-                                    "source": "Encoder Button",
                                 },
                             ]
                         ),
@@ -329,10 +246,8 @@ class ComplexProfileConverter:
                                 "value": False,
                             },
                             {
-                                "kind": "button_trigger",
+                                "kind": "user_message_trigger",
                                 "next_node_id": 15,
-                                "gesture": "Single Tap",
-                                "source": "Encoder Button",
                             },
                         ],
                     },
@@ -355,28 +270,9 @@ class ComplexProfileConverter:
                                     "operator": ">=",
                                     "value": 300,
                                 },
-                            ]
-                            if no_skipping
-                            else [
                                 {
-                                    "kind": "timer_trigger",
-                                    "timer_reference_id": 2,
-                                    "next_node_id": 9,
-                                    "operator": ">=",
-                                    "value": 2,
-                                },
-                                {
-                                    "kind": "timer_trigger",
-                                    "timer_reference_id": 12,
-                                    "next_node_id": -2,
-                                    "operator": ">=",
-                                    "value": 300,
-                                },
-                                {
-                                    "kind": "button_trigger",
+                                    "kind": "user_message_trigger",
                                     "next_node_id": 45,
-                                    "gesture": "Single Tap",
-                                    "source": "Encoder Button",
                                 },
                             ]
                         ),
@@ -419,32 +315,7 @@ class ComplexProfileConverter:
                                 },
                                 {
                                     "kind": "user_message_trigger",
-                                    "next_node_id": 17,
-                                    "gesture": "Single Tap",
-                                    "source": "Encoder Button",
-                                },
-                            ]
-                            if no_skipping
-                            else [
-                                {
-                                    "kind": "temperature_value_trigger",
-                                    "next_node_id": 5,
-                                    "source": "Water Temperature",
-                                    "operator": ">=",
-                                    "value": self.temperature - self.offset_temperature,
-                                },
-                                {
-                                    "kind": "timer_trigger",
-                                    "timer_reference_id": 2,
-                                    "next_node_id": -2,
-                                    "operator": ">=",
-                                    "value": 900,
-                                },
-                                {
-                                    "kind": "button_trigger",
                                     "next_node_id": 16,
-                                    "gesture": "Single Tap",
-                                    "source": "Encoder Button",
                                 },
                             ]
                         ),
@@ -462,19 +333,7 @@ class ComplexProfileConverter:
                                 {"kind": "exit", "next_node_id": 7},
                                 {
                                     "kind": "user_message_trigger",
-                                    "next_node_id": 17,
-                                    "gesture": "Single Tap",
-                                    "source": "Encoder Button",
-                                },
-                            ]
-                            if no_skipping
-                            else [
-                                {"kind": "exit", "next_node_id": 7},
-                                {
-                                    "kind": "button_trigger",
                                     "next_node_id": self.head_next_node_id,
-                                    "gesture": "Single Tap",
-                                    "source": "Encoder Button",
                                 },
                             ]
                         ),
@@ -518,35 +377,9 @@ class ComplexProfileConverter:
                                     "operator": ">=",
                                     "value": 5,
                                 },
-                            ]
-                            if no_skipping
-                            else [
                                 {
-                                    "kind": "temperature_value_trigger",
+                                    "kind": "user_message_trigger",
                                     "next_node_id": self.head_next_node_id,
-                                    "source": "Water Temperature",
-                                    "operator": ">=",
-                                    "value": self.temperature + self.offset_temperature,
-                                },
-                                {
-                                    "kind": "temperature_value_trigger",
-                                    "next_node_id": 5,
-                                    "source": "Water Temperature",
-                                    "operator": "<=",
-                                    "value": self.temperature - self.offset_temperature,
-                                },
-                                {
-                                    "kind": "timer_trigger",
-                                    "timer_reference_id": 5,
-                                    "next_node_id": self.head_next_node_id,
-                                    "operator": ">=",
-                                    "value": 5,
-                                },
-                                {
-                                    "kind": "button_trigger",
-                                    "next_node_id": self.head_next_node_id,
-                                    "gesture": "Single Tap",
-                                    "source": "Encoder Button",
                                 },
                             ]
                         ),
@@ -570,8 +403,6 @@ class ComplexProfileConverter:
                             {
                                 "kind": "user_message_trigger",
                                 "next_node_id": 17,
-                                "gesture": "Single Tap",
-                                "source": "Encoder Button",
                             },
                             {
                                 "kind": "timer_trigger",
@@ -628,25 +459,10 @@ class ComplexProfileConverter:
                                     "value": -MeticulousConfig[CONFIG_USER][
                                         PROFILE_PARTIAL_RETRACTION
                                     ],
-                                }
-                            ]
-                            if no_skipping
-                            else [
-                                {
-                                    "kind": "piston_position_trigger",
-                                    "next_node_id": 21,
-                                    "source": "Piston Position Raw",
-                                    "position_reference_id": 1,
-                                    "operator": "<=",
-                                    "value": -MeticulousConfig[CONFIG_USER][
-                                        PROFILE_PARTIAL_RETRACTION
-                                    ],
                                 },
                                 {
-                                    "kind": "button_trigger",
+                                    "kind": "user_message_trigger",
                                     "next_node_id": 21,
-                                    "gesture": "Single Tap",
-                                    "source": "Encoder Button",
                                 },
                             ]
                         ),
@@ -710,23 +526,10 @@ class ComplexProfileConverter:
                                     "source": "Piston Position Raw",
                                     "operator": ">=",
                                     "value": 4,
-                                }
-                            ]
-                            if no_skipping
-                            else [
-                                {
-                                    "kind": "piston_position_trigger",
-                                    "position_reference_id": 4,
-                                    "next_node_id": self.end_node_head,
-                                    "source": "Piston Position Raw",
-                                    "operator": ">=",
-                                    "value": 4,
                                 },
                                 {
-                                    "kind": "button_trigger",
+                                    "kind": "user_message_trigger",
                                     "next_node_id": self.end_node_head,
-                                    "gesture": "Single Tap",
-                                    "source": "Encoder Button",
                                 },
                             ]
                         ),
@@ -738,8 +541,6 @@ class ComplexProfileConverter:
         return self.stages_head
 
     def tail_template(self):
-        no_skipping = not MeticulousConfig[CONFIG_USER][MACHINE_ALLOW_STAGE_SKIPPING]
-
         if self.click_to_purge:
             self.tail_next_node_id = 30
         else:
@@ -813,8 +614,6 @@ class ComplexProfileConverter:
                             {
                                 "kind": "user_message_trigger",
                                 "next_node_id": 31,
-                                "gesture": "Single Tap",
-                                "source": "Encoder Button",
                             }
                         ],
                     }
@@ -835,22 +634,9 @@ class ComplexProfileConverter:
                                     "source": "Weight Raw",
                                     "operator": "<=",
                                     "value": -5,
-                                }
-                            ]
-                            if no_skipping
-                            else [
-                                {
-                                    "kind": "weight_value_trigger",
-                                    "weight_reference_id": 4,
-                                    "next_node_id": 49,
-                                    "source": "Weight Raw",
-                                    "operator": "<=",
-                                    "value": -5,
                                 },
                                 {
-                                    "kind": "button_trigger",
-                                    "source": "Encoder Button",
-                                    "gesture": "Single Tap",
+                                    "kind": "user_message_trigger",
                                     "next_node_id": 31,
                                 },
                             ]
@@ -867,21 +653,9 @@ class ComplexProfileConverter:
                                     "next_node_id": 31,
                                     "operator": ">=",
                                     "value": 5,
-                                }
-                            ]
-                            if no_skipping
-                            else [
-                                {
-                                    "kind": "timer_trigger",
-                                    "timer_reference_id": 15,
-                                    "next_node_id": 31,
-                                    "operator": ">=",
-                                    "value": 5,
                                 },
                                 {
-                                    "kind": "button_trigger",
-                                    "source": "Encoder Button",
-                                    "gesture": "Single Tap",
+                                    "kind": "user_message_trigger",
                                     "next_node_id": 31,
                                 },
                             ]
@@ -924,21 +698,9 @@ class ComplexProfileConverter:
                                     "value": 2,
                                     "next_node_id": 34,
                                 },
-                            ]
-                            if no_skipping
-                            else [
                                 {
-                                    "kind": "timer_trigger",
-                                    "timer_reference_id": 22,
-                                    "operator": ">=",
-                                    "value": 2,
-                                    "next_node_id": 34,
-                                },
-                                {
-                                    "kind": "button_trigger",
+                                    "kind": "user_message_trigger",
                                     "next_node_id": -2,
-                                    "gesture": "Single Tap",
-                                    "source": "Encoder Button",
                                 },
                             ]
                         ),
@@ -953,21 +715,10 @@ class ComplexProfileConverter:
                                     "operator": "==",
                                     "value": 0,
                                     "next_node_id": 35,
-                                }
-                            ]
-                            if no_skipping
-                            else [
-                                {
-                                    "kind": "piston_speed_trigger",
-                                    "operator": "==",
-                                    "value": 0,
-                                    "next_node_id": 35,
                                 },
                                 {
-                                    "kind": "button_trigger",
+                                    "kind": "user_message_trigger",
                                     "next_node_id": -2,
-                                    "gesture": "Single Tap",
-                                    "source": "Encoder Button",
                                 },
                             ]
                         ),
@@ -984,20 +735,8 @@ class ComplexProfileConverter:
                                     "value": 0.5,
                                     "next_node_id": -2,
                                 },
-                            ]
-                            if no_skipping
-                            else [
                                 {
-                                    "kind": "pressure_value_trigger",
-                                    "source": "Pressure Raw",
-                                    "operator": "<=",
-                                    "value": 0.5,
-                                    "next_node_id": -2,
-                                },
-                                {
-                                    "kind": "button_trigger",
-                                    "gesture": "Single Tap",
-                                    "source": "Encoder Button",
+                                    "kind": "user_message_trigger",
                                     "next_node_id": -2,
                                 },
                             ]
