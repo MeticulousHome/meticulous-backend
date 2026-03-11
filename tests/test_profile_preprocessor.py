@@ -1,5 +1,4 @@
 import unittest
-import os
 import json
 
 from profile_preprocessor import (
@@ -10,17 +9,11 @@ from profile_preprocessor import (
 )
 import logging
 
-# Setup logging as required by your ProfilePreprocessor implementation
 logger = logging.getLogger()
-logging.basicConfig(level=logging.INFO)
 
 
 class TestProfilePreprocessor(unittest.TestCase):
     def setUp(self):
-        os.environ["LOG_PATH"] = "/tmp"
-        os.environ["CONFIG_PATH"] = "/tmp"
-
-        # A basic profile structure to be modified in different tests
         self.profile = {
             "variables": [
                 {
@@ -105,7 +98,3 @@ class TestProfilePreprocessor(unittest.TestCase):
         self.profile["stages"][0]["dynamics"]["points"] = 1234
         with self.assertRaises(FormatException):
             ProfilePreprocessor.processVariables(self.profile)
-
-
-if __name__ == "__main__":
-    unittest.main()
