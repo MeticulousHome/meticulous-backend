@@ -4,7 +4,7 @@ from pathlib import Path
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
-from database_models import metadata, FTS_TABLES
+from database_models import Base, FTS_TABLES
 from shot_database import HISTORY_PATH, DATABASE_FILE
 
 config = context.config
@@ -17,7 +17,7 @@ else:
     if config.config_file_name is not None:
         fileConfig(config.config_file_name)
 
-target_metadata = metadata
+target_metadata = Base.metadata
 
 
 def exclude_tables_from_config(config_):

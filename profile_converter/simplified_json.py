@@ -8,7 +8,6 @@ from config import (
     MAX_PISTON_POSITION,
 )
 
-
 current_node_id = 1
 current_curve_id = 10000
 current_reference_id = 100
