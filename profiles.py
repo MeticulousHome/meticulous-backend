@@ -117,7 +117,7 @@ class ProfileManager:
             ProfileManager._profile_hover = ProfileHover(
                 id=profile.get("id", ""),
                 type="focus",
-                from_="dial",
+                from_="backend",
             )
 
     def _register_profile_change(
@@ -656,10 +656,10 @@ class ProfileManager:
             return
         payload = ProfileManager._profile_hover.to_dict()
         if to:
-            # Always emit as "dial" on connect so the dial's self-filter
-            # ignores it; other clients still receive and process it
-            dial_payload = {**payload, "from": "dial"}
-            await ProfileManager._sio.emit("profileHover", dial_payload, to=to)
+            # Emit as "backend" on connect — dial will process and jump
+            # to last loaded profile (visual confirmation backend is up)
+            backend_payload = {**payload, "from": "backend"}
+            await ProfileManager._sio.emit("profileHover", backend_payload, to=to)
         elif skip_sid:
             await ProfileManager._sio.emit("profileHover", payload, skip_sid=skip_sid)
         else:
