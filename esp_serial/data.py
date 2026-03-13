@@ -54,6 +54,7 @@ class SensorData:
     water_status: bool = False
     motor_thermistor: float = 0.0
     weight_prediction: float = 0.0
+    weight_smoothed: float = 0.0
 
     def from_color_coded_args(colorSeperatedArgs):
         global colorSensorRegex
@@ -93,6 +94,9 @@ class SensorData:
                 water_status=args[20].lower() == "true",
                 motor_thermistor=safe_float_with_nan(args[21]),
                 weight_prediction=safe_float_with_nan(args[22]),
+                weight_smoothed=(
+                    safe_float_with_nan(args[23]) if len(args) > 23 else 0.0
+                ),
             )
 
         except Exception as e:
@@ -128,6 +132,7 @@ class SensorData:
             "true" if self.water_status else "false",
             str(self.motor_thermistor),
             str(self.weight_prediction),
+            str(self.weight_smoothed),
         ]
         return args
 
@@ -156,6 +161,7 @@ class SensorData:
             "w_stat": self.water_status,
             "motor_temp": self.motor_thermistor,
             "weight_pred": self.weight_prediction,
+            "weight_smoothed": self.weight_smoothed,
         }
 
 
