@@ -10,6 +10,8 @@ import logging
 import threading
 from shot_database import ShotDataBase
 import subprocess
+import uuid
+
 
 from config import (
     CONFIG_USER,
@@ -261,7 +263,11 @@ class ShotDebugManager:
         file_path = os.path.join(folder_path, file_name)
 
         debug_shot_data = current_data_copy.to_json()
-        if not bool(debug_shot_data.get("profile")) and debug_shot_data.get("type") == "shot":
+        debug_shot_data.setdefault("id", str(uuid.uuid4()))
+        if (
+            not bool(debug_shot_data.get("profile"))
+            and debug_shot_data.get("type") == "shot"
+        ):
             from profiles import ProfileManager
 
             last_profile = ProfileManager.get_last_profile()
