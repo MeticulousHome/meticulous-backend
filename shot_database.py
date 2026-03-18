@@ -434,11 +434,12 @@ class ShotDataBase:
                                 compressed_file
                             )
                             raw = decompressed_content.read()
-                            if b": Infinity" in raw:
+                            if b": Infinity" in raw or b": NaN" in raw:
                                 logger.warning(
-                                    f"Patching Infinity token in shot file: {file_entry}"
+                                    f"Patching non-finite JSON token in shot file: {file_entry}"
                                 )
                                 raw = raw.replace(b": Infinity", b": 0.0")
+                                raw = raw.replace(b": NaN", b": 0.0")
                             file_contents = json.loads(raw)
                             data = file_contents.get("data")
                     except Exception as e:
