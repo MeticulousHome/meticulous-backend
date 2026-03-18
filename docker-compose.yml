@@ -23,6 +23,7 @@ services:
       - DEFAULT_IMAGES=/app/images/default
       - IMAGES_PATH=/app/images/profile-images
       - DEFAULT_PROFILES=/app/default_profiles
+      - TELEMETRY_QUEUE_PATH=/app/telemetry-queue
     volumes:
       - ./config:/app/config
       - ./logs:/app/logs
