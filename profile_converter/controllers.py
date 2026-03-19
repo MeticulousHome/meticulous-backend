@@ -1,5 +1,26 @@
 import json
-from .dictionaries import *
+from .dictionaries import (
+    algorithms_type,
+    controllers_type,
+    curve_interpolation,
+    directions,
+    messages,
+    reference_type,
+)
+from .enums import (
+    AlgorithmType,
+    ControllerType,
+    CurveInterpolationType,
+    DirectionType,
+    FlowAlgorithmType,
+    MessageType,
+    PowerAlgorithmType,
+    PressureAlgorithmType,
+    ReferenceType,
+    SpeedAlgorithmType,
+    TemperatureAlgorithmType,
+    WeightAlgorithmType,
+)
 
 
 class Controllers:
@@ -351,7 +372,7 @@ if __name__ == "__main__":
     # pressure_controller_1.set_reference_id(2)
     print(json.dumps(pressure_controller_1.get_controller(), indent=4))
 
-    #! The same process is repeated for the other controllers when the control accepts at least one parameter
+    # The same process is repeated for the other controllers when the control accepts at least one parameter
 
     flow_controller_1 = FlowController(
         FlowAlgorithmType.PID_V1,

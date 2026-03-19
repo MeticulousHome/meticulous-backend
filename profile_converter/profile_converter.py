@@ -1,5 +1,5 @@
 import json
-from .profile_json import *  # noqa: F401, F403
+from .profile_json import Profile  # noqa: F401
 from .simplified_json import SimplifiedJson
 from config import (
     MeticulousConfig,
@@ -1037,7 +1037,6 @@ class ComplexProfileConverter:
 
 
 if __name__ == "__main__":
-
     file_path = "simplified_json_example.json"
     with open(file_path, "r") as file:
         data = json.load(file)
