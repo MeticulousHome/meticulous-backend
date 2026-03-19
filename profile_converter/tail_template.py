@@ -1,5 +1,30 @@
 import json
-from stages import *
+from .controllers import (
+    EndProfile,
+    LogController,
+    PositionReferenceController,
+    PressureController,
+    SpeedController,
+    TimeReferenceController,
+    WeightReferenceController,
+)
+from .nodes import Nodes
+from .stages import Stages
+from .triggers import (
+    ButtonTrigger,
+    ExitTrigger,
+    PistonPositionTrigger,
+    PressureValueTrigger,
+    SpeedTrigger,
+    TimerTrigger,
+    WeightTrigger,
+)
+from .enums import (
+    ButtonSourceType,
+    DirectionType,
+    MessageType,
+    TriggerOperatorType,
+)
 
 
 class TailTemplate:
@@ -145,7 +170,6 @@ class TailTemplate:
 
 
 if __name__ == "__main__":
-
     tail_template = TailTemplate()
     retracting_stage = tail_template.retracting_stage(True)
     print(json.dumps(retracting_stage, indent=2))

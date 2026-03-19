@@ -1,5 +1,5 @@
 import json
-from dictionaries import reference_type
+from .dictionaries import reference_type
 
 
 class References:
@@ -78,7 +78,6 @@ class ReferencePosition(References):
 
 
 if __name__ == "__main__":
-
     reference_time = ReferenceTime()
     weight_reference = ReferenceWeight()
     position_reference = ReferencePosition()

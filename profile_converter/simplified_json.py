@@ -1,6 +1,43 @@
 import json
-from .stages import *
-from .dictionaries_simplified import *
+from .controllers import (
+    FlowController,
+    PositionReferenceController,
+    PowerController,
+    PressureController,
+    TemperatureController,
+    TimeReferenceController,
+    WeightReferenceController,
+)
+from .dictionaries_simplified import interpolation_dict, over_dict
+from .nodes import Nodes
+from .triggers import (
+    ButtonTrigger,
+    ExitTrigger,
+    FlowCurveTrigger,
+    FlowValueTrigger,
+    PistonPositionTrigger,
+    PowerCurveTrigger,
+    PowerValueTrigger,
+    PressureCurveTrigger,
+    PressureValueTrigger,
+    TemperatureCurveTrigger,
+    TemperatureValueTrigger,
+    TimerTrigger,
+    Triggers,
+    WeightTrigger,
+)
+from .enums import (
+    ButtonSourceType,
+    CurveInterpolationType,
+    FlowAlgorithmType,
+    PowerAlgorithmType,
+    PressureAlgorithmType,
+    ReferenceType,
+    SourceType,
+    TemperatureAlgorithmType,
+    TemperatureSourceType,
+    TriggerOperatorType,
+)
 from config import (
     MeticulousConfig,
     CONFIG_USER,
@@ -80,8 +117,6 @@ class SimplifiedJson:
 
     def to_complex(self, end_node_head: int, init_node_tail: int):
         global current_node_id
-        global current_curve_id
-        global current_reference_id
 
         allow_skipping = MeticulousConfig[CONFIG_USER][MACHINE_ALLOW_STAGE_SKIPPING]
 
@@ -89,7 +124,6 @@ class SimplifiedJson:
         # Use the comments with * as debugging tools.
         complex_stages = []
         for stage_index, stage in enumerate(self.parameters.get("stages")):
-
             init_node = InitNode(self.get_new_node_id())
             main_node = Nodes(self.get_new_node_id())
 

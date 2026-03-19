@@ -1,5 +1,13 @@
 import json
-from .dictionaries import *
+from .dictionaries import operator_type, source_type, trigger_type
+from .enums import (
+    ButtonGestureSourceType,
+    ButtonSourceType,
+    SourceType,
+    TemperatureSourceType,
+    TriggerOperatorType,
+    TriggerType,
+)
 
 
 # This class is used to create the triggers for the complex JSON
@@ -346,7 +354,6 @@ class WaterDetectionTrigger(Triggers):
 
 
 if __name__ == "__main__":
-
     # We can assign values to the triggers in its constructor
     flow_value_trigger = FlowValueTrigger(
         SourceType.RAW, TriggerOperatorType.GREATER_THAN_OR_EQUAL, 10, 1

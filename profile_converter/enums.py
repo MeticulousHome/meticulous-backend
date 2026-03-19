@@ -79,7 +79,7 @@ class ControllerType(Enum):
     END = "end"
 
 
-#! Triggers type dictionaries.
+# Triggers type dictionaries.
 
 
 class TriggerType(Enum):
