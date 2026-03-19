@@ -10,7 +10,6 @@ dependencies = [
     "coloredlogs",
     "datauri",
     "esptool==4.6.2",
-    "gpiod==1.5.4",
     "mergedeep>=1.3.4",
     "netaddr>=0.9.0",
     "nmcli",
@@ -34,16 +33,21 @@ dependencies = [
     "zstandard>=0.23.0",
     "jsonschema==4.23.0",
     "dbus-next",
-    "pycairo",
     "pydbus==0.6.0",
-    "PyGObject>=3.42.0,<3.52",
     "aiohttp>=3.11.11",
     "attrs==25.1.0",
     "alembic==1.14.1",
-    "pyparted",
 ]
 
 [dependency-groups]
+# Packages that require system C libraries (libparted, libgirepository, libcairo, etc.)
+# Only installable on the target machine or in the Docker build environment
+machine = [
+    "gpiod==1.5.4",
+    "pycairo",
+    "PyGObject>=3.42.0,<3.52",
+    "pyparted",
+]
 dev = [
     "pre-commit>=4.3.0",
     "flake8==7.2.0",

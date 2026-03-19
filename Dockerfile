@@ -19,7 +19,7 @@ WORKDIR /app
 
 # Install dependencies first for better layer caching
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN uv sync --frozen --no-dev --group machine --no-install-project
 
 COPY UI_timezones.json /usr/share/zoneinfo
 
