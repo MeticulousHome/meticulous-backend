@@ -75,10 +75,7 @@ class DBusMonitor:
 
     @classmethod
     def enableUSBTest(self):
-        if (
-            MeticulousConfig[CONFIG_MANUFACTURING][LAST_BOOT_MODE_KEY]
-            == "manufacturing"
-        ):
+        if MeticulousConfig[CONFIG_MANUFACTURING][LAST_BOOT_MODE_KEY] == "manufacturing":
             logger.info("subscribing to usb test signal on dbus")
             self.dbus_object.new_signal_subscription(
                 "com.Meticulous.Handler.MassStorage",

@@ -196,9 +196,7 @@ class DiscImager:
         os.makedirs(mountpoint, exist_ok=True)
 
         if os.path.ismount(mountpoint):
-            logger.info(
-                f"Partition {partition_number} is already mounted at {mountpoint}."
-            )
+            logger.info(f"Partition {partition_number} is already mounted at {mountpoint}.")
             return mountpoint
 
         cmd = f"mount {part_device} {mountpoint}"
@@ -206,9 +204,7 @@ class DiscImager:
         result = subprocess.run(cmd.split(), capture_output=True, text=True)
         logger.info(result.stdout)
         if result.returncode != 0:
-            logger.error(
-                f"Failed to mount partition {partition_number}: {result.stderr}"
-            )
+            logger.error(f"Failed to mount partition {partition_number}: {result.stderr}")
             raise RuntimeError(
                 f"Failed to mount partition {partition_number} with command '{cmd}'"
             )
@@ -222,9 +218,7 @@ class DiscImager:
         result = subprocess.run(cmd.split(), capture_output=True, text=True)
         logger.info(result.stdout)
         if result.returncode != 0:
-            logger.info(
-                f"Failed to unmount partition {partition_number}: {result.stderr}"
-            )
+            logger.info(f"Failed to unmount partition {partition_number}: {result.stderr}")
             raise RuntimeError(
                 f"Failed to unmount partition {partition_number} with command '{cmd}'"
             )
@@ -309,14 +303,10 @@ class DiscImager:
             )
             new_date = birth_date + datetime.timedelta(days=1)
             TimezoneManager.set_system_datetime(new_date)
-            logger.warning(
-                f'system date set to {new_date.strftime("%Y-%m-%d %H:%M:%S")}'
-            )
+            logger.warning(f'system date set to {new_date.strftime("%Y-%m-%d %H:%M:%S")}')
 
         except Exception as e:
-            logger.warning(
-                f"could not set system dat to ${ROOTFS_ARCHIVE} birth date: {e}"
-            )
+            logger.warning(f"could not set system dat to ${ROOTFS_ARCHIVE} birth date: {e}")
 
         tar_cmd = f"tar -x -C {mountpoint}"
         pv = subprocess.Popen(

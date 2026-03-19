@@ -53,9 +53,7 @@ class TimezoneManager:
                 logger.error(
                     f"failed to set system TZ, syncing user TZ with system to {TimezoneManager.__system_timezone}. Error: {e}"
                 )
-                MeticulousConfig[CONFIG_USER][
-                    TIME_ZONE
-                ] = TimezoneManager.__system_timezone
+                MeticulousConfig[CONFIG_USER][TIME_ZONE] = TimezoneManager.__system_timezone
             finally:
                 MeticulousConfig.save()
 
@@ -88,11 +86,11 @@ class TimezoneManager:
                 error = f"[ Out:{cmd_result.stdout} | Err: {cmd_result.stderr} ]"
                 raise Exception(error)
 
-            logger.info(
-                f"new system time zone: {TimezoneManager.get_system_timezone()}"
-            )
+            logger.info(f"new system time zone: {TimezoneManager.get_system_timezone()}")
         except subprocess.CalledProcessError as e:
-            message = f"Error setting system time zone: {e} [ Out: {e.stdout} | Err: {e.stderr} ]"
+            message = (
+                f"Error setting system time zone: {e} [ Out: {e.stdout} | Err: {e.stderr} ]"
+            )
             raise TimezoneManagerError(message)
         except Exception as e:
             message = f"Error setting system time zone: {e}"
@@ -103,9 +101,7 @@ class TimezoneManager:
     def get_system_timezone():
         system_timezone = ""
         try:
-            command = (
-                "timedatectl status | grep 'Time zone' | awk -F'[:()]' '{print $2}'"
-            )
+            command = "timedatectl status | grep 'Time zone' | awk -F'[:()]' '{print $2}'"
             cmd_result = subprocess.run(
                 command,
                 stdout=subprocess.PIPE,
@@ -246,9 +242,7 @@ class TimezoneManager:
                 UI_TIMEZONES_JSON = json.loads(json_file.read())
                 return UI_TIMEZONES_JSON
         except Exception:
-            logger.error(
-                "Json file for UI timezones does not exist and could not be created"
-            )
+            logger.error("Json file for UI timezones does not exist and could not be created")
             return {}
 
     @staticmethod
@@ -256,9 +250,7 @@ class TimezoneManager:
         tz_config = MeticulousConfig[CONFIG_USER][TIMEZONE_SYNC]
         if tz_config == "automatic" and not TimezoneManager.__system_synced:
             try:
-                logger.info(
-                    "Timezone is set to automatic, fetching timezone in the background"
-                )
+                logger.info("Timezone is set to automatic, fetching timezone in the background")
                 loop = asyncio.get_event_loop()
                 loop.run_until_complete(TimezoneManager.request_and_sync_tz())
             except Exception as e:

@@ -304,9 +304,7 @@ class ShotDataBase:
                 if result.rowcount == 0:
                     logger.warning("no columns affected, check relative file path")
                 else:
-                    logger.info(
-                        f"debug file linked, affected rows: {{{result.rowcount}}}"
-                    )
+                    logger.info(f"debug file linked, affected rows: {{{result.rowcount}}}")
 
     @staticmethod
     def delete_shot(shot_id):
@@ -320,9 +318,7 @@ class ShotDataBase:
                 orphaned_profiles_stmt = select(profile_table.c.key).where(
                     ~profile_table.c.key.in_(select(history_table.c.profile_key))
                 )
-                orphaned_profiles = connection.execute(
-                    orphaned_profiles_stmt
-                ).fetchall()
+                orphaned_profiles = connection.execute(orphaned_profiles_stmt).fetchall()
                 for orphan in orphaned_profiles:
                     del_profile_stmt = delete(profile_table).where(
                         profile_table.c.key == orphan[0]
@@ -422,9 +418,7 @@ class ShotDataBase:
                     try:
                         with open(data_file, "rb") as compressed_file:
                             decompressor = zstd.ZstdDecompressor()
-                            decompressed_content = decompressor.stream_reader(
-                                compressed_file
-                            )
+                            decompressed_content = decompressor.stream_reader(compressed_file)
                             raw = decompressed_content.read()
                             if b": Infinity" in raw or b": NaN" in raw:
                                 logger.warning(
@@ -500,9 +494,7 @@ class ShotDataBase:
             profile_results = session.execute(stmt_profile).fetchall()
             stage_results = session.execute(stmt_stage).fetchall()
 
-            results = [
-                {"profile": res.name, "type": "profile"} for res in profile_results
-            ]
+            results = [{"profile": res.name, "type": "profile"} for res in profile_results]
             for result in stage_results:
                 results.append(
                     {
@@ -521,9 +513,7 @@ class ShotDataBase:
                 select(
                     history_table.c.profile_name.label("profile_name"),
                     func.count(history_table.c.profile_name).label("profile_count"),
-                    func.count(distinct(history_table.c.profile_id)).label(
-                        "profile_versions"
-                    ),
+                    func.count(distinct(history_table.c.profile_id)).label("profile_versions"),
                 )
                 .group_by(
                     history_table.c.profile_name,
@@ -549,9 +539,7 @@ class ShotDataBase:
     def rate_shot(history_uuid: str, rating: Optional[str]) -> bool:
 
         if rating not in ("like", "dislike", None):
-            logger.error(
-                f"Invalid rating: {rating}. Must be 'like', 'dislike', or None."
-            )
+            logger.error(f"Invalid rating: {rating}. Must be 'like', 'dislike', or None.")
             return False
 
         try:
@@ -559,9 +547,7 @@ class ShotDataBase:
                 with connection.begin():
 
                     shot_exists = connection.execute(
-                        select(history_table.c.id).where(
-                            history_table.c.uuid == history_uuid
-                        )
+                        select(history_table.c.id).where(history_table.c.uuid == history_uuid)
                     ).fetchone()
 
                     if not shot_exists:

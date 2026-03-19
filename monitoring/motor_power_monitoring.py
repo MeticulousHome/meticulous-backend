@@ -44,9 +44,7 @@ class EnergyCalculator:
                 if dt > 0:
                     self.total_energy = max(self.total_energy + dt * m, 0.0)
                     logger.debug(f"machine was OFF for {dt}s")
-                    logger.debug(
-                        f"{self.name} after OFF compensation: {self.total_energy}"
-                    )
+                    logger.debug(f"{self.name} after OFF compensation: {self.total_energy}")
                 else:
                     logger.warning(
                         f"{self.name} date comes from the future, cannot calculate time spent OFF"

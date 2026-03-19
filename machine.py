@@ -206,8 +206,7 @@ class Machine:
         ):
             # if we are not in manufacturing mode, check if we were in the previous boot
             Machine.is_first_normal_boot = (
-                MeticulousConfig[CONFIG_MANUFACTURING][LAST_BOOT_MODE_KEY]
-                == "manufacturing"
+                MeticulousConfig[CONFIG_MANUFACTURING][LAST_BOOT_MODE_KEY] == "manufacturing"
             )
             return
 
@@ -221,9 +220,7 @@ class Machine:
     def check_machine_alive():
         if not Machine.infoReady:
             if MeticulousConfig[CONFIG_USER][DISALLOW_FIRMWARE_FLASHING]:
-                logger.warning(
-                    "The ESP never send an info, but user requested no updates!"
-                )
+                logger.warning("The ESP never send an info, but user requested no updates!")
             else:
                 logger.warning(
                     "The ESP never send an info, flashing latest firmware to be sure"
@@ -395,11 +392,7 @@ class Machine:
                 if collect_tracing_info:
                     ESP_tracing_info.append(data_str)
 
-                if (
-                    Machine.infoReady
-                    and not info_requested
-                    and Machine.esp_info is None
-                ):
+                if Machine.infoReady and not info_requested and Machine.esp_info is None:
                     logger.info(
                         "Machine has not provided us with a firmware version yet. Requesting now"
                     )
@@ -410,14 +403,7 @@ class Machine:
                     # FIXME: This should be replace in the firmware with an "Event," prefix
                     # for cleanliness
                     case [
-                        "CCW"
-                        | "CW"
-                        | "push"
-                        | "pu_d"
-                        | "elng"
-                        | "ta_d"
-                        | "ta_l"
-                        | "strt"
+                        "CCW" | "CW" | "push" | "pu_d" | "elng" | "ta_d" | "ta_l" | "strt"
                     ] as ev:
                         button_event = ButtonEventData.from_args(ev)
                     case ["Event", *eventData]:
@@ -437,9 +423,7 @@ class Machine:
 
                     case ["HeaterTimeoutInfo", *timeoutArgs]:
                         try:
-                            heater_timeout_info = HeaterTimeoutInfo.from_args(
-                                timeoutArgs
-                            )
+                            heater_timeout_info = HeaterTimeoutInfo.from_args(timeoutArgs)
                             Machine.heater_timeout_info = heater_timeout_info
                             await Machine._sio.emit(
                                 "heater_status", heater_timeout_info.preheat_remaining
@@ -449,9 +433,7 @@ class Machine:
                                 and previous_preheat_remaining != 0
                             ):
                                 logger.info("Heater_status: off")
-                            previous_preheat_remaining = (
-                                heater_timeout_info.preheat_remaining
-                            )
+                            previous_preheat_remaining = heater_timeout_info.preheat_remaining
 
                         except Exception as e:
                             logger.error(
@@ -465,9 +447,7 @@ class Machine:
                                 # data in the form: <key>=<value>
                                 data = data_str.split("=")
                                 if len(data) < 2:
-                                    logger.warning(
-                                        f"Error parsing ESP log item: {data_str}"
-                                    )
+                                    logger.warning(f"Error parsing ESP log item: {data_str}")
                                     continue
                                 key = data[0]
                                 value = data[1]
@@ -636,9 +616,7 @@ class Machine:
                     Machine.esp_info = info
                     Machine.infoReady = True
                     info_requested = False
-                    Machine.firmware_running = Machine._parseVersionString(
-                        info.firmwareV
-                    )
+                    Machine.firmware_running = Machine._parseVersionString(info.firmwareV)
 
                     backend_partial_retraction = float(
                         MeticulousConfig[CONFIG_USER][PROFILE_PARTIAL_RETRACTION]
@@ -659,19 +637,14 @@ class Machine:
                             MACHINE_SERIAL_NUMBER
                         ] = info.serialNumber
                         MeticulousConfig[CONFIG_SYSTEM][MACHINE_COLOR] = info.color
-                        MeticulousConfig[CONFIG_SYSTEM][
-                            MACHINE_BATCH_NUMBER
-                        ] = info.batchNumber
-                        MeticulousConfig[CONFIG_SYSTEM][
-                            MACHINE_BUILD_DATE
-                        ] = info.buildDate
+                        MeticulousConfig[CONFIG_SYSTEM][MACHINE_BATCH_NUMBER] = info.batchNumber
+                        MeticulousConfig[CONFIG_SYSTEM][MACHINE_BUILD_DATE] = info.buildDate
 
                         MeticulousConfig.save()
 
                     # Enable / Disable manufacturing mode based on ESP answer
                     serial_assigned = (
-                        MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
-                        is not None
+                        MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER] is not None
                     )
                     if Machine.enable_manufacturing != serial_assigned:
                         if not MeticulousConfig[CONFIG_MANUFACTURING][
@@ -694,9 +667,7 @@ class Machine:
 
                     if (
                         needs_update
-                        and not MeticulousConfig[CONFIG_USER][
-                            DISALLOW_FIRMWARE_FLASHING
-                        ]
+                        and not MeticulousConfig[CONFIG_USER][DISALLOW_FIRMWARE_FLASHING]
                     ):
                         info_string = f"Firmware {Machine.firmware_running.get('Release')}-{Machine.firmware_running['ExtraCommits']} is outdated, upgrading"
                         logger.info(info_string)
@@ -706,8 +677,7 @@ class Machine:
                 if button_event is not None:
                     if (
                         button_event.event is not ButtonEventEnum.ENCODER_CLOCKWISE
-                        and button_event.event
-                        is not ButtonEventEnum.ENCODER_COUNTERCLOCKWISE
+                        and button_event.event is not ButtonEventEnum.ENCODER_COUNTERCLOCKWISE
                     ):
                         logger.debug(f"Button Event recieved: {button_event}")
 
@@ -737,9 +707,7 @@ class Machine:
                     else:
                         responseOptions = [NotificationResponse.OK]
                     if Machine._espNotification.acknowledged:
-                        Machine._espNotification = Notification(
-                            notify.message, responseOptions
-                        )
+                        Machine._espNotification = Notification(notify.message, responseOptions)
                     else:
                         Machine._espNotification.message = notify.message
                         Machine._espNotification.respone_options = responseOptions
@@ -778,18 +746,13 @@ class Machine:
                         if len(ESP_tracing_info) > 0:
                             tracing_info = "\n".join(ESP_tracing_info)
                             scope.set_extra("Tracing Info", tracing_info)
-                        sentry_sdk.capture_message(
-                            "ESP has restarted unexpectedly", "critical"
-                        )
+                        sentry_sdk.capture_message("ESP has restarted unexpectedly", "critical")
                     AlarmManager.set_alarm(
                         AlarmType.ESP_RESTART, end_time=None, force=False, quiet=True
                     )
                     ESP_tracing_info = []
 
-            if (
-                now - previous_valid_message_timestamp > 0.5
-                and not Machine.esp_restart_request
-            ):
+            if now - previous_valid_message_timestamp > 0.5 and not Machine.esp_restart_request:
                 if AlarmManager.is_alarm_set(AlarmType.ESP_DISCONNECTED) is None:
                     # notify sentry
                     sentry_sdk.capture_message("ESP has stopped communicating", "error")
@@ -840,16 +803,12 @@ class Machine:
         if Machine.data_sensors.status == "idle":
             return
         logger.info("Ending profile due to user request")
-        if (
-            Machine.data_sensors.state == "brewing"
-            and Machine.data_sensors.status
-            not in [
-                "heating",
-                "Pour water and click to continue",
-                "click to start",
-                "purge",
-            ]
-        ):
+        if Machine.data_sensors.state == "brewing" and Machine.data_sensors.status not in [
+            "heating",
+            "Pour water and click to continue",
+            "click to start",
+            "purge",
+        ]:
             Machine.action("home")
         else:
             Machine.action("stop")
@@ -932,32 +891,22 @@ class Machine:
     def setSerial(color, serial, batch_number, build_date):
         write_request = "nvs_request,write,"
         Machine.write(
-            (write_request + esp_nvs_keys.color.value + "," + color + "\x03").encode(
+            (write_request + esp_nvs_keys.color.value + "," + color + "\x03").encode("utf-8")
+        )
+        Machine.write(
+            (write_request + esp_nvs_keys.serial_number.value + "," + serial + "\x03").encode(
                 "utf-8"
             )
         )
         Machine.write(
             (
-                write_request + esp_nvs_keys.serial_number.value + "," + serial + "\x03"
+                write_request + esp_nvs_keys.batch_number.value + "," + batch_number + "\x03"
             ).encode("utf-8")
         )
         Machine.write(
-            (
-                write_request
-                + esp_nvs_keys.batch_number.value
-                + ","
-                + batch_number
-                + "\x03"
-            ).encode("utf-8")
-        )
-        Machine.write(
-            (
-                write_request
-                + esp_nvs_keys.build_date.value
-                + ","
-                + build_date
-                + "\x03"
-            ).encode("utf-8")
+            (write_request + esp_nvs_keys.build_date.value + "," + build_date + "\x03").encode(
+                "utf-8"
+            )
         )
 
         serialNotification = Notification(
@@ -1040,7 +989,5 @@ Build Date: {build_date}
                 "Local": modifier,
             }
         except Exception as e:
-            logger.warning(
-                "Failed parse firmware version:", exc_info=e, stack_info=True
-            )
+            logger.warning("Failed parse firmware version:", exc_info=e, stack_info=True)
             return None

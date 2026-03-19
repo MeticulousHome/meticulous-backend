@@ -79,9 +79,7 @@ class UpdateOSStatus(BaseHandler):
     def markAsRecoveryUpdate(cls, is_recovery):
         cls.__is_recovery_update = is_recovery
         logger.info(
-            "Marking update as"
-            + (" not" if not cls.__is_recovery_update else "")
-            + " recovery"
+            "Marking update as" + (" not" if not cls.__is_recovery_update else "") + " recovery"
         )
 
     @classmethod
@@ -89,9 +87,7 @@ class UpdateOSStatus(BaseHandler):
         return cls.__is_recovery_update
 
     @classmethod
-    def sendStatus(
-        cls, current_status: OSStatus, current_progress: float, extra_info=None
-    ):
+    def sendStatus(cls, current_status: OSStatus, current_progress: float, extra_info=None):
         cls.last_progress = current_progress
         cls.last_status = current_status
         if cls.__sio:
@@ -134,9 +130,7 @@ class MachineInfoHandler(BaseHandler):
 
         response["batch_number"] = ""
         if MeticulousConfig[CONFIG_SYSTEM][MACHINE_BATCH_NUMBER] is not None:
-            response["batch_number"] = MeticulousConfig[CONFIG_SYSTEM][
-                MACHINE_BATCH_NUMBER
-            ]
+            response["batch_number"] = MeticulousConfig[CONFIG_SYSTEM][MACHINE_BATCH_NUMBER]
 
         response["build_date"] = ""
         if MeticulousConfig[CONFIG_SYSTEM][MACHINE_BUILD_DATE] is not None:
@@ -144,9 +138,7 @@ class MachineInfoHandler(BaseHandler):
 
         software_version = UpdateManager.getBuildTimestamp()
         if software_version is not None:
-            response["software_version"] = software_version.strftime(
-                "%Y-%m-%d %H:%M:%S"
-            )
+            response["software_version"] = software_version.strftime("%Y-%m-%d %H:%M:%S")
         else:
             response["software_version"] = None
 
@@ -165,9 +157,7 @@ class MachineInfoHandler(BaseHandler):
         response["upgrade_first_boot"] = UpdateManager.is_changed
         response["version_history"] = []
         if MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS] is not None:
-            response["version_history"] = MeticulousConfig[CONFIG_SYSTEM][
-                LAST_SYSTEM_VERSIONS
-            ]
+            response["version_history"] = MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS]
         else:
             response["version_history"] = []
 
@@ -196,9 +186,7 @@ class MachineBacklightController(BaseHandler):
             settings = json.loads(self.request.body)
         except json.decoder.JSONDecodeError as e:
             self.set_status(403)
-            self.write(
-                {"status": "error", "error": "invalid json", "json_error": f"{e}"}
-            )
+            self.write({"status": "error", "error": "invalid json", "json_error": f"{e}"})
             return
         if "brightness" in settings:
             brightness = settings.get("brightness")

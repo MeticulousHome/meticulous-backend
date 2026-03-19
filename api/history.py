@@ -73,9 +73,7 @@ class CompressedDebugHistoryHandler(BaseHandler):
         async def compress_debug_file():
             loop = asyncio.get_event_loop()
             # Run the compression in a separate thread to avoid blocking the event loop
-            zip_name = await loop.run_in_executor(
-                None, ShotDebugManager.zipAllDebugShots
-            )
+            zip_name = await loop.run_in_executor(None, ShotDebugManager.zipAllDebugShots)
             return zip_name
 
         try:
@@ -118,9 +116,7 @@ class ZstdHistoryHandler(tornado.web.StaticFileHandler):
             await self.list_directory(full_path)
             return
         elif not os.path.exists(full_path) or not os.path.isfile(full_path):
-            logger.info(
-                f"File doesn't exist: {full_path}, checking if it exists compressed"
-            )
+            logger.info(f"File doesn't exist: {full_path}, checking if it exists compressed")
 
             if os.path.exists(compressed_path) and os.path.isfile(compressed_path):
                 logger.info("File exists compressed instead")
@@ -129,9 +125,7 @@ class ZstdHistoryHandler(tornado.web.StaticFileHandler):
 
             # If the path doesn't exist or isn't a file, raise a 404 error
             self.set_status(404)
-            self.write(
-                {"status": "error", "error": "history entry not found", "path": path}
-            )
+            self.write({"status": "error", "error": "history entry not found", "path": path})
             return
         elif full_path.endswith(".zst") and not serve_compressed:
             logger.info("dealing")
@@ -142,9 +136,7 @@ class ZstdHistoryHandler(tornado.web.StaticFileHandler):
             # Fallback to default behavior for regular files
             if full_path.endswith(".zst"):
                 self.set_header("Content-Type", "application/octet-stream")
-                device_name = "".join(
-                    MeticulousConfig[CONFIG_SYSTEM][DEVICE_IDENTIFIER]
-                )
+                device_name = "".join(MeticulousConfig[CONFIG_SYSTEM][DEVICE_IDENTIFIER])
                 file_date_formatted = path.split(os.path.sep)[0].replace("-", "_")
                 served_file_name = (
                     f"{device_name}_{file_date_formatted}_{os.path.basename(path)}"
@@ -166,9 +158,7 @@ class ZstdHistoryHandler(tornado.web.StaticFileHandler):
             logger.warning(full_path)
             raw = decompressed_content.read()
             if b": Infinity" in raw or b": NaN" in raw:
-                logger.warning(
-                    f"Patching non-finite JSON token in shot file: {full_path}"
-                )
+                logger.warning(f"Patching non-finite JSON token in shot file: {full_path}")
                 raw = raw.replace(b": Infinity", b": 0.0")
                 raw = raw.replace(b": NaN", b": 0.0")
             if full_path.endswith(".csv.zst"):
@@ -306,9 +296,7 @@ class ShotRatingHandler(BaseHandler):
                 self.write({"status": "ok", "shot_id": shot_id, "rating": rating})
             else:
                 self.set_status(404)
-                self.write(
-                    {"status": "error", "error": "Shot not found or rating failed"}
-                )
+                self.write({"status": "error", "error": "Shot not found or rating failed"})
         except json.JSONDecodeError:
             self.set_status(400)
             self.write({"status": "error", "error": "Invalid JSON"})
@@ -334,9 +322,7 @@ API.register_handler(
     url=f"{last_version_path}/history/debug/",
 ),
 
-API.register_handler(
-    APIVersion.V1, r"/history/debug.zip", CompressedDebugHistoryHandler
-),
+API.register_handler(APIVersion.V1, r"/history/debug.zip", CompressedDebugHistoryHandler),
 API.register_handler(
     APIVersion.V1, r"/history/debug/(.*)", ZstdHistoryHandler, path=DEBUG_HISTORY_PATH
 ),
@@ -348,6 +334,4 @@ API.register_handler(
     url=f"{last_version_path}/history/files/",
 ),
 
-API.register_handler(
-    APIVersion.V1, r"/history/files/(.*)", ZstdHistoryHandler, path=SHOT_PATH
-),
+API.register_handler(APIVersion.V1, r"/history/files/(.*)", ZstdHistoryHandler, path=SHOT_PATH),

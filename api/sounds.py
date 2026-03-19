@@ -59,9 +59,7 @@ class UploadThemeHandler(BaseHandler):
         # Ensure there is a file in the request
         if "file" not in self.request.files:
             self.set_status(400)
-            self.write(
-                {"error": "invalid zip", "details": "'file' not found in request"}
-            )
+            self.write({"error": "invalid zip", "details": "'file' not found in request"})
             return
 
         fileinfo = self.request.files["file"][0]

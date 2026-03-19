@@ -109,9 +109,7 @@ class HeadProfile:
         self.initial_node_water_detection = Nodes(45)
         self.time_reference_water_detection = TimeReferenceController(12)
         self.exit_water_detection = ExitTrigger(9)
-        self.initial_node_water_detection.add_controller(
-            self.time_reference_water_detection
-        )
+        self.initial_node_water_detection.add_controller(self.time_reference_water_detection)
         self.initial_node_water_detection.add_trigger(self.exit_water_detection)
         self.node_9_water_detection = Nodes(9)
         self.time_reference_water_detection_1 = TimeReferenceController(2)
@@ -125,9 +123,7 @@ class HeadProfile:
         self.button_trigger_water_detection = ButtonTrigger(
             ButtonSourceType.ENCODER_BUTTON, next_node_id=15
         )
-        self.node_9_water_detection.add_controller(
-            self.time_reference_water_detection_1
-        )
+        self.node_9_water_detection.add_controller(self.time_reference_water_detection_1)
         self.node_9_water_detection.add_trigger(self.water_detection_trigger)
         self.node_9_water_detection.add_trigger(self.button_trigger_water_detection)
         self.node_12_water_detection = Nodes(12)
@@ -203,9 +199,7 @@ class HeadProfile:
 
         self.retracting_stage_build = Stages("retracting")
         self.initial_node_retracting = Nodes(17)
-        self.move_piston_retracting = SpeedController(
-            speed=4, direction=DirectionType.BACKWARD
-        )
+        self.move_piston_retracting = SpeedController(speed=4, direction=DirectionType.BACKWARD)
         self.piston_position_retracting = PistonPositionTrigger(
             TriggerOperatorType.LESS_THAN_OR_EQUAL, -2, 1, 18
         )
@@ -219,9 +213,7 @@ class HeadProfile:
         self.move_piston_retracting_1 = SpeedController(
             speed=6, direction=DirectionType.BACKWARD
         )
-        self.piston_speed_trigger_retracting = SpeedTrigger(
-            TriggerOperatorType.EQUAL, 0, 21
-        )
+        self.piston_speed_trigger_retracting = SpeedTrigger(TriggerOperatorType.EQUAL, 0, 21)
         self.button_trigger_retracting_1 = ButtonTrigger(
             ButtonSourceType.ENCODER_BUTTON, next_node_id=23
         )

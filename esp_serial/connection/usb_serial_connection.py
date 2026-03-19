@@ -11,9 +11,7 @@ logger = MeticulousLogger.getLogger(__name__)
 class USBSerialConnection(SerialConnection):
     # Uses the parent constructor
 
-    def reset(
-        self, bootloader=False, sleep=DEFAULT_RESET_DELAY, ignored_bootloader_sleep=0
-    ):
+    def reset(self, bootloader=False, sleep=DEFAULT_RESET_DELAY, ignored_bootloader_sleep=0):
         logger.info("Resetting ESP32")
         if bootloader:
             ClassicReset(self.port, reset_delay=sleep)

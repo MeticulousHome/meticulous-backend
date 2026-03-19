@@ -99,9 +99,7 @@ class SimplifiedJson:
 
         if comparison_value is None:
             comparison_value = default_comparison
-            print(
-                f"Comparison value is None. Using default value: {default_comparison}."
-            )
+            print(f"Comparison value is None. Using default value: {default_comparison}.")
 
         if comparison_value == ">=":
             comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
@@ -109,9 +107,7 @@ class SimplifiedJson:
             comparison = TriggerOperatorType.LESS_THAN_OR_EQUAL
         else:
             comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
-            print(
-                f"Comparison: {comparison_value} not supported. Using default value: >= ."
-            )
+            print(f"Comparison: {comparison_value} not supported. Using default value: >= .")
 
         return comparison
 
@@ -310,9 +306,7 @@ class SimplifiedJson:
                             reference_id = init_node.get_position_id()
                         else:
                             reference_id = 0
-                        piston_position_comparison = self.set_comparison_type(
-                            json_comparison
-                        )
+                        piston_position_comparison = self.set_comparison_type(json_comparison)
                         exit_trigger = PistonPositionTrigger(
                             piston_position_comparison,
                             exit_trigger_value,
@@ -333,9 +327,7 @@ class SimplifiedJson:
                         exit_triggers.append(exit_trigger.get_trigger())
 
                     case "temperature":
-                        temperature_comparison = self.set_comparison_type(
-                            json_comparison
-                        )
+                        temperature_comparison = self.set_comparison_type(json_comparison)
                         exit_trigger_value = exits["value"]
                         exit_trigger = TemperatureValueTrigger(
                             TemperatureSourceType.WATER,
@@ -564,9 +556,7 @@ if __name__ == "__main__":
     print(json.dumps(complex_node, indent=2))
 
     points = [[0, 6], [10, 8]]
-    trigger = WeightTrigger(
-        SourceType.AVERAGE, TriggerOperatorType.GREATER_THAN, 10, 12
-    )
+    trigger = WeightTrigger(SourceType.AVERAGE, TriggerOperatorType.GREATER_THAN, 10, 12)
 
     # print(f"Node ID: {main_node.get_node_id()}")
     # print(json.dumps(main_node.get_node(), indent=2))

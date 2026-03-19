@@ -112,9 +112,7 @@ class NotificationManager:
                     await asyncio.sleep(0.1)
                 else:
                     # Emit the notification over socketIO as json
-                    await NotificationManager._sio.emit(
-                        "notification", notification.to_json()
-                    )
+                    await NotificationManager._sio.emit("notification", notification.to_json())
                     logger.info(f"send notification: {notification.to_json()}")
 
         # Create and run the asyncio event loop
@@ -135,10 +133,7 @@ class NotificationManager:
 
         updating = False
         for idx, old_notfication in enumerate(NotificationManager._notifications):
-            if (
-                notification.id == old_notfication.id
-                and not old_notfication.acknowledged
-            ):
+            if notification.id == old_notfication.id and not old_notfication.acknowledged:
                 del NotificationManager._notifications[idx]
                 updating = True
 

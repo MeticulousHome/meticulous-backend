@@ -208,9 +208,7 @@ async def send_data():  # noqa: C901
             Machine.action(_input)
 
         elif _input == "test":
-            previous_sensor_status = MeticulousConfig[CONFIG_LOGGING][
-                LOGGING_SENSOR_MESSAGES
-            ]
+            previous_sensor_status = MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES]
             MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES] = True
             for i in range(0, 10):
                 _input = "action," + "purge" + "\x03"
@@ -223,9 +221,7 @@ async def send_data():  # noqa: C901
                 contador = "Numero de prueba: " + str(i + 1)
                 logger.info(_input)
                 logger.info(contador)
-            MeticulousConfig[CONFIG_LOGGING][
-                LOGGING_SENSOR_MESSAGES
-            ] = previous_sensor_status
+            MeticulousConfig[CONFIG_LOGGING][LOGGING_SENSOR_MESSAGES] = previous_sensor_status
 
         elif _input[:11] == "calibration":
             _input = "action," + _input + "\x03"
@@ -288,9 +284,7 @@ def main():
         sentry_sdk.set_tag(
             "machine", "".join(MeticulousConfig[CONFIG_SYSTEM][DEVICE_IDENTIFIER])
         )
-        sentry_sdk.set_tag(
-            "serial", MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
-        )
+        sentry_sdk.set_tag("serial", MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER])
     except Exception as e:
         logger.error(f"Failed to set sentry context: {e}")
 

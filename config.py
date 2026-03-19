@@ -330,16 +330,12 @@ class MeticulousConfigDict(dict):
                     disk_config = yaml.safe_load(f)
                     disk_version = disk_config.get("version")
                     if disk_version is not None and disk_version > self["version"]:
-                        _config_logger.warning(
-                            "Config on disk is newer than this software"
-                        )
+                        _config_logger.warning("Config on disk is newer than this software")
                     merge(self, disk_config)
                     # migrate partial_retraction config data from int to float
                     retraction = self[CONFIG_USER][PROFILE_PARTIAL_RETRACTION]
                     if isinstance(retraction, int):
-                        self[CONFIG_USER][PROFILE_PARTIAL_RETRACTION] = float(
-                            retraction
-                        )
+                        self[CONFIG_USER][PROFILE_PARTIAL_RETRACTION] = float(retraction)
                     _config_logger.info("Successfully loaded config from disk")
                     self.__configError = False
                 except Exception as e:

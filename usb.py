@@ -20,9 +20,7 @@ class USBManager:
             USB_MODES(MeticulousConfig[CONFIG_USER][USB_MODE])
             USBManager.setUSBMode(MeticulousConfig[CONFIG_USER][USB_MODE])
         except RuntimeError as error:
-            logger.error(
-                f"error initializing USB Manager: f{error}, starting USB as client"
-            )
+            logger.error(f"error initializing USB Manager: f{error}, starting USB as client")
             USBManager.setUSBMode(USB_MODES.CLIENT.value)
 
     @staticmethod

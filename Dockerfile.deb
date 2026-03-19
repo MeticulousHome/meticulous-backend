@@ -1,0 +1,85 @@
+# Stage 1: Build the venv with all compiled dependencies
+FROM debian:bookworm AS builder
+
+RUN apt-get update -y && apt-get dist-upgrade -y
+RUN apt-get install -y build-essential libcairo2-dev libxt-dev libgirepository1.0-dev libgstreamer1.0-dev \
+    libsystemd-dev libparted-dev libglib2.0-dev libffi-dev python3-dev pkg-config \
+    python3 \
+    python3-setuptools \
+    git curl
+
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:$PATH"
+
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_PROJECT_ENVIRONMENT=/opt/meticulous-venv
+
+WORKDIR /build
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
+
+# Stage 2: Assemble the .deb package
+FROM debian:bookworm AS packager
+
+RUN apt-get update -y && apt-get install -y --no-install-recommends dpkg-dev gettext-base
+
+ARG VERSION=0.1.0
+ARG ARCH=amd64
+
+WORKDIR /pkg
+
+# Copy static debian packaging skeleton and substitute version/arch
+COPY debian/ /pkg/
+RUN envsubst '${VERSION} ${ARCH}' < /pkg/DEBIAN/control > /pkg/DEBIAN/control.tmp \
+    && mv /pkg/DEBIAN/control.tmp /pkg/DEBIAN/control
+RUN chmod 755 /pkg/DEBIAN/postinst /pkg/usr/bin/meticulous-backend /pkg/usr/bin/met-config
+
+# Create application directories
+RUN mkdir -p opt/meticulous-venv \
+    opt/meticulous-backend/api \
+    opt/meticulous-backend/esp_serial/connection \
+    opt/meticulous-backend/monitoring \
+    opt/meticulous-backend/images/notificationImages \
+    opt/meticulous-backend/images/default \
+    opt/meticulous-backend/alembic/versions \
+    opt/meticulous-backend/db-migrations \
+    opt/meticulous-backend/profile_schema \
+    opt/meticulous-backend/default_profiles/community \
+    opt/meticulous-backend/sounds/default
+
+# Copy the venv from builder
+COPY --from=builder /opt/meticulous-venv /pkg/opt/meticulous-venv
+
+# Copy application source
+COPY *.py /pkg/opt/meticulous-backend/
+COPY pyproject.toml /pkg/opt/meticulous-backend/
+COPY alembic.ini /pkg/opt/meticulous-backend/
+COPY UI_timezones.json /pkg/opt/meticulous-backend/
+
+COPY api/*.py /pkg/opt/meticulous-backend/api/
+COPY esp_serial/*.py /pkg/opt/meticulous-backend/esp_serial/
+COPY esp_serial/connection/*.py /pkg/opt/meticulous-backend/esp_serial/connection/
+COPY esp_serial/connection/*.json /pkg/opt/meticulous-backend/esp_serial/connection/
+COPY monitoring/*.py /pkg/opt/meticulous-backend/monitoring/
+COPY images/notificationImages/*.py /pkg/opt/meticulous-backend/images/notificationImages/
+
+# Alembic migrations
+COPY alembic/env.py alembic/README alembic/script.py.mako /pkg/opt/meticulous-backend/alembic/
+COPY alembic/versions/*.py /pkg/opt/meticulous-backend/alembic/versions/
+
+# Data files (submodules - must be checked out before building)
+COPY profile_schema/ /pkg/opt/meticulous-backend/profile_schema/
+COPY default_profiles/ /pkg/opt/meticulous-backend/default_profiles/
+COPY sounds/ /pkg/opt/meticulous-backend/sounds/
+COPY images/default/ /pkg/opt/meticulous-backend/images/default/
+
+# Remove test files from the package
+RUN rm -f /pkg/opt/meticulous-backend/test_*.py
+
+# Build the .deb
+RUN mkdir -p /out && dpkg-deb --build /pkg /out/meticulous-backend_${VERSION}_${ARCH}.deb
+
+# Final stage: just the .deb file for extraction
+FROM scratch
+COPY --from=packager /out/*.deb /
