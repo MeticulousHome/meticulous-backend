@@ -1,0 +1,2 @@
+#!/bin/bash
+exec /opt/meticulous-venv/bin/python3 /opt/meticulous-backend/met-config.py "$@"
