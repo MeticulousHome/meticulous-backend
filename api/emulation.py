@@ -97,9 +97,7 @@ class WiFiConfigHandler(BaseHandler):
         except Exception as e:
             self.set_status(400)
             self.write("Failed to write config")
-            logger.warning(
-                "Failed to accept passed config: ", exc_info=e, stack_info=True
-            )
+            logger.warning("Failed to accept passed config: ", exc_info=e, stack_info=True)
 
 
 class WiFiListHandler(BaseHandler):

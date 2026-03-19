@@ -228,9 +228,7 @@ class WifiManager:
         if server and server.loop and server.loop.is_running():
             asyncio.run_coroutine_threadsafe(server.update_advertisement(), server.loop)
         else:
-            logger.warning(
-                "Cannot update GATT advertisement - server or loop not ready"
-            )
+            logger.warning("Cannot update GATT advertisement - server or loop not ready")
 
     def networking_available():
         return WifiManager._networking_available
@@ -263,9 +261,7 @@ class WifiManager:
             for network in networks:
                 # Check if we are looking for a specific network in the factory
                 if manufacturing_mode and network.ssid == "MeticulousEPW":
-                    credentials = WifiWpaPskCredentials(
-                        ssid=network.ssid, password="23456789"
-                    )
+                    credentials = WifiWpaPskCredentials(ssid=network.ssid, password="23456789")
                     success = WifiManager.connectToWifi(credentials)
                     if success:
                         break
@@ -466,9 +462,7 @@ class WifiManager:
             try:
                 if wifi_type == WifiType.Open:
                     nmcli.device.wifi_connect(ssid, None)
-                elif (
-                    wifi_type == WifiType.PreSharedKey or wifi_type == WifiType.PSK_SAE
-                ):
+                elif wifi_type == WifiType.PreSharedKey or wifi_type == WifiType.PSK_SAE:
                     nmcli.device.wifi_connect(ssid, credentials.get("password", ""))
                 elif wifi_type == WifiType.Enterprise:
                     logger.error("Enterprise wifi not yet implemented")
@@ -476,10 +470,7 @@ class WifiManager:
 
             except Exception as e:
                 error_msg = str(e)
-                if (
-                    "802-11-wireless-security.key-mgmt: property is missing"
-                    in error_msg
-                ):
+                if "802-11-wireless-security.key-mgmt: property is missing" in error_msg:
                     needs_fix = True
                 else:
                     logger.error(f"Failed to connect to wifi: {e}")
@@ -519,9 +510,7 @@ class WifiManager:
         if type(credentials.get("type")) is WifiType:
             credentials["type"] = credentials["type"].value
 
-        MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS][
-            credentials.get("ssid")
-        ] = credentials
+        MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS][credentials.get("ssid")] = credentials
         MeticulousConfig.save()
 
     # Reads the IP from ZEROCONF_OVERWRITE and announces that instead

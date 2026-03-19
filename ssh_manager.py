@@ -112,9 +112,7 @@ class SSHManager:
             with open(SSHManager.ISSUE_PATH, "w") as issue_file:
                 issue_file.write(content)
 
-            logger.info(
-                f"Successfully updated {SSHManager.ISSUE_PATH} with root password"
-            )
+            logger.info(f"Successfully updated {SSHManager.ISSUE_PATH} with root password")
             return True
         except Exception as e:
             logger.error(f"Error updating {SSHManager.ISSUE_PATH} file: {e}")

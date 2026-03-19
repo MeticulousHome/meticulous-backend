@@ -39,9 +39,7 @@ class EmulatorSerialConnection(SerialConnection):
         logger.info("Emulation thread started, sleeping 2 seconds")
         time.sleep(2.0)
         data_source = EmulationData.IDLE_DATA
-        sleep_time = EmulatorSerialConnection.DEFAULT_SLEEP_TIME / (
-            EMULATION_SPEED / 100.0
-        )
+        sleep_time = EmulatorSerialConnection.DEFAULT_SLEEP_TIME / (EMULATION_SPEED / 100.0)
         while True:
             line = ""
 

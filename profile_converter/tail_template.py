@@ -42,9 +42,7 @@ class TailTemplate:
         self.init_node_retracting.add_controller(self.weight_reference_retracting)
         self.init_node_retracting.add_trigger(self.exit_retracting)
         self.node_24_retracting = Nodes(24)
-        self.move_piston_retracting = SpeedController(
-            speed=4, direction=DirectionType.BACKWARD
-        )
+        self.move_piston_retracting = SpeedController(speed=4, direction=DirectionType.BACKWARD)
         self.piston_position_retracting = PistonPositionTrigger(
             TriggerOperatorType.LESS_THAN_OR_EQUAL, -4, 3, 27
         )

@@ -32,13 +32,9 @@ logger = MeticulousLogger.getLogger(__name__)
 
 PROFILE_PATH = os.getenv("PROFILE_PATH", "/meticulous-user/profiles")
 IMAGES_PATH = os.getenv("IMAGES_PATH", "/meticulous-user/profile-images/")
-DEFAULT_IMAGES_PATH = os.getenv(
-    "DEFAULT_IMAGES", "/opt/meticulous-backend/images/default"
-)
+DEFAULT_IMAGES_PATH = os.getenv("DEFAULT_IMAGES", "/opt/meticulous-backend/images/default")
 
-DEFAULT_IMAGES_PATH_ACCENT_COLORS = os.path.join(
-    DEFAULT_IMAGES_PATH, "accent_colors.json"
-)
+DEFAULT_IMAGES_PATH_ACCENT_COLORS = os.path.join(DEFAULT_IMAGES_PATH, "accent_colors.json")
 
 DEFAULT_PROFILES_PATH = os.getenv(
     "DEFAULT_PROFILES", "/opt/meticulous-backend/default_profiles"
@@ -175,9 +171,7 @@ class ProfileManager:
                 file_content = uri.data
                 file_extension = uri.media_type.split("/")[-1]
 
-                if (
-                    len(file_content) > 10 * 1024 * 1024
-                ):  # size check, e.g., less than 10MB
+                if len(file_content) > 10 * 1024 * 1024:  # size check, e.g., less than 10MB
                     logger.warning("File size exceeds limit.")
                     raise Exception("Image file too large")
 
@@ -197,9 +191,7 @@ class ProfileManager:
                 )
                 pass
         elif not data["display"]["image"].startswith("/api/v1/profile/image"):
-            data["display"]["image"] = (
-                "/api/v1/profile/image/" + data["display"]["image"]
-            )
+            data["display"]["image"] = "/api/v1/profile/image/" + data["display"]["image"]
 
     def generate_ramdom_accent_color():
         color = random.randrange(0, 2**24)
@@ -218,9 +210,9 @@ class ProfileManager:
 
                 if base in ProfileManager._profile_default_images_accent_colors:
                     logger.info("No accent color found, using default one")
-                    predefined_color = (
-                        ProfileManager._profile_default_images_accent_colors[base]
-                    )
+                    predefined_color = ProfileManager._profile_default_images_accent_colors[
+                        base
+                    ]
                     data["display"]["accentColor"] = predefined_color
                     return
 
@@ -315,9 +307,7 @@ class ProfileManager:
         return profile
 
     def send_profile_to_esp32(data):
-        if (
-            end_time := AlarmManager.is_alarm_set(AlarmType.MOTOR_STRESSED)
-        ) is not None:
+        if (end_time := AlarmManager.is_alarm_set(AlarmType.MOTOR_STRESSED)) is not None:
             AlarmManager._notify_user(
                 message=f"Brewing has been disabled because of a recent high strain on the motor, let it rest for {math.ceil((end_time - time.time())/60.0) if math.isfinite(end_time) else 10} more minutes",
                 image=WARNING_TRIANGLE_IMAGE,
@@ -414,9 +404,7 @@ class ProfileManager:
 
                 errors = ProfileManager.validate_profile(profile)
                 if errors is not None:
-                    logger.warning(
-                        f"Profile on disk failed to be loaded: {errors.message}"
-                    )
+                    logger.warning(f"Profile on disk failed to be loaded: {errors.message}")
                     continue
 
                 if profile_changed:
@@ -471,9 +459,7 @@ class ProfileManager:
                 try:
                     profile = json.load(f)
                 except json.decoder.JSONDecodeError as error:
-                    logger.warning(
-                        f"Could not decode default profile {f.name}: {error}"
-                    )
+                    logger.warning(f"Could not decode default profile {f.name}: {error}")
                     continue
                 logger.info("Found default profile: " + filename)
                 ProfileManager._default_profiles.append(profile)
@@ -494,9 +480,7 @@ class ProfileManager:
                     try:
                         profile = json.load(f)
                     except json.decoder.JSONDecodeError as error:
-                        logger.warning(
-                            f"Could not decode community profile {f.name}: {error}"
-                        )
+                        logger.warning(f"Could not decode community profile {f.name}: {error}")
                         continue
                     logger.info("Found community profile: " + filename)
                     ProfileManager._community_profiles.append(profile)
@@ -529,9 +513,7 @@ class ProfileManager:
                     accent_colors = json.load(f)
                     ProfileManager._profile_default_images_accent_colors = accent_colors
                 except json.decoder.JSONDecodeError as error:
-                    logger.warning(
-                        f"Could not decode default accent colors {f.name}: {error}"
-                    )
+                    logger.warning(f"Could not decode default accent colors {f.name}: {error}")
 
         for filename in os.listdir(DEFAULT_IMAGES_PATH):
             file_path = os.path.join(DEFAULT_IMAGES_PATH, filename)
@@ -551,9 +533,7 @@ class ProfileManager:
                 dst_path = os.path.join(IMAGES_PATH, new_filename)
                 shutil.copy2(file_path, dst_path)
                 ProfileManager._profile_default_images.append(new_filename)
-        logger.info(
-            f"Found {len(ProfileManager._profile_default_images)} default images"
-        )
+        logger.info(f"Found {len(ProfileManager._profile_default_images)} default images")
 
         ProfileManager._known_images = os.listdir(IMAGES_PATH)
 

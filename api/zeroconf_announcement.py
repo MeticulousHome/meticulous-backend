@@ -67,23 +67,15 @@ class ZeroConfAnnouncement:
             self.network_config = self.config_function()
             self._createServiceConfig()
             if self.http_service_info is not None:
-                self.zeroconf.register_service(
-                    self.http_service_info, allow_name_change=True
-                )
+                self.zeroconf.register_service(self.http_service_info, allow_name_change=True)
                 logger.info(f"zeroconf service http announced on port {ZEROCONF_PORT}")
             else:
                 logger.warning("Could not fetch machine informations for http zeroconf")
             if self.met_service_info is not None:
-                self.zeroconf.register_service(
-                    self.met_service_info, allow_name_change=True
-                )
-                logger.info(
-                    f"zeroconf service meticulous announced on port {ZEROCONF_PORT}"
-                )
+                self.zeroconf.register_service(self.met_service_info, allow_name_change=True)
+                logger.info(f"zeroconf service meticulous announced on port {ZEROCONF_PORT}")
             else:
-                logger.warning(
-                    "Could not fetch machine informations for meticulous zeroconf"
-                )
+                logger.warning("Could not fetch machine informations for meticulous zeroconf")
 
             return
         except zeroconf.NonUniqueNameException:

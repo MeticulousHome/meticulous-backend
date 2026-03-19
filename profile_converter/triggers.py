@@ -392,9 +392,7 @@ if __name__ == "__main__":
     # temperature_value_trigger.set_operator(TriggerOperatorType.LESS_THAN_OR_EQUAL)
     print(json.dumps(temperature_value_trigger.get_trigger(), indent=4))
 
-    piston_position_trigger = PistonPositionTrigger(
-        TriggerOperatorType.GREATER_THAN, 10, 1, 1
-    )
+    piston_position_trigger = PistonPositionTrigger(TriggerOperatorType.GREATER_THAN, 10, 1, 1)
     # piston_position_trigger.set_value(10)
     # piston_position_trigger.set_position_reference_id(1)
     # piston_position_trigger.set_next_node_id(1)
@@ -447,9 +445,7 @@ if __name__ == "__main__":
     # temperature_curve_trigger.set_source(TemperatureSourceType.TUBE)
     print(json.dumps(temperature_curve_trigger.get_trigger(), indent=4))
 
-    button_trigger = ButtonTrigger(
-        ButtonSourceType.START, ButtonGestureSourceType.SINGLE, 1
-    )
+    button_trigger = ButtonTrigger(ButtonSourceType.START, ButtonGestureSourceType.SINGLE, 1)
     # button_trigger.set_source(ButtonSourceType.START)
     # button_trigger.set_gesture(ButtonGestureSourceType.SINGLE)
     # button_trigger.set_next_node_id(1)

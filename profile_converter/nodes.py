@@ -124,9 +124,7 @@ if __name__ == "__main__":
     )
     node_2.add_trigger(trigger)
 
-    trigger = ButtonTrigger(
-        ButtonSourceType.ENCODER_BUTTON, ButtonGestureSourceType.SINGLE, 6
-    )
+    trigger = ButtonTrigger(ButtonSourceType.ENCODER_BUTTON, ButtonGestureSourceType.SINGLE, 6)
     node_2.add_trigger(trigger)
 
     nodes = [node.get_node(), node_2.get_node()]

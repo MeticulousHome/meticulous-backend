@@ -1007,9 +1007,7 @@ class ComplexProfileConverter:
             },
             {
                 "name": "END_STAGE",
-                "nodes": [
-                    {"id": -2, "controllers": [{"kind": "end_profile"}], "triggers": []}
-                ],
+                "nodes": [{"id": -2, "controllers": [{"kind": "end_profile"}], "triggers": []}],
             },
         ]
         return self.stages_tail
@@ -1023,9 +1021,7 @@ class ComplexProfileConverter:
             self.head_template() + self.complex_stages() + self.tail_template()
         )
         self.name_profile = (
-            self.complex.get_name()
-            if self.complex.get_name() is not None
-            else "Profile"
+            self.complex.get_name() if self.complex.get_name() is not None else "Profile"
         )
 
         self.profile_complex = {

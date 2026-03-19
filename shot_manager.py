@@ -74,9 +74,7 @@ class Shot:
             },
             "time": shotData.time,
             "profile_time": (
-                shotData.profile_time
-                if shotData.profile_time is not None
-                else shotData.time
+                shotData.profile_time if shotData.profile_time is not None else shotData.time
             ),
             "status": shotData.status,
         }
@@ -199,9 +197,7 @@ class ShotManager:
 
             def write_current_shot(shot_data):
                 # Determine the paths based on the shot start
-                (folder_name, file_path) = ShotManager._timestampToFilePaths(
-                    shot_data["time"]
-                )
+                (folder_name, file_path) = ShotManager._timestampToFilePaths(shot_data["time"])
 
                 # Compress and write the shot to disk
                 logger.info("Writing and compressing shot file")
@@ -259,9 +255,7 @@ class ShotManager:
                     ShotManager.db_history_id = history_id
                     time_ms = (time.time() - start) * 1000
                     logger.info(f"Ingesting shot into sqlite took {time_ms} ms")
-                    logger.info(
-                        f"Shot ingested with history id: {ShotManager.db_history_id}"
-                    )
+                    logger.info(f"Shot ingested with history id: {ShotManager.db_history_id}")
                 shot_data = None
 
             compresson_thread = NamedThread(

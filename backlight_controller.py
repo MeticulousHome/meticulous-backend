@@ -55,10 +55,7 @@ class BacklightController:
 
     @staticmethod
     def stop_adjust_thread():
-        if (
-            BacklightController._adjust_thread
-            and BacklightController._adjust_thread.is_alive()
-        ):
+        if BacklightController._adjust_thread and BacklightController._adjust_thread.is_alive():
             BacklightController._adjust_thread.do_run = False
             BacklightController._adjust_thread.join()
 

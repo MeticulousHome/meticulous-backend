@@ -128,9 +128,7 @@ class WiFiConfigHandler(BaseHandler):
         except Exception as e:
             self.set_status(400)
             self.write("Failed to write config")
-            logger.warning(
-                "Failed to accept passed config: ", exc_info=e, stack_info=True
-            )
+            logger.warning("Failed to accept passed config: ", exc_info=e, stack_info=True)
 
 
 class WiFiListHandler(BaseHandler):
@@ -161,16 +159,12 @@ class WiFiListHandler(BaseHandler):
                             continue
                         if s.signal > exists["signal"]:
                             networks[s.ssid] = formated
-            response = sorted(
-                networks.values(), key=lambda x: x["signal"], reverse=True
-            )
+            response = sorted(networks.values(), key=lambda x: x["signal"], reverse=True)
             return response
         except Exception as e:
             self.set_status(400)
             self.write({"status": "error", "error": f"failed to fetch wifi list: {e}"})
-            logger.warning(
-                "Failed to fetch / format wifi list: ", exc_info=e, stack_info=True
-            )
+            logger.warning("Failed to fetch / format wifi list: ", exc_info=e, stack_info=True)
 
     async def get(self):
         loop = asyncio.get_event_loop()
@@ -207,9 +201,7 @@ class WiFiDeleteHandler(BaseHandler):
                 self.write({"status": "ok"})
             else:
                 self.set_status(400)
-                self.write(
-                    {"status": "error", "error": "failed to delete unknown wifi"}
-                )
+                self.write({"status": "error", "error": "failed to delete unknown wifi"})
         except Exception as e:
             self.set_status(400)
             self.write({"status": "error", "error": f"failed to delete wifi: {e}"})

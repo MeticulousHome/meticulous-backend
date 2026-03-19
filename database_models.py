@@ -57,12 +57,8 @@ shot_annotation = Table(
     "shot_annotation",
     metadata,
     Column("id", Integer, primary_key=True),
-    Column(
-        "history_id", Integer, ForeignKey("history.id"), nullable=False, unique=True
-    ),
-    Column(
-        "history_uuid", Text, ForeignKey("history.uuid"), nullable=False, unique=True
-    ),
+    Column("history_id", Integer, ForeignKey("history.id"), nullable=False, unique=True),
+    Column("history_uuid", Text, ForeignKey("history.uuid"), nullable=False, unique=True),
 )
 
 shot_rating = Table(

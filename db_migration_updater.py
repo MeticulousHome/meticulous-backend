@@ -14,9 +14,7 @@ logger = MeticulousLogger.getLogger(__name__)
 
 DB_VERSION_REQUIRED = "470a6d3b0f44"
 
-USER_DB_MIGRATION_DIR = os.getenv(
-    "USER_DB_MIGRATION_DIR", "/meticulous-user/.dbmigrations"
-)
+USER_DB_MIGRATION_DIR = os.getenv("USER_DB_MIGRATION_DIR", "/meticulous-user/.dbmigrations")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ALEMBIC_CONFIG_FILE_PATH = os.path.join(BASE_DIR, "alembic.ini")
 ALEMBIC_DIR = os.path.join(BASE_DIR, "alembic")
@@ -49,9 +47,7 @@ def retrieve_scripts(backup_dir: os.path) -> list[str]:
     backup_files = os.listdir(USER_DB_MIGRATION_DIR)
     version_files = os.listdir(ALEMBIC_VER_DIR)
 
-    files_to_retrieve = [
-        filename for filename in backup_files if filename not in version_files
-    ]
+    files_to_retrieve = [filename for filename in backup_files if filename not in version_files]
 
     if len(files_to_retrieve) == 0:
         logger.info("no missing DB migration files to retrieve")
@@ -156,9 +152,7 @@ def backup_new_scripts() -> list[str]:
             os.remove(full_path)
 
     backup_files = os.listdir(USER_DB_MIGRATION_DIR)
-    files_to_backup = [
-        filename for filename in version_files if filename not in backup_files
-    ]
+    files_to_backup = [filename for filename in version_files if filename not in backup_files]
 
     if len(files_to_backup) == 0:
         logger.info("no new DB migration files to backup")
@@ -221,10 +215,7 @@ def update_db_migrations():
         try:
             for rev in SD.walk_revisions():
                 revision = rev.module.revision
-                if (
-                    revision in [target_rev, current_rev]
-                    and revision not in ordered_revisions
-                ):
+                if revision in [target_rev, current_rev] and revision not in ordered_revisions:
                     ordered_revisions.append(revision)
                     if len(ordered_revisions) == 2:
                         break
@@ -255,10 +246,7 @@ def update_db_migrations():
             # If the walk fails again, we just report it
             for rev in SD.walk_revisions():
                 revision = rev.module.revision
-                if (
-                    revision in [target_rev, current_rev]
-                    and revision not in ordered_revisions
-                ):
+                if revision in [target_rev, current_rev] and revision not in ordered_revisions:
                     ordered_revisions.append(revision)
                     if len(ordered_revisions) == 2:
                         break

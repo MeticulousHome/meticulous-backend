@@ -101,9 +101,7 @@ class SettingsHandler(BaseHandler):
             settings = json.loads(self.request.body)
         except json.decoder.JSONDecodeError as e:
             self.set_status(403)
-            self.write(
-                {"status": "error", "error": "invalid json", "json_error": f"{e}"}
-            )
+            self.write({"status": "error", "error": "invalid json", "json_error": f"{e}"})
             return
 
         workConfig = copy.deepcopy(MeticulousConfig[CONFIG_USER])
@@ -112,9 +110,7 @@ class SettingsHandler(BaseHandler):
             for setting_target in settings:
                 value = settings.get(setting_target)
 
-                if setting_target == PROFILE_PARTIAL_RETRACTION and isinstance(
-                    value, int
-                ):
+                if setting_target == PROFILE_PARTIAL_RETRACTION and isinstance(value, int):
                     value = float(value)
 
                 self.validate_setting(setting_target, value)
@@ -241,8 +237,7 @@ class TimezoneUIHandler(BaseHandler):
                 cities_in_country: dict = self.__timezone_map.get(conditional_filter)
                 if cities_in_country is not None:
                     return_array = [
-                        {city: cities_in_country.get(city)}
-                        for city in cities_in_country.keys()
+                        {city: cities_in_country.get(city)} for city in cities_in_country.keys()
                     ]
                 else:
                     error = "invalid country requested"
@@ -293,9 +288,7 @@ class ManufacturingSettingsHandler(BaseHandler):
             config = json.loads(self.request.body)
         except json.decoder.JSONDecodeError as e:
             self.set_status(403)
-            self.write(
-                {"status": "error", "error": "invalid json", "json_error": f"{e}"}
-            )
+            self.write({"status": "error", "error": "invalid json", "json_error": f"{e}"})
             return
 
         workConfig = copy.deepcopy(MeticulousConfig[CONFIG_MANUFACTURING])

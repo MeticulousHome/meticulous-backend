@@ -304,12 +304,8 @@ class TestAutocompleteProfileName:
     def test_no_prefix_returns_all(self):
         p1 = make_profile(id="p1", name="Espresso")
         p2 = make_profile(id="p2", name="Lungo")
-        ShotDataBase.insert_history(
-            make_history_entry(profile=p1, id="h1", file="s1.zst")
-        )
-        ShotDataBase.insert_history(
-            make_history_entry(profile=p2, id="h2", file="s2.zst")
-        )
+        ShotDataBase.insert_history(make_history_entry(profile=p1, id="h1", file="s1.zst"))
+        ShotDataBase.insert_history(make_history_entry(profile=p2, id="h2", file="s2.zst"))
 
         results = ShotDataBase.autocomplete_profile_name("")
         profile_names = {r["profile"] for r in results}
@@ -319,12 +315,8 @@ class TestAutocompleteProfileName:
     def test_prefix_filters(self):
         p1 = make_profile(id="p1", name="Espresso")
         p2 = make_profile(id="p2", name="Lungo")
-        ShotDataBase.insert_history(
-            make_history_entry(profile=p1, id="h1", file="s1.zst")
-        )
-        ShotDataBase.insert_history(
-            make_history_entry(profile=p2, id="h2", file="s2.zst")
-        )
+        ShotDataBase.insert_history(make_history_entry(profile=p1, id="h1", file="s1.zst"))
+        ShotDataBase.insert_history(make_history_entry(profile=p2, id="h2", file="s2.zst"))
 
         results = ShotDataBase.autocomplete_profile_name("Esp")
         profile_names = [r["profile"] for r in results]
@@ -337,9 +329,7 @@ class TestAutocompleteProfileName:
             name="Custom",
             stages=[{"key": "s1", "name": "Bloom", "type": "pressure"}],
         )
-        ShotDataBase.insert_history(
-            make_history_entry(profile=p, id="h1", file="s1.zst")
-        )
+        ShotDataBase.insert_history(make_history_entry(profile=p, id="h1", file="s1.zst"))
 
         results = ShotDataBase.autocomplete_profile_name("Bloom")
         assert any(r.get("type") == "stage" for r in results)

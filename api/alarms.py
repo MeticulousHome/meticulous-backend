@@ -93,9 +93,7 @@ class AlarmManager:
                         new_alarm = Alarm(type, float(alarm_file.read().strip()))
                     AlarmManager.alarms.setdefault(type.value, new_alarm)
                 except Exception as e:
-                    logger.warning(
-                        f"Cannot read file {type.value}, clearing alarm: {e}"
-                    )
+                    logger.warning(f"Cannot read file {type.value}, clearing alarm: {e}")
                     try:
                         os.remove(alarm_file_path)
                     except Exception as e:
@@ -138,9 +136,7 @@ class AlarmManager:
             time.sleep(1)
 
     @staticmethod
-    def set_alarm(
-        type: AlarmType, end_time: float | None, force: bool, quiet: bool = False
-    ):
+    def set_alarm(type: AlarmType, end_time: float | None, force: bool, quiet: bool = False):
         new_alarm: Alarm = Alarm(type, end_time if end_time is not None else -math.inf)
         msg = ""
         img = WARNING_TRIANGLE_IMAGE
@@ -149,9 +145,7 @@ class AlarmManager:
             case AlarmType.MOTOR_STRESSED:
                 msg = f"Brewing paused because of high strain in the motor. Let the machine rest for {math.ceil((end_time - time.time())/60.0) if math.isfinite(end_time) else 10} mins and use a coarser grind before trying again"
             case AlarmType.ESP_RESTART:
-                msg = (
-                    "Digital controller seems to be unresponsive, buttons are disabled."
-                )
+                msg = "Digital controller seems to be unresponsive, buttons are disabled."
             case AlarmType.ESP_DISCONNECTED:
                 msg = "Digital controller seems disconnected, buttons are disabled"
 
@@ -159,17 +153,13 @@ class AlarmManager:
             logger.warning("The alarm manager is not initialized")
 
         if AlarmManager.thread is None or not AlarmManager.thread.is_alive():
-            logger.warning(
-                "The alarm manager thread is not alive, alarms will not end on time"
-            )
+            logger.warning("The alarm manager thread is not alive, alarms will not end on time")
 
         if not os.path.exists(new_alarm.alarm_path) or force:
             if end_time is not None:
                 new_alarm.create_file()
             else:
-                logger.info(
-                    f"setting alarm {type.value} with the duration of the session"
-                )
+                logger.info(f"setting alarm {type.value} with the duration of the session")
 
             AlarmManager.alarms[type.value] = new_alarm
             if not quiet:
@@ -185,14 +175,10 @@ class AlarmManager:
                     if not math.isinf(new_alarm.end_time)
                     else "Never"
                 )
-                logger.warning(
-                    f"Alarm was already set, will end in: {duration_alarm_str}"
-                )
+                logger.warning(f"Alarm was already set, will end in: {duration_alarm_str}")
                 logger.warning("You can force the alarm to overwrite it")
             except Exception as e:
-                logger.warning(
-                    f"Cannot read {new_alarm.type.value} file, clearing alarm: {e}"
-                )
+                logger.warning(f"Cannot read {new_alarm.type.value} file, clearing alarm: {e}")
                 new_alarm.remove_file()
                 AlarmManager.alarms[type.value] = None
 
@@ -208,9 +194,7 @@ class AlarmManager:
     def _notify_user(message, image):
         # TODO: define alarm severity if needed and notify based on that
         NotificationManager.add_notification(
-            Notification(
-                message=message, image=image, responses=[NotificationResponse.OK]
-            )
+            Notification(message=message, image=image, responses=[NotificationResponse.OK])
         )
 
     @staticmethod
