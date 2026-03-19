@@ -13,6 +13,7 @@ shots
 profiles
 images/profile-images
 db-migrations
+out
 
 !**/__pycache__/
 
