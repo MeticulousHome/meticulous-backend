@@ -983,7 +983,6 @@ dependencies = [
     { name = "datauri" },
     { name = "dbus-next" },
     { name = "esptool" },
-    { name = "gpiod" },
     { name = "jsonschema" },
     { name = "mergedeep" },
     { name = "netaddr" },
@@ -991,12 +990,9 @@ dependencies = [
     { name = "packaging" },
     { name = "playsound" },
     { name = "psutil" },
-    { name = "pycairo" },
     { name = "pydantic" },
     { name = "pydbus" },
-    { name = "pygobject" },
     { name = "pyimprov" },
-    { name = "pyparted" },
     { name = "pypng" },
     { name = "pyprctl" },
     { name = "pyqrcode" },
@@ -1019,6 +1015,12 @@ dev = [
     { name = "pre-commit" },
     { name = "pytest" },
 ]
+machine = [
+    { name = "gpiod" },
+    { name = "pycairo" },
+    { name = "pygobject" },
+    { name = "pyparted" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -1032,7 +1034,6 @@ requires-dist = [
     { name = "datauri" },
     { name = "dbus-next" },
     { name = "esptool", specifier = "==4.6.2" },
-    { name = "gpiod", specifier = "==1.5.4" },
     { name = "jsonschema", specifier = "==4.23.0" },
     { name = "mergedeep", specifier = ">=1.3.4" },
     { name = "netaddr", specifier = ">=0.9.0" },
@@ -1040,12 +1041,9 @@ requires-dist = [
     { name = "packaging", specifier = "==24.1" },
     { name = "playsound", git = "https://github.com/taconi/playsound.git?rev=92385c78ec05c2fc3afad1afc5edc9d1282aa1e5" },
     { name = "psutil" },
-    { name = "pycairo" },
     { name = "pydantic", specifier = ">=2.8.2" },
     { name = "pydbus", specifier = "==0.6.0" },
-    { name = "pygobject", specifier = ">=3.42.0,<3.52" },
     { name = "pyimprov", specifier = ">=0.1.0" },
-    { name = "pyparted" },
     { name = "pypng", specifier = ">=0.20220715.0" },
     { name = "pyprctl" },
     { name = "pyqrcode", specifier = ">=1.2.1" },
@@ -1067,6 +1065,12 @@ dev = [
     { name = "flake8", specifier = "==7.2.0" },
     { name = "pre-commit", specifier = ">=4.3.0" },
     { name = "pytest", specifier = ">=8.0.0" },
+]
+machine = [
+    { name = "gpiod", specifier = "==1.5.4" },
+    { name = "pycairo" },
+    { name = "pygobject", specifier = ">=3.42.0,<3.52" },
+    { name = "pyparted" },
 ]
 
 [[package]]
