@@ -18,23 +18,10 @@ export TIMEZONE_JSON_FILE_PATH=./UI_timezones.json
 export USER_DB_MIGRATION_DIR=./db-migrations
 export ALARMS_PATH=./alarms
 
-if [[ -z "${MET_VENV}" ]]; then
-    MET_VENV=".venv"
-fi
-
-PYTHON=python3
-if [[ -e "${MET_VENV}" ]]; then
-	PYTHON="${MET_VENV}/bin/python3"
-fi
-
 if [[ "$@" == *"--memory"* ]]; then
-    if [ $PYTHON -m memray ]; then
-        $PYTHON -m pip install memray
-    fi
-    profiling_file="memory_profiling_$(date -Iseconds).bin"
-    $PYTHON -m memray run -o ${profiling_file} back.py
-    $PYTHON -m memray flamegraph ${profiling_file}
-    $PYTHON -m memray summary ${profiling_file}
+    uv run --with memray python3 -m memray run -o "memory_profiling_$(date -Iseconds).bin" back.py
+    uv run --with memray python3 -m memray flamegraph "memory_profiling_$(date -Iseconds).bin"
+    uv run --with memray python3 -m memray summary "memory_profiling_$(date -Iseconds).bin"
 else
-    $PYTHON back.py
+    uv run python3 back.py
 fi

@@ -1,39 +1,27 @@
-FROM debian:trixie
+FROM debian:bookworm
 
-RUN apt update
-RUN apt-get update -y
-RUN apt dist-upgrade -y
-RUN apt install -y build-essential libcairo2-dev libxt-dev libgirepository1.0-dev libgstreamer1.0-dev bluez python3 \
-    python3-bleak \
-    python3-cairo \
-    python3-dbus-next \
-    python3-gi \
+RUN apt-get update -y && apt-get dist-upgrade -y
+RUN apt-get install -y build-essential libcairo2-dev libxt-dev libgirepository1.0-dev libgstreamer1.0-dev bluez \
+    libsystemd-dev libparted-dev libglib2.0-dev libffi-dev python3-dev pkg-config \
+    python3 \
     python3-setuptools \
-    python3-systemd \
-    python3-venv \
-    python3-wheel \
-    python3-pip \
-    python3-parted
+    dbus systemd git curl
 
-RUN apt-get install -y dbus systemd git
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:$PATH"
 
-ENV PATH=/root/.cargo/bin:$PATH
-
-ENV VIRTUAL_ENV=/opt/venv
-RUN python3 -m venv --system-site-packages $VIRTUAL_ENV
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-
-RUN /opt/venv/bin/pip install --upgrade pip
-RUN /opt/venv/bin/pip install --upgrade setuptools
-RUN /opt/venv/bin/pip install --upgrade wheel
-
-# Install dependencies:
-COPY requirements.txt .
-COPY requirements-dev.txt .
-COPY UI_timezones.json /usr/share/zoneinfo
-RUN /opt/venv/bin/pip install -r requirements.txt
-RUN /opt/venv/bin/pip install -r requirements-dev.txt
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 
 WORKDIR /app
-RUN mkdir /run/dbus
+
+# Install dependencies first for better layer caching
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
+
+COPY UI_timezones.json /usr/share/zoneinfo
+
+RUN mkdir -p /run/dbus
 CMD ["/bin/bash", "/app/start_container.sh"]
