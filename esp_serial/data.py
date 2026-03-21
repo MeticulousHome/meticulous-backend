@@ -57,6 +57,8 @@ class SensorData:
     motor_thermistor: float = 0.0
     weight_prediction: float = 0.0
 
+    kalman_weight: float = 0.0
+    kalman_grav_flow: float = 0.0
     def from_color_coded_args(colorSeperatedArgs):
         global colorSensorRegex
         if colorSensorRegex is None:
@@ -95,6 +97,8 @@ class SensorData:
                 water_status=args[20].lower() == "true",
                 motor_thermistor=safe_float_with_nan(args[21]),
                 weight_prediction=safe_float_with_nan(args[22]),
+                kalman_weight=safeFloat(args[23]) if len(args) >= 24 else 0.0,
+                kalman_grav_flow=safeFloat(args[24]) if len(args) >= 25 else 0.0,
             )
 
         except Exception as e:
@@ -130,6 +134,8 @@ class SensorData:
             "true" if self.water_status else "false",
             str(self.motor_thermistor),
             str(self.weight_prediction),
+            str(self.kalman_weight),
+            str(self.kalman_grav_flow),
         ]
         return args
 
@@ -158,6 +164,8 @@ class SensorData:
             "w_stat": self.water_status,
             "motor_temp": self.motor_thermistor,
             "weight_pred": self.weight_prediction,
+            "kalman_weight": self.kalman_weight,
+            "kalm_grav_flow": self.kalman_grav_flow,
         }
 
 
