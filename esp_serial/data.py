@@ -13,6 +13,12 @@ colorSensorRegex = None
 
 
 def safeFloat(val):
+    if val is None:
+        return 0
+    if isinstance(val, str):
+        val = val.strip()
+        if val == "":
+            return 0
     convert = float(val)
     if not math.isfinite(convert):
         return 0
