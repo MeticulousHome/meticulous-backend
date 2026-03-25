@@ -29,6 +29,10 @@ class ZeroConfAnnouncement:
         ips = list(map(lambda ip: str(ip.ip), self.network_config.ips))
         machine_name = self.network_config.hostname
 
+        # zeroconf properties must be str or bytes, not lists
+        ips_str = ",".join(ips)
+        domains_str = ",".join(self.network_config.domains)
+
         # Create the http service information
         self.http_service_info = zeroconf.ServiceInfo(
             "_http._tcp.local.",
@@ -38,8 +42,8 @@ class ZeroConfAnnouncement:
             # We can announce arbitrary information here (e.g. version numbers or features or state)
             properties={
                 "server_name": machine_name,
-                "ips": ips,
-                "domain": self.network_config.domains,
+                "ips": ips_str,
+                "domain": domains_str,
                 "machine_name": machine_name,
             },
             server=f"{machine_name}.local.",
@@ -53,8 +57,8 @@ class ZeroConfAnnouncement:
             # We can announce arbitrary information here (e.g. version numbers or features or state)
             properties={
                 "server_name": machine_name,
-                "ips": ips,
-                "domain": self.network_config.domains,
+                "ips": ips_str,
+                "domain": domains_str,
                 "machine_name": machine_name,
             },
             server=f"{machine_name}.local.",
