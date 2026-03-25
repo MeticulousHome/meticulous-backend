@@ -988,7 +988,7 @@ dependencies = [
     { name = "netaddr" },
     { name = "nmcli" },
     { name = "packaging" },
-    { name = "playsound" },
+    { name = "playsound3" },
     { name = "psutil" },
     { name = "pydantic" },
     { name = "pydbus" },
@@ -1039,7 +1039,7 @@ requires-dist = [
     { name = "netaddr", specifier = ">=0.9.0" },
     { name = "nmcli" },
     { name = "packaging", specifier = "==24.1" },
-    { name = "playsound", git = "https://github.com/taconi/playsound.git?rev=92385c78ec05c2fc3afad1afc5edc9d1282aa1e5" },
+    { name = "playsound3" },
     { name = "psutil" },
     { name = "pydantic", specifier = ">=2.8.2" },
     { name = "pydbus", specifier = "==0.6.0" },
@@ -1254,9 +1254,16 @@ wheels = [
 ]
 
 [[package]]
-name = "playsound"
-version = "1.3.0"
-source = { git = "https://github.com/taconi/playsound.git?rev=92385c78ec05c2fc3afad1afc5edc9d1282aa1e5#92385c78ec05c2fc3afad1afc5edc9d1282aa1e5" }
+name = "playsound3"
+version = "3.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pywin32", marker = "sys_platform == 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6b/93/39f2296a69fe2c70dcc9b9724147ffc9d7f676f67eb3cbad3baa725ae32d/playsound3-3.3.1.tar.gz", hash = "sha256:3f0eb87d5ff2061d07663c4b010b8e7d66c274344712b01d561a0a73447ef41d", size = 608340, upload-time = "2026-01-22T18:05:55.444Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/62/9d/8b97af915bd8a9e2b17b08bb9d62d45cce5c00a28a64b08324bb5895145b/playsound3-3.3.1-py3-none-any.whl", hash = "sha256:8e606115c3630762a7136579ceb25fbf725768a31f7d0bfc2883154d8c50205d", size = 9697, upload-time = "2026-01-22T18:05:53.783Z" },
+]
 
 [[package]]
 name = "pluggy"
