@@ -957,10 +957,7 @@ Build Date: {build_date}
             + "\x03"
         )
         Machine.write(payload.encode("utf-8"))
-        logger.info(
-            "Synced partial_retraction to ESP32: "
-            + f"requested={desired_value:.2f}"
-        )
+        logger.info("Synced partial_retraction to ESP32: " + f"requested={desired_value:.2f}")
 
         if Machine.esp_info is not None:
             Machine.esp_info.partialRetraction = desired_value
