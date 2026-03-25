@@ -1,7 +1,7 @@
 from enum import Enum, auto
 import os
 import json
-from play_sound import playsound
+from playsound3 import playsound
 import gpiod
 import subprocess
 
@@ -45,6 +45,7 @@ class SoundPlayer:
     DEFAULT_THEME_CONFIG = {}
 
     _audio_pin = None
+    _current_sound = None
 
     @staticmethod
     def init(emulation=False, play_startup_sound=True):
@@ -199,7 +200,14 @@ class SoundPlayer:
             return False
 
         try:
-            playsound(file_path)
+            # Stop any currently playing sound before starting a new one
+            if SoundPlayer._current_sound is not None:
+                try:
+                    SoundPlayer._current_sound.stop()
+                except Exception:
+                    pass
+            # Play non-blocking to avoid stalling the serial loop and Tornado IO loop
+            SoundPlayer._current_sound = playsound(file_path, block=False)
         except Exception as e:
             logger.exception(f"Failed to play sound: {e}")
             return False
