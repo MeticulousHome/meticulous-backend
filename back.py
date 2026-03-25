@@ -3,7 +3,6 @@ from sentry_sdk.integrations.asyncio import AsyncioIntegration
 
 import os
 
-
 BACKEND = os.getenv("BACKEND", "FIKA").upper()
 SENTRY = os.getenv("SENTRY", "False").lower() in ("true", "1", "y")
 

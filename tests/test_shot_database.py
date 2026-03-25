@@ -30,7 +30,7 @@ def shot_db(tmp_path, monkeypatch):
 
     # Reset class-level state so init() starts fresh
     ShotDataBase.engine = None
-    ShotDataBase.session = None
+    ShotDataBase.Session = None
     ShotDataBase.stage_fts_table = None
     ShotDataBase.profile_fts_table = None
 
