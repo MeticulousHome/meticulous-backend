@@ -72,6 +72,7 @@ class ShotDataBase:
     engine = None
     metadata = metadata
     Session = None
+    db_write_lock = threading.RLock()
     stage_fts_table = None
     profile_fts_table = None
 
@@ -91,7 +92,6 @@ class ShotDataBase:
             dbapi_connection.execute(f"PRAGMA journal_size_limit = {maxJournalBytes};")
             dbapi_connection.execute("PRAGMA wal_checkpoint(TRUNCATE);")
 
-        sqlEvent.listen(ShotDataBase.engine, "connect", setupDatabase)
         ShotDataBase.Session = sessionmaker(bind=ShotDataBase.engine)
 
     @staticmethod
@@ -108,40 +108,45 @@ class ShotDataBase:
                 else:
                     logger.error("Database integrity check failed: %s", result)
                     ShotDataBase.rebuild_database()
+                    return
         except Exception as e:
             logger.error("Database integrity check failed with exception: %s", e)
             ShotDataBase.rebuild_database()
+            return
 
         # Ensure FTS tables are created
-        with ShotDataBase.engine.connect() as connection:
-            connection.execute(
-                text(
-                    "CREATE VIRTUAL TABLE IF NOT EXISTS profile_fts USING fts5(profile_key, profile_id, name)"
+        try:
+            with ShotDataBase.engine.connect() as connection:
+                connection.execute(
+                    text(
+                        "CREATE VIRTUAL TABLE IF NOT EXISTS profile_fts USING fts5(profile_key, profile_id, name)"
+                    )
                 )
-            )
-            connection.execute(
-                text(
-                    "CREATE VIRTUAL TABLE IF NOT EXISTS stage_fts USING fts5(profile_key, profile_id, profile_name, stage_key, stage_name)"
+                connection.execute(
+                    text(
+                        "CREATE VIRTUAL TABLE IF NOT EXISTS stage_fts USING fts5(profile_key, profile_id, profile_name, stage_key, stage_name)"
+                    )
                 )
-            )
-            # Register FTS tables with SQLAlchemy
-            ShotDataBase.profile_fts_table = Table(
-                "profile_fts",
-                ShotDataBase.metadata,
-                autoload_with=ShotDataBase.engine,
-            )
-            ShotDataBase.stage_fts_table = Table(
-                "stage_fts",
-                ShotDataBase.metadata,
-                autoload_with=ShotDataBase.engine,
-            )
+                # Register FTS tables with SQLAlchemy
+                ShotDataBase.profile_fts_table = Table(
+                    "profile_fts",
+                    ShotDataBase.metadata,
+                    autoload_with=ShotDataBase.engine,
+                )
+                ShotDataBase.stage_fts_table = Table(
+                    "stage_fts",
+                    ShotDataBase.metadata,
+                    autoload_with=ShotDataBase.engine,
+                )
+        except Exception as e:
+            logger.error("Failed to create FTS tables: %s", e)
+            ShotDataBase.rebuild_database()
+            return
 
         # Log number of history entries
         try:
             with ShotDataBase.Session() as session:
-                count = session.execute(
-                    select(func.count()).select_from(History)
-                ).scalar() or 0
+                count = session.execute(select(func.count()).select_from(History)).scalar() or 0
                 logger.info("Number of history entries in database: %d", count)
         except Exception as e:
             logger.error("Failed to count history entries: %s", e)
@@ -172,8 +177,6 @@ class ShotDataBase:
 
     @staticmethod
     def rescan_shots():
-        from shot_manager import SHOT_PATH
-
         logger.info("Starting rescan of shot files from disk")
         shot_path = Path(SHOT_PATH)
         if not shot_path.exists():
@@ -217,16 +220,14 @@ class ShotDataBase:
             .where(Profile.author == profile_data["author"])
             .where(Profile.author_id == profile_data["author_id"])
             .where(
-                func.json_extract(Profile.display, "$")
-                == func.json_extract(display_json, "$")
+                func.json_extract(Profile.display, "$") == func.json_extract(display_json, "$")
             )
             .where(Profile.final_weight == profile_data["final_weight"])
             .where(Profile.last_changed == profile_data.get("last_changed", 0))
             .where(Profile.name == profile_data["name"])
             .where(Profile.temperature == profile_data["temperature"])
             .where(
-                func.json_extract(Profile.stages, "$")
-                == func.json_extract(stages_json, "$")
+                func.json_extract(Profile.stages, "$") == func.json_extract(stages_json, "$")
             )
             .where(
                 func.json_extract(Profile.variables, "$")
@@ -254,47 +255,48 @@ class ShotDataBase:
             )
             return existing_profile[0]
 
-        with ShotDataBase.Session() as session:
-            with session.begin():
-                profile_obj = Profile(
-                    id=profile_data["id"],
-                    author=profile_data["author"],
-                    author_id=profile_data["author_id"],
-                    display=profile_data["display"],
-                    final_weight=profile_data["final_weight"],
-                    last_changed=profile_data.get("last_changed", 0),
-                    name=profile_data["name"],
-                    temperature=profile_data["temperature"],
-                    stages=profile_data.get("stages", []),
-                    variables=profile_data.get("variables", []),
-                    previous_authors=profile_data.get("previous_authors", []),
-                )
-                session.add(profile_obj)
-                session.flush()
-                profile_key = profile_obj.key
-
-                # Insert into profile FTS table
-                session.execute(
-                    insert(ShotDataBase.profile_fts_table).values(
-                        profile_key=profile_key,
-                        profile_id=profile_data["id"],
+        with ShotDataBase.db_write_lock:
+            with ShotDataBase.Session() as session:
+                with session.begin():
+                    profile_obj = Profile(
+                        id=profile_data["id"],
+                        author=profile_data["author"],
+                        author_id=profile_data["author_id"],
+                        display=profile_data["display"],
+                        final_weight=profile_data["final_weight"],
+                        last_changed=profile_data.get("last_changed", 0),
                         name=profile_data["name"],
+                        temperature=profile_data["temperature"],
+                        stages=profile_data.get("stages", []),
+                        variables=profile_data.get("variables", []),
+                        previous_authors=profile_data.get("previous_authors", []),
                     )
-                )
+                    session.add(profile_obj)
+                    session.flush()
+                    profile_key = profile_obj.key
 
-                # Insert stages into stage_fts
-                for stage in profile_data["stages"]:
+                    # Insert into profile FTS table
                     session.execute(
-                        insert(ShotDataBase.stage_fts_table).values(
+                        insert(ShotDataBase.profile_fts_table).values(
                             profile_key=profile_key,
                             profile_id=profile_data["id"],
-                            profile_name=profile_data["name"],
-                            stage_key=stage["key"],
-                            stage_name=stage["name"],
+                            name=profile_data["name"],
                         )
                     )
 
-                return profile_key
+                    # Insert stages into stage_fts
+                    for stage in profile_data["stages"]:
+                        session.execute(
+                            insert(ShotDataBase.stage_fts_table).values(
+                                profile_key=profile_key,
+                                profile_id=profile_data["id"],
+                                profile_name=profile_data["name"],
+                                stage_key=stage["key"],
+                                stage_name=stage["name"],
+                            )
+                        )
+
+                    return profile_key
 
     @staticmethod
     def history_exists(entry):
@@ -316,86 +318,88 @@ class ShotDataBase:
         profile_data = entry.get("profile")
         profile_key = ShotDataBase.insert_profile(profile_data)
 
-        with ShotDataBase.Session() as session:
-            with session.begin():
-                # Convert to UTC
-                time_obj = datetime.fromtimestamp(entry["time"])
-                time_obj = pytz.timezone("UTC").localize(time_obj)
+        with ShotDataBase.db_write_lock:
+            with ShotDataBase.Session() as session:
+                with session.begin():
+                    # Convert to UTC
+                    time_obj = datetime.fromtimestamp(entry["time"])
+                    time_obj = pytz.timezone("UTC").localize(time_obj)
 
-                history_obj = History(
-                    uuid=entry["id"],
-                    file=entry.get("file"),
-                    time=time_obj,
-                    profile_name=entry["profile_name"],
-                    profile_id=profile_data["id"],
-                    profile_key=profile_key,
-                )
-                session.add(history_obj)
-                session.flush()
-                return history_obj.id
+                    history_obj = History(
+                        uuid=entry["id"],
+                        file=entry.get("file"),
+                        time=time_obj,
+                        profile_name=entry["profile_name"],
+                        profile_id=profile_data["id"],
+                        profile_key=profile_key,
+                    )
+                    session.add(history_obj)
+                    session.flush()
+                    return history_obj.id
 
     @staticmethod
     def link_debug_file(history_shot_id, debug_filename):
-        with ShotDataBase.Session() as session:
-            with session.begin():
-                history_obj = session.get(History, history_shot_id)
-                if history_obj:
-                    history_obj.debug_file = debug_filename
-                    logger.info(f"debug file linked to history id {history_shot_id}")
-                else:
-                    logger.warning(f"history id {history_shot_id} not found")
+        with ShotDataBase.db_write_lock:
+            with ShotDataBase.Session() as session:
+                with session.begin():
+                    history_obj = session.get(History, history_shot_id)
+                    if history_obj:
+                        history_obj.debug_file = debug_filename
+                        logger.info(f"debug file linked to history id {history_shot_id}")
+                    else:
+                        logger.warning(f"history id {history_shot_id} not found")
 
     @staticmethod
     def unlink_debug_file(file_relative_path):
-        with ShotDataBase.Session() as session:
-            with session.begin():
-                result = session.execute(
-                    update(History)
-                    .where(History.debug_file == file_relative_path)
-                    .values(debug_file=None)
-                )
-                if result.rowcount == 0:
-                    logger.warning("no columns affected, check relative file path")
-                else:
-                    logger.info(
-                        f"debug file unlinked, affected rows: {result.rowcount}"
+        with ShotDataBase.db_write_lock:
+            with ShotDataBase.Session() as session:
+                with session.begin():
+                    result = session.execute(
+                        update(History)
+                        .where(History.debug_file == file_relative_path)
+                        .values(debug_file=None)
                     )
+                    if result.rowcount == 0:
+                        logger.warning("no columns affected, check relative file path")
+                    else:
+                        logger.info(f"debug file unlinked, affected rows: {result.rowcount}")
 
     @staticmethod
     def delete_shot(shot_id):
-        with ShotDataBase.Session() as session:
-            with session.begin():
-                history_obj = session.get(History, shot_id)
-                if not history_obj:
-                    return
+        with ShotDataBase.db_write_lock:
+            with ShotDataBase.Session() as session:
+                with session.begin():
+                    history_obj = session.get(History, shot_id)
+                    if not history_obj:
+                        return
 
-                profile_key = history_obj.profile_key
-                session.delete(history_obj)
-                session.flush()
+                    profile_key = history_obj.profile_key
+                    session.delete(history_obj)
+                    session.flush()
 
-                # Check if this profile is now orphaned
-                has_other = session.execute(
-                    select(History.id).where(History.profile_key == profile_key).limit(1)
-                ).fetchone()
+                    # Check if this profile is now orphaned
+                    has_other = session.execute(
+                        select(History.id).where(History.profile_key == profile_key).limit(1)
+                    ).fetchone()
 
-                if not has_other:
-                    profile_obj = session.get(Profile, profile_key)
-                    if profile_obj:
-                        session.delete(profile_obj)
+                    if not has_other:
+                        profile_obj = session.get(Profile, profile_key)
+                        if profile_obj:
+                            session.delete(profile_obj)
 
-                    # Delete from profile_fts
-                    session.execute(
-                        delete(ShotDataBase.profile_fts_table).where(
-                            ShotDataBase.profile_fts_table.c.profile_key == profile_key
+                        # Delete from profile_fts
+                        session.execute(
+                            delete(ShotDataBase.profile_fts_table).where(
+                                ShotDataBase.profile_fts_table.c.profile_key == profile_key
+                            )
                         )
-                    )
 
-                    # Delete stages from stage_fts
-                    session.execute(
-                        delete(ShotDataBase.stage_fts_table).where(
-                            ShotDataBase.stage_fts_table.c.profile_key == profile_key
+                        # Delete stages from stage_fts
+                        session.execute(
+                            delete(ShotDataBase.stage_fts_table).where(
+                                ShotDataBase.stage_fts_table.c.profile_key == profile_key
+                            )
                         )
-                    )
 
     @staticmethod
     def search_history(params: SearchParams):
@@ -428,9 +432,7 @@ class ShotDataBase:
             stmt = stmt.where(
                 or_(
                     ShotDataBase.profile_fts_table.c.name.like(f"%{params.query}%"),
-                    ShotDataBase.stage_fts_table.c.stage_name.like(
-                        f"%{params.query}%"
-                    ),
+                    ShotDataBase.stage_fts_table.c.stage_name.like(f"%{params.query}%"),
                 )
             )
 
@@ -605,51 +607,52 @@ class ShotDataBase:
             return False
 
         try:
-            with ShotDataBase.Session() as session:
-                with session.begin():
-                    history_obj = session.execute(
-                        select(History).where(History.uuid == history_uuid)
-                    ).scalar_one_or_none()
+            with ShotDataBase.db_write_lock:
+                with ShotDataBase.Session() as session:
+                    with session.begin():
+                        history_obj = session.execute(
+                            select(History).where(History.uuid == history_uuid)
+                        ).scalar_one_or_none()
 
-                    if not history_obj:
-                        logger.error(f"Shot with ID {history_uuid} does not exist")
-                        return False
+                        if not history_obj:
+                            logger.error(f"Shot with ID {history_uuid} does not exist")
+                            return False
 
-                    annotation_obj = session.execute(
-                        select(ShotAnnotation).where(
-                            ShotAnnotation.history_uuid == history_uuid
-                        )
-                    ).scalar_one_or_none()
-
-                    if not annotation_obj:
-                        annotation_obj = ShotAnnotation(
-                            history_id=history_obj.id,
-                            history_uuid=history_uuid,
-                        )
-                        session.add(annotation_obj)
-                        session.flush()
-
-                    existing_rating = session.execute(
-                        select(ShotRating).where(
-                            ShotRating.annotation_id == annotation_obj.id
-                        )
-                    ).scalar_one_or_none()
-
-                    if rating is None:
-                        if existing_rating:
-                            session.delete(existing_rating)
-                    else:
-                        if existing_rating:
-                            existing_rating.basic = rating
-                        else:
-                            session.add(
-                                ShotRating(
-                                    annotation_id=annotation_obj.id,
-                                    basic=rating,
-                                )
+                        annotation_obj = session.execute(
+                            select(ShotAnnotation).where(
+                                ShotAnnotation.history_uuid == history_uuid
                             )
+                        ).scalar_one_or_none()
 
-                    return True
+                        if not annotation_obj:
+                            annotation_obj = ShotAnnotation(
+                                history_id=history_obj.id,
+                                history_uuid=history_uuid,
+                            )
+                            session.add(annotation_obj)
+                            session.flush()
+
+                        existing_rating = session.execute(
+                            select(ShotRating).where(
+                                ShotRating.annotation_id == annotation_obj.id
+                            )
+                        ).scalar_one_or_none()
+
+                        if rating is None:
+                            if existing_rating:
+                                session.delete(existing_rating)
+                        else:
+                            if existing_rating:
+                                existing_rating.basic = rating
+                            else:
+                                session.add(
+                                    ShotRating(
+                                        annotation_id=annotation_obj.id,
+                                        basic=rating,
+                                    )
+                                )
+
+                        return True
         except Exception as e:
             logger.error(f"Error rating shot: {e}")
             return False

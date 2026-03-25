@@ -197,9 +197,7 @@ class ShotManager:
 
             def write_current_shot(shot_data):
                 # Determine the paths based on the shot start
-                folder_name, file_path = ShotManager._timestampToFilePaths(
-                    shot_data["time"]
-                )
+                folder_name, file_path = ShotManager._timestampToFilePaths(shot_data["time"])
 
                 # Compress and write the shot to disk
                 logger.info("Writing and compressing shot file")

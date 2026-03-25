@@ -58,14 +58,12 @@ class History(Base):
     time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     profile_name: Mapped[str] = mapped_column(Text, nullable=False)
     profile_id: Mapped[str] = mapped_column(Text, nullable=False)
-    profile_key: Mapped[int] = mapped_column(
-        Integer, ForeignKey("profile.key"), nullable=False
-    )
+    profile_key: Mapped[int] = mapped_column(Integer, ForeignKey("profile.key"), nullable=False)
     debug_file: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     profile: Mapped["Profile"] = relationship(back_populates="histories")
     annotation: Mapped[Optional["ShotAnnotation"]] = relationship(
-        back_populates="history", uselist=False
+        back_populates="history", uselist=False, foreign_keys="[ShotAnnotation.history_id]"
     )
 
 
@@ -80,7 +78,9 @@ class ShotAnnotation(Base):
         Text, ForeignKey("history.uuid"), nullable=False, unique=True
     )
 
-    history: Mapped["History"] = relationship(back_populates="annotation")
+    history: Mapped["History"] = relationship(
+        back_populates="annotation", foreign_keys=[history_id]
+    )
     rating: Mapped[Optional["ShotRating"]] = relationship(
         back_populates="annotation", uselist=False
     )
