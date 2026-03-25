@@ -2,7 +2,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-RUN_COMMAND="pytest /app/tests/ -v"
+RUN_COMMAND="pytest tests/ -v"
 
 if [ "$(uname)" = "Darwin" ]; then
     echo "macOS detected, running tests inside Docker..."
@@ -12,8 +12,7 @@ if [ "$(uname)" = "Darwin" ]; then
         --no-deps \
         -v "$SCRIPT_DIR:/app" \
         backend \
-        bash -c "black . && flake8 && $RUN_COMMAND"
+        bash -c "cd /app && black . && flake8 && $RUN_COMMAND"
 else
-    pip install -r "$SCRIPT_DIR/requirements-dev.txt"
-    $RUN_COMMAND
+    uv run $RUN_COMMAND
 fi
