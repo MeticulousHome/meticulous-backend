@@ -255,6 +255,15 @@ class GATTServer:
             self.bless_gatt_server.read_request_func = GATTServer.read_request
             self.bless_gatt_server.write_request_func = GATTServer.write_request
 
+            def on_start_notify(char_uuid):
+                logger.info(f"BLE client subscribed to notifications (char={char_uuid})")
+
+            def on_stop_notify(char_uuid):
+                logger.info(f"BLE client unsubscribed from notifications (char={char_uuid})")
+
+            self.bless_gatt_server.app.StartNotify = on_start_notify
+            self.bless_gatt_server.app.StopNotify = on_stop_notify
+
         try:
             await self.bless_gatt_server.setup_task
         except FileNotFoundError:
@@ -436,34 +445,52 @@ class GATTServer:
         return bytearray(current_response.encode())
 
     def read_request(characteristic: BlessGATTCharacteristic, **kwargs) -> bytearray:
+        char_name = characteristic.uuid
         try:
-            improv_char = ImprovUUID(characteristic.uuid)
-            logger.info(f"Reading {improv_char}")
-        except Exception:
-            logger.info(f"Reading {characteristic.uuid}")
-            pass
+            char_name = ImprovUUID(characteristic.uuid).name
+        except ValueError:
+            if characteristic.uuid == GATTServer.MACHINE_IDENT_UUID:
+                char_name = "MACHINE_IDENT"
+
         if characteristic.service_uuid == ImprovUUID.SERVICE_UUID.value:
             if characteristic.uuid == GATTServer.MACHINE_IDENT_UUID:
                 value = GATTServer.machine_ident_read_request(characteristic)
             else:
                 GATTServer.getServer().updateAuthentication()
                 value = GATTServer.getServer().improv_server.handle_read(characteristic.uuid)
+            logger.info(f"BLE READ  {char_name} -> {len(value)} bytes: {value.hex()}")
             return value
 
+        logger.info(f"BLE READ  {char_name} (non-improv)")
         return characteristic.value
 
     def write_request(characteristic: BlessGATTCharacteristic, value: bytearray, **kwargs):
+        char_name = characteristic.uuid
+        try:
+            char_name = ImprovUUID(characteristic.uuid).name
+        except ValueError:
+            pass
+
+        logger.info(f"BLE WRITE {char_name} <- {len(value)} bytes: {value.hex()}")
+
         if characteristic.service_uuid == ImprovUUID.SERVICE_UUID.value:
             (
                 target_uuid,
                 target_values,
             ) = GATTServer.getServer().improv_server.handle_write(characteristic.uuid, value)
             if target_uuid is not None and target_values is not None:
-                for value in target_values:
-                    logger.debug(f"Setting {ImprovUUID(target_uuid)} to {value}")
+                target_name = target_uuid
+                try:
+                    target_name = ImprovUUID(target_uuid).name
+                except ValueError:
+                    pass
+                for resp_value in target_values:
+                    logger.info(
+                        f"BLE RESP  {target_name} -> {len(resp_value)} bytes: {resp_value.hex()}"
+                    )
                     GATTServer.getServer().bless_gatt_server.get_characteristic(
                         target_uuid,
-                    ).value = value
+                    ).value = resp_value
                     success = GATTServer.getServer().bless_gatt_server.update_value(
                         ImprovUUID.SERVICE_UUID.value, target_uuid
                     )
