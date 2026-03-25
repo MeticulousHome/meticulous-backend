@@ -17,7 +17,7 @@ dependencies = [
     "packaging==24.1",
     "pyprctl",
     "pydantic>=2.8.2",
-    "pyImprov>=0.1.0",
+    "pyImprov>=0.2.0",
     "playsound3",
     "pypng>=0.20220715.0",
     "PyQRCode>=1.2.1",

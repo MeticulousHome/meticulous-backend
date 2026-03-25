@@ -1043,7 +1043,7 @@ requires-dist = [
     { name = "psutil" },
     { name = "pydantic", specifier = ">=2.8.2" },
     { name = "pydbus", specifier = "==0.6.0" },
-    { name = "pyimprov", specifier = ">=0.1.0" },
+    { name = "pyimprov", specifier = ">=0.2.0" },
     { name = "pypng", specifier = ">=0.20220715.0" },
     { name = "pyprctl" },
     { name = "pyqrcode", specifier = ">=1.2.1" },
@@ -1607,15 +1607,15 @@ sdist = { url = "https://files.pythonhosted.org/packages/a7/5d/f2946cc6c1baf56de
 
 [[package]]
 name = "pyimprov"
-version = "0.1.1"
+version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bless" },
     { name = "dbus-next", marker = "sys_platform == 'linux'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6f/d6/66dedf686c0fea9597a4c579f8dc979c7c7be90d139b5b3ce4258f2901b6/pyimprov-0.1.1.tar.gz", hash = "sha256:3fbd64b9375fd1d03e342826aee9691c1de15b63217389c655224907361ffab2", size = 13011, upload-time = "2024-06-26T03:02:11.499Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/61/a9/c53808a8a5c05eff8881edc5712a25006c6d8b33c627e83bdc496fe99ef3/pyimprov-0.2.0.tar.gz", hash = "sha256:3be2824097f9f53608a7fe265a9692a38115d5a89867bfec69cc556c40181514", size = 70926, upload-time = "2026-03-25T15:19:23.027Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c8/4f/8e483273e362e5faef3eef76590bfb283dd58a62a890e543bc74c40c9204/pyImprov-0.1.1-py3-none-any.whl", hash = "sha256:b00b0eaa445fca44bff646034846fda65db591db58ba9381e23c95ac8a1b9f51", size = 13346, upload-time = "2024-06-26T03:02:10.045Z" },
+    { url = "https://files.pythonhosted.org/packages/1a/c2/d18e5978bcbd7e6aa486cf148810091f914727df5d6ebc48c99f8d41d056/pyimprov-0.2.0-py3-none-any.whl", hash = "sha256:7e7816367ae649ad1d183024017eac5993f1adb45142075943bf8c88c3e52b9a", size = 83907, upload-time = "2026-03-25T15:19:22.046Z" },
 ]
 
 [[package]]
