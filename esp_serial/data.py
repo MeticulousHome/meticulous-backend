@@ -66,6 +66,8 @@ class SensorData:
     kalman_weight: float = 0.0
     kalman_grav_flow: float = 0.0
     boyle_theoretical_pressure: float = 0.0
+    boyle_effective_x_eff: float = 0.0
+    boyle_theoretical_distance: float = 0.0
     def from_color_coded_args(colorSeperatedArgs):
         global colorSensorRegex
         if colorSensorRegex is None:
@@ -107,6 +109,8 @@ class SensorData:
                 kalman_weight=safeFloat(args[23]) if len(args) >= 24 else 0.0,
                 kalman_grav_flow=safeFloat(args[24]) if len(args) >= 25 else 0.0,
                 boyle_theoretical_pressure=safeFloat(args[25]) if len(args) >= 26 else 0.0,
+                boyle_effective_x_eff=safeFloat(args[26]) if len(args) >= 27 else 0.0,
+                boyle_theoretical_distance=safeFloat(args[27]) if len(args) >= 28 else 0.0,
             )
 
         except Exception as e:
@@ -145,6 +149,8 @@ class SensorData:
             str(self.kalman_weight),
             str(self.kalman_grav_flow),
             str(self.boyle_theoretical_pressure),
+            str(self.boyle_effective_x_eff),
+            str(self.boyle_theoretical_distance),
         ]
         return args
 
@@ -176,6 +182,8 @@ class SensorData:
             "kalman_weight": self.kalman_weight,
             "kalm_grav_flow": self.kalman_grav_flow,
             "boyle_theoretical_pressure": self.boyle_theoretical_pressure,
+            "boyle_effective_x_eff": self.boyle_effective_x_eff,
+            "boyle_theoretical_distance": self.boyle_theoretical_distance,
         }
 
 
