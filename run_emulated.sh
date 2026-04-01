@@ -18,6 +18,8 @@ export TIMEZONE_JSON_FILE_PATH=./UI_timezones.json
 export USER_DB_MIGRATION_DIR=./db-migrations
 export ALARMS_PATH=./alarms
 
+uv sync --group dev --group machine
+
 if [[ "$@" == *"--memory"* ]]; then
     uv run --with memray python3 -m memray run -o "memory_profiling_$(date -Iseconds).bin" back.py
     uv run --with memray python3 -m memray flamegraph "memory_profiling_$(date -Iseconds).bin"
