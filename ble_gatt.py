@@ -13,7 +13,7 @@ from bless import (
     GATTCharacteristicProperties,
 )
 from bless.backends.bluezdbus.dbus.advertisement import BlueZLEAdvertisement, Type
-from dbus_next import Variant
+from dbus_next import Message, Variant  # type: ignore[attr-defined]
 from dbus_next.errors import DBusError
 from improv import ImprovProtocol, ImprovState, ImprovUUID
 
@@ -292,6 +292,58 @@ class GATTServer:
 
         if not success:
             raise RuntimeError("GATT server couldn't be started")
+
+        # Monitor BLE client connect/disconnect via BlueZ DBus signals
+        bus = self.bless_gatt_server.bus
+
+        def _on_dbus_message(msg):
+            if (
+                msg.member == "PropertiesChanged"
+                and msg.interface == "org.freedesktop.DBus.Properties"
+                and len(msg.body) >= 2
+                and msg.body[0] == "org.bluez.Device1"
+            ):
+                changed_props = msg.body[1]
+                if "Connected" in changed_props:
+                    connected = changed_props["Connected"].value
+                    device_path = msg.path
+                    # Try to extract device address and name from changed properties
+                    address = changed_props.get("Address", None)
+                    if address:
+                        address = address.value
+                    name = changed_props.get("Name", None)
+                    if name:
+                        name = name.value
+                    device_info = f"path={device_path}"
+                    if address:
+                        device_info += f", address={address}"
+                    if name:
+                        device_info += f", name={name}"
+                    if connected:
+                        logger.info(f"BLE client connected ({device_info})")
+                    else:
+                        logger.info(f"BLE client disconnected ({device_info})")
+                if "DisconnectReason" in changed_props:
+                    reason = changed_props["DisconnectReason"].value
+                    logger.info(f"BLE disconnect reason: {reason} (path={msg.path})")
+
+        bus.add_message_handler(_on_dbus_message)
+        await bus.call(
+            Message(
+                destination="org.freedesktop.DBus",
+                path="/org/freedesktop/DBus",
+                interface="org.freedesktop.DBus",
+                member="AddMatch",
+                signature="s",
+                body=[
+                    "type='signal',"
+                    "sender='org.bluez',"
+                    "interface='org.freedesktop.DBus.Properties',"
+                    "member='PropertiesChanged',"
+                    "arg0='org.bluez.Device1'"
+                ],
+            )
+        )
 
         try:
             logger.info("GATT Server started")
