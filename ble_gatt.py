@@ -13,8 +13,11 @@ from bless import (
     GATTCharacteristicProperties,
 )
 from bless.backends.bluezdbus.dbus.advertisement import BlueZLEAdvertisement, Type
+import dbus_next
 from dbus_next import Message, Variant  # type: ignore[attr-defined]
+from dbus_next.aio import MessageBus
 from dbus_next.errors import DBusError
+from dbus_next.service import ServiceInterface, method
 from improv import ImprovProtocol, ImprovState, ImprovUUID
 
 from config import CONFIG_WIFI, WIFI_MODE, WIFI_MODE_AP, MeticulousConfig
@@ -28,6 +31,57 @@ logger = MeticulousLogger.getLogger(__name__)
 # NOTE: Some systems require different synchronization methods.
 if sys.platform in ["darwin", "win32"]:
     raise ValueError("Cannot run on non-linux platforms")
+
+
+AGENT_PATH = "/com/meticulous/ble_agent"
+
+
+class NoInputNoOutputAgent(ServiceInterface):
+    """BlueZ pairing agent that auto-accepts Just Works pairing.
+
+    Without a registered agent, bluetoothd rejects pairing requests with
+    "Pairing not supported", which kills the BLE connection when iOS
+    responds to an Insufficient Authentication error on the Battery
+    Service characteristic.
+    """
+
+    def __init__(self):
+        super().__init__("org.bluez.Agent1")
+
+    @method()
+    def Release(self):
+        logger.info("[BLE Agent] Released")
+
+    @method()
+    def RequestConfirmation(self, device: "o", passkey: "u"):
+        logger.info(f"[BLE Agent] Auto-confirming pairing for {device}")
+
+    @method()
+    def AuthorizeService(self, device: "o", uuid: "s"):
+        logger.info(f"[BLE Agent] Authorizing service {uuid} for {device}")
+
+    @method()
+    def Cancel(self):
+        logger.info("[BLE Agent] Pairing cancelled")
+
+
+async def register_pairing_agent():
+    """Register a NoInputNoOutput pairing agent with BlueZ."""
+    try:
+        bus = await MessageBus(bus_type=dbus_next.BusType.SYSTEM).connect()
+        agent = NoInputNoOutputAgent()
+        bus.export(AGENT_PATH, agent)
+
+        introspection = await bus.introspect("org.bluez", "/org/bluez")
+        proxy = bus.get_proxy_object("org.bluez", "/org/bluez", introspection)
+        agent_manager = proxy.get_interface("org.bluez.AgentManager1")
+
+        await agent_manager.call_register_agent(AGENT_PATH, "NoInputNoOutput")
+        await agent_manager.call_request_default_agent(AGENT_PATH)
+        logger.info("[BLE Agent] Registered NoInputNoOutput pairing agent")
+        return bus  # keep reference alive
+    except Exception as e:
+        logger.warning(f"[BLE Agent] Failed to register pairing agent: {e}")
 
 # FIXME Remove once the tornado server logic is in its own class
 PORT = int(os.getenv("PORT", "8080"))
@@ -271,6 +325,10 @@ class GATTServer:
 
             self.bless_gatt_server.app.StartNotify = on_start_notify
             self.bless_gatt_server.app.StopNotify = on_stop_notify
+
+        # Register a pairing agent so bluetoothd can handle pairing requests
+        # (e.g. when iOS requires authentication for its Battery Service)
+        self._agent_bus = await register_pairing_agent()
 
         # Power on the hci device if it is powered off
         try:
