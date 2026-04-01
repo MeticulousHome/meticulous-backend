@@ -255,6 +255,14 @@ class GATTServer:
             self.bless_gatt_server.read_request_func = GATTServer.read_request
             self.bless_gatt_server.write_request_func = GATTServer.write_request
 
+        try:
+            await self.bless_gatt_server.setup_task
+        except FileNotFoundError:
+            logger.warning("Could not initialize the BLE gatt interface. Bailing out!")
+            return
+
+        if self.bless_gatt_server.app is not None:
+
             def on_start_notify(char_uuid):
                 logger.info(f"BLE client subscribed to notifications (char={char_uuid})")
 
@@ -263,12 +271,6 @@ class GATTServer:
 
             self.bless_gatt_server.app.StartNotify = on_start_notify
             self.bless_gatt_server.app.StopNotify = on_stop_notify
-
-        try:
-            await self.bless_gatt_server.setup_task
-        except FileNotFoundError:
-            logger.warning("Could not initialize the BLE gatt interface. Bailing out!")
-            return
 
         # Power on the hci device if it is powered off
         try:
