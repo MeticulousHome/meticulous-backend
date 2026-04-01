@@ -76,7 +76,7 @@ async def register_pairing_agent():
         proxy = bus.get_proxy_object("org.bluez", "/org/bluez", introspection)
         agent_manager = proxy.get_interface("org.bluez.AgentManager1")
 
-        await agent_manager.call_register_agent(AGENT_PATH, "NoInputNoOutput")
+        await agent_manager.call_register_agent(AGENT_PATH, "KeyboardDisplay")
         await agent_manager.call_request_default_agent(AGENT_PATH)
         logger.info("[BLE Agent] Registered NoInputNoOutput pairing agent")
         return bus  # keep reference alive
