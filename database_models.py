@@ -10,7 +10,6 @@ from sqlalchemy import (
     Float,
 )
 
-
 metadata = MetaData(
     naming_convention={
         "ix": "ix_%(column_0_label)s",
