@@ -276,11 +276,11 @@ class ShotDebugManager:
                         with open(file_path, "rb") as f:
                             compressed_data = f.read()
                         await TelemetryService.upload_debug_shot(compressed_data, file_path)
-                        logger.info("Debug shot data compressed and saved")
+                        ShotDataBase.mark_debug_files_sent([debug_dir_filename])
+                        logger.info("Debug shot data sent")
                         connection_to_analytics = True
                     except Exception as e:
                         logger.error(f"Failed to send debug shot to server: {e}")
-                        TelemetryService.track_unsent_shot_file(file_path)
 
                     # If we did not failed to send this shot, try sending all queued files
                     if connection_to_analytics:

@@ -358,6 +358,26 @@ class TestLinkDebugFile:
         results = ShotDataBase.search_history(params)
         assert results[0]["debug_file"] is None
 
+    def test_mark_debug_files_sent_accepts_list(self):
+        first_entry = make_history_entry(id="h1", file="s1.zst")
+        second_entry = make_history_entry(id="h2", file="s2.zst")
+        first_history_id = ShotDataBase.insert_history(first_entry)
+        second_history_id = ShotDataBase.insert_history(second_entry)
+        first_debug_path = "2024-01-01/12:00:00.shot.json.zst"
+        second_debug_path = "2024-01-01/12:05:00.shot.json.zst"
+
+        ShotDataBase.link_debug_file(first_history_id, first_debug_path)
+        ShotDataBase.link_debug_file(second_history_id, second_debug_path)
+
+        assert set(ShotDataBase.fetch_debug_files_to_send()) == {
+            first_debug_path,
+            second_debug_path,
+        }
+
+        ShotDataBase.mark_debug_files_sent([first_debug_path, second_debug_path])
+
+        assert ShotDataBase.fetch_debug_files_to_send() == []
+
 
 def _write_compressed_shot(shot_path, filename, shot_data):
     filepath = Path(shot_path) / filename

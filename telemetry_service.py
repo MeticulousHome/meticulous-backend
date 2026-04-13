@@ -7,11 +7,13 @@ from config import (
     TELEMETRY_SERVICE_ENABLED,
     MACHINE_DEBUG_SENDING,
     MeticulousConfig,
+    DEBUG_HISTORY_PATH,
 )
 from log import MeticulousLogger
 from notifications import Notification, NotificationManager, NotificationResponse
 from hostname import HostnameManager
 import os
+from shot_database import ShotDataBase
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -71,28 +73,26 @@ class TelemetryService:
             NotificationManager.add_notification(TelemetryService.debugPermissionNotification)
 
     async def upload_queue():
-        if not os.path.exists(TELEMETRY_QUEUE_PATH):
-            return
-        for root, dirnames, filenames in os.walk(TELEMETRY_QUEUE_PATH):
-            for file in filenames:
-                # validate the symlink is still valid
-                file_path = os.path.join(TELEMETRY_QUEUE_PATH, file)
-                if os.path.exists(file_path):
-                    try:
-                        logger.debug(f"sending queued debug file: {file} - [{file_path}]")
-                        with open(file_path, mode="rb") as file_data:
-                            await TelemetryService.upload_debug_shot(file_data.read(), file)
-                        os.remove(file_path)
-                    except aiohttp.ClientError as e:
-                        logger.warning(f"Error uploading debug file {file_path}: {e}")
-                    except Exception as e:
-                        logger.warning(
-                            f"Error reading debug file {file_path}, removing from queue: {e}"
-                        )
-                        os.remove(file_path)
-                else:
-                    logger.warning(f"symbolic link broken: {file_path}, removing from queue")
-                    os.remove(file_path)
+        filenames = ShotDataBase.fetch_debug_files_to_send()
+        successful_sent_files: list[str] = []
+        for file in filenames:
+            # validate the symlink is still valid
+            file_path = os.path.join(DEBUG_HISTORY_PATH, file)
+            if os.path.exists(file_path):
+                try:
+                    logger.debug(f"sending queued debug file: {file}")
+                    with open(file_path, mode="rb") as file_data:
+                        await TelemetryService.upload_debug_shot(file_data.read(), file)
+                    successful_sent_files.append(file)
+                except aiohttp.ClientError as e:
+                    logger.warning(f"Error uploading debug file {file_path}: {e}")
+                except Exception:
+                    logger.warning(f"Error reading debug file {file_path}")
+            else:
+                logger.warning(f"file not found: {file_path}, unlinking debug file")
+                ShotDataBase.unlink_debug_file(file)
+
+        ShotDataBase.mark_debug_files_sent(successful_sent_files)
 
     # Upload a debug shot file to the server
     async def upload_debug_shot(file_bytes: bytes, filename: str):
@@ -115,15 +115,3 @@ class TelemetryService:
             raise e
 
         logger.info("Sent debug shot to server")
-
-    @staticmethod
-    def track_unsent_shot_file(file_path: str):
-        # make the directory part of the file name, its not used in the server anyways
-        if not os.path.exists(TELEMETRY_QUEUE_PATH):
-            os.makedirs(TELEMETRY_QUEUE_PATH)
-        file_directory_path = "_".join(file_path.split(os.path.sep)[-2:])
-        LINKED_PATH = os.path.join(TELEMETRY_QUEUE_PATH, file_directory_path)
-        try:
-            os.symlink(file_path, LINKED_PATH)
-        except Exception as e:
-            logger.warning(f"cannot track debug file {file_path} for future telemetry: {e}")
