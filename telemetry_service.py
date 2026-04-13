@@ -5,6 +5,7 @@ from sentry_sdk import capture_message
 from config import (
     CONFIG_USER,
     TELEMETRY_SERVICE_ENABLED,
+    MACHINE_DEBUG_SENDING,
     MeticulousConfig,
 )
 from log import MeticulousLogger
@@ -20,32 +21,54 @@ TELEMETRY_QUEUE_PATH = os.getenv(
 
 
 class TelemetryService:
-    permissionNotification = None
+    telemetryPermissionNotification = None
+    debugPermissionNotification = None
 
     @staticmethod
-    def onNotificationCallback():
+    def onNotificationCallback_telemetry():
         MeticulousConfig[CONFIG_USER][TELEMETRY_SERVICE_ENABLED] = (
-            TelemetryService.permissionNotification.response == NotificationResponse.YES
+            TelemetryService.telemetryPermissionNotification.response
+            == NotificationResponse.YES
         )
         opting = "in" if MeticulousConfig[CONFIG_USER][TELEMETRY_SERVICE_ENABLED] else "out"
-        capture_message(f"User opted {opting} of telemetry")
+        capture_message(f"User opted {opting} of machine telemetry")
+        MeticulousConfig.save()
+
+    @staticmethod
+    def onNotificationCallback_debug():
+        MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] = (
+            TelemetryService.debugPermissionNotification.response == NotificationResponse.YES
+        )
+        opting = "in" if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] else "out"
+        capture_message(f"User opted {opting} of shot debug data telemetry")
         MeticulousConfig.save()
 
     @staticmethod
     def init():
-        if MeticulousConfig[CONFIG_USER][TELEMETRY_SERVICE_ENABLED] is not None:
-            return
+        if MeticulousConfig[CONFIG_USER][TELEMETRY_SERVICE_ENABLED] is None:
+            logger.info("Sending telemetry notification")
+            TelemetryService.telemetryPermissionNotification = Notification(
+                "We'd like your permission to collect system journal logs from your Meticulous device. This data helps us debug and fix issues, improve performance, and optimize workflows during the product lifetime"
+                + "\n\nDo you agree to share this data? You can change this setting later in Advanced Settings",
+                [NotificationResponse.YES, NotificationResponse.NO],
+                image=None,
+                callback=TelemetryService.onNotificationCallback_telemetry,
+            )
+            NotificationManager.add_notification(
+                TelemetryService.telemetryPermissionNotification
+            )
 
-        logger.info("Sending telemetry notification")
-        TelemetryService.permissionNotification = Notification(
-            "To improve the performance of all machines, we would like to collect your machine's logs data and sensors information during berwing."
-            + "\nWe are asking you to share this data with us as we want all workflows and profile preferences to be optimized for and not just the most common use cases. "
-            + "\n\nDo you agree to share this data? (Can be later modified in the advanced settings menu)",
-            [NotificationResponse.YES, NotificationResponse.NO],
-            image=None,
-            callback=TelemetryService.onNotificationCallback,
-        )
-        NotificationManager.add_notification(TelemetryService.permissionNotification)
+        if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] is None:
+            logger.info("Sending shot debug data telemetry notification")
+            TelemetryService.debugPermissionNotification = Notification(
+                "We'd like your permission to collect debug data from your Meticulous device brews."
+                + "\nThis data helps us debug and fix issues, improve performance and your experience with the machine"
+                + "\n\nDo you agree to share this data? You can change this setting later in Advanced Settings",
+                [NotificationResponse.YES, NotificationResponse.NO],
+                image=None,
+                callback=TelemetryService.onNotificationCallback_debug,
+            )
+            NotificationManager.add_notification(TelemetryService.debugPermissionNotification)
 
     async def upload_queue():
         if not os.path.exists(TELEMETRY_QUEUE_PATH):

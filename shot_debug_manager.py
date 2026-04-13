@@ -21,7 +21,7 @@ from config import (
     MeticulousConfig,
     CONFIG_SYSTEM,
     LAST_SYSTEM_VERSIONS,
-    TELEMETRY_SERVICE_ENABLED,
+    MACHINE_DEBUG_SENDING,
 )
 from esp_serial.data import (
     SensorData,
@@ -265,7 +265,7 @@ class ShotDebugManager:
 
         ShotManager.db_history_id = None
 
-        if MeticulousConfig[CONFIG_USER][TELEMETRY_SERVICE_ENABLED] is True:
+        if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] is True:
             connection_to_analytics = False
             if Machine.emulated:
                 logger.info("Not sending emulated debug shots")
