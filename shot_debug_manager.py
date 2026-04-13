@@ -48,7 +48,6 @@ class ShotLogHandler(logging.Handler):
 
 class DebugShot(Shot):
     def __init__(self) -> None:
-        from machine import Machine
         from wifi import WifiManager
         from ota import UpdateManager
         from hostname import HostnameManager
@@ -264,31 +263,34 @@ class ShotDebugManager:
             ShotDataBase.link_debug_file(ShotManager.db_history_id, debug_dir_filename)
 
         ShotManager.db_history_id = None
+        logger.info("Debug shot data compressed and saved")
 
         if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] is True:
-            connection_to_analytics = False
-            if Machine.emulated:
-                logger.info("Not sending emulated debug shots")
-            else:
-                try:
-                    compressed_data = None
-                    with open(file_path, "rb") as f:
-                        compressed_data = f.read()
-                    await TelemetryService.upload_debug_shot(compressed_data, file_path)
-                    logger.info("Debug shot data compressed and saved")
-                    connection_to_analytics = True
-                except Exception as e:
-                    logger.error(f"Failed to send debug shot to server: {e}")
-                    TelemetryService.track_unsent_shot_file(file_path)
+            if Machine.enable_manufacturing is False:
+                connection_to_analytics = False
+                if Machine.emulated:
+                    logger.info("Not sending emulated debug shots")
+                else:
+                    try:
+                        compressed_data = None
+                        with open(file_path, "rb") as f:
+                            compressed_data = f.read()
+                        await TelemetryService.upload_debug_shot(compressed_data, file_path)
+                        logger.info("Debug shot data compressed and saved")
+                        connection_to_analytics = True
+                    except Exception as e:
+                        logger.error(f"Failed to send debug shot to server: {e}")
+                        TelemetryService.track_unsent_shot_file(file_path)
 
-            # If we did not failed to send this shot, try sending all queued files
-            if connection_to_analytics:
-                try:
-                    await TelemetryService.upload_queue()
-                except Exception:
-                    logger.warning("failed to upload queued debug files")
+                    # If we did not failed to send this shot, try sending all queued files
+                    if connection_to_analytics:
+                        try:
+                            await TelemetryService.upload_queue()
+                        except Exception:
+                            logger.warning("failed to upload queued debug files")
+            else:
+                logger.info("machine in manufacturing mode, not sending debug file")
         data_json = None
-        logger.info("Debug shot data compressed and saved")
 
         ShotDebugManager.deleteOldDebugShotData()
 
