@@ -1,7 +1,7 @@
 FROM debian:bookworm
 
 RUN apt-get update -y && apt-get dist-upgrade -y
-RUN apt-get install -y build-essential libcairo2-dev libxt-dev libgirepository1.0-dev libgstreamer1.0-dev bluez \
+RUN apt-get install -y build-essential libcairo2-dev libxt-dev libgirepository1.0-dev libgstreamer1.0-dev gstreamer1.0-plugins-base-apps bluez \
     libsystemd-dev libparted-dev libglib2.0-dev libffi-dev python3-dev pkg-config \
     python3 \
     python3-setuptools \
