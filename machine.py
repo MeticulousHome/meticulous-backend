@@ -515,13 +515,9 @@ class Machine:
                         if Machine.esp_task_info is not None:
 
                             for name, task_hwm in new_esp_task_info.tasks.items():
-                                old_task_hwm = Machine.esp_task_info.tasks.get(
-                                    name, None
-                                )
+                                old_task_hwm = Machine.esp_task_info.tasks.get(name, None)
 
-                                if old_task_hwm is None or int(old_task_hwm) > int(
-                                    task_hwm
-                                ):
+                                if old_task_hwm is None or int(old_task_hwm) > int(task_hwm):
                                     logger.warning(
                                         f"new high water mark for {name} task: [{task_hwm} bytes]"
                                     )

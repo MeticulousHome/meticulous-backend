@@ -255,9 +255,7 @@ class MachineESPStatusHandler(BaseHandler):
                 if Machine.esp_task_info is not None
                 else {}
             )
-            esp_data.update(
-                Machine.esp_info.to_sio() if Machine.esp_info is not None else {}
-            )
+            esp_data.update(Machine.esp_info.to_sio() if Machine.esp_info is not None else {})
             if len(esp_data.items()) == 0:
                 raise Exception("no ESP information available")
             self.set_status(200)
