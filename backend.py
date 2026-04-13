@@ -50,6 +50,7 @@ from timezone_manager import TimezoneManager
 from ssh_manager import SSHManager
 from system_services import SystemServices
 from telemetry_service import TelemetryService
+from shot_debug_manager import ShotDebugManager
 
 from api.alarms import AlarmManager
 
@@ -288,6 +289,8 @@ def main():
         sentry_sdk.set_tag("serial", MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER])
     except Exception as e:
         logger.error(f"Failed to set sentry context: {e}")
+
+    ShotDebugManager.init()
 
     AlarmManager.init()
     Machine.init(sio)

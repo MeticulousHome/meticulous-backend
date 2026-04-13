@@ -30,16 +30,11 @@ from sqlalchemy.engine import Engine
 from database_models import metadata, profile as profile_table, history as history_table
 from database_models import shot_annotation, shot_rating
 
-from machine import Machine
-
 from config import (
     HISTORY_PATH,
     ABSOLUTE_DATABASE_FILE,
     DATABASE_URL,
     SHOT_PATH,
-    MeticulousConfig,
-    CONFIG_USER,
-    MACHINE_DEBUG_SENDING,
 )
 
 from log import MeticulousLogger
@@ -291,14 +286,9 @@ class ShotDataBase:
                 return result.inserted_primary_key[0]
 
     @staticmethod
-    def link_debug_file(history_shot_id, debug_filename):
+    def link_debug_file(history_shot_id, debug_filename, for_telemetry=False):
         debug_telemetry_file_status = (
-            sentStatus.EXCLUDE
-            if (
-                Machine.enable_manufacturing is True
-                or not MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING]
-            )
-            else sentStatus.PENDING
+            sentStatus.PENDING if for_telemetry is True else sentStatus.EXCLUDE
         )
         stmt = (
             update(history_table)

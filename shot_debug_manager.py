@@ -48,6 +48,7 @@ class ShotLogHandler(logging.Handler):
 
 class DebugShot(Shot):
     def __init__(self) -> None:
+        from machine import Machine
         from wifi import WifiManager
         from ota import UpdateManager
         from hostname import HostnameManager
@@ -124,6 +125,17 @@ class ShotDebugManager:
     _current_data: DebugShot = None
     clear_current_data_lock = threading.Lock()
     logging_handler = None
+    pending_files_to_upload = False
+
+    @staticmethod
+    def init():
+        ShotDebugManager.pending_files_to_upload = (
+            len(ShotDataBase.fetch_debug_files_to_send()) > 0
+        )
+        if ShotDebugManager.pending_files_to_upload:
+            logger.info("There are pending debug files to upload")
+        else:
+            logger.info("There are no pending debug files to upload")
 
     @staticmethod
     def start():
@@ -260,7 +272,14 @@ class ShotDebugManager:
         # link the Debug file to the shot in the db
         if ShotManager.db_history_id is not None:
             debug_dir_filename = os.path.join(*file_path.split(os.path.sep)[-2:])
-            ShotDataBase.link_debug_file(ShotManager.db_history_id, debug_dir_filename)
+            ShotDataBase.link_debug_file(
+                ShotManager.db_history_id,
+                debug_dir_filename,
+                for_telemetry=(
+                    not Machine.enable_manufacturing
+                    and MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING]
+                ),
+            )
 
         ShotManager.db_history_id = None
         logger.info("Debug shot data compressed and saved")
@@ -281,13 +300,17 @@ class ShotDebugManager:
                         connection_to_analytics = True
                     except Exception as e:
                         logger.error(f"Failed to send debug shot to server: {e}")
+                        ShotDebugManager.pending_files_to_upload = True
 
                     # If we did not failed to send this shot, try sending all queued files
-                    if connection_to_analytics:
+                    if connection_to_analytics and ShotDebugManager.pending_files_to_upload:
                         try:
                             await TelemetryService.upload_queue()
-                        except Exception:
-                            logger.warning("failed to upload queued debug files")
+                            ShotDebugManager.pending_files_to_upload = (
+                                len(ShotDataBase.fetch_debug_files_to_send()) > 0
+                            )
+                        except Exception as e:
+                            logger.warning(f"failed to upload queued debug files: {e}")
             else:
                 logger.info("machine in manufacturing mode, not sending debug file")
         data_json = None
