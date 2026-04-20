@@ -13,6 +13,7 @@ from config import (
     SSH_ENABLED,
     TELEMETRY_SERVICE_ENABLED,
     PROFILE_ORDER,
+    PROFILE_AUTO_PURGE,
     PROFILE_PARTIAL_RETRACTION,
 )
 
@@ -184,6 +185,9 @@ class SettingsHandler(BaseHandler):
 
                 if setting_target == PROFILE_PARTIAL_RETRACTION:
                     Machine.setPartialRetraction(value)
+
+                if setting_target == PROFILE_AUTO_PURGE:
+                    Machine.setAutoPurgeAfterShot(value)
 
                 # If we made it here without exception we can update the setting
                 workConfig[setting_target] = value

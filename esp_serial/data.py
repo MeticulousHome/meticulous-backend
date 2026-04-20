@@ -173,6 +173,7 @@ class ESPInfo:
     buildDate: str = ""
     scaleModule: str = ""
     partialRetraction: float = 45.0
+    autoPurgeAfterShot: bool = False
 
     def from_args(args):
         espPinout = 0
@@ -182,7 +183,20 @@ class ESPInfo:
         except Exception:
             pass
         try:
-            if len(args) >= 9:
+            if len(args) >= 10:
+                info = ESPInfo(
+                    args[0],
+                    espPinout,
+                    float(args[2]),
+                    args[3],
+                    args[4],
+                    args[5],
+                    args[6],
+                    args[7],
+                    float(args[8]),
+                    args[9].lower() == "true",
+                )
+            elif len(args) >= 9:
                 info = ESPInfo(
                     args[0],
                     espPinout,
@@ -224,6 +238,7 @@ class ESPInfo:
             self.buildDate,
             self.scaleModule,
             str(self.partialRetraction),
+            "true" if self.autoPurgeAfterShot else "false",
         ]
         return args
 
@@ -239,6 +254,7 @@ class ESPInfo:
             "build_date": self.buildDate,
             "scale_module": self.scaleModule,
             "partial_retraction": self.partialRetraction,
+            "auto_purge_after_shot": self.autoPurgeAfterShot,
         }
 
 
