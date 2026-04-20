@@ -25,6 +25,7 @@ from config import (
     MACHINE_BUILD_DATE,
     MACHINE_BATCH_NUMBER,
     MACHINE_HEAT_ON_BOOT,
+    PROFILE_AUTO_PURGE,
     PROFILE_PARTIAL_RETRACTION,
     MeticulousConfig,
 )
@@ -96,6 +97,7 @@ class esp_nvs_keys(Enum):
     batch_number = "batch_number_key"
     build_date = "build_date_key"
     partial_retraction = "partial_retraction_key"
+    auto_purge_after_shot = "auto_purge_after_shot_key"
 
 
 class Machine:
@@ -622,6 +624,10 @@ class Machine:
                         MeticulousConfig[CONFIG_USER][PROFILE_PARTIAL_RETRACTION]
                     )
                     Machine.setPartialRetraction(backend_partial_retraction)
+                    backend_auto_purge = bool(
+                        MeticulousConfig[CONFIG_USER][PROFILE_AUTO_PURGE]
+                    )
+                    Machine.setAutoPurgeAfterShot(backend_auto_purge)
 
                     if (
                         info.serialNumber != ""
@@ -961,6 +967,40 @@ Build Date: {build_date}
 
         if Machine.esp_info is not None:
             Machine.esp_info.partialRetraction = desired_value
+
+    def setAutoPurgeAfterShot(auto_purge_after_shot: bool):
+        desired_value = bool(auto_purge_after_shot)
+
+        if (
+            Machine.esp_info is not None
+            and Machine.esp_info.autoPurgeAfterShot == desired_value
+        ):
+            return
+
+        if (
+            Machine._connection is None
+            or Machine._connection.port is None
+            or Machine._stopESPcomm
+        ):
+            logger.warning(
+                "Cannot sync auto_purge_after_shot to ESP32 because serial connection "
+                "is not ready"
+            )
+            return
+
+        write_request = "nvs_request,write,"
+        payload = (
+            write_request
+            + esp_nvs_keys.auto_purge_after_shot.value
+            + ","
+            + ("true" if desired_value else "false")
+            + "\x03"
+        )
+        Machine.write(payload.encode("utf-8"))
+        logger.info("Synced auto_purge_after_shot to ESP32: " + f"requested={desired_value}")
+
+        if Machine.esp_info is not None:
+            Machine.esp_info.autoPurgeAfterShot = desired_value
 
     def _parseVersionString(version_str: str):
         release = None
