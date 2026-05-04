@@ -41,6 +41,7 @@ from esp_serial.data import (
     ShotData,
     MachineNotify,
     HeaterTimeoutInfo,
+    ESPTasks,
 )
 from esp_serial.esp_tool_wrapper import ESPToolWrapper
 from log import MeticulousLogger
@@ -152,6 +153,7 @@ class Machine:
     aborted_by_motor_consumtion = False
 
     esp_restart_request = False
+    esp_task_info: ESPTasks = None
 
     @staticmethod
     def get_somrev():
@@ -362,6 +364,7 @@ class Machine:
                 info = None
                 notify = None
                 is_valid_message = True
+                new_esp_task_info: ESPTasks = None
 
                 if data_str.startswith("rst:0x") and all(
                     boot_check in data_str
@@ -422,7 +425,8 @@ class Machine:
                         notify = MachineNotify(
                             notifyArgs[0], ",".join(notifyArgs[1:]).replace(";", "\n")
                         )
-
+                    case ["TaskInfo", *task_info]:
+                        new_esp_task_info = ESPTasks.from_args(task_info)
                     case ["HeaterTimeoutInfo", *timeoutArgs]:
                         try:
                             heater_timeout_info = HeaterTimeoutInfo.from_args(timeoutArgs)
@@ -507,6 +511,21 @@ class Machine:
                         is_valid_message = False
 
                 old_ready = Machine.infoReady
+
+                if new_esp_task_info is not None:
+                    if isinstance(new_esp_task_info, ESPTasks):
+                        if Machine.esp_task_info is not None:
+
+                            for name, task_hwm in new_esp_task_info.tasks.items():
+                                old_task_hwm = Machine.esp_task_info.tasks.get(name, None)
+
+                                if old_task_hwm is None or int(old_task_hwm) > int(task_hwm):
+                                    logger.warning(
+                                        f"new high water mark for {name} task: [{task_hwm} bytes]"
+                                    )
+                        Machine.esp_task_info = new_esp_task_info
+                    else:
+                        logger.warning("new_esp_task_info is not from the correct type")
 
                 if data is not None:
                     Machine.is_idle = data.status == MachineStatus.IDLE
