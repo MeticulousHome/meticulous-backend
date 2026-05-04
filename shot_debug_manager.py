@@ -10,16 +10,18 @@ import logging
 import threading
 from shot_database import ShotDataBase
 import subprocess
+import uuid_utils as uuid
+
 
 from config import (
     CONFIG_USER,
     CONFIG_WIFI,
     DEBUG_HISTORY_PATH,
     DEBUG_SHOT_DATA_RETENTION,
-    MACHINE_DEBUG_SENDING,
     MeticulousConfig,
     CONFIG_SYSTEM,
     LAST_SYSTEM_VERSIONS,
+    MACHINE_DEBUG_SENDING,
 )
 from esp_serial.data import (
     SensorData,
@@ -123,6 +125,17 @@ class ShotDebugManager:
     _current_data: DebugShot = None
     clear_current_data_lock = threading.Lock()
     logging_handler = None
+    pending_files_to_upload = False
+
+    @staticmethod
+    def init():
+        ShotDebugManager.pending_files_to_upload = (
+            len(ShotDataBase.fetch_debug_files_to_send()) > 0
+        )
+        if ShotDebugManager.pending_files_to_upload:
+            logger.info("There are pending debug files to upload")
+        else:
+            logger.info("There are no pending debug files to upload")
 
     @staticmethod
     def start():
@@ -226,6 +239,85 @@ class ShotDebugManager:
         return zip_name
 
     @staticmethod
+    async def compress_current_data(data_json, file_path):
+        from machine import Machine
+
+        # Compress and write the shot to disk
+        logger.info("Writing and compressing debug file")
+        start = time.time()
+
+        logger.info(f"Writing debug json to {file_path}")
+        json_data = data_json.encode("utf-8")
+        # Compress the file using zstd as all python implementations are too memory intensive
+        result = subprocess.run(
+            [
+                "zstd",
+                "-10",
+                "-f",
+                "-q",
+                "-o",
+                str(file_path),
+            ],
+            input=json_data,
+            capture_output=True,
+            text=False,
+            check=True,
+        )
+        if result.stderr:
+            logger.error(f"zstd stderr: {result.stderr}")
+
+        time_ms = (time.time() - start) * 1000
+        logger.info(f"Writing debug json to disc took {time_ms} ms")
+
+        # link the Debug file to the shot in the db
+        if ShotManager.db_history_id is not None:
+            debug_dir_filename = os.path.join(*file_path.split(os.path.sep)[-2:])
+            ShotDataBase.link_debug_file(
+                ShotManager.db_history_id,
+                debug_dir_filename,
+                for_telemetry=(
+                    not Machine.enable_manufacturing
+                    and MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING]
+                ),
+            )
+
+        ShotManager.db_history_id = None
+        logger.info("Debug shot data compressed and saved")
+
+        if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] is True:
+            if Machine.enable_manufacturing is False:
+                connection_to_analytics = False
+                if Machine.emulated:
+                    logger.info("Not sending emulated debug shots")
+                else:
+                    try:
+                        compressed_data = None
+                        with open(file_path, "rb") as f:
+                            compressed_data = f.read()
+                        await TelemetryService.upload_debug_shot(compressed_data, file_path)
+                        ShotDataBase.mark_debug_files_sent([debug_dir_filename])
+                        logger.info("Debug shot data sent")
+                        connection_to_analytics = True
+                    except Exception as e:
+                        logger.error(f"Failed to send debug shot to server: {e}")
+                        ShotDebugManager.pending_files_to_upload = True
+
+                    # If we did not failed to send this shot, try sending all queued files
+                    if connection_to_analytics and ShotDebugManager.pending_files_to_upload:
+                        try:
+                            await TelemetryService.upload_queue()
+                            ShotDebugManager.pending_files_to_upload = (
+                                len(ShotDataBase.fetch_debug_files_to_send()) > 0
+                            )
+                        except Exception as e:
+                            logger.warning(f"failed to upload queued debug files: {e}")
+            else:
+                logger.info("machine in manufacturing mode, not sending debug file")
+        data_json = None
+
+        ShotDebugManager.deleteOldDebugShotData()
+
+    @staticmethod
     def stop():
 
         current_data_copy = None
@@ -261,6 +353,7 @@ class ShotDebugManager:
         file_path = os.path.join(folder_path, file_name)
 
         debug_shot_data = current_data_copy.to_json()
+        debug_shot_data.setdefault("id", str(uuid.uuid7()))
         if not bool(debug_shot_data.get("profile")) and debug_shot_data.get("type") == "shot":
             from profiles import ProfileManager
 
@@ -282,68 +375,14 @@ class ShotDebugManager:
 
         data_json = json.dumps(debug_shot_data, ensure_ascii=False)
 
-        async def compress_current_data(data_json):
-            from machine import Machine
-
-            # Compress and write the shot to disk
-            logger.info("Writing and compressing debug file")
-            start = time.time()
-
-            logger.info(f"Writing debug json to {file_path}")
-            json_data = data_json.encode("utf-8")
-            # Compress the file using zstd as all python implementations are too memory intensive
-            result = subprocess.run(
-                [
-                    "zstd",
-                    "-10",
-                    "-f",
-                    "-q",
-                    "-o",
-                    str(file_path),
-                ],
-                input=json_data,
-                capture_output=True,
-                text=False,
-                check=True,
-            )
-            if result.stderr:
-                logger.error(f"zstd stderr: {result.stderr}")
-
-            time_ms = (time.time() - start) * 1000
-            logger.info(f"Writing debug json to disc took {time_ms} ms")
-
-            # link the Debug file to the shot in the db
-            if ShotManager.db_history_id is not None:
-                debug_dir_filename = os.path.join(*file_path.split(os.path.sep)[-2:])
-                ShotDataBase.link_debug_file(ShotManager.db_history_id, debug_dir_filename)
-
-            ShotManager.db_history_id = None
-
-            if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] is True:
-                if Machine.emulated:
-                    logger.info("Not sending emulated debug shots")
-                else:
-                    try:
-                        compressed_data = None
-                        with open(file_path, "rb") as f:
-                            compressed_data = f.read()
-                        await TelemetryService.upload_debug_shot(compressed_data, file_path)
-                        logger.info("Debug shot data compressed and saved")
-
-                    except Exception as e:
-                        logger.error(f"Failed to send debug shot to server: {e}")
-
-            data_json = None
-            logger.info("Debug shot data compressed and saved")
-
-            ShotDebugManager.deleteOldDebugShotData()
-
         def compression_loop(data_json):
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
 
             try:
-                loop.run_until_complete(compress_current_data(data_json))
+                loop.run_until_complete(
+                    ShotDebugManager.compress_current_data(data_json, file_path)
+                )
             finally:
                 loop.close()
 

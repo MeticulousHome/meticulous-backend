@@ -3,7 +3,7 @@ import os
 import sqlite3
 import uuid
 from datetime import datetime
-from enum import Enum
+from enum import Enum, StrEnum, auto
 from pathlib import Path
 from typing import List, Optional
 
@@ -26,6 +26,7 @@ from sqlalchemy import (
 from sqlalchemy import event as sqlEvent
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import update
+from sqlalchemy.engine import Engine
 from database_models import metadata, profile as profile_table, history as history_table
 from database_models import shot_annotation, shot_rating
 
@@ -39,6 +40,12 @@ from config import (
 from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
+
+
+class sentStatus(StrEnum):
+    PENDING = auto()
+    EXCLUDE = auto()
+    SENT = auto()
 
 
 class SearchOrder(str, Enum):
@@ -63,7 +70,7 @@ class SearchParams(BaseModel):
 
 
 class ShotDataBase:
-    engine = None
+    engine: Engine | None = None
     metadata = metadata
     session = None
     stage_fts_table = None
@@ -279,16 +286,54 @@ class ShotDataBase:
                 return result.inserted_primary_key[0]
 
     @staticmethod
-    def link_debug_file(history_shot_id, debug_filename):
+    def link_debug_file(history_shot_id, debug_filename, for_telemetry=False):
+        debug_telemetry_file_status = (
+            sentStatus.PENDING if for_telemetry is True else sentStatus.EXCLUDE
+        )
         stmt = (
             update(history_table)
             .where(history_table.c.id == history_shot_id)
-            .values(debug_file=debug_filename)
+            .values(debug_file=debug_filename, debug_file_sent=debug_telemetry_file_status)
         )
         with ShotDataBase.engine.connect() as connection:
             with connection.begin():
                 result = connection.execute(stmt)
                 logger.info(f"debug file linked, affected rows: {{{result.rowcount}}}")
+
+    @staticmethod
+    def mark_debug_files_sent(debug_filenames: list[str]):
+        if not debug_filenames:
+            logger.info("no debug files provided to mark as sent")
+            return
+
+        if len(debug_filenames) == 0:
+            logger.info("no debug files provided to mark as sent - empty list")
+            return
+
+        stmt = (
+            update(history_table)
+            .where(history_table.c.debug_file.in_(debug_filenames))
+            .values(debug_file_sent=sentStatus.SENT)
+        )
+        with ShotDataBase.engine.connect() as connection:
+            with connection.begin():
+                result = connection.execute(stmt)
+                if result.rowcount == 0:
+                    logger.warning("no columns affected, check relative file path")
+                else:
+                    logger.info(f"debug file linked, affected rows: {{{result.rowcount}}}")
+
+    @staticmethod
+    def fetch_debug_files_to_send() -> list[str]:
+        query = select(history_table.c.debug_file).where(
+            history_table.c.debug_file_sent == sentStatus.PENDING
+        )
+        files_pending: list[str] = []
+        with ShotDataBase.engine.connect() as connection:
+            for row in connection.execute(query).columns("debug_file").fetchall():
+                files_pending.append(row[0])
+        logger.info(f"files pending to be sent: {len(files_pending)}")
+        return files_pending
 
     @staticmethod
     def unlink_debug_file(file_relative_path):
