@@ -105,15 +105,33 @@ class WiFiConfigHandler(BaseHandler):
         try:
             config_changed = False
             data = json.loads(self.request.body)
-            if "mode" in data and data["mode"] in [WIFI_MODE_AP, WIFI_MODE_CLIENT]:
+            previous_mode = MeticulousConfig[CONFIG_WIFI][WIFI_MODE]
+            previous_ap_password = MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
+            requested_mode = data.get("mode")
+
+            if requested_mode in [WIFI_MODE_AP, WIFI_MODE_CLIENT]:
                 logger.info("Changing wifi mode")
-                MeticulousConfig[CONFIG_WIFI][WIFI_MODE] = data["mode"]
+                MeticulousConfig[CONFIG_WIFI][WIFI_MODE] = requested_mode
                 config_changed = True
 
             if "apPassword" in data:
                 logger.info("Changing wifi ap password")
                 MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD] = data["apPassword"]
                 config_changed = True
+
+            if requested_mode == WIFI_MODE_AP:
+                if WifiManager.startHotspot():
+                    MeticulousConfig.save()
+                    WifiManager.update_gatt_advertisement()
+                    return self.get()
+
+                MeticulousConfig[CONFIG_WIFI][WIFI_MODE] = previous_mode
+                MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD] = previous_ap_password
+                MeticulousConfig.save()
+                WifiManager.update_gatt_advertisement()
+                self.set_status(409)
+                self.write({"status": "error", "error": "failed to start hotspot"})
+                return
 
             if config_changed:
                 MeticulousConfig.save()

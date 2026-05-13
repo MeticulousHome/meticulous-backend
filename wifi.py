@@ -209,7 +209,10 @@ class WifiManager:
         if WifiManager._networking_available:
             # start AP if needed
             if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP:
-                WifiManager.startHotspot()
+                if not WifiManager.startHotspot():
+                    logger.warning("Hotspot failed to start on init, reverting to client mode")
+                    MeticulousConfig[CONFIG_WIFI][WIFI_MODE] = WIFI_MODE_CLIENT
+                    MeticulousConfig.save()
             else:
                 WifiManager.stopHotspot()
 
@@ -300,18 +303,26 @@ class WifiManager:
     def resetWifiMode():
         # Without networking we have no chance starting the wifi or getting the creads
         if WifiManager._networking_available:
+            success = True
+            requested_ap_mode = MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP
             # start AP if needed
-            if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP:
-                WifiManager.startHotspot()
+            if requested_ap_mode:
+                success = WifiManager.startHotspot()
+                if not success:
+                    logger.warning("Hotspot failed to start, reverting to client mode")
+                    MeticulousConfig[CONFIG_WIFI][WIFI_MODE] = WIFI_MODE_CLIENT
+                    MeticulousConfig.save()
             else:
                 WifiManager.stopHotspot()
                 WifiManager.scanForNetworks(timeout=1)
                 WifiManager._zeroconf.restart()
             WifiManager.update_gatt_advertisement()
+            return success
+        return False
 
     def startHotspot():
         if not WifiManager._networking_available:
-            return
+            return False
 
         logger.info("Starting hotspot")
         try:
@@ -322,7 +333,19 @@ class WifiManager:
             )
         except Exception as e:
             logger.error(f"Starting hotspot failed: {e}")
+            WifiManager._zeroconf.restart()
+            return False
+
+        try:
+            if WifiManager.getCurrentConfig().is_hotspot():
+                WifiManager._zeroconf.restart()
+                return True
+        except Exception as e:
+            logger.error(f"Failed to verify hotspot state: {e}")
+
+        logger.error("Starting hotspot failed: hotspot is not active after activation")
         WifiManager._zeroconf.restart()
+        return False
 
     def stopHotspot():
         if not WifiManager._networking_available:
