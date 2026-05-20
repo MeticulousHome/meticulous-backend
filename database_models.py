@@ -8,6 +8,7 @@ from sqlalchemy import (
     JSON,
     ForeignKey,
     Float,
+    Boolean,
 )
 
 metadata = MetaData(
@@ -72,6 +73,23 @@ shot_rating = Table(
         unique=True,
     ),
     Column("basic", Text, nullable=True),  # "like", "dislike", o null
+)
+
+bug_reports = Table(
+    "bug_reports",
+    metadata,
+    Column("localID", Text, primary_key=True, nullable=False),
+    Column("eventID", Text, nullable=True),
+    Column("baseEventID", Text, nullable=True),
+    Column("issueTime", Integer, nullable=False),
+    Column("creationTime", Integer, nullable=False),
+    Column("submissionTime", Integer, nullable=True),
+    Column("description", Text, nullable=True),
+    Column("logFiles", Text, nullable=True),
+    Column("machineInfo", Boolean, nullable=True),
+    Column("machineLogs", Boolean, nullable=True),
+    Column("status", Text, nullable=False),
+    Column("ticketNumber", Integer, nullable=True),
 )
 
 # FTS structure is defined here for reference
