@@ -28,6 +28,58 @@ from config import (
 logger = MeticulousLogger.getLogger(__name__)
 
 
+def get_machine_info():
+    response = {}
+    config = WifiManager.getCurrentConfig()
+    response["name"] = HostnameManager.generateDeviceName()
+    response["hostname"] = config.hostname
+
+    if Machine.esp_info is not None:
+        response["firmware"] = Machine.esp_info.firmwareV
+        response["mainVoltage"] = Machine.esp_info.mainVoltage
+
+    response["serial"] = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
+
+    response["color"] = ""
+    if MeticulousConfig[CONFIG_SYSTEM][MACHINE_COLOR] is not None:
+        response["color"] = MeticulousConfig[CONFIG_SYSTEM][MACHINE_COLOR]
+
+    response["batch_number"] = ""
+    if MeticulousConfig[CONFIG_SYSTEM][MACHINE_BATCH_NUMBER] is not None:
+        response["batch_number"] = MeticulousConfig[CONFIG_SYSTEM][MACHINE_BATCH_NUMBER]
+
+    response["build_date"] = ""
+    if MeticulousConfig[CONFIG_SYSTEM][MACHINE_BUILD_DATE] is not None:
+        response["build_date"] = MeticulousConfig[CONFIG_SYSTEM][MACHINE_BUILD_DATE]
+
+    software_version = UpdateManager.getBuildTimestamp()
+    if software_version is not None:
+        response["software_version"] = software_version.strftime("%Y-%m-%d %H:%M:%S")
+    else:
+        response["software_version"] = None
+
+    response["image_build_channel"] = UpdateManager.getImageChannel()
+    response["image_version"] = UpdateManager.getImageVersion()
+    response["repository_info"] = {}
+    repo_info = UpdateManager.getRepositoryInfo()
+    if repo_info is not None:
+        for repo in repo_info.keys():
+            info = repo_info[repo]
+            response["repository_info"][repo] = {
+                "branch": info.get("branch", None),
+                "commit": info.get("last_commit", None),
+            }
+    response["manufacturing"] = Machine.enable_manufacturing
+    response["upgrade_first_boot"] = UpdateManager.is_changed
+    response["version_history"] = []
+    if MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS] is not None:
+        response["version_history"] = MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS]
+    else:
+        response["version_history"] = []
+
+    return response
+
+
 class OSStatus(Enum):
     IDLE = 0
     DOWNLOADING = 1
@@ -113,55 +165,7 @@ class UpdateOSStatus(BaseHandler):
 
 class MachineInfoHandler(BaseHandler):
     def get(self):
-        response = {}
-        config = WifiManager.getCurrentConfig()
-        response["name"] = HostnameManager.generateDeviceName()
-        response["hostname"] = config.hostname
-
-        if Machine.esp_info is not None:
-            response["firmware"] = Machine.esp_info.firmwareV
-            response["mainVoltage"] = Machine.esp_info.mainVoltage
-
-        response["serial"] = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
-
-        response["color"] = ""
-        if MeticulousConfig[CONFIG_SYSTEM][MACHINE_COLOR] is not None:
-            response["color"] = MeticulousConfig[CONFIG_SYSTEM][MACHINE_COLOR]
-
-        response["batch_number"] = ""
-        if MeticulousConfig[CONFIG_SYSTEM][MACHINE_BATCH_NUMBER] is not None:
-            response["batch_number"] = MeticulousConfig[CONFIG_SYSTEM][MACHINE_BATCH_NUMBER]
-
-        response["build_date"] = ""
-        if MeticulousConfig[CONFIG_SYSTEM][MACHINE_BUILD_DATE] is not None:
-            response["build_date"] = MeticulousConfig[CONFIG_SYSTEM][MACHINE_BUILD_DATE]
-
-        software_version = UpdateManager.getBuildTimestamp()
-        if software_version is not None:
-            response["software_version"] = software_version.strftime("%Y-%m-%d %H:%M:%S")
-        else:
-            response["software_version"] = None
-
-        response["image_build_channel"] = UpdateManager.getImageChannel()
-        response["image_version"] = UpdateManager.getImageVersion()
-        response["repository_info"] = {}
-        repo_info = UpdateManager.getRepositoryInfo()
-        if repo_info is not None:
-            for repo in repo_info.keys():
-                info = repo_info[repo]
-                response["repository_info"][repo] = {
-                    "branch": info.get("branch", None),
-                    "commit": info.get("last_commit", None),
-                }
-        response["manufacturing"] = Machine.enable_manufacturing
-        response["upgrade_first_boot"] = UpdateManager.is_changed
-        response["version_history"] = []
-        if MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS] is not None:
-            response["version_history"] = MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS]
-        else:
-            response["version_history"] = []
-
-        self.write(json.dumps(response))
+        self.write(json.dumps(get_machine_info()))
 
 
 class MachineResetHandler(LocalAccessHandler):
