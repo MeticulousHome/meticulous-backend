@@ -231,12 +231,17 @@ class Machine:
         else:
             logger.info("The ESP is alive")
 
-    def init(sio):
-        Machine.esp_restart_request = True
-        Machine._sio = sio
+    def refreshAvailableFirmware():
         Machine.firmware_available = Machine._parseVersionString(
             ESPToolWrapper.get_version_from_firmware()
         )
+        logger.info(f"Backend available firmware version: {Machine.firmware_available}")
+        return Machine.firmware_available
+
+    def init(sio):
+        Machine.esp_restart_request = True
+        Machine._sio = sio
+        Machine.refreshAvailableFirmware()
 
         # If we dont have a serial we still want to be able to show ... something
         serial = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
