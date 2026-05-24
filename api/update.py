@@ -69,6 +69,8 @@ class UpdateFirmwareWithZipHandler(BaseHandler):
             self.write("failure during upload")
             return
 
+        Machine.refreshAvailableFirmware()
+
         upgradeThread = NamedThread("FWUpgrade", target=Machine.startUpdate)
         upgradeThread.start()
 
