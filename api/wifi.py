@@ -48,13 +48,26 @@ class WiFiConfig:
 
 
 class WiFiQRHandler(BaseHandler):
+    def escape_wifi_qr_value(self, value: str):
+        return (
+            value.replace("\\", "\\\\")
+            .replace(";", "\\;")
+            .replace(",", "\\,")
+            .replace(":", "\\:")
+            .replace('"', '\\"')
+        )
+
     def generate_wifi_qr(self):
         config = WifiManager.getCurrentConfig()
         qr_contents: str = ""
         if config.is_hotspot():
-            ssid = MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME]
-            password = MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
-            qr_contents = f"WIFI:S:{ssid};T:WPA2;P:{password};H:true;;"
+            ssid = self.escape_wifi_qr_value(
+                MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME]
+            )
+            password = self.escape_wifi_qr_value(
+                MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
+            )
+            qr_contents = f"WIFI:S:{ssid};T:WPA2;P:{password};H:false;;"
         elif len(config.ips) > 0:
             current_ip = config.ips[0]
             if current_ip.ip.version == 6:
