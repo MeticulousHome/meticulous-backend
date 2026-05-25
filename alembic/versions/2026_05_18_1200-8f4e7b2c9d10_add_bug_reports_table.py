@@ -31,6 +31,7 @@ def upgrade() -> None:
         sa.Column("logFiles", sa.Text(), nullable=True),
         sa.Column("machineInfo", sa.Boolean(), nullable=True),
         sa.Column("machineLogs", sa.Boolean(), nullable=True),
+        sa.Column("machineStatus", sa.Boolean(), nullable=True),
         sa.Column("status", sa.Text(), nullable=False),
         sa.Column("ticketNumber", sa.Integer(), nullable=True),
         sa.PrimaryKeyConstraint("localID"),

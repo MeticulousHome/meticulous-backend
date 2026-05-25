@@ -61,17 +61,26 @@ def test_fetch_report_files_uses_parent_debug_file_names(report_module, monkeypa
     async def fake_machine_logs(reference_time=None):
         return "logs"
 
+    async def fake_machine_status():
+        return '{"ok": true}'
+
     monkeypatch.setattr(report_module, "_get_machine_info", lambda: {"machine": "info"})
     monkeypatch.setattr(report_module, "_fetch_machine_logs", fake_machine_logs)
+    monkeypatch.setattr(report_module, "_fetch_machine_status", fake_machine_status)
 
     draft_dir = report_module._draft_path("local-test-id")
     fetched = asyncio.run(report_module._fetch_report_files(draft_dir))
 
     assert fetched.automatic_debug_files == [debug_name]
     assert report_module._debug_archive_name(debug_name) in fetched.files
+    assert fetched.machine_status is True
     assert (
         fetched.files[report_module._debug_archive_name(debug_name)].read_text(encoding="utf-8")
         == debug_name
+    )
+    assert (
+        draft_dir.joinpath(report_module.MACHINE_STATUS_NAME).read_text(encoding="utf-8")
+        == '{"ok": true}'
     )
 
 
@@ -124,6 +133,7 @@ def test_draft_patch_preserves_user_file_when_date_changes(report_module, monkey
             },
             "machineInfo": True,
             "machineLogs": True,
+            "machineStatus": True,
         },
         "multimedia": None,
         "machineID": "machine",
@@ -148,6 +158,7 @@ def test_draft_patch_preserves_user_file_when_date_changes(report_module, monkey
                 logFiles=f"{old_auto_name},{old_user_name}",
                 machineInfo=True,
                 machineLogs=True,
+                machineStatus=True,
                 status="draft",
             )
         )
@@ -190,6 +201,7 @@ def test_draft_patch_adds_user_debug_file_to_draft_directory(report_module):
                 },
                 "machineInfo": True,
                 "machineLogs": True,
+                "machineStatus": True,
             },
             "multimedia": None,
             "machineID": "machine",
@@ -208,6 +220,7 @@ def test_draft_patch_adds_user_debug_file_to_draft_directory(report_module):
                 logFiles=None,
                 machineInfo=True,
                 machineLogs=True,
+                machineStatus=True,
                 status="draft",
             )
         )
@@ -237,13 +250,15 @@ def test_draft_directory_can_be_compressed(report_module):
     local_id = "local-test-id"
     draft_dir = report_module._draft_path(local_id)
     draft_dir.mkdir(parents=True)
-    draft_dir.joinpath(report_module.MACHINE_LOGS_NAME).write_text("logs", encoding="utf-8")
+    draft_dir.joinpath(report_module.MACHINE_STATUS_NAME).write_text(
+        '{"ok": true}', encoding="utf-8"
+    )
     report_module._write_draft_report_info(
         draft_dir,
         {
             "description": None,
             "dateAndTime": 1,
-            "attachments": {},
+            "attachments": {"machineStatus": True},
             "multimedia": None,
             "machineID": "machine",
             "eventID": None,
@@ -258,7 +273,7 @@ def test_draft_directory_can_be_compressed(report_module):
     report_info, archived_names = _read_archive_report_info(report_module, archive_path)
 
     assert report_info["localID"] == local_id
-    assert report_module.MACHINE_LOGS_NAME in archived_names
+    assert report_module.MACHINE_STATUS_NAME in archived_names
 
 
 def test_submit_db_update(report_module):
@@ -270,6 +285,7 @@ def test_submit_db_update(report_module):
                 creationTime=1,
                 machineInfo=False,
                 machineLogs=False,
+                machineStatus=False,
                 status="draft",
             )
         )
