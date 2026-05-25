@@ -258,6 +258,19 @@ class WifiManager:
             "disconnected",
         }
 
+    def getWifiStationDeviceName():
+        try:
+            for dev in nmcli.device():
+                if (
+                    dev.device_type == "wifi"
+                    and not dev.device.startswith("p2p-")
+                    and dev.state != "unmanaged"
+                ):
+                    return dev.device
+        except Exception as e:
+            logger.warning(f"Failed to read WiFi device name: {e}")
+        return "wlan0"
+
     def classifyConnectionError(error: Exception, auth_expected: bool = False):
         error_msg = str(error)
         lower_error = error_msg.lower()
@@ -451,28 +464,54 @@ class WifiManager:
 
         logger.info("Starting hotspot")
         WifiManager.invalidateHealthCache()
-        try:
+        last_error = ""
+
+        for channel in [6, 1, 11]:
             WifiManager.deleteConnectionProfile(WifiManager._conname)
-            nmcli.device.wifi_hotspot(
-                con_name=WifiManager._conname,
-                ssid=MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME],
-                password=MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD],
-            )
-        except Exception as e:
-            logger.error(f"Starting hotspot failed: {e}")
-            WifiManager._last_health_error = f"hotspot_start_failed: {e}"
-            WifiManager._zeroconf.restart()
-            return False
+            logger.info(f"Starting hotspot on channel {channel}")
 
-        if not WifiManager.waitForHotspot(timeout=10):
-            logger.error("Starting hotspot failed: hotspot did not become active")
-            WifiManager._last_health_error = "hotspot_not_active"
-            WifiManager._zeroconf.restart()
-            return False
+            command = [
+                "nmcli",
+                "device",
+                "wifi",
+                "hotspot",
+                "ifname",
+                WifiManager.getWifiStationDeviceName(),
+                "con-name",
+                WifiManager._conname,
+                "ssid",
+                MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME],
+                "band",
+                "bg",
+                "channel",
+                str(channel),
+                "password",
+                MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD],
+            ]
+            result = WifiManager.runCommand(command, timeout=35)
+            if result is not None and result.returncode == 0:
+                if WifiManager.waitForHotspot(timeout=10):
+                    logger.info(f"Hotspot started on channel {channel}")
+                    WifiManager._last_health_error = ""
+                    WifiManager._zeroconf.restart()
+                    return True
 
-        WifiManager._last_health_error = ""
+                last_error = f"channel={channel}: hotspot did not become active"
+                logger.error(f"Starting hotspot failed: {last_error}")
+            else:
+                stderr = (
+                    result.stderr.strip() if result is not None else "command failed"
+                )
+                stdout = result.stdout.strip() if result is not None else ""
+                last_error = f"channel={channel}: {stderr or stdout or 'unknown error'}"
+                logger.error(f"Starting hotspot failed: {last_error}")
+
+            WifiManager.deleteConnectionProfile(WifiManager._conname)
+            time.sleep(1)
+
+        WifiManager._last_health_error = f"hotspot_start_failed: {last_error}"
         WifiManager._zeroconf.restart()
-        return True
+        return False
 
     def stopHotspot():
         if not WifiManager._networking_available:
