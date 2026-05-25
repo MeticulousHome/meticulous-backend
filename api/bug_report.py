@@ -31,10 +31,12 @@ REPORTS_DIR = Path(os.getenv("REPORTS_DIR", "/meticulous-user/reports"))
 DRAFT_REPORTS_DIR = Path(os.getenv("DRAFT_REPORTS_DIR", str(REPORTS_DIR.joinpath("draft"))))
 DEBUG_HISTORY_ROOT = Path(DEBUG_HISTORY_PATH)
 WATCHER_LOGS_URL = os.getenv("WATCHER_LOGS_URL", "http://localhost/health/logs?filter=*")
+WATCHER_STATUS_URL = os.getenv("WATCHER_STATUS_URL", "http://localhost/health/status")
 REPORT_INFO_NAME = "report_info.json"
 REPORT_LOG_NAME = "logs_while_reporting.txt"
 MACHINE_INFO_NAME = "machine_info.json"
 MACHINE_LOGS_NAME = "machine_logs.txt"
+MACHINE_STATUS_NAME = "machine_status.json"
 DEBUG_ARCHIVE_DIR = "debug"
 ALLOWED_DRAFT_UPDATE_KEYS = {"description", "dateAndTime", "baseEventID", "attachments"}
 
@@ -46,6 +48,7 @@ class FetchResult:
     automatic_debug_files: list[str] = field(default_factory=list)
     machine_info: bool = False
     machine_logs: bool = False
+    machine_status: bool = False
 
 
 def _ensure_database_initialized():
@@ -143,6 +146,7 @@ def _row_to_report_info(row) -> dict[str, Any]:
             "debugFiles": {"automatic": log_files},
             "machineInfo": bool(row.machineInfo),
             "machineLogs": bool(row.machineLogs),
+            "machineStatus": bool(row.machineStatus),
         },
         "multimedia": None,
         "machineID": None,
@@ -335,6 +339,12 @@ async def _fetch_machine_logs(reference_time: int | None = None) -> str:
     return response.body.decode("utf-8", errors="replace")
 
 
+async def _fetch_machine_status() -> str:
+    client = tornado.httpclient.AsyncHTTPClient()
+    response = await client.fetch(WATCHER_STATUS_URL, request_timeout=60)
+    return response.body.decode("utf-8", errors="replace")
+
+
 async def _fetch_report_files(
     draft_dir: Path, reference_time: int | None = None
 ) -> FetchResult:
@@ -360,6 +370,14 @@ async def _fetch_report_files(
         result.machine_logs = True
     except Exception as exc:
         result.errors.append(f"Failed to fetch machine logs: {exc}")
+
+    try:
+        machine_status_path = draft_dir.joinpath(MACHINE_STATUS_NAME)
+        machine_status_path.write_text(await _fetch_machine_status(), encoding="utf-8")
+        result.files[MACHINE_STATUS_NAME] = machine_status_path
+        result.machine_status = True
+    except Exception as exc:
+        result.errors.append(f"Failed to fetch machine status: {exc}")
 
     debug_files, debug_errors = _select_debug_files(reference_time=reference_time)
     result.errors.extend(debug_errors)
@@ -394,6 +412,7 @@ def _insert_report(report_info: dict[str, Any]):
                     logFiles=_attachments_to_log_files(attachments),
                     machineInfo=attachments.get("machineInfo"),
                     machineLogs=attachments.get("machineLogs"),
+                    machineStatus=attachments.get("machineStatus"),
                     status="draft",
                     ticketNumber=None,
                 )
@@ -541,6 +560,7 @@ def _draft_db_values(attachments: dict[str, Any]) -> dict[str, Any]:
         "logFiles": _attachments_to_log_files(attachments),
         "machineLogs": attachments.get("machineLogs"),
         "machineInfo": attachments.get("machineInfo"),
+        "machineStatus": attachments.get("machineStatus"),
     }
 
 
@@ -656,6 +676,7 @@ class ReportsCreateHandler(BaseHandler):
                 "debugFiles": {"automatic": fetched.automatic_debug_files},
                 "machineInfo": fetched.machine_info,
                 "machineLogs": fetched.machine_logs,
+                "machineStatus": fetched.machine_status,
             }
             report_info = {
                 "description": None,

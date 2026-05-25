@@ -88,6 +88,7 @@ bug_reports = Table(
     Column("logFiles", Text, nullable=True),
     Column("machineInfo", Boolean, nullable=True),
     Column("machineLogs", Boolean, nullable=True),
+    Column("machineStatus", Boolean, nullable=True),
     Column("status", Text, nullable=False),
     Column("ticketNumber", Integer, nullable=True),
 )
