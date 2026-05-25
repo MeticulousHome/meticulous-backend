@@ -470,23 +470,86 @@ class WifiManager:
             WifiManager.deleteConnectionProfile(WifiManager._conname)
             logger.info(f"Starting hotspot on channel {channel}")
 
+            add_result = WifiManager.runCommand(
+                [
+                    "nmcli",
+                    "connection",
+                    "add",
+                    "type",
+                    "wifi",
+                    "ifname",
+                    WifiManager.getWifiStationDeviceName(),
+                    "con-name",
+                    WifiManager._conname,
+                    "ssid",
+                    MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME],
+                ],
+                timeout=10,
+            )
+            if add_result is None or add_result.returncode != 0:
+                stderr = (
+                    add_result.stderr.strip()
+                    if add_result is not None
+                    else "command failed"
+                )
+                stdout = add_result.stdout.strip() if add_result is not None else ""
+                last_error = f"channel={channel}: {stderr or stdout or 'connection add failed'}"
+                logger.error(f"Starting hotspot failed: {last_error}")
+                WifiManager.deleteConnectionProfile(WifiManager._conname)
+                time.sleep(1)
+                continue
+
+            modify_result = WifiManager.runCommand(
+                [
+                    "nmcli",
+                    "connection",
+                    "modify",
+                    WifiManager._conname,
+                    "connection.autoconnect",
+                    "no",
+                    "802-11-wireless.mode",
+                    "ap",
+                    "802-11-wireless.band",
+                    "bg",
+                    "802-11-wireless.channel",
+                    str(channel),
+                    "802-11-wireless-security.key-mgmt",
+                    "wpa-psk",
+                    "802-11-wireless-security.psk",
+                    MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD],
+                    "802-11-wireless-security.proto",
+                    "rsn",
+                    "802-11-wireless-security.pairwise",
+                    "ccmp",
+                    "802-11-wireless-security.group",
+                    "ccmp",
+                    "ipv4.method",
+                    "shared",
+                    "ipv6.method",
+                    "ignore",
+                ],
+                timeout=10,
+            )
+            if modify_result is None or modify_result.returncode != 0:
+                stderr = (
+                    modify_result.stderr.strip()
+                    if modify_result is not None
+                    else "command failed"
+                )
+                stdout = modify_result.stdout.strip() if modify_result is not None else ""
+                last_error = f"channel={channel}: {stderr or stdout or 'connection modify failed'}"
+                logger.error(f"Starting hotspot failed: {last_error}")
+                WifiManager.deleteConnectionProfile(WifiManager._conname)
+                time.sleep(1)
+                continue
+
             command = [
                 "nmcli",
-                "device",
-                "wifi",
-                "hotspot",
-                "ifname",
-                WifiManager.getWifiStationDeviceName(),
-                "con-name",
+                "--wait",
+                "35",
+                "connection",
+                "up",
                 WifiManager._conname,
-                "ssid",
-                MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME],
-                "band",
-                "bg",
-                "channel",
-                str(channel),
-                "password",
-                MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD],
             ]
             result = WifiManager.runCommand(command, timeout=35)
             if result is not None and result.returncode == 0:
@@ -748,6 +811,9 @@ class WifiManager:
                 last_error,
                 WifiManager._last_recovery_action,
                 WifiManager._last_recovery_result,
+                "Hotspot active. Connect your phone or computer to the machine's Wi-Fi network."
+                if ap_active
+                else "",
             )
             WifiManager._cached_health = health
             WifiManager._health_cache_time = time.time()
