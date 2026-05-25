@@ -96,6 +96,15 @@ def _draft_path(local_id: str) -> Path:
     return DRAFT_REPORTS_DIR.joinpath(local_id)
 
 
+def _safe_draft_file_path(draft_dir: Path, archive_name: str) -> Path:
+    target = draft_dir.joinpath(archive_name).resolve()
+    try:
+        target.relative_to(draft_dir.resolve())
+    except ValueError as exc:
+        raise RuntimeError(f"Unsafe draft member: {archive_name}") from exc
+    return target
+
+
 def _safe_archive_name(path: Path) -> str:
     return f"{path.parent.name}/{path.name}"
 
@@ -144,32 +153,6 @@ def _row_to_report_info(row) -> dict[str, Any]:
     }
 
 
-def _write_tar_zstd(output_path: Path, files: dict[str, Path], report_info: dict[str, Any]):
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_path = Path(temp_dir)
-        report_info_path = temp_path.joinpath(REPORT_INFO_NAME)
-        report_info_path.write_text(
-            json.dumps(report_info, ensure_ascii=False), encoding="utf-8"
-        )
-        tar_path = temp_path.joinpath("draft.tar")
-
-        with tarfile.open(tar_path, "w") as archive:
-            archive.add(report_info_path, arcname=REPORT_INFO_NAME)
-            for archive_name, source_path in files.items():
-                if source_path is not None and source_path.exists() and source_path.is_file():
-                    archive.add(source_path, arcname=archive_name)
-
-        result = subprocess.run(
-            ["zstd", "-10", "-f", "-q", "-o", str(output_path), str(tar_path)],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if result.returncode != 0:
-            raise RuntimeError(result.stderr or "zstd compression failed")
-
-
 def _read_tar_zstd(
     archive_path: Path,
 ) -> tuple[dict[str, Any], dict[str, Path], tempfile.TemporaryDirectory]:
@@ -210,17 +193,64 @@ def _read_tar_zstd(
     return report_info, files, temp_dir_obj
 
 
-def _append_reporting_log(files: dict[str, Path], errors: list[str], temp_path: Path):
+def _write_tar_zstd_from_draft(output_path: Path, draft_dir: Path):
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory() as temp_dir:
+        tar_path = Path(temp_dir).joinpath("draft.tar")
+
+        with tarfile.open(tar_path, "w") as archive:
+            for source_path in sorted(draft_dir.rglob("*")):
+                if source_path.is_file():
+                    archive.add(source_path, arcname=str(source_path.relative_to(draft_dir)))
+
+        result = subprocess.run(
+            ["zstd", "-10", "-f", "-q", "-o", str(output_path), str(tar_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr or "zstd compression failed")
+
+
+def _read_draft_report_info(draft_dir: Path) -> dict[str, Any]:
+    return json.loads(draft_dir.joinpath(REPORT_INFO_NAME).read_text(encoding="utf-8"))
+
+
+def _write_draft_report_info(draft_dir: Path, report_info: dict[str, Any]):
+    draft_dir.joinpath(REPORT_INFO_NAME).write_text(
+        json.dumps(report_info, ensure_ascii=False), encoding="utf-8"
+    )
+
+
+def _draft_files(draft_dir: Path) -> dict[str, Path]:
+    return {
+        str(path.relative_to(draft_dir)): path
+        for path in draft_dir.rglob("*")
+        if path.is_file() and path.name != REPORT_INFO_NAME
+    }
+
+
+def _append_reporting_log_to_dir(draft_dir: Path, errors: list[str]):
     if not errors:
         return
-    log_path = files.get(REPORT_LOG_NAME)
-    if log_path is None:
-        log_path = temp_path.joinpath(REPORT_LOG_NAME)
-        log_path.write_text("", encoding="utf-8")
-        files[REPORT_LOG_NAME] = log_path
+    log_path = draft_dir.joinpath(REPORT_LOG_NAME)
     with log_path.open("a", encoding="utf-8") as handle:
         for error in errors:
             handle.write(f"{datetime.now(timezone.utc).isoformat()} {error}\n")
+
+
+def _copy_draft_file(draft_dir: Path, archive_name: str, source_path: Path) -> Path:
+    target = _safe_draft_file_path(draft_dir, archive_name)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source_path, target)
+    return target
+
+
+def _remove_draft_file(draft_dir: Path, archive_name: str):
+    target = _safe_draft_file_path(draft_dir, archive_name)
+    if target.exists() and target.is_file():
+        target.unlink()
 
 
 def _find_debug_file(file_name: str) -> Path | None:
@@ -305,62 +335,46 @@ async def _fetch_machine_logs(reference_time: int | None = None) -> str:
     return response.body.decode("utf-8", errors="replace")
 
 
-async def _fetch_report_files(reference_time: int | None = None) -> FetchResult:
+async def _fetch_report_files(
+    draft_dir: Path, reference_time: int | None = None
+) -> FetchResult:
     result = FetchResult()
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_path = Path(temp_dir)
-        machine_info_path = temp_path.joinpath(MACHINE_INFO_NAME)
-        machine_logs_path = temp_path.joinpath(MACHINE_LOGS_NAME)
+    draft_dir.mkdir(parents=True, exist_ok=True)
 
-        try:
-            machine_info_path.write_text(
-                json.dumps(_get_machine_info(), ensure_ascii=False), encoding="utf-8"
-            )
-            result.files[MACHINE_INFO_NAME] = machine_info_path
-            result.machine_info = True
-        except Exception as exc:
-            result.errors.append(f"Failed to fetch machine info: {exc}")
-
-        try:
-            machine_logs_path.write_text(
-                await _fetch_machine_logs(reference_time), encoding="utf-8"
-            )
-            result.files[MACHINE_LOGS_NAME] = machine_logs_path
-            result.machine_logs = True
-        except Exception as exc:
-            result.errors.append(f"Failed to fetch machine logs: {exc}")
-
-        debug_files, debug_errors = _select_debug_files(reference_time=reference_time)
-        result.errors.extend(debug_errors)
-        for path in debug_files:
-            result.files[_debug_archive_name(_safe_archive_name(path))] = path
-            result.automatic_debug_files.append(_safe_archive_name(path))
-
-        _append_reporting_log(result.files, result.errors, temp_path)
-        copied_result = FetchResult(
-            errors=result.errors,
-            automatic_debug_files=result.automatic_debug_files,
-            machine_info=result.machine_info,
-            machine_logs=result.machine_logs,
+    try:
+        machine_info_path = draft_dir.joinpath(MACHINE_INFO_NAME)
+        machine_info_path.write_text(
+            json.dumps(_get_machine_info(), ensure_ascii=False), encoding="utf-8"
         )
-        persist_dir = Path(tempfile.mkdtemp())
-        for archive_name, source in result.files.items():
-            target = persist_dir.joinpath(archive_name)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, target)
-            copied_result.files[archive_name] = target
-        return copied_result
+        result.files[MACHINE_INFO_NAME] = machine_info_path
+        result.machine_info = True
+    except Exception as exc:
+        result.errors.append(f"Failed to fetch machine info: {exc}")
 
+    try:
+        machine_logs_path = draft_dir.joinpath(MACHINE_LOGS_NAME)
+        machine_logs_path.write_text(
+            await _fetch_machine_logs(reference_time), encoding="utf-8"
+        )
+        result.files[MACHINE_LOGS_NAME] = machine_logs_path
+        result.machine_logs = True
+    except Exception as exc:
+        result.errors.append(f"Failed to fetch machine logs: {exc}")
 
-def _remove_temp_files(files: dict[str, Path]):
-    roots = {
-        Path("/").joinpath(path.parts[1], path.parts[2])
-        for path in files.values()
-        if len(path.parts) > 3 and path.parts[0] == "/" and path.parts[1] == "tmp"
-    }
-    for candidate in roots:
-        if candidate.parent == Path("/tmp") and candidate.exists():
-            shutil.rmtree(candidate, ignore_errors=True)
+    debug_files, debug_errors = _select_debug_files(reference_time=reference_time)
+    result.errors.extend(debug_errors)
+    for path in debug_files:
+        archive_name = _debug_archive_name(_safe_archive_name(path))
+        try:
+            result.files[archive_name] = _copy_draft_file(draft_dir, archive_name, path)
+            result.automatic_debug_files.append(_safe_archive_name(path))
+        except Exception as exc:
+            result.errors.append(f"Failed to copy debug file {path}: {exc}")
+
+    _append_reporting_log_to_dir(draft_dir, result.errors)
+    if draft_dir.joinpath(REPORT_LOG_NAME).exists():
+        result.files[REPORT_LOG_NAME] = draft_dir.joinpath(REPORT_LOG_NAME)
+    return result
 
 
 def _insert_report(report_info: dict[str, Any]):
@@ -435,6 +449,7 @@ def _apply_scalar_draft_patch(
 async def _apply_draft_time_patch(
     report_info: dict[str, Any],
     files: dict[str, Path],
+    draft_dir: Path,
     attachments: dict[str, Any],
     debug_files: dict[str, Any],
     user_files: list[str],
@@ -453,23 +468,43 @@ async def _apply_draft_time_patch(
     preserve_user_names = set(user_files)
     for name in list(debug_files.setdefault("automatic", [])):
         if name not in preserve_user_names:
-            files.pop(_debug_archive_name(name), None)
+            archive_name = _debug_archive_name(name)
+            files.pop(archive_name, None)
+            _remove_draft_file(draft_dir, archive_name)
 
-    fetched = await _fetch_report_files(reference_time=issue_time)
-    for archive_name in (MACHINE_LOGS_NAME, REPORT_LOG_NAME):
-        if archive_name in fetched.files:
-            files[archive_name] = fetched.files[archive_name]
-    for archive_name, path in fetched.files.items():
-        if archive_name.startswith(f"{DEBUG_ARCHIVE_DIR}/"):
-            files[archive_name] = path
+    errors = []
+    try:
+        machine_logs_path = draft_dir.joinpath(MACHINE_LOGS_NAME)
+        machine_logs_path.write_text(
+            await _fetch_machine_logs(reference_time=issue_time), encoding="utf-8"
+        )
+        files[MACHINE_LOGS_NAME] = machine_logs_path
+        attachments["machineLogs"] = True
+    except Exception as exc:
+        _remove_draft_file(draft_dir, MACHINE_LOGS_NAME)
+        files.pop(MACHINE_LOGS_NAME, None)
+        attachments["machineLogs"] = False
+        errors.append(f"Failed to fetch machine logs: {exc}")
 
-    debug_files["automatic"] = fetched.automatic_debug_files
-    attachments["machineLogs"] = fetched.machine_logs
-    return fetched.errors
+    selected_debug_files, debug_errors = _select_debug_files(reference_time=issue_time)
+    errors.extend(debug_errors)
+    copied_debug_files = []
+    for path in selected_debug_files:
+        name = _safe_archive_name(path)
+        archive_name = _debug_archive_name(name)
+        try:
+            files[archive_name] = _copy_draft_file(draft_dir, archive_name, path)
+            copied_debug_files.append(name)
+        except Exception as exc:
+            errors.append(f"Failed to copy debug file {path}: {exc}")
+
+    debug_files["automatic"] = copied_debug_files
+    return errors
 
 
 def _apply_user_debug_file_patch(
     files: dict[str, Path],
+    draft_dir: Path,
     debug_files: dict[str, Any],
     user_files: list[str],
     patch: dict[str, Any],
@@ -487,7 +522,14 @@ def _apply_user_debug_file_patch(
         if source_path is None:
             log_errors.append(f"User selected debug file not found: {name}")
             continue
-        files.setdefault(_debug_archive_name(name), source_path)
+        archive_name = _debug_archive_name(name)
+        try:
+            files.setdefault(
+                archive_name, _copy_draft_file(draft_dir, archive_name, source_path)
+            )
+        except Exception as exc:
+            log_errors.append(f"Failed to copy user selected debug file {name}: {exc}")
+            continue
         user_files.append(name)
 
     debug_files["user"] = _dedupe(user_files)
@@ -503,43 +545,44 @@ def _draft_db_values(attachments: dict[str, Any]) -> dict[str, Any]:
 
 
 async def _apply_draft_patch(local_id: str, patch: dict[str, Any]) -> dict[str, Any]:
-    archive_path = _draft_path(local_id)
-    if not archive_path.exists():
+    draft_dir = _draft_path(local_id)
+    if not draft_dir.exists() or not draft_dir.is_dir():
         raise FileNotFoundError(local_id)
 
-    report_info, files, temp_dir_obj = _read_tar_zstd(archive_path)
-    try:
-        attachments = report_info.setdefault("attachments", {})
-        debug_files = attachments.setdefault("debugFiles", {})
-        debug_files.setdefault("automatic", [])
-        user_files = debug_files.setdefault("user", [])
-        db_values = {}
-        log_errors = []
+    report_info = _read_draft_report_info(draft_dir)
+    files = _draft_files(draft_dir)
+    attachments = report_info.setdefault("attachments", {})
+    debug_files = attachments.setdefault("debugFiles", {})
+    debug_files.setdefault("automatic", [])
+    user_files = debug_files.setdefault("user", [])
+    db_values = {}
+    log_errors = []
 
-        _apply_scalar_draft_patch(report_info, db_values, patch)
-        log_errors.extend(
-            await _apply_draft_time_patch(
-                report_info,
-                files,
-                attachments,
-                debug_files,
-                user_files,
-                db_values,
-                patch,
-            )
+    _apply_scalar_draft_patch(report_info, db_values, patch)
+    log_errors.extend(
+        await _apply_draft_time_patch(
+            report_info,
+            files,
+            draft_dir,
+            attachments,
+            debug_files,
+            user_files,
+            db_values,
+            patch,
         )
-        log_errors.extend(_apply_user_debug_file_patch(files, debug_files, user_files, patch))
+    )
+    log_errors.extend(
+        _apply_user_debug_file_patch(files, draft_dir, debug_files, user_files, patch)
+    )
 
-        if log_errors:
-            _append_reporting_log(files, log_errors, Path(temp_dir_obj.name))
+    if log_errors:
+        _append_reporting_log_to_dir(draft_dir, log_errors)
 
-        db_values.update(_draft_db_values(attachments))
-        _write_tar_zstd(archive_path, files, report_info)
-        if db_values:
-            _update_report_db(local_id, db_values)
-        return report_info
-    finally:
-        temp_dir_obj.cleanup()
+    db_values.update(_draft_db_values(attachments))
+    _write_draft_report_info(draft_dir, report_info)
+    if db_values:
+        _update_report_db(local_id, db_values)
+    return report_info
 
 
 def _column_for_filter(name: str):
@@ -606,9 +649,9 @@ class ReportsCreateHandler(BaseHandler):
             return
         local_id = _new_local_id()
         now = _now_seconds()
-        fetched = None
+        draft_dir = _draft_path(local_id)
         try:
-            fetched = await _fetch_report_files()
+            fetched = await _fetch_report_files(draft_dir)
             attachments = {
                 "debugFiles": {"automatic": fetched.automatic_debug_files},
                 "machineInfo": fetched.machine_info,
@@ -625,27 +668,32 @@ class ReportsCreateHandler(BaseHandler):
                 "ticket": None,
                 "localID": local_id,
             }
-            _write_tar_zstd(_draft_path(local_id), fetched.files, report_info)
+            _write_draft_report_info(draft_dir, report_info)
             _insert_report(report_info)
             self.write({"localID": local_id})
         except Exception as exc:
+            shutil.rmtree(draft_dir, ignore_errors=True)
             logger.exception("Failed to create bug report draft")
             _api_error(self, 500, "Failed to create report draft", {"message": str(exc)})
-        finally:
-            if fetched is not None:
-                _remove_temp_files(fetched.files)
 
 
 class ReportDraftHandler(BaseHandler):
     async def get(self, local_id: str):
-        path = _draft_path(local_id)
-        if not path.exists():
+        draft_dir = _draft_path(local_id)
+        if not draft_dir.exists() or not draft_dir.is_dir():
             _api_error(self, 404, "Unknown localID")
             return
         self.set_header("Content-Type", "application/octet-stream")
         self.set_header("Content-Disposition", f'attachment; filename="{local_id}.zstd"')
-        with path.open("rb") as handle:
-            self.write(handle.read())
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                archive_path = Path(temp_dir).joinpath(f"{local_id}.zstd")
+                _write_tar_zstd_from_draft(archive_path, draft_dir)
+                with archive_path.open("rb") as handle:
+                    self.write(handle.read())
+        except Exception as exc:
+            logger.exception("Failed to read bug report draft")
+            _api_error(self, 500, "Failed to read report draft", {"message": str(exc)})
 
     async def put(self, local_id: str):
         try:
