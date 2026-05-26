@@ -645,6 +645,36 @@ async def _apply_draft_patch(local_id: str, patch: dict[str, Any]) -> dict[str, 
     return report_info
 
 
+def _mark_report_submitted(
+    local_id: str,
+    event_id: str,
+    submission_time: int,
+    ticket_provided: bool,
+    ticket: int | None,
+) -> bool:
+    if _get_report_row(local_id) is None:
+        return False
+
+    draft_dir = _draft_path(local_id)
+    if not draft_dir.exists() or not draft_dir.is_dir():
+        raise FileNotFoundError(local_id)
+
+    report_info = _read_draft_report_info(draft_dir)
+    report_info["eventID"] = event_id
+    if ticket_provided:
+        report_info["ticket"] = ticket
+    _write_draft_report_info(draft_dir, report_info)
+
+    db_values = {
+        "eventID": event_id,
+        "submissionTime": submission_time,
+        "status": "submitted",
+    }
+    if ticket_provided:
+        db_values["ticketNumber"] = ticket
+    return _update_report_db(local_id, db_values)
+
+
 def _column_for_filter(name: str):
     return bug_reports.c.get(name)
 
@@ -810,20 +840,24 @@ class ReportsSubmitHandler(BaseHandler):
             local_id = data["localID"]
             event_id = data["eventID"]
             submission_time = data.get("submissionTime", _now_seconds())
-            ticket = data.get("ticket")
+            ticket_provided = "ticket" in data
+            ticket = data.get("ticket") if ticket_provided else None
         except (KeyError, ValueError) as exc:
             _api_error(self, 400, f"Invalid submit body: {exc}")
             return
 
-        updated = _update_report_db(
-            local_id,
-            {
-                "eventID": event_id,
-                "ticketNumber": ticket,
-                "submissionTime": submission_time,
-                "status": "submitted",
-            },
-        )
+        try:
+            updated = _mark_report_submitted(
+                local_id, event_id, submission_time, ticket_provided, ticket
+            )
+        except FileNotFoundError:
+            _api_error(self, 404, "Unknown localID")
+            return
+        except Exception as exc:
+            logger.exception("Failed to submit bug report draft")
+            _api_error(self, 500, "Failed to submit report draft", {"message": str(exc)})
+            return
+
         if not updated:
             _api_error(self, 404, "Unknown localID")
             return

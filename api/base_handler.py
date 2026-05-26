@@ -23,8 +23,10 @@ class BaseHandler(tornado.web.RequestHandler):
         self.set_header("Access-Control-Expose-Headers", "*")
 
         self.set_header("Content-type", "application/json")
-        self.set_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS,DELETE")
-        self.set_header("Access-Control-Allow-Headers", "content-type")
+        self.set_header("Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS,DELETE")
+        self.set_header(
+            "Access-Control-Allow-Headers", "content-type, authorization, x-authorized"
+        )
         # We hate caching!
         self.set_header("Cache-Control", "no-cache")
         self.set_header("Pragma", "no-cache")
