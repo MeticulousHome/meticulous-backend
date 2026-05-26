@@ -1,5 +1,6 @@
 import asyncio
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import create_engine, insert, select
@@ -274,6 +275,126 @@ def test_draft_directory_can_be_compressed(report_module):
 
     assert report_info["localID"] == local_id
     assert report_module.MACHINE_STATUS_NAME in archived_names
+
+
+def test_create_report_returns_machine_id_matching_report_info(report_module, monkeypatch):
+    async def fake_fetch_report_files(draft_dir, reference_time=None):
+        draft_dir.mkdir(parents=True, exist_ok=True)
+        machine_status = draft_dir.joinpath(report_module.MACHINE_STATUS_NAME)
+        machine_status.write_text('{"ok": true}', encoding="utf-8")
+        return report_module.FetchResult(
+            files={report_module.MACHINE_STATUS_NAME: machine_status},
+            machine_status=True,
+        )
+
+    class FakeHandler:
+        request = SimpleNamespace(body=b"")
+
+        def write(self, body):
+            self.body = body
+
+    monkeypatch.setattr(report_module, "_new_local_id", lambda: "local-test-id")
+    monkeypatch.setattr(report_module, "_now_seconds", lambda: 1)
+    monkeypatch.setattr(report_module, "_fetch_report_files", fake_fetch_report_files)
+    monkeypatch.setattr(
+        report_module.HostnameManager, "generateHostname", lambda: "machine-test-id"
+    )
+
+    handler = FakeHandler()
+    asyncio.run(report_module.ReportsCreateHandler.post(handler))
+    report_info = report_module._read_draft_report_info(
+        report_module._draft_path("local-test-id")
+    )
+
+    assert handler.body == {"localID": "local-test-id", "machineID": "machine-test-id"}
+    assert report_info["machineID"] == handler.body["machineID"]
+    with ShotDataBase.engine.connect() as connection:
+        row = connection.execute(select(bug_reports)).first()
+    assert row.localID == "local-test-id"
+    assert row.machineID == "machine-test-id"
+    assert row.machineStatus is True
+
+
+def test_draft_patch_persists_ticket_in_db_and_report_info(report_module):
+    local_id = "local-test-id"
+    draft_dir = report_module._draft_path(local_id)
+    draft_dir.mkdir(parents=True)
+    report_module._write_draft_report_info(
+        draft_dir,
+        {
+            "description": None,
+            "dateAndTime": 1,
+            "attachments": {
+                "debugFiles": {"automatic": [], "user": []},
+                "machineInfo": True,
+                "machineLogs": True,
+                "machineStatus": True,
+            },
+            "multimedia": None,
+            "machineID": "machine",
+            "eventID": None,
+            "baseEventID": None,
+            "ticket": None,
+            "localID": local_id,
+        },
+    )
+    with ShotDataBase.engine.begin() as connection:
+        connection.execute(
+            insert(bug_reports).values(
+                localID=local_id,
+                issueTime=1,
+                creationTime=1,
+                logFiles=None,
+                machineInfo=True,
+                machineLogs=True,
+                machineStatus=True,
+                status="draft",
+            )
+        )
+
+    report_module._validate_draft_patch({"ticket": 1234})
+    updated = asyncio.run(report_module._apply_draft_patch(local_id, {"ticket": 1234}))
+
+    assert updated["ticket"] == 1234
+    assert report_module._read_draft_report_info(draft_dir)["ticket"] == 1234
+    with ShotDataBase.engine.connect() as connection:
+        row = connection.execute(select(bug_reports)).first()
+    assert row.ticketNumber == 1234
+
+
+def test_list_report_page_returns_newest_first_with_machine_id(report_module):
+    with ShotDataBase.engine.begin() as connection:
+        connection.execute(
+            insert(bug_reports),
+            [
+                {
+                    "localID": "older-id",
+                    "issueTime": 1,
+                    "creationTime": 1,
+                    "machineID": "older-machine",
+                    "machineInfo": False,
+                    "machineLogs": False,
+                    "machineStatus": False,
+                    "status": "draft",
+                },
+                {
+                    "localID": "newer-id",
+                    "issueTime": 2,
+                    "creationTime": 2,
+                    "machineID": "newer-machine",
+                    "machineInfo": True,
+                    "machineLogs": True,
+                    "machineStatus": True,
+                    "status": "draft",
+                },
+            ],
+        )
+
+    response = report_module._list_report_page(page=0, size=1)
+
+    assert response["content"][0]["localID"] == "newer-id"
+    assert response["content"][0]["machineID"] == "newer-machine"
+    assert response["hasMore"] is True
 
 
 def test_submit_db_update(report_module):

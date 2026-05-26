@@ -38,7 +38,14 @@ MACHINE_INFO_NAME = "machine_info.json"
 MACHINE_LOGS_NAME = "machine_logs.txt"
 MACHINE_STATUS_NAME = "machine_status.json"
 DEBUG_ARCHIVE_DIR = "debug"
-ALLOWED_DRAFT_UPDATE_KEYS = {"description", "dateAndTime", "baseEventID", "attachments"}
+ALLOWED_DRAFT_UPDATE_KEYS = {
+    "description",
+    "dateAndTime",
+    "baseEventID",
+    "ticket",
+    "multimedia",
+    "attachments",
+}
 
 
 @dataclass
@@ -148,8 +155,8 @@ def _row_to_report_info(row) -> dict[str, Any]:
             "machineLogs": bool(row.machineLogs),
             "machineStatus": bool(row.machineStatus),
         },
-        "multimedia": None,
-        "machineID": None,
+        "multimedia": row.multimedia,
+        "machineID": row.machineID,
         "eventID": row.eventID,
         "baseEventID": row.baseEventID,
         "ticket": row.ticketNumber,
@@ -409,6 +416,8 @@ def _insert_report(report_info: dict[str, Any]):
                     creationTime=report_info["dateAndTime"],
                     submissionTime=None,
                     description=None,
+                    multimedia=report_info.get("multimedia"),
+                    machineID=report_info.get("machineID"),
                     logFiles=_attachments_to_log_files(attachments),
                     machineInfo=attachments.get("machineInfo"),
                     machineLogs=attachments.get("machineLogs"),
@@ -437,6 +446,29 @@ def _get_report_row(local_id: str):
         ).first()
 
 
+def _list_report_page(page: int, size: int, condition=None) -> dict[str, Any]:
+    _ensure_database_initialized()
+    query = select(bug_reports).order_by(
+        desc(bug_reports.c.creationTime), desc(bug_reports.c.localID)
+    )
+    count_query = select(func.count()).select_from(bug_reports)
+    if condition is not None:
+        query = query.where(condition)
+        count_query = count_query.where(condition)
+    query = query.limit(size).offset(page * size)
+
+    with ShotDataBase.engine.connect() as connection:
+        rows = connection.execute(query).fetchall()
+        total = connection.execute(count_query).scalar_one()
+
+    return {
+        "content": [_row_to_report_info(row) for row in rows],
+        "size": size,
+        "page": page,
+        "hasMore": (page + 1) * size < total,
+    }
+
+
 def _validate_draft_patch(data: dict[str, Any]):
     invalid = set(data.keys()) - ALLOWED_DRAFT_UPDATE_KEYS
     if invalid:
@@ -463,6 +495,14 @@ def _apply_scalar_draft_patch(
     if "baseEventID" in patch:
         report_info["baseEventID"] = patch["baseEventID"]
         db_values["baseEventID"] = patch["baseEventID"]
+
+    if "ticket" in patch:
+        report_info["ticket"] = patch["ticket"]
+        db_values["ticketNumber"] = patch["ticket"]
+
+    if "multimedia" in patch:
+        report_info["multimedia"] = patch["multimedia"]
+        db_values["multimedia"] = patch["multimedia"]
 
 
 async def _apply_draft_time_patch(
@@ -691,7 +731,7 @@ class ReportsCreateHandler(BaseHandler):
             }
             _write_draft_report_info(draft_dir, report_info)
             _insert_report(report_info)
-            self.write({"localID": local_id})
+            self.write({"localID": local_id, "machineID": report_info["machineID"]})
         except Exception as exc:
             shutil.rmtree(draft_dir, ignore_errors=True)
             logger.exception("Failed to create bug report draft")
@@ -760,26 +800,7 @@ class ReportsListHandler(BaseHandler):
             _api_error(self, 400, "Filter contains no valid fields")
             return
 
-        _ensure_database_initialized()
-        query = select(bug_reports).order_by(desc(bug_reports.c.creationTime))
-        count_query = select(func.count()).select_from(bug_reports)
-        if condition is not None:
-            query = query.where(condition)
-            count_query = count_query.where(condition)
-        query = query.limit(size).offset(page * size)
-
-        with ShotDataBase.engine.connect() as connection:
-            rows = connection.execute(query).fetchall()
-            total = connection.execute(count_query).scalar_one()
-
-        self.write(
-            {
-                "content": [_row_to_report_info(row) for row in rows],
-                "size": size,
-                "page": page,
-                "hasMore": (page + 1) * size < total,
-            }
-        )
+        self.write(_list_report_page(page, size, condition))
 
 
 class ReportsSubmitHandler(BaseHandler):
