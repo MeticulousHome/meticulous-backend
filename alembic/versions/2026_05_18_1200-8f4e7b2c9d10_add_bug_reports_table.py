@@ -28,6 +28,8 @@ def upgrade() -> None:
         sa.Column("creationTime", sa.Integer(), nullable=False),
         sa.Column("submissionTime", sa.Integer(), nullable=True),
         sa.Column("description", sa.Text(), nullable=True),
+        sa.Column("multimedia", sa.Integer(), nullable=True),
+        sa.Column("machineID", sa.Text(), nullable=True),
         sa.Column("logFiles", sa.Text(), nullable=True),
         sa.Column("machineInfo", sa.Boolean(), nullable=True),
         sa.Column("machineLogs", sa.Boolean(), nullable=True),
