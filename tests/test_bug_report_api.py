@@ -315,7 +315,9 @@ def test_create_report_returns_machine_id_matching_report_info(report_module, mo
     assert row.machineStatus is True
 
 
-def test_draft_patch_persists_ticket_in_db_and_report_info(report_module):
+def test_draft_patch_persists_ticket_and_multimedia_in_db_and_report_info(
+    report_module,
+):
     local_id = "local-test-id"
     draft_dir = report_module._draft_path(local_id)
     draft_dir.mkdir(parents=True)
@@ -352,14 +354,19 @@ def test_draft_patch_persists_ticket_in_db_and_report_info(report_module):
             )
         )
 
-    report_module._validate_draft_patch({"ticket": 1234})
-    updated = asyncio.run(report_module._apply_draft_patch(local_id, {"ticket": 1234}))
+    patch = {"ticket": 1234, "multimedia": 2}
+    report_module._validate_draft_patch(patch)
+    updated = asyncio.run(report_module._apply_draft_patch(local_id, patch))
 
     assert updated["ticket"] == 1234
-    assert report_module._read_draft_report_info(draft_dir)["ticket"] == 1234
+    assert updated["multimedia"] == 2
+    archived_info = report_module._read_draft_report_info(draft_dir)
+    assert archived_info["ticket"] == 1234
+    assert archived_info["multimedia"] == 2
     with ShotDataBase.engine.connect() as connection:
         row = connection.execute(select(bug_reports)).first()
     assert row.ticketNumber == 1234
+    assert row.multimedia == 2
 
 
 def test_list_report_page_returns_newest_first_with_machine_id(report_module):
@@ -397,11 +404,33 @@ def test_list_report_page_returns_newest_first_with_machine_id(report_module):
     assert response["hasMore"] is True
 
 
-def test_submit_db_update(report_module):
+def test_submit_update_persists_db_and_report_info(report_module):
+    local_id = "submit-id"
+    draft_dir = report_module._draft_path(local_id)
+    draft_dir.mkdir(parents=True)
+    report_module._write_draft_report_info(
+        draft_dir,
+        {
+            "description": None,
+            "dateAndTime": 1,
+            "attachments": {
+                "debugFiles": {"automatic": [], "user": []},
+                "machineInfo": False,
+                "machineLogs": False,
+                "machineStatus": False,
+            },
+            "multimedia": 1,
+            "machineID": "machine",
+            "eventID": None,
+            "baseEventID": None,
+            "ticket": None,
+            "localID": local_id,
+        },
+    )
     with ShotDataBase.engine.begin() as connection:
         connection.execute(
             insert(bug_reports).values(
-                localID="submit-id",
+                localID=local_id,
                 issueTime=1,
                 creationTime=1,
                 machineInfo=False,
@@ -411,20 +440,69 @@ def test_submit_db_update(report_module):
             )
         )
 
-    updated = report_module._update_report_db(
-        "submit-id",
-        {
-            "eventID": "event-1",
-            "ticketNumber": 42,
-            "submissionTime": 3,
-            "status": "submitted",
-        },
+    updated = report_module._mark_report_submitted(
+        local_id, "event-1", 3, ticket_provided=True, ticket=42
     )
 
     with ShotDataBase.engine.connect() as connection:
         row = connection.execute(select(bug_reports)).first()
+    archived_info = report_module._read_draft_report_info(draft_dir)
     assert updated is True
     assert row.eventID == "event-1"
     assert row.ticketNumber == 42
     assert row.submissionTime == 3
     assert row.status == "submitted"
+    assert archived_info["eventID"] == "event-1"
+    assert archived_info["ticket"] == 42
+    assert archived_info["multimedia"] == 1
+
+
+def test_submit_without_ticket_preserves_existing_ticket(report_module):
+    local_id = "submit-id"
+    draft_dir = report_module._draft_path(local_id)
+    draft_dir.mkdir(parents=True)
+    report_module._write_draft_report_info(
+        draft_dir,
+        {
+            "description": None,
+            "dateAndTime": 1,
+            "attachments": {
+                "debugFiles": {"automatic": [], "user": []},
+                "machineInfo": False,
+                "machineLogs": False,
+                "machineStatus": False,
+            },
+            "multimedia": None,
+            "machineID": "machine",
+            "eventID": None,
+            "baseEventID": None,
+            "ticket": 42,
+            "localID": local_id,
+        },
+    )
+    with ShotDataBase.engine.begin() as connection:
+        connection.execute(
+            insert(bug_reports).values(
+                localID=local_id,
+                issueTime=1,
+                creationTime=1,
+                machineInfo=False,
+                machineLogs=False,
+                machineStatus=False,
+                ticketNumber=42,
+                status="draft",
+            )
+        )
+
+    updated = report_module._mark_report_submitted(
+        local_id, "event-1", 3, ticket_provided=False, ticket=None
+    )
+
+    with ShotDataBase.engine.connect() as connection:
+        row = connection.execute(select(bug_reports)).first()
+    archived_info = report_module._read_draft_report_info(draft_dir)
+    assert updated is True
+    assert row.eventID == "event-1"
+    assert row.ticketNumber == 42
+    assert archived_info["eventID"] == "event-1"
+    assert archived_info["ticket"] == 42
