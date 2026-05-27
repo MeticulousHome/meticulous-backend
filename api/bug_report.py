@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import re
@@ -38,6 +39,7 @@ MACHINE_INFO_NAME = "machine_info.json"
 MACHINE_LOGS_NAME = "machine_logs.txt"
 MACHINE_STATUS_NAME = "machine_status.json"
 DEBUG_ARCHIVE_DIR = "debug"
+MAX_DEBUG_SHOTS = 10
 ALLOWED_DRAFT_UPDATE_KEYS = {
     "description",
     "dateAndTime",
@@ -273,7 +275,7 @@ def _find_debug_file(file_name: str) -> Path | None:
 
 
 def _select_debug_files(
-    limit: int = 10, reference_time: int | None = None
+    limit: int = MAX_DEBUG_SHOTS, reference_time: int | None = None
 ) -> tuple[list[Path], list[str]]:
     debug_root = DEBUG_HISTORY_ROOT
     if not debug_root.exists():
@@ -333,6 +335,21 @@ def _select_debug_files(
     return selected, errors
 
 
+async def _capture_incomplete_debug_shot(draft_dir: Path) -> str | None:
+    from shot_debug_manager import ShotDebugManager
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+
+    return await loop.run_in_executor(
+        None,
+        ShotDebugManager.write_current_incomplete_debug_shot,
+        draft_dir.joinpath(DEBUG_ARCHIVE_DIR),
+    )
+
+
 async def _fetch_machine_logs(reference_time: int | None = None) -> str:
     url = WATCHER_LOGS_URL
     if reference_time is not None:
@@ -352,9 +369,7 @@ async def _fetch_machine_status() -> str:
     return response.body.decode("utf-8", errors="replace")
 
 
-async def _fetch_report_files(
-    draft_dir: Path, reference_time: int | None = None
-) -> FetchResult:
+async def _fetch_report_files(draft_dir: Path) -> FetchResult:
     result = FetchResult()
     draft_dir.mkdir(parents=True, exist_ok=True)
 
@@ -370,9 +385,7 @@ async def _fetch_report_files(
 
     try:
         machine_logs_path = draft_dir.joinpath(MACHINE_LOGS_NAME)
-        machine_logs_path.write_text(
-            await _fetch_machine_logs(reference_time), encoding="utf-8"
-        )
+        machine_logs_path.write_text(await _fetch_machine_logs(), encoding="utf-8")
         result.files[MACHINE_LOGS_NAME] = machine_logs_path
         result.machine_logs = True
     except Exception as exc:
@@ -386,7 +399,18 @@ async def _fetch_report_files(
     except Exception as exc:
         result.errors.append(f"Failed to fetch machine status: {exc}")
 
-    debug_files, debug_errors = _select_debug_files(reference_time=reference_time)
+    debug_limit = MAX_DEBUG_SHOTS
+    try:
+        incomplete_debug_file = await _capture_incomplete_debug_shot(draft_dir)
+        if incomplete_debug_file is not None:
+            archive_name = _debug_archive_name(incomplete_debug_file)
+            result.files[archive_name] = draft_dir.joinpath(archive_name)
+            result.automatic_debug_files.append(incomplete_debug_file)
+            debug_limit -= 1
+    except Exception as exc:
+        result.errors.append(f"Failed to capture active debug shot: {exc}")
+
+    debug_files, debug_errors = _select_debug_files(limit=debug_limit)
     result.errors.extend(debug_errors)
     for path in debug_files:
         archive_name = _debug_archive_name(_safe_archive_name(path))

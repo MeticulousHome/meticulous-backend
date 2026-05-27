@@ -10,6 +10,7 @@ import logging
 import threading
 from shot_database import ShotDataBase
 import subprocess
+from pathlib import Path
 
 from config import (
     CONFIG_USER,
@@ -28,7 +29,6 @@ from esp_serial.data import (
     MachineStatusToProfile,
     ESPInfo,
 )
-from telemetry_service import TelemetryService
 from log import MeticulousLogger
 from shot_manager import Shot, ShotManager
 import copy
@@ -123,6 +123,93 @@ class ShotDebugManager:
     _current_data: DebugShot = None
     clear_current_data_lock = threading.Lock()
     logging_handler = None
+
+    @staticmethod
+    def _copy_current_data(clear_current_data: bool = False):
+        current_data_copy = None
+        with ShotDebugManager.clear_current_data_lock:
+            if ShotDebugManager._current_data is not None:
+                current_data_copy = copy.deepcopy(ShotDebugManager._current_data)
+            if clear_current_data:
+                ShotDebugManager._current_data = None
+        return current_data_copy
+
+    @staticmethod
+    def _prepare_debug_shot_data(current_data_copy: DebugShot, start: datetime) -> str:
+        if current_data_copy.profile is None:
+            current_data_copy.profile = {}
+
+        if current_data_copy.nodeJSON is None:
+            current_data_copy.nodeJSON = {}
+
+        debug_shot_data = current_data_copy.to_json()
+        if not bool(debug_shot_data.get("profile")) and debug_shot_data.get("type") == "shot":
+            from profiles import ProfileManager
+
+            last_profile = ProfileManager.get_last_profile()
+            if last_profile is not None:
+                loadTime = last_profile.get("load_time", 0)
+                loadDateTime = datetime.fromtimestamp(loadTime)
+                loadTimeDiff = abs((start - loadDateTime).total_seconds())
+                if loadTimeDiff:
+                    logger.warning(
+                        f"Profile load time ({loadDateTime}) and shot start time ({start}) are more than 30 seconds apart. Ignoring profile"
+                    )
+                else:
+                    last_profile_name = last_profile.get("profile", {}).get("name")
+                    logger.info(f"Using last profile {last_profile_name} for debug shot")
+                    debug_shot_data["profile"] = last_profile.get("profile")
+                    if last_profile_name is not None and last_profile_name != "":
+                        debug_shot_data["profile_name"] = last_profile_name
+
+        return json.dumps(debug_shot_data, ensure_ascii=False)
+
+    @staticmethod
+    def _debug_file_path(root_path, current_data_copy: DebugShot, incomplete: bool = False):
+        start = datetime.fromtimestamp(current_data_copy.startTime)
+        folder_name = start.strftime(DEBUG_FOLDER_FORMAT)
+        formatted_time = start.strftime(DEBUG_FILE_FORMAT)
+        file_type = current_data_copy.shottype
+        if incomplete:
+            file_type = f"{file_type}_incomplete"
+        file_name = f"{formatted_time}.{file_type}.json.zst"
+        return start, Path(root_path).joinpath(folder_name, file_name)
+
+    @staticmethod
+    def _compress_debug_json_to_path(data_json: str, file_path: Path):
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Writing debug json to {file_path}")
+        json_data = data_json.encode("utf-8")
+        result = subprocess.run(
+            [
+                "zstd",
+                "-10",
+                "-f",
+                "-q",
+                "-o",
+                str(file_path),
+            ],
+            input=json_data,
+            capture_output=True,
+            text=False,
+            check=True,
+        )
+        if result.stderr:
+            logger.error(f"zstd stderr: {result.stderr}")
+
+    @staticmethod
+    def write_current_incomplete_debug_shot(target_debug_root) -> str | None:
+        current_data_copy = ShotDebugManager._copy_current_data()
+        if current_data_copy is None:
+            return None
+
+        start, file_path = ShotDebugManager._debug_file_path(
+            target_debug_root, current_data_copy, incomplete=True
+        )
+        data_json = ShotDebugManager._prepare_debug_shot_data(current_data_copy, start)
+        logger.info("Writing incomplete debug shot snapshot")
+        ShotDebugManager._compress_debug_json_to_path(data_json, file_path)
+        return str(file_path.relative_to(Path(target_debug_root)))
 
     @staticmethod
     def start():
@@ -228,59 +315,17 @@ class ShotDebugManager:
     @staticmethod
     def stop():
 
-        current_data_copy = None
         logger.info("Stopping debug shot")
-        with ShotDebugManager.clear_current_data_lock:
-            if ShotDebugManager._current_data is not None:
-                current_data_copy = copy.deepcopy(ShotDebugManager._current_data)
-
-        ShotDebugManager._current_data = None
+        current_data_copy = ShotDebugManager._copy_current_data(clear_current_data=True)
 
         if current_data_copy is None:
             return
 
-        if current_data_copy.profile is None:
-            current_data_copy.profile = {}
-
-        if current_data_copy.nodeJSON is None:
-            current_data_copy.nodeJSON = {}
-
         # Determine the folder path based on the current date
-        start_timestamp = current_data_copy.startTime
-        start = datetime.fromtimestamp(start_timestamp)
-        folder_name = start.strftime(DEBUG_FOLDER_FORMAT)
-        folder_path = os.path.join(DEBUG_HISTORY_PATH, folder_name)
-
-        # Create the folder if it does not exist
-        os.makedirs(folder_path, exist_ok=True)
-
-        # Prepare the file path
-        formatted_time = start.strftime(DEBUG_FILE_FORMAT)
-        file_type = current_data_copy.shottype
-        file_name = f"{formatted_time}.{file_type}.json.zst"
-        file_path = os.path.join(folder_path, file_name)
-
-        debug_shot_data = current_data_copy.to_json()
-        if not bool(debug_shot_data.get("profile")) and debug_shot_data.get("type") == "shot":
-            from profiles import ProfileManager
-
-            last_profile = ProfileManager.get_last_profile()
-            if last_profile is not None:
-                loadTime = last_profile.get("load_time", 0)
-                loadDateTime = datetime.fromtimestamp(loadTime)
-                loadTimeDiff = abs((start - loadDateTime).total_seconds())
-                if loadTimeDiff:
-                    logger.warning(
-                        f"Profile load time ({loadDateTime}) and shot start time ({start}) are more than 30 seconds apart. Ignoring profile"
-                    )
-                else:
-                    last_profile_name = last_profile.get("profile", {}).get("name")
-                    logger.info(f"Using last profile {last_profile_name} for debug shot")
-                    debug_shot_data["profile"] = last_profile.get("profile")
-                    if last_profile_name is not None and last_profile_name != "":
-                        debug_shot_data["profile_name"] = last_profile_name
-
-        data_json = json.dumps(debug_shot_data, ensure_ascii=False)
+        start, file_path = ShotDebugManager._debug_file_path(
+            DEBUG_HISTORY_PATH, current_data_copy
+        )
+        data_json = ShotDebugManager._prepare_debug_shot_data(current_data_copy, start)
 
         async def compress_current_data(data_json):
             from machine import Machine
@@ -289,32 +334,14 @@ class ShotDebugManager:
             logger.info("Writing and compressing debug file")
             start = time.time()
 
-            logger.info(f"Writing debug json to {file_path}")
-            json_data = data_json.encode("utf-8")
-            # Compress the file using zstd as all python implementations are too memory intensive
-            result = subprocess.run(
-                [
-                    "zstd",
-                    "-10",
-                    "-f",
-                    "-q",
-                    "-o",
-                    str(file_path),
-                ],
-                input=json_data,
-                capture_output=True,
-                text=False,
-                check=True,
-            )
-            if result.stderr:
-                logger.error(f"zstd stderr: {result.stderr}")
+            ShotDebugManager._compress_debug_json_to_path(data_json, file_path)
 
             time_ms = (time.time() - start) * 1000
             logger.info(f"Writing debug json to disc took {time_ms} ms")
 
             # link the Debug file to the shot in the db
             if ShotManager.db_history_id is not None:
-                debug_dir_filename = os.path.join(*file_path.split(os.path.sep)[-2:])
+                debug_dir_filename = os.path.join(*file_path.parts[-2:])
                 ShotDataBase.link_debug_file(ShotManager.db_history_id, debug_dir_filename)
 
             ShotManager.db_history_id = None
@@ -324,10 +351,14 @@ class ShotDebugManager:
                     logger.info("Not sending emulated debug shots")
                 else:
                     try:
+                        from telemetry_service import TelemetryService
+
                         compressed_data = None
                         with open(file_path, "rb") as f:
                             compressed_data = f.read()
-                        await TelemetryService.upload_debug_shot(compressed_data, file_path)
+                        await TelemetryService.upload_debug_shot(
+                            compressed_data, str(file_path)
+                        )
                         logger.info("Debug shot data compressed and saved")
 
                     except Exception as e:
