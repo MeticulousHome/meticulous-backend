@@ -17,6 +17,7 @@ export DEFAULT_PROFILES=./default_profiles
 export TIMEZONE_JSON_FILE_PATH=./UI_timezones.json
 export USER_DB_MIGRATION_DIR=./db-migrations
 export ALARMS_PATH=./alarms
+export REPORTS_DIR=./reports
 
 uv sync --group dev --group machine
 
