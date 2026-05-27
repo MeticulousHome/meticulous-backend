@@ -23,6 +23,7 @@ services:
       - DEFAULT_IMAGES=/app/images/default
       - IMAGES_PATH=/app/images/profile-images
       - DEFAULT_PROFILES=/app/default_profiles
+      - REPORTS_DIR=/app/reports
     volumes:
       - ./config:/app/config
       - ./logs:/app/logs
@@ -30,3 +31,4 @@ services:
       - ./history:/app/history
       - ./images:/app/images
       - ./default_profiles:/app/default_profiles
+      - ./reports:/app/reports
