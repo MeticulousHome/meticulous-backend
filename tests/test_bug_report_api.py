@@ -1,4 +1,7 @@
 import asyncio
+import json
+import subprocess
+from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -39,6 +42,17 @@ def _read_archive_report_info(bug_report, archive_path: Path):
         return report_info, set(files.keys())
     finally:
         temp_dir.cleanup()
+
+
+def _read_zstd_json(path: Path):
+    result = subprocess.run(
+        ["zstd", "-d", "-f", "-q", "-c", str(path)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=True,
+    )
+    return json.loads(result.stdout)
 
 
 def test_select_debug_files_descending(report_module):
@@ -83,6 +97,91 @@ def test_fetch_report_files_uses_parent_debug_file_names(report_module, monkeypa
         draft_dir.joinpath(report_module.MACHINE_STATUS_NAME).read_text(encoding="utf-8")
         == '{"ok": true}'
     )
+
+
+def test_fetch_report_files_includes_active_incomplete_debug_shot_first(
+    report_module, monkeypatch
+):
+    for index in range(10):
+        _debug_file(
+            report_module.DEBUG_HISTORY_ROOT,
+            "2026-05-18",
+            f"10:00:0{index}.shot.json.zst",
+        )
+
+    incomplete_name = "2026-05-18/11:00:00.shot_incomplete.json.zst"
+
+    async def fake_machine_logs(reference_time=None):
+        return "logs"
+
+    async def fake_machine_status():
+        return '{"ok": true}'
+
+    async def fake_capture_incomplete_debug_shot(draft_dir):
+        path = draft_dir.joinpath(report_module.DEBUG_ARCHIVE_DIR, incomplete_name)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("active", encoding="utf-8")
+        return incomplete_name
+
+    monkeypatch.setattr(report_module, "_get_machine_info", lambda: {"machine": "info"})
+    monkeypatch.setattr(report_module, "_fetch_machine_logs", fake_machine_logs)
+    monkeypatch.setattr(report_module, "_fetch_machine_status", fake_machine_status)
+    monkeypatch.setattr(
+        report_module,
+        "_capture_incomplete_debug_shot",
+        fake_capture_incomplete_debug_shot,
+    )
+
+    draft_dir = report_module._draft_path("local-test-id")
+    fetched = asyncio.run(report_module._fetch_report_files(draft_dir))
+
+    assert len(fetched.automatic_debug_files) == report_module.MAX_DEBUG_SHOTS
+    assert fetched.automatic_debug_files[0] == incomplete_name
+    assert report_module._debug_archive_name(incomplete_name) in fetched.files
+    assert (
+        report_module._debug_archive_name("2026-05-18/10:00:00.shot.json.zst")
+        not in fetched.files
+    )
+
+
+def test_incomplete_debug_shot_snapshot_keeps_active_state(tmp_path):
+    from shot_debug_manager import ShotDebugManager
+
+    class FakeDebugShot:
+        startTime = 1780297200.0
+        profile = {"name": "profile"}
+        profile_name = "profile"
+        nodeJSON = {}
+        shottype = "shot"
+
+        def to_json(self):
+            return {
+                "time": self.startTime,
+                "type": self.shottype,
+                "profile_name": self.profile_name,
+                "profile": self.profile,
+                "nodeJSON": self.nodeJSON,
+                "data": [{"shot": {"pressure": 1}}],
+                "logs": [],
+            }
+
+    original_current_data = ShotDebugManager._current_data
+    active_debug_shot = FakeDebugShot()
+    ShotDebugManager._current_data = active_debug_shot
+    try:
+        relative_name = ShotDebugManager.write_current_incomplete_debug_shot(tmp_path)
+        active_state_kept = ShotDebugManager._current_data is active_debug_shot
+    finally:
+        ShotDebugManager._current_data = original_current_data
+
+    expected_prefix = datetime.fromtimestamp(active_debug_shot.startTime).strftime(
+        "%Y-%m-%d/%H:%M:%S"
+    )
+    assert relative_name == f"{expected_prefix}.shot_incomplete.json.zst"
+    assert active_state_kept is True
+    payload = _read_zstd_json(tmp_path.joinpath(relative_name))
+    assert payload["type"] == "shot"
+    assert payload["data"] == [{"shot": {"pressure": 1}}]
 
 
 def test_fiql_filter_ignores_invalid_fields_and_rejects_empty(report_module):
@@ -278,7 +377,7 @@ def test_draft_directory_can_be_compressed(report_module):
 
 
 def test_create_report_returns_machine_id_matching_report_info(report_module, monkeypatch):
-    async def fake_fetch_report_files(draft_dir, reference_time=None):
+    async def fake_fetch_report_files(draft_dir):
         draft_dir.mkdir(parents=True, exist_ok=True)
         machine_status = draft_dir.joinpath(report_module.MACHINE_STATUS_NAME)
         machine_status.write_text('{"ok": true}', encoding="utf-8")
@@ -455,6 +554,56 @@ def test_submit_update_persists_db_and_report_info(report_module):
     assert archived_info["eventID"] == "event-1"
     assert archived_info["ticket"] == 42
     assert archived_info["multimedia"] == 1
+
+
+def test_compressed_draft_contains_latest_report_info_after_updates(report_module):
+    local_id = "submit-id"
+    draft_dir = report_module._draft_path(local_id)
+    draft_dir.mkdir(parents=True)
+    report_module._write_draft_report_info(
+        draft_dir,
+        {
+            "description": None,
+            "dateAndTime": 1,
+            "attachments": {
+                "debugFiles": {"automatic": [], "user": []},
+                "machineInfo": False,
+                "machineLogs": False,
+                "machineStatus": False,
+            },
+            "multimedia": None,
+            "machineID": "machine",
+            "eventID": None,
+            "baseEventID": None,
+            "ticket": None,
+            "localID": local_id,
+        },
+    )
+    with ShotDataBase.engine.begin() as connection:
+        connection.execute(
+            insert(bug_reports).values(
+                localID=local_id,
+                issueTime=1,
+                creationTime=1,
+                machineInfo=False,
+                machineLogs=False,
+                machineStatus=False,
+                status="draft",
+            )
+        )
+
+    asyncio.run(report_module._apply_draft_patch(local_id, {"ticket": 42, "multimedia": 2}))
+    report_module._mark_report_submitted(
+        local_id, "event-1", 3, ticket_provided=True, ticket=42
+    )
+    archive_path = report_module.DRAFT_REPORTS_DIR.joinpath("out.zstd")
+    report_module._write_tar_zstd_from_draft(archive_path, draft_dir)
+
+    archived_info, archived_names = _read_archive_report_info(report_module, archive_path)
+    assert report_module.REPORT_INFO_NAME not in archived_names
+    assert archived_info["eventID"] == "event-1"
+    assert archived_info["ticket"] == 42
+    assert archived_info["multimedia"] == 2
 
 
 def test_submit_without_ticket_preserves_existing_ticket(report_module):
