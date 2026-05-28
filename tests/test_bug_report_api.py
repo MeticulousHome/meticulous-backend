@@ -545,8 +545,12 @@ def test_submit_update_persists_db_and_report_info(report_module):
 
     with ShotDataBase.engine.connect() as connection:
         row = connection.execute(select(bug_reports)).first()
-    archived_info = report_module._read_draft_report_info(draft_dir)
+    archived_info, _archived_names = _read_archive_report_info(
+        report_module, report_module._finalized_draft_path(local_id)
+    )
     assert updated is True
+    assert not draft_dir.exists()
+    assert report_module._finalized_draft_path(local_id).exists()
     assert row.eventID == "event-1"
     assert row.ticketNumber == 42
     assert row.submissionTime == 3
@@ -554,6 +558,56 @@ def test_submit_update_persists_db_and_report_info(report_module):
     assert archived_info["eventID"] == "event-1"
     assert archived_info["ticket"] == 42
     assert archived_info["multimedia"] == 1
+
+
+def test_get_draft_returns_finalized_archive_without_recompressing(report_module, monkeypatch):
+    local_id = "submit-id"
+    draft_dir = report_module._draft_path(local_id)
+    draft_dir.mkdir(parents=True)
+    draft_dir.joinpath(report_module.MACHINE_STATUS_NAME).write_text(
+        '{"ok": true}', encoding="utf-8"
+    )
+    report_module._write_draft_report_info(
+        draft_dir,
+        {
+            "description": None,
+            "dateAndTime": 1,
+            "attachments": {"machineStatus": True},
+            "multimedia": None,
+            "machineID": "machine",
+            "eventID": "event-1",
+            "baseEventID": None,
+            "ticket": 42,
+            "localID": local_id,
+        },
+    )
+    report_module._finalize_draft_archive(local_id)
+    finalized_archive_path = report_module._finalized_draft_path(local_id)
+    finalized_archive_bytes = finalized_archive_path.read_bytes()
+
+    def fail_recompression(*args, **kwargs):
+        raise AssertionError("Finalized archive should be streamed without recompressing")
+
+    class FakeHandler:
+        def __init__(self):
+            self.headers = {}
+            self.body = b""
+
+        def set_header(self, name, value):
+            self.headers[name] = value
+
+        def write(self, body):
+            self.body += body
+
+    monkeypatch.setattr(report_module, "_write_tar_zstd_from_draft", fail_recompression)
+
+    handler = FakeHandler()
+    asyncio.run(report_module.ReportDraftHandler.get(handler, local_id))
+
+    assert not draft_dir.exists()
+    assert handler.headers["Content-Type"] == "application/octet-stream"
+    assert handler.headers["Content-Disposition"] == 'attachment; filename="submit-id.zstd"'
+    assert handler.body == finalized_archive_bytes
 
 
 def test_compressed_draft_contains_latest_report_info_after_updates(report_module):
@@ -596,11 +650,12 @@ def test_compressed_draft_contains_latest_report_info_after_updates(report_modul
     report_module._mark_report_submitted(
         local_id, "event-1", 3, ticket_provided=True, ticket=42
     )
-    archive_path = report_module.DRAFT_REPORTS_DIR.joinpath("out.zstd")
-    report_module._write_tar_zstd_from_draft(archive_path, draft_dir)
 
-    archived_info, archived_names = _read_archive_report_info(report_module, archive_path)
+    archived_info, archived_names = _read_archive_report_info(
+        report_module, report_module._finalized_draft_path(local_id)
+    )
     assert report_module.REPORT_INFO_NAME not in archived_names
+    assert not draft_dir.exists()
     assert archived_info["eventID"] == "event-1"
     assert archived_info["ticket"] == 42
     assert archived_info["multimedia"] == 2
@@ -649,8 +704,11 @@ def test_submit_without_ticket_preserves_existing_ticket(report_module):
 
     with ShotDataBase.engine.connect() as connection:
         row = connection.execute(select(bug_reports)).first()
-    archived_info = report_module._read_draft_report_info(draft_dir)
+    archived_info, _archived_names = _read_archive_report_info(
+        report_module, report_module._finalized_draft_path(local_id)
+    )
     assert updated is True
+    assert not draft_dir.exists()
     assert row.eventID == "event-1"
     assert row.ticketNumber == 42
     assert archived_info["eventID"] == "event-1"
