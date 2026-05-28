@@ -108,6 +108,10 @@ def _draft_path(local_id: str) -> Path:
     return DRAFT_REPORTS_DIR.joinpath(local_id)
 
 
+def _finalized_draft_path(local_id: str) -> Path:
+    return DRAFT_REPORTS_DIR.joinpath(f"{local_id}.zstd")
+
+
 def _safe_draft_file_path(draft_dir: Path, archive_name: str) -> Path:
     target = draft_dir.joinpath(archive_name).resolve()
     try:
@@ -224,6 +228,16 @@ def _write_tar_zstd_from_draft(output_path: Path, draft_dir: Path):
         )
         if result.returncode != 0:
             raise RuntimeError(result.stderr or "zstd compression failed")
+
+
+def _finalize_draft_archive(local_id: str):
+    draft_dir = _draft_path(local_id)
+    if not draft_dir.exists() or not draft_dir.is_dir():
+        raise FileNotFoundError(local_id)
+
+    archive_path = _finalized_draft_path(local_id)
+    _write_tar_zstd_from_draft(archive_path, draft_dir)
+    shutil.rmtree(draft_dir)
 
 
 def _read_draft_report_info(draft_dir: Path) -> dict[str, Any]:
@@ -696,7 +710,10 @@ def _mark_report_submitted(
     }
     if ticket_provided:
         db_values["ticketNumber"] = ticket
-    return _update_report_db(local_id, db_values)
+    updated = _update_report_db(local_id, db_values)
+    if updated:
+        _finalize_draft_archive(local_id)
+    return updated
 
 
 def _column_for_filter(name: str):
@@ -795,17 +812,27 @@ class ReportsCreateHandler(BaseHandler):
 class ReportDraftHandler(BaseHandler):
     async def get(self, local_id: str):
         draft_dir = _draft_path(local_id)
-        if not draft_dir.exists() or not draft_dir.is_dir():
+        finalized_archive_path = _finalized_draft_path(local_id)
+        if finalized_archive_path.exists() and finalized_archive_path.is_file():
+            archive_path = finalized_archive_path
+        elif draft_dir.exists() and draft_dir.is_dir():
+            archive_path = None
+        else:
             _api_error(self, 404, "Unknown localID")
             return
+
         self.set_header("Content-Type", "application/octet-stream")
         self.set_header("Content-Disposition", f'attachment; filename="{local_id}.zstd"')
         try:
-            with tempfile.TemporaryDirectory() as temp_dir:
-                archive_path = Path(temp_dir).joinpath(f"{local_id}.zstd")
-                _write_tar_zstd_from_draft(archive_path, draft_dir)
+            if archive_path is not None:
                 with archive_path.open("rb") as handle:
                     self.write(handle.read())
+            else:
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    temp_archive_path = Path(temp_dir).joinpath(f"{local_id}.zstd")
+                    _write_tar_zstd_from_draft(temp_archive_path, draft_dir)
+                    with temp_archive_path.open("rb") as handle:
+                        self.write(handle.read())
         except Exception as exc:
             logger.exception("Failed to read bug report draft")
             _api_error(self, 500, "Failed to read report draft", {"message": str(exc)})
