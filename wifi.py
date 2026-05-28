@@ -1200,6 +1200,18 @@ class WifiManager:
         return ssid in WifiManager.getNetworkManagerWifiConnections()
 
     @staticmethod
+    def persistClientModeAfterManualConnect(ssid: str):
+        if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_CLIENT:
+            return
+
+        logger.info(
+            f"Persisting Wi-Fi client mode after successful manual connection to {ssid}"
+        )
+        MeticulousConfig[CONFIG_WIFI][WIFI_MODE] = WIFI_MODE_CLIENT
+        MeticulousConfig.save()
+        WifiManager.invalidateHealthCache()
+
+    @staticmethod
     def fixWifiConnection(ssid, wifi_type: WifiType):
         logger.info(f"Fixing wifi connection for {ssid} with type {wifi_type}")
 
@@ -1274,6 +1286,7 @@ class WifiManager:
             if len([x for x in networks if x.in_use]) > 0:
                 logger.info("Already connected")
                 if not is_auto_connect:
+                    WifiManager.persistClientModeAfterManualConnect(ssid)
                     WifiManager.suppressAutoConnect(
                         45, f"manual connect to {ssid} completed"
                     )
@@ -1378,8 +1391,8 @@ class WifiManager:
                         45, f"manual connect to {ssid} completed"
                     )
                 WifiManager._zeroconf.restart()
-                MeticulousConfig[CONFIG_WIFI][WIFI_MODE] = WIFI_MODE_CLIENT
-                WifiManager.invalidateHealthCache()
+                if not is_auto_connect:
+                    WifiManager.persistClientModeAfterManualConnect(ssid)
                 health = WifiManager.getHealthStatus(force=True)
                 if health.degraded:
                     logger.warning(
