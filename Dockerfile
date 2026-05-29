@@ -5,7 +5,7 @@ RUN apt-get install -y build-essential libcairo2-dev libxt-dev libgirepository1.
     libsystemd-dev libparted-dev libglib2.0-dev libffi-dev python3-dev pkg-config \
     python3 \
     python3-setuptools \
-    dbus systemd git curl
+    dbus systemd git curl zstd
 
 # Install uv
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh

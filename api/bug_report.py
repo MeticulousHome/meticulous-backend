@@ -364,7 +364,39 @@ async def _capture_incomplete_debug_shot(draft_dir: Path) -> str | None:
     )
 
 
+def _machine_is_emulated() -> bool:
+    from machine import Machine
+
+    return bool(Machine.emulated)
+
+
+def _emulated_machine_logs(reference_time: int | None = None) -> str:
+    timestamp = datetime.now(timezone.utc).isoformat()
+    reference_text = (
+        f"reference_time={reference_time}" if reference_time is not None else "latest"
+    )
+    return (
+        f"{timestamp} INFO meticulous-backend Emulated machine logs generated "
+        f"for bug report ({reference_text}).\n"
+    )
+
+
+def _emulated_machine_status() -> str:
+    return json.dumps(
+        {
+            "emulated": True,
+            "status": "ok",
+            "source": "meticulous-backend",
+            "timestamp": _now_seconds(),
+        },
+        ensure_ascii=False,
+    )
+
+
 async def _fetch_machine_logs(reference_time: int | None = None) -> str:
+    if _machine_is_emulated():
+        return _emulated_machine_logs(reference_time)
+
     url = WATCHER_LOGS_URL
     if reference_time is not None:
         ceiling = min(_now_seconds(), reference_time + (3 * 60 * 60))
@@ -373,13 +405,16 @@ async def _fetch_machine_logs(reference_time: int | None = None) -> str:
         separator = "&" if "?" in url else "?"
         url = f"{url}{separator}since={start_hours}&until={end_hours}"
     client = tornado.httpclient.AsyncHTTPClient()
-    response = await client.fetch(url, request_timeout=60)
+    response = await client.fetch(url, request_timeout=240)
     return response.body.decode("utf-8", errors="replace")
 
 
 async def _fetch_machine_status() -> str:
+    if _machine_is_emulated():
+        return _emulated_machine_status()
+
     client = tornado.httpclient.AsyncHTTPClient()
-    response = await client.fetch(WATCHER_STATUS_URL, request_timeout=60)
+    response = await client.fetch(WATCHER_STATUS_URL, request_timeout=120)
     return response.body.decode("utf-8", errors="replace")
 
 

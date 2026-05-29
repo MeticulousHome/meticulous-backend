@@ -99,6 +99,37 @@ def test_fetch_report_files_uses_parent_debug_file_names(report_module, monkeypa
     )
 
 
+def test_fetch_machine_logs_uses_emulated_response_without_watcher(report_module, monkeypatch):
+    monkeypatch.setattr(report_module, "_machine_is_emulated", lambda: True)
+
+    def fail_fetch(*args, **kwargs):
+        raise AssertionError("Emulated machine logs should not call watcher")
+
+    monkeypatch.setattr(report_module.tornado.httpclient.AsyncHTTPClient, "fetch", fail_fetch)
+
+    logs = asyncio.run(report_module._fetch_machine_logs(reference_time=123))
+
+    assert "Emulated machine logs generated for bug report" in logs
+    assert "reference_time=123" in logs
+
+
+def test_fetch_machine_status_uses_emulated_response_without_watcher(
+    report_module, monkeypatch
+):
+    monkeypatch.setattr(report_module, "_machine_is_emulated", lambda: True)
+
+    def fail_fetch(*args, **kwargs):
+        raise AssertionError("Emulated machine status should not call watcher")
+
+    monkeypatch.setattr(report_module.tornado.httpclient.AsyncHTTPClient, "fetch", fail_fetch)
+
+    status = json.loads(asyncio.run(report_module._fetch_machine_status()))
+
+    assert status["emulated"] is True
+    assert status["status"] == "ok"
+    assert status["source"] == "meticulous-backend"
+
+
 def test_fetch_report_files_includes_active_incomplete_debug_shot_first(
     report_module, monkeypatch
 ):
