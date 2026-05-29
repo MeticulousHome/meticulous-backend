@@ -34,25 +34,25 @@ class UpdateManager:
 
     @staticmethod
     def init():
-
         build_channel = UpdateManager.getImageChannel()
         if build_channel is None:
             logger.error("Could not get build channel")
             return
 
+        update_channel = MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL]
         if MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL] == "":
             if build_channel in ["stable", "factory"]:
-                MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL] = build_channel
+                update_channel = build_channel
             else:
-                MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL] = "stable"
-            MeticulousConfig.save()
-            logger.warning(f"Set update channel to {build_channel} based on image")
-
-        UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
+                update_channel = "stable"
 
         build_time = UpdateManager.getBuildTimestamp()
         if build_time is None:
             logger.error("Could not get build timestamp")
+            if MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL] != update_channel:
+                MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL] = update_channel
+                MeticulousConfig.save()
+            UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
             return
 
         this_build_time = build_time.strftime("%Y%m%d_%H%M%S")
@@ -62,9 +62,10 @@ class UpdateManager:
             last_known_version = MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS][-1]
             is_changed = last_known_version != this_version_string
         except IndexError:
-            is_changed = 1
+            is_changed = True
             last_known_version = "NONE"
 
+        UpdateManager.is_changed = is_changed
         print(f"Last known version image: {last_known_version}")
         print(f"This image version: {this_version_string}")
 
@@ -72,6 +73,20 @@ class UpdateManager:
             logger.info(
                 f"System was updated to {this_version_string} from {last_known_version}"
             )
+            update_channel = build_channel
+
+        if MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL] != update_channel:
+            previous_channel = MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL]
+            MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL] = update_channel
+            MeticulousConfig.save()
+            logger.warning(
+                f"Set update channel to {update_channel} based on image "
+                f"(previous: {previous_channel})"
+            )
+
+        UpdateManager.setChannel(MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL])
+
+        if is_changed:
             MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS].append(this_version_string)
             while len(MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS]) > 30:
                 MeticulousConfig[CONFIG_SYSTEM][LAST_SYSTEM_VERSIONS].pop(0)
