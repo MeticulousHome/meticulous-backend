@@ -35,3 +35,9 @@ services:
       - ./default_profiles:/app/default_profiles
       - ./reports:/app/reports
       - /tmp/met_image-build-channel:/opt/image-build-channel
+    logging:
+      driver: "local"
+      options:
+        max-size: "150m"     # Max size of a single log file before it rotates
+        max-file: "3"       # Maximum number of rotated files to keep
+        compress: "true"
