@@ -30,6 +30,12 @@ class TestSafeFloat:
     def test_integer_string(self):
         assert safeFloat("42") == 42.0
 
+    def test_empty_string_returns_zero(self):
+        assert safeFloat("") == 0.0
+
+    def test_whitespace_string_returns_zero(self):
+        assert safeFloat("   ") == 0.0
+
     def test_invalid_raises(self):
         with pytest.raises(ValueError):
             safeFloat("notanumber")
@@ -126,6 +132,13 @@ class TestSensorData:
         assert "t_ext_1" in sio
         assert "w_stat" in sio
         assert sio["p"] == 9.0
+
+    def test_empty_optional_kalman_field_defaults_to_zero(self):
+        args = self.make_args() + [""]
+        data = SensorData.from_args(args)
+        assert data is not None
+        assert data.kalman_weight == 0.0
+        assert data.kalman_grav_flow == 0.0
 
 
 class TestShotData:
