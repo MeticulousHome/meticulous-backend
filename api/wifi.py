@@ -7,7 +7,6 @@ from config import (
     CONFIG_WIFI,
     WIFI_AP_NAME,
     WIFI_AP_PASSWORD,
-    WIFI_KNOWN_WIFIS,
     WIFI_MODE,
     WIFI_MODE_AP,
     WIFI_MODE_CLIENT,
@@ -49,13 +48,26 @@ class WiFiConfig:
 
 
 class WiFiQRHandler(BaseHandler):
+    def escape_wifi_qr_value(self, value: str):
+        return (
+            value.replace("\\", "\\\\")
+            .replace(";", "\\;")
+            .replace(",", "\\,")
+            .replace(":", "\\:")
+            .replace('"', '\\"')
+        )
+
     def generate_wifi_qr(self):
         config = WifiManager.getCurrentConfig()
         qr_contents: str = ""
         if config.is_hotspot():
-            ssid = MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME]
-            password = MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
-            qr_contents = f"WIFI:S:{ssid};T:WPA2;P:{password};H:true;;"
+            ssid = self.escape_wifi_qr_value(
+                MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME]
+            )
+            password = self.escape_wifi_qr_value(
+                MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
+            )
+            qr_contents = f"WIFI:S:{ssid};T:WPA2;P:{password};H:false;;"
         elif len(config.ips) > 0:
             current_ip = config.ips[0]
             if current_ip.ip.version == 6:
@@ -92,7 +104,8 @@ class WiFiConfigHandler(BaseHandler):
         wifi_config = {
             "config": WiFiConfig(mode, apName, apPassword).to_json(),
             "status": WifiManager.getCurrentConfig().to_json(),
-            "known_wifis": MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS],
+            "health": WifiManager.getHealthStatus().to_json(),
+            "known_wifis": WifiManager.getKnownWifis(),
         }
         return wifi_config
 
@@ -101,25 +114,44 @@ class WiFiConfigHandler(BaseHandler):
         config = await loop.run_in_executor(None, self.getWifiConfig)
         self.write(config)
 
-    def post(self):
+    async def post(self):
         try:
             config_changed = False
             data = json.loads(self.request.body)
+            mode = None
+            ap_password = None
             if "mode" in data and data["mode"] in [WIFI_MODE_AP, WIFI_MODE_CLIENT]:
                 logger.info("Changing wifi mode")
-                MeticulousConfig[CONFIG_WIFI][WIFI_MODE] = data["mode"]
+                mode = data["mode"]
                 config_changed = True
 
             if "apPassword" in data:
                 logger.info("Changing wifi ap password")
-                MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD] = data["apPassword"]
+                ap_password = data["apPassword"]
                 config_changed = True
 
             if config_changed:
-                MeticulousConfig.save()
-                WifiManager.resetWifiMode()
+                loop = asyncio.get_event_loop()
+                success = await loop.run_in_executor(
+                    None, WifiManager.applyWifiSettings, mode, ap_password
+                )
+                if not success:
+                    self.set_status(400)
+                    self.write(
+                        {
+                            "status": "error",
+                            "error": WifiManager.getLastHealthErrorMessage()
+                            or "Failed to apply Wi-Fi settings.",
+                            "code": WifiManager._last_health_error,
+                            "config": self.getWifiConfig(),
+                        }
+                    )
+                    return
 
-            return self.get()
+            config = await asyncio.get_event_loop().run_in_executor(
+                None, self.getWifiConfig
+            )
+            self.write(config)
         except json.JSONDecodeError as e:
             self.set_status(400)
             self.write("Invalid JSON")
@@ -181,14 +213,51 @@ class WiFiConnectHandler(BaseHandler):
             success = await loop.run_in_executor(None, WifiManager.connectToWifi, data)
 
             if success:
-                self.write({"status": "ok"})
+                health = await loop.run_in_executor(
+                    None, lambda: WifiManager.getHealthStatus(force=True)
+                )
+                self.write({"status": "ok", "health": health.to_json()})
             else:
+                connection_error = WifiManager.getLastConnectionError()
                 self.set_status(400)
-                self.write({"status": "error", "error": "failed to conect to wifi"})
+                self.write(
+                    {
+                        "status": "error",
+                        "error": connection_error["error"],
+                        "code": connection_error["code"],
+                    }
+                )
         except Exception as e:
             self.set_status(400)
-            self.write({"status": "error", "error": f"failed to conect to wifi: {e}"})
+            self.write({"status": "error", "error": f"failed to connect to wifi: {e}"})
             logger.warning("Failed to connect: ", exc_info=e, stack_info=True)
+
+
+class WiFiRepairHandler(BaseHandler):
+    async def post(self):
+        try:
+            loop = asyncio.get_event_loop()
+            success = await loop.run_in_executor(
+                None, WifiManager.repairWifiConnection, "manual"
+            )
+            health = await loop.run_in_executor(None, WifiManager.getHealthStatus)
+            if success:
+                self.write({"status": "ok", "health": health.to_json()})
+            else:
+                message = WifiManager.getHealthErrorMessage(health.last_error)
+                self.set_status(400)
+                self.write(
+                    {
+                        "status": "error",
+                        "error": message or "Wi-Fi repair could not complete.",
+                        "code": health.last_error or "wifi_repair_failed",
+                        "health": health.to_json(),
+                    }
+                )
+        except Exception as e:
+            self.set_status(400)
+            self.write({"status": "error", "error": f"failed to repair wifi: {e}"})
+            logger.warning("Failed to repair wifi: ", exc_info=e, stack_info=True)
 
 
 class WiFiDeleteHandler(BaseHandler):
@@ -212,4 +281,5 @@ API.register_handler(APIVersion.V1, r"/wifi/config", WiFiConfigHandler),
 API.register_handler(APIVersion.V1, r"/wifi/config/qr.png", WiFiQRHandler),
 API.register_handler(APIVersion.V1, r"/wifi/list", WiFiListHandler),
 API.register_handler(APIVersion.V1, r"/wifi/connect", WiFiConnectHandler),
+API.register_handler(APIVersion.V1, r"/wifi/repair", WiFiRepairHandler),
 API.register_handler(APIVersion.V1, r"/wifi/delete", WiFiDeleteHandler),
