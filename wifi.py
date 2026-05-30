@@ -364,6 +364,8 @@ class WifiManager:
 
         # Without networking we have no chance starting the wifi or getting the creads
         if WifiManager._networking_available:
+            WifiManager.migrateKnownWifiSecretsToNetworkManager()
+
             # start AP if needed
             if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP:
                 WifiManager.startHotspot()
@@ -1160,31 +1162,171 @@ class WifiManager:
         return WifiType.PreSharedKey.value
 
     @staticmethod
-    def scrubKnownWifiSecrets():
+    def normalizeWifiType(wifi_type) -> WifiType:
+        if isinstance(wifi_type, WifiType):
+            return wifi_type
+
+        if wifi_type is None:
+            return WifiType.PreSharedKey
+
+        try:
+            return WifiType(wifi_type)
+        except (TypeError, ValueError):
+            logger.warning(f"Unknown saved Wi-Fi type {wifi_type}; assuming PSK")
+            return WifiType.PreSharedKey
+
+    @staticmethod
+    def getLegacyKnownWifiCredentials(ssid: str, entry):
+        if type(entry) is str:
+            return {
+                "ssid": ssid,
+                "type": WifiType.PreSharedKey,
+                "password": entry,
+                "has_secret": True,
+            }
+
+        if type(entry) is dict:
+            wifi_type = WifiManager.normalizeWifiType(
+                entry.get("type", WifiType.PreSharedKey.value)
+            )
+            password = entry.get("password")
+            return {
+                "ssid": entry.get("ssid", ssid),
+                "type": wifi_type,
+                "password": password,
+                "has_secret": password is not None,
+            }
+
+        return {
+            "ssid": ssid,
+            "type": WifiType.PreSharedKey,
+            "password": None,
+            "has_secret": False,
+        }
+
+    @staticmethod
+    def createNetworkManagerWifiProfile(ssid: str, wifi_type: WifiType, password=None):
+        if wifi_type in {WifiType.PreSharedKey, WifiType.PSK_SAE} and not password:
+            logger.warning(
+                f"Cannot migrate Wi-Fi profile {ssid}: password is not available"
+            )
+            return False
+
+        keymgmt = None
+        match wifi_type:
+            case WifiType.Open:
+                keymgmt = "none"
+            case WifiType.PreSharedKey:
+                keymgmt = "wpa-psk"
+            case WifiType.PSK_SAE:
+                keymgmt = "sae"
+            case _:
+                logger.warning(f"Cannot migrate unsupported Wi-Fi type: {wifi_type}")
+                return False
+
+        add_result = WifiManager.runCommand(
+            [
+                "nmcli",
+                "connection",
+                "add",
+                "type",
+                "wifi",
+                "ifname",
+                "*",
+                "con-name",
+                ssid,
+                "ssid",
+                ssid,
+            ],
+            timeout=10,
+        )
+        if add_result is None or add_result.returncode != 0:
+            stderr = add_result.stderr.strip() if add_result is not None else ""
+            stdout = add_result.stdout.strip() if add_result is not None else ""
+            logger.warning(
+                f"Failed to create migrated Wi-Fi profile {ssid}: {stderr or stdout}"
+            )
+            return False
+
+        settings = [
+            "nmcli",
+            "connection",
+            "modify",
+            ssid,
+            "connection.autoconnect",
+            "yes",
+            "802-11-wireless-security.key-mgmt",
+            keymgmt,
+        ]
+        if password:
+            settings.extend(["802-11-wireless-security.psk", password])
+
+        modify_result = WifiManager.runCommand(settings, timeout=10)
+        if modify_result is None or modify_result.returncode != 0:
+            stderr = modify_result.stderr.strip() if modify_result is not None else ""
+            stdout = modify_result.stdout.strip() if modify_result is not None else ""
+            logger.warning(
+                f"Failed to configure migrated Wi-Fi profile {ssid}: {stderr or stdout}"
+            )
+            WifiManager.deleteConnectionProfile(ssid)
+            return False
+
+        logger.info(f"Migrated Wi-Fi profile {ssid} into NetworkManager")
+        return True
+
+    @staticmethod
+    def migrateKnownWifiSecretsToNetworkManager():
         known_wifis = MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS]
         if not known_wifis:
             return
 
+        network_manager_wifis = WifiManager.getNetworkManagerWifiConnections()
         scrubbed = {}
         changed = False
         for ssid, entry in known_wifis.items():
-            if type(entry) is str:
-                scrubbed[ssid] = {"ssid": ssid, "type": WifiType.PreSharedKey.value}
-                changed = True
-                continue
+            credentials = WifiManager.getLegacyKnownWifiCredentials(ssid, entry)
+            saved_ssid = credentials["ssid"]
+            wifi_type = credentials["type"]
 
-            if type(entry) is dict:
-                sanitized = {
-                    "ssid": entry.get("ssid", ssid),
-                    "type": entry.get("type", WifiType.PreSharedKey.value),
+            if saved_ssid in network_manager_wifis:
+                scrubbed[saved_ssid] = {
+                    "ssid": saved_ssid,
+                    "type": network_manager_wifis[saved_ssid]["type"],
                 }
-                scrubbed[ssid] = sanitized
-                if sanitized != entry:
+                if scrubbed[saved_ssid] != entry:
                     changed = True
                 continue
 
-            scrubbed[ssid] = {"ssid": ssid, "type": WifiType.PreSharedKey.value}
-            changed = True
+            if credentials["has_secret"] or wifi_type == WifiType.Open:
+                migrated = WifiManager.createNetworkManagerWifiProfile(
+                    saved_ssid, wifi_type, credentials["password"]
+                )
+                if migrated:
+                    scrubbed[saved_ssid] = {
+                        "ssid": saved_ssid,
+                        "type": wifi_type.value,
+                    }
+                    changed = True
+                    continue
+
+                scrubbed[ssid] = entry
+                continue
+
+            if type(entry) is dict and "password" not in entry:
+                scrubbed[ssid] = {
+                    "ssid": saved_ssid,
+                    "type": wifi_type.value,
+                }
+                if scrubbed[ssid] != entry:
+                    changed = True
+                continue
+
+            scrubbed[ssid] = {
+                "ssid": saved_ssid,
+                "type": wifi_type.value,
+            }
+            if scrubbed[ssid] != entry:
+                changed = True
 
         if changed:
             MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS] = scrubbed
@@ -1192,7 +1334,7 @@ class WifiManager:
 
     @staticmethod
     def getKnownWifis():
-        WifiManager.scrubKnownWifiSecrets()
+        WifiManager.migrateKnownWifiSecretsToNetworkManager()
         return WifiManager.getNetworkManagerWifiConnections()
 
     @staticmethod
