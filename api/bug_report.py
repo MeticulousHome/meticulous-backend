@@ -405,7 +405,7 @@ async def _fetch_machine_logs(reference_time: int | None = None) -> str:
         separator = "&" if "?" in url else "?"
         url = f"{url}{separator}since={start_hours}&until={end_hours}"
     client = tornado.httpclient.AsyncHTTPClient()
-    response = await client.fetch(url, request_timeout=240)
+    response = await client.fetch(url, request_timeout=600)
     return response.body.decode("utf-8", errors="replace")
 
 
