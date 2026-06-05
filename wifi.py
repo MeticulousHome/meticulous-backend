@@ -1254,7 +1254,7 @@ class WifiManager:
             "modify",
             ssid,
             "connection.autoconnect",
-            "yes",
+            "no",
             "802-11-wireless-security.key-mgmt",
             keymgmt,
         ]
