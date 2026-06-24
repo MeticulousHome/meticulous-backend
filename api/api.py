@@ -47,6 +47,8 @@ class API:
         from . import settings as _settings  # noqa
         from . import update as _update  # noqa
         from . import wifi as _wifi  # noqa
+        from . import bluetooth as _bluetooth  # noqa
+        from . import lab as _lab  # noqa
         from . import sounds as _sounds  # noqa
         from . import machine as _machine  # noqa
         from . import serial as _serial  # noqa

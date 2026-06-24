@@ -260,6 +260,37 @@ class WiFiRepairHandler(BaseHandler):
             logger.warning("Failed to repair wifi: ", exc_info=e, stack_info=True)
 
 
+class WiFiRadioHandler(BaseHandler):
+    def get(self):
+        self.write({"enabled": WifiManager.getWifiRadioEnabled()})
+
+    def post(self):
+        try:
+            data = json.loads(self.request.body)
+            if "enable" not in data or not isinstance(data["enable"], bool):
+                self.set_status(400)
+                self.write({"status": "error", "error": "enable boolean is required"})
+                return
+
+            success = WifiManager.setWifiRadioEnabled(data["enable"])
+            enabled = WifiManager.getWifiRadioEnabled()
+            if not success:
+                self.set_status(400)
+                self.write(
+                    {
+                        "status": "error",
+                        "error": "failed to set WiFi radio state",
+                        "enabled": enabled,
+                    }
+                )
+                return
+            self.write({"status": "ok", "enabled": enabled})
+        except json.JSONDecodeError as e:
+            self.set_status(400)
+            self.write({"status": "error", "error": "Invalid JSON"})
+            logger.warning(f"Failed to parse JSON: {e}", stack_info=False)
+
+
 class WiFiDeleteHandler(BaseHandler):
     def post(self):
         try:
@@ -282,4 +313,5 @@ API.register_handler(APIVersion.V1, r"/wifi/config/qr.png", WiFiQRHandler),
 API.register_handler(APIVersion.V1, r"/wifi/list", WiFiListHandler),
 API.register_handler(APIVersion.V1, r"/wifi/connect", WiFiConnectHandler),
 API.register_handler(APIVersion.V1, r"/wifi/repair", WiFiRepairHandler),
+API.register_handler(APIVersion.V1, r"/wifi/radio", WiFiRadioHandler),
 API.register_handler(APIVersion.V1, r"/wifi/delete", WiFiDeleteHandler),

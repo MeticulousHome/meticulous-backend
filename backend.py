@@ -15,6 +15,7 @@ import sentry_sdk
 from esp_serial.data import ButtonEventData
 
 from ble_gatt import GATTServer
+from bluetooth import BluetoothManager
 from wifi import WifiManager
 from notifications import Notification, NotificationManager
 from profiles import ProfileManager
@@ -301,6 +302,7 @@ def main():
     send_data_thread.start()
 
     GATTServer.getServer().start()
+    BluetoothManager.init()
 
     WifiManager.init()
     NotificationManager.init(sio)

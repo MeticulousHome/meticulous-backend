@@ -1024,6 +1024,25 @@ class WifiManager:
         time.sleep(3)
         WifiManager.runCommand(["nmcli", "radio", "wifi", "on"], timeout=10)
 
+    def getWifiRadioEnabled() -> bool:
+        result = WifiManager.runCommand(["nmcli", "radio", "wifi"], timeout=10)
+        if result is None or result.returncode != 0:
+            logger.warning("Unable to read WiFi radio state")
+            return False
+        return result.stdout.strip().lower() == "enabled"
+
+    def setWifiRadioEnabled(enabled: bool) -> bool:
+        logger.warning(f"Setting WiFi radio {'on' if enabled else 'off'}")
+        if not enabled:
+            WifiManager.suppressAutoConnect(3600, "lab certification radio disabled")
+        result = WifiManager.runCommand(
+            ["nmcli", "radio", "wifi", "on" if enabled else "off"], timeout=10
+        )
+        if result is None or result.returncode != 0:
+            return False
+        time.sleep(1)
+        return WifiManager.getWifiRadioEnabled() == enabled
+
     def driverInBandReset():
         reset_script = "/etc/wifi/variscite-wifi.d/iw612-wifi"
         if not os.path.exists(reset_script):
