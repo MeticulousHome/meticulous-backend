@@ -27,6 +27,8 @@ class TimezoneManager:
 
     __system_timezone: str = ""
     __system_synced: bool = False
+    __timezone_fetch_attempts: int = 0
+    _MAX_TIMEZONE_FETCH_ATTEMPTS: int = 5
 
     @staticmethod
     def init():
@@ -249,6 +251,9 @@ class TimezoneManager:
     def tz_background_update():
         tz_config = MeticulousConfig[CONFIG_USER][TIMEZONE_SYNC]
         if tz_config == "automatic" and not TimezoneManager.__system_synced:
+            if TimezoneManager.__timezone_fetch_attempts >= TimezoneManager._MAX_TIMEZONE_FETCH_ATTEMPTS:
+                return
+            TimezoneManager.__timezone_fetch_attempts += 1
             try:
                 logger.info("Timezone is set to automatic, fetching timezone in the background")
                 loop = asyncio.get_event_loop()
