@@ -258,6 +258,10 @@ class TimezoneManager:
                 logger.info("Timezone is set to automatic, fetching timezone in the background")
                 loop = asyncio.get_event_loop()
                 loop.run_until_complete(TimezoneManager.request_and_sync_tz())
+                # Clear the attempt counter on a successful request so that, if
+                # __system_synced is ever reset, an unstable network gets a fresh
+                # batch of attempts instead of inheriting an exhausted counter.
+                TimezoneManager.__timezone_fetch_attempts = 0
             except Exception as e:
                 logger.error(f"Error while fetching timezone in the background: {e}")
 
