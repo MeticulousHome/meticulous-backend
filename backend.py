@@ -326,7 +326,7 @@ def main():
         debug=DEBUG,
     )
 
-    app.listen(PORT)
+    app.listen(PORT, address="127.0.0.1")
 
     sio.start_background_task(live)
 
