@@ -124,12 +124,21 @@ class SmokeValidationManager:
         if not cls._shot_sequence["active"]:
             return
 
-        if extracting:
+        is_extraction_stage = extracting and status not in (
+            MachineStatus.HEATING,
+            MachineStatus.RETRACTING,
+            MachineStatus.PURGE,
+        )
+
+        if is_extraction_stage:
             cls._shot_sequence["saw_extraction"] = True
-        if status == MachineStatus.RETRACTING:
+
+        if status == MachineStatus.RETRACTING and cls._shot_sequence["saw_extraction"]:
             cls._shot_sequence["saw_retracting"] = True
-        if status == MachineStatus.PURGE:
+
+        if status == MachineStatus.PURGE and cls._shot_sequence["saw_retracting"]:
             cls._shot_sequence["saw_purge"] = True
+
         if status == MachineStatus.IDLE:
             cls._shot_sequence = {key: False for key in cls._shot_sequence}
 

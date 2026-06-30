@@ -59,3 +59,15 @@ def test_final_coffee_log_does_not_mark_completed_without_purge(monkeypatch, tmp
     SmokeValidationManager.observe_esp_log(FINAL_COFFEE_LOG)
 
     assert SmokeValidationManager.get_state()["post_update_shot_completed"] is False
+
+
+def test_final_coffee_log_requires_ordered_retracting_and_purge(monkeypatch, tmp_path):
+    configure_state(monkeypatch, tmp_path)
+
+    SmokeValidationManager.observe_status("heating", extracting=False)
+    SmokeValidationManager.observe_status("purge", extracting=False)
+    SmokeValidationManager.observe_status("retracting", extracting=True)
+    SmokeValidationManager.observe_status("Preinfusion", extracting=True)
+    SmokeValidationManager.observe_esp_log(FINAL_COFFEE_LOG)
+
+    assert SmokeValidationManager.get_state()["post_update_shot_completed"] is False
