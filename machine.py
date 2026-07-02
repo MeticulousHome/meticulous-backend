@@ -47,6 +47,7 @@ from log import MeticulousLogger
 from notifications import Notification, NotificationManager, NotificationResponse
 from shot_debug_manager import ShotDebugManager
 from shot_manager import ShotManager
+from smoke_validation import SmokeValidationManager
 from sounds import SoundPlayer, Sounds
 from api.alarms import AlarmManager, AlarmType
 from images.notificationImages.base64 import WARNING_TRIANGLE_IMAGE
@@ -480,6 +481,7 @@ class Machine:
                                     logger.error(
                                         f"ESP error: {full_message}"
                                     )  # Sends the error to the backend project in sentry
+                            SmokeValidationManager.observe_esp_log(message)
                             items_filtered = None
                             if len(log_data) > 2:
                                 get_log_items(log_data=log_data)
@@ -603,6 +605,7 @@ class Machine:
                         )
 
                     old_status = Machine.data_sensors.status
+                    SmokeValidationManager.observe_status(old_status, time_flag)
                     Machine.infoReady = True
 
                 if sensor is not None:
