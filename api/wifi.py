@@ -101,10 +101,11 @@ class WiFiConfigHandler(BaseHandler):
         mode = MeticulousConfig[CONFIG_WIFI][WIFI_MODE]
         apName = MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME]
         apPassword = MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
+        current = WifiManager.getCurrentConfig()
         wifi_config = {
             "config": WiFiConfig(mode, apName, apPassword).to_json(),
-            "status": WifiManager.getCurrentConfig().to_json(),
-            "health": WifiManager.getHealthStatus().to_json(),
+            "status": current.to_json(),
+            "health": WifiManager.getHealthStatus(current, deep=False).to_json(),
             "known_wifis": WifiManager.getKnownWifis(),
         }
         return wifi_config
@@ -167,7 +168,7 @@ class WiFiListHandler(BaseHandler):
     def getWifiList(self):
         networks = dict()
         try:
-            for s in WifiManager.scanForNetworks():
+            for s in WifiManager.getAvailableNetworks(refresh=True):
                 if s.ssid is not None and s.ssid != "":
                     wifi_type = WifiType.from_nmcli_security(s.security)
                     if wifi_type is None:
@@ -201,8 +202,7 @@ class WiFiListHandler(BaseHandler):
     async def get(self):
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(None, self.getWifiList)
-        if response:
-            self.write(json.dumps(response))
+        self.write(json.dumps(response or []))
 
 
 class WiFiConnectHandler(BaseHandler):
@@ -213,8 +213,9 @@ class WiFiConnectHandler(BaseHandler):
             success = await loop.run_in_executor(None, WifiManager.connectToWifi, data)
 
             if success:
+                current = await loop.run_in_executor(None, WifiManager.getCurrentConfig)
                 health = await loop.run_in_executor(
-                    None, lambda: WifiManager.getHealthStatus(force=True)
+                    None, lambda: WifiManager.getHealthStatus(current, deep=False)
                 )
                 self.write({"status": "ok", "health": health.to_json()})
             else:
