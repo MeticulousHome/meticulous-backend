@@ -404,6 +404,7 @@ async def _fetch_machine_logs(reference_time: int | None = None) -> str:
     if _machine_is_emulated():
         return _emulated_machine_logs(reference_time)
 
+    TIMEOUT_SECONDS = 180
     url = WATCHER_LOGS_URL
     if reference_time is not None:
         ceiling = min(_now_seconds(), reference_time + (3 * 60 * 60))
@@ -411,8 +412,9 @@ async def _fetch_machine_logs(reference_time: int | None = None) -> str:
         end_hours = max(0, int((time.time() - ceiling) // 3600))
         separator = "&" if "?" in url else "?"
         url = f"{url}{separator}since={start_hours}&until={end_hours}"
+    url = f"{url}&timeout={TIMEOUT_SECONDS-10}"
     client = tornado.httpclient.AsyncHTTPClient()
-    response = await client.fetch(url, request_timeout=600)
+    response = await client.fetch(url, request_timeout=TIMEOUT_SECONDS)
     return response.body.decode("utf-8", errors="replace")
 
 
