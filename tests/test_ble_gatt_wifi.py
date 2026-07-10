@@ -3,10 +3,11 @@
 These tests mock out WifiManager so they can run without system dependencies.
 """
 
+import asyncio
 import sys
 from dataclasses import dataclass
 from ipaddress import IPv4Address, IPv6Address
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -33,8 +34,6 @@ class FakeNetworkConfig:
 _mocked_modules = {
     "bless": MagicMock(),
     "bless.backends.bluezdbus.dbus.advertisement": MagicMock(),
-    "dbus_next": MagicMock(),
-    "dbus_next.errors": MagicMock(),
     "psutil": MagicMock(),
     "config": MagicMock(),
     "hostname": MagicMock(),
@@ -65,18 +64,34 @@ _mocked_modules["bless"].GATTCharacteristicProperties.write = 4
 _mocked_modules["bless"].GATTCharacteristicProperties.write_without_response = 8
 
 
+_MISSING_MODULE = object()
+_original_modules = {}
+
+
+def _install_mock(mod_name, mock):
+    if mod_name not in _original_modules:
+        _original_modules[mod_name] = sys.modules.get(mod_name, _MISSING_MODULE)
+    sys.modules[mod_name] = mock
+
+
 def _setup_mocks():
     """Patch sys.modules so ble_gatt can be imported."""
     for mod_name, mock in _mocked_modules.items():
-        if mod_name not in sys.modules:
-            sys.modules[mod_name] = mock
+        _install_mock(mod_name, mock)
+
+
+def _restore_modules():
+    for mod_name, original in reversed(list(_original_modules.items())):
+        if original is _MISSING_MODULE:
+            sys.modules.pop(mod_name, None)
+        else:
+            sys.modules[mod_name] = original
 
 
 _setup_mocks()
 
 # Mock wifi module before import
 wifi_mock = MagicMock()
-sys.modules["wifi"] = wifi_mock
 
 
 # Create the WifiWpaPskCredentials class the code actually uses
@@ -88,9 +103,24 @@ class WifiWpaPskCredentials:
 
 wifi_mock.WifiWpaPskCredentials = WifiWpaPskCredentials
 wifi_mock.WifiManager = MagicMock()
+_install_mock("wifi", wifi_mock)
 
-# Now we can import ble_gatt
-from ble_gatt import GATTServer  # noqa: E402
+# Now we can import ble_gatt. Its production platform guard is intentionally
+# bypassed because this test has already replaced every hardware dependency.
+original_ble_gatt_module = sys.modules.get("ble_gatt", _MISSING_MODULE)
+original_platform = sys.platform
+sys.platform = "linux"
+try:
+    import ble_gatt as ble_gatt_under_test  # noqa: E402
+
+    GATTServer = ble_gatt_under_test.GATTServer
+finally:
+    sys.platform = original_platform
+    _restore_modules()
+    if original_ble_gatt_module is _MISSING_MODULE:
+        sys.modules.pop("ble_gatt", None)
+    else:
+        sys.modules["ble_gatt"] = original_ble_gatt_module
 
 
 # ---------------------------------------------------------------------------
@@ -276,3 +306,84 @@ class TestWifiConnectEdgeCases:
         assert result is not None
         call_args = mock_wifi_manager.connectToWifi.call_args[0][0]
         assert call_args.password == "p@$$w0rd!#%^&*()"
+
+
+# ---------------------------------------------------------------------------
+# BLE advertisement update recovery
+# ---------------------------------------------------------------------------
+class TestAdvertisementUpdateRecovery:
+    def test_transient_registration_failure_does_not_stop_gatt(self, mock_wifi_manager):
+        server = GATTServer()
+        server.ADVERTISEMENT_UPDATE_RETRY_DELAYS = (0,)
+        server.bless_gatt_server = MagicMock()
+        server.bless_gatt_server.app = MagicMock()
+        server._replace_ble_advertisement = AsyncMock(
+            side_effect=[RuntimeError("Failed to register advertisement"), None]
+        )
+        server.stop = MagicMock()
+
+        async def exercise_update_loop():
+            task = asyncio.create_task(server._update_data_loop())
+            await asyncio.sleep(0)
+            server.update_trigger.set()
+
+            for _ in range(20):
+                if server._replace_ble_advertisement.await_count == 2:
+                    break
+                await asyncio.sleep(0)
+
+            assert server._replace_ble_advertisement.await_count == 2
+            assert not task.done()
+
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+
+        try:
+            asyncio.run(exercise_update_loop())
+            server.stop.assert_not_called()
+        finally:
+            server.loop.close()
+
+    def test_failed_registration_is_cleaned_up_for_retry(self, mock_wifi_manager):
+        server = GATTServer()
+        old_advertisement = MagicMock(path="/advertisement/0")
+        failed_advertisement = MagicMock(path="/advertisement/0")
+        recovered_advertisement = MagicMock(path="/advertisement/0")
+
+        app = MagicMock()
+        app.advertisements = [old_advertisement]
+        iface = MagicMock()
+        iface.call_unregister_advertisement = AsyncMock()
+        iface.call_register_advertisement = AsyncMock(
+            side_effect=[RuntimeError("Failed to register advertisement"), None]
+        )
+        bus = MagicMock()
+
+        server.bless_gatt_server = MagicMock()
+        server.bless_gatt_server.app = app
+        server.bless_gatt_server.adapter.get_interface.return_value = iface
+        server.bless_gatt_server.bus = bus
+
+        async def fail_then_recover():
+            with pytest.raises(RuntimeError, match="Failed to register advertisement"):
+                await server._replace_ble_advertisement()
+
+            assert app.advertisements == []
+            await server._replace_ble_advertisement()
+
+        try:
+            with patch.object(
+                ble_gatt_under_test,
+                "BlueZLEAdvertisement",
+                side_effect=[failed_advertisement, recovered_advertisement],
+            ):
+                asyncio.run(fail_then_recover())
+
+            assert app.advertisements == [recovered_advertisement]
+            iface.call_unregister_advertisement.assert_awaited_once_with(old_advertisement.path)
+            assert iface.call_register_advertisement.await_count == 2
+            bus.unexport.assert_any_call(old_advertisement.path, old_advertisement)
+            bus.unexport.assert_any_call(failed_advertisement.path, failed_advertisement)
+        finally:
+            server.loop.close()

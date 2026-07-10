@@ -796,6 +796,12 @@ class WifiManager:
                 )
             case "wifi_not_connected":
                 return "The machine is not connected to Wi-Fi."
+            case "no_saved_wifi_connection":
+                return (
+                    "There is no saved Wi-Fi connection to repair. "
+                    "Choose a Wi-Fi network on the machine or connect it from "
+                    "the Meticulous app."
+                )
             case "wifi_device_unavailable":
                 return "Wi-Fi is still starting. Wait a moment and try again."
             case "hotspot_not_active":
@@ -992,11 +998,27 @@ class WifiManager:
             WifiManager._last_recovery_result = "in_progress"
             return False
 
+        current = WifiManager.getCurrentConfig()
+        if (
+            MeticulousConfig[CONFIG_WIFI][WIFI_MODE] != WIFI_MODE_AP
+            and not current.connected
+            and not WifiManager.getNetworkManagerWifiConnections()
+        ):
+            WifiManager._last_recovery_attempt = time.time()
+            WifiManager._last_recovery_action = "health_check"
+            WifiManager._last_recovery_result = "not_recoverable"
+            WifiManager._last_health_error = "no_saved_wifi_connection"
+            WifiManager.invalidateHealthCache()
+            logger.warning(
+                "WiFi repair skipped because there are no saved client connections. "
+                "Refusing to reset the shared WiFi/Bluetooth radio."
+            )
+            return False
+
         WifiManager._repair_in_progress = True
         WifiManager.suppressAutoConnect(180, f"wifi repair in progress: {reason}")
         try:
             WifiManager._last_recovery_attempt = time.time()
-            current = WifiManager.getCurrentConfig()
             logger.warning(f"Starting WiFi repair workflow. reason={reason}")
             WifiManager.invalidateHealthCache()
 
