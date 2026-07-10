@@ -6,6 +6,7 @@ import subprocess
 import threading
 import time
 import urllib.request
+import uuid
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Literal
@@ -34,6 +35,7 @@ from machine import Machine
 from log import MeticulousLogger
 from named_thread import NamedThread
 from sensitive_logging import command_metadata, exception_metadata
+from radio_diagnostics import emit_radio_recovery_event
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -991,14 +993,30 @@ class WifiManager:
         return WifiManager.repairWifiConnection(reason=health.last_error)
 
     def repairWifiConnection(reason: str = "manual"):
+        operation_id = uuid.uuid4().hex[:12]
+        started_at = time.monotonic()
+
+        def record(event, **data):
+            emit_radio_recovery_event(
+                logger,
+                event,
+                operation_id=operation_id,
+                elapsed_ms=int((time.monotonic() - started_at) * 1000),
+                reason=reason,
+                mode=MeticulousConfig[CONFIG_WIFI][WIFI_MODE],
+                **data,
+            )
+
         if not WifiManager._networking_available:
             WifiManager._last_recovery_result = "failed"
             WifiManager._last_health_error = "networking_unavailable"
+            record("rejected", result="networking_unavailable")
             return False
 
         if WifiManager._repair_in_progress:
             logger.warning("WiFi repair requested while another repair is in progress")
             WifiManager._last_recovery_result = "in_progress"
+            record("rejected", result="already_in_progress")
             return False
 
         current = WifiManager.getCurrentConfig()
@@ -1024,11 +1042,23 @@ class WifiManager:
             WifiManager._last_recovery_attempt = time.time()
             logger.warning(f"Starting WiFi repair workflow. reason={reason}")
             WifiManager.invalidateHealthCache()
+            record(
+                "started",
+                connected=current.connected,
+                has_ipv4=any(ip.ip.version == 4 for ip in current.ips),
+            )
 
             initial_health = WifiManager.getHealthStatus(current, force=True)
+            record(
+                "health_assessed",
+                connected=initial_health.connected,
+                has_ipv4=initial_health.has_ipv4,
+                result=initial_health.last_error or "healthy",
+            )
             if not initial_health.degraded:
                 WifiManager._last_recovery_action = "health_check"
                 WifiManager._last_recovery_result = "not_needed"
+                record("completed", result="not_needed")
                 return True
 
             if not WifiManager.healthErrorIsRecoverable(initial_health.last_error):
@@ -1038,6 +1068,7 @@ class WifiManager:
                 logger.warning(
                     f"WiFi repair skipped for non-recoverable health issue: {initial_health.last_error}"
                 )
+                record("completed", result="not_recoverable")
                 return False
 
             if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP:
@@ -1058,6 +1089,7 @@ class WifiManager:
             for action, step in steps:
                 WifiManager._last_recovery_action = action
                 WifiManager._last_recovery_result = "in_progress"
+                record("step_started", action=action)
                 try:
                     step()
                     if (
@@ -1067,9 +1099,17 @@ class WifiManager:
                         WifiManager.startHotspot()
                 except Exception as e:
                     logger.warning(f"WiFi repair step failed: {action}: {e}")
+                    record("step_exception", action=action, error=e)
 
                 time.sleep(5)
                 health = WifiManager.getHealthStatus(force=True)
+                record(
+                    "step_assessed",
+                    action=action,
+                    connected=health.connected,
+                    has_ipv4=health.has_ipv4,
+                    result=health.last_error or "healthy",
+                )
                 if not health.degraded:
                     logger.warning(f"WiFi repair succeeded with {action}")
                     WifiManager._health_failures = 0
@@ -1077,6 +1117,7 @@ class WifiManager:
                     WifiManager._last_recovery_result = "recovered"
                     WifiManager._zeroconf.restart()
                     WifiManager.update_gatt_advertisement()
+                    record("completed", action=action, result="recovered")
                     return True
 
                 if not WifiManager.healthErrorIsRecoverable(health.last_error):
@@ -1085,6 +1126,7 @@ class WifiManager:
                     logger.warning(
                         f"Stopping WiFi repair after {action}; issue is not recoverable by driver reset: {health.last_error}"
                     )
+                    record("completed", action=action, result="not_recoverable")
                     return False
 
             WifiManager._last_recovery_result = "failed"
@@ -1092,6 +1134,7 @@ class WifiManager:
                 force=True
             ).last_error
             WifiManager.update_gatt_advertisement()
+            record("completed", result="failed")
             return False
         finally:
             WifiManager._repair_in_progress = False
