@@ -33,6 +33,7 @@ from machine import Machine
 
 from log import MeticulousLogger
 from named_thread import NamedThread
+from sensitive_logging import command_metadata, exception_metadata
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -707,7 +708,9 @@ class WifiManager:
                 timeout=timeout,
             )
         except Exception as e:
-            logger.warning(f"Failed to run command {command}: {e}")
+            logger.warning(
+                f"Failed to run {command_metadata(command)} ({exception_metadata(e)})"
+            )
             return None
 
     def gatewayReachable(gateway: IPAddress):

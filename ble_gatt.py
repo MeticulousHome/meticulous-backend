@@ -24,6 +24,11 @@ from config import CONFIG_WIFI, WIFI_MODE, WIFI_MODE_AP, MeticulousConfig
 from hostname import HostnameManager
 from log import MeticulousLogger
 from notifications import Notification, NotificationManager, NotificationResponse
+from sensitive_logging import (
+    credential_metadata,
+    exception_metadata,
+    payload_metadata,
+)
 from wifi import WifiManager, WifiWpaPskCredentials
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -527,17 +532,17 @@ class GATTServer:
         try:
             ssid = ssid.decode("utf-8")
         except Exception as e:
-            logger.error(f"Failed to decode SSID: {e}")
+            logger.error(f"Failed to decode SSID ({exception_metadata(e)})")
             return None
 
         try:
             passwd = passwd.decode("utf-8")
         except Exception as e:
-            logger.error(f"Failed to decode password: {e}")
+            logger.error(f"Failed to decode password ({exception_metadata(e)})")
             return None
 
         try:
-            logger.info(f"Connecting to '{ssid}' with password: '{passwd}'")
+            logger.info(f"Connecting to Wi-Fi ({credential_metadata(ssid, passwd)})")
             credentials = WifiWpaPskCredentials(ssid=ssid, password=passwd)
             if WifiManager.connectToWifi(credentials):
                 networkConfig = WifiManager.getCurrentConfig()
@@ -552,8 +557,11 @@ class GATTServer:
                 return localServer
             return None
         except Exception as e:
-            logger.error(f"Failed to connect to WiFi: {e}, ssid={ssid} passwd={passwd}")
-            logger.exception("WiFi connection failed", exc_info=e, stack_info=True)
+            logger.error(
+                "Failed to connect to Wi-Fi "
+                f"({exception_metadata(e)}; {credential_metadata(ssid, passwd)})",
+                stack_info=True,
+            )
             return None
 
     def get_wifi_networks() -> Optional[list[str]]:
@@ -626,7 +634,7 @@ class GATTServer:
             else:
                 GATTServer.getServer().updateAuthentication()
                 value = GATTServer.getServer().improv_server.handle_read(characteristic.uuid)
-            logger.info(f"BLE READ  {char_name} -> {len(value)} bytes: {value.hex()}")
+            logger.info(f"BLE READ  {char_name} -> {payload_metadata(value)}")
             return value
 
         logger.info(f"BLE READ  {char_name} (non-improv)")
@@ -639,7 +647,7 @@ class GATTServer:
         except ValueError:
             pass
 
-        logger.info(f"BLE WRITE {char_name} <- {len(value)} bytes: {value.hex()}")
+        logger.info(f"BLE WRITE {char_name} <- {payload_metadata(value)}")
 
         if characteristic.service_uuid == ImprovUUID.SERVICE_UUID.value:
             (
@@ -653,9 +661,7 @@ class GATTServer:
                 except ValueError:
                     pass
                 for resp_value in target_values:
-                    logger.info(
-                        f"BLE RESP  {target_name} -> {len(resp_value)} bytes: {resp_value.hex()}"
-                    )
+                    logger.info(f"BLE RESP  {target_name} -> {payload_metadata(resp_value)}")
                     GATTServer.getServer().bless_gatt_server.get_characteristic(
                         target_uuid,
                     ).value = resp_value
