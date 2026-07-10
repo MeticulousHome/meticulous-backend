@@ -114,6 +114,7 @@ try:
     import ble_gatt as ble_gatt_under_test  # noqa: E402
 
     GATTServer = ble_gatt_under_test.GATTServer
+    ImprovUUID = ble_gatt_under_test.ImprovUUID
 finally:
     sys.platform = original_platform
     _restore_modules()
@@ -129,6 +130,7 @@ finally:
 @pytest.fixture(autouse=True)
 def reset_singleton():
     """Reset the GATTServer singleton between tests."""
+    mock_logger.reset_mock()
     GATTServer._singletonServer = None
     yield
     GATTServer._singletonServer = None
@@ -387,3 +389,56 @@ class TestAdvertisementUpdateRecovery:
             bus.unexport.assert_any_call(failed_advertisement.path, failed_advertisement)
         finally:
             server.loop.close()
+class TestCredentialLogRedaction:
+    @staticmethod
+    def logged_output():
+        return repr(mock_logger.method_calls)
+
+    def test_wifi_connect_does_not_log_ssid_or_password(self, mock_wifi_manager):
+        ssid = "SENTINEL-PRIVATE-NETWORK"
+        password = "SENTINEL-SECRET-PASSWORD"
+
+        result = GATTServer.wifi_connect(
+            bytearray(ssid.encode("utf-8")),
+            bytearray(password.encode("utf-8")),
+        )
+
+        assert result is not None
+        logged = self.logged_output()
+        assert ssid not in logged
+        assert password not in logged
+        assert "ssid_bytes=" in logged
+        assert "password_bytes=" in logged
+
+    def test_wifi_connect_exception_does_not_log_exception_credentials(
+        self, mock_wifi_manager
+    ):
+        password = "SENTINEL-EXCEPTION-SECRET"
+        mock_wifi_manager.connectToWifi.side_effect = RuntimeError(
+            f"NetworkManager rejected {password}"
+        )
+
+        result = GATTServer.wifi_connect(
+            bytearray(b"PrivateNetwork"), bytearray(password.encode("utf-8"))
+        )
+
+        assert result is None
+        logged = self.logged_output()
+        assert password not in logged
+        assert "RuntimeError" in logged
+
+    def test_ble_write_does_not_log_raw_payload(self, mock_wifi_manager):
+        server = GATTServer.getServer()
+        server.improv_server = MagicMock()
+        server.improv_server.handle_write.return_value = (None, None)
+        characteristic = MagicMock()
+        characteristic.service_uuid = ImprovUUID.SERVICE_UUID.value
+        characteristic.uuid = ImprovUUID.RPC_COMMAND_UUID.value
+        payload = bytearray(b"SENTINEL-RAW-BLE-CREDENTIAL-PACKET")
+
+        GATTServer.write_request(characteristic, payload)
+
+        logged = self.logged_output()
+        assert payload.decode() not in logged
+        assert payload.hex() not in logged
+        assert f"{len(payload)} bytes" in logged
