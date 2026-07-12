@@ -57,8 +57,17 @@ dev = [
     "flake8==7.2.0",
     "black==26.3.1",
     "pytest>=8.0.0",
+    "mypy>=1.10.0",
 ]
 
 [tool.black]
 line-length = 96
 target-version = ["py311"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+# Start permissive — tighten over time
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
