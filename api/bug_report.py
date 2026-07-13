@@ -34,6 +34,7 @@ DEBUG_HISTORY_ROOT = Path(DEBUG_HISTORY_PATH)
 WATCHER_LOGS_URL = os.getenv("WATCHER_LOGS_URL", "http://localhost/health/logs?filter=*")
 WATCHER_STATUS_URL = os.getenv("WATCHER_STATUS_URL", "http://localhost/health/status")
 REPORT_INFO_NAME = "report_info.json"
+STATS_INFO_NAME = "statistics.json"
 REPORT_LOG_NAME = "logs_while_reporting.txt"
 MACHINE_INFO_NAME = "machine_info.json"
 MACHINE_LOGS_NAME = "machine_logs.txt"
@@ -250,6 +251,12 @@ def _write_draft_report_info(draft_dir: Path, report_info: dict[str, Any]):
     )
 
 
+def _write_draft_machine_stats(draft_dir: Path, statistics: dict[str, Any]):
+    draft_dir.joinpath(STATS_INFO_NAME).write_text(
+        json.dumps(statistics, ensure_ascii=False), encoding="utf-8"
+    )
+
+
 def _draft_files(draft_dir: Path) -> dict[str, Path]:
     return {
         str(path.relative_to(draft_dir)): path
@@ -397,6 +404,7 @@ async def _fetch_machine_logs(reference_time: int | None = None) -> str:
     if _machine_is_emulated():
         return _emulated_machine_logs(reference_time)
 
+    TIMEOUT_SECONDS = 180
     url = WATCHER_LOGS_URL
     if reference_time is not None:
         ceiling = min(_now_seconds(), reference_time + (3 * 60 * 60))
@@ -404,8 +412,9 @@ async def _fetch_machine_logs(reference_time: int | None = None) -> str:
         end_hours = max(0, int((time.time() - ceiling) // 3600))
         separator = "&" if "?" in url else "?"
         url = f"{url}{separator}since={start_hours}&until={end_hours}"
+    url = f"{url}&timeout={TIMEOUT_SECONDS-10}"
     client = tornado.httpclient.AsyncHTTPClient()
-    response = await client.fetch(url, request_timeout=600)
+    response = await client.fetch(url, request_timeout=TIMEOUT_SECONDS)
     return response.body.decode("utf-8", errors="replace")
 
 
@@ -818,11 +827,13 @@ class ReportsCreateHandler(BaseHandler):
         draft_dir = _draft_path(local_id)
         try:
             fetched = await _fetch_report_files(draft_dir)
+            db_statistics = ShotDataBase.statistics()
             attachments = {
                 "debugFiles": {"automatic": fetched.automatic_debug_files},
                 "machineInfo": fetched.machine_info,
                 "machineLogs": fetched.machine_logs,
                 "machineStatus": fetched.machine_status,
+                "DBStatistics": db_statistics,
             }
             report_info = {
                 "description": None,
@@ -836,6 +847,7 @@ class ReportsCreateHandler(BaseHandler):
                 "localID": local_id,
             }
             _write_draft_report_info(draft_dir, report_info)
+            _write_draft_machine_stats(draft_dir, db_statistics)
             _insert_report(report_info)
             self.write({"localID": local_id, "machineID": report_info["machineID"]})
         except Exception as exc:

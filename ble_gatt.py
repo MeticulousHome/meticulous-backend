@@ -24,6 +24,11 @@ from config import CONFIG_WIFI, WIFI_MODE, WIFI_MODE_AP, MeticulousConfig
 from hostname import HostnameManager
 from log import MeticulousLogger
 from notifications import Notification, NotificationManager, NotificationResponse
+from sensitive_logging import (
+    credential_metadata,
+    exception_metadata,
+    payload_metadata,
+)
 from wifi import WifiManager, WifiWpaPskCredentials
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -122,6 +127,7 @@ class GATTServer:
 
     MIN_BOOT_TIME = 60
     MACHINE_IDENT_UUID = "7f01d7b8-121e-11ef-a097-b3b1396fea81"
+    ADVERTISEMENT_UPDATE_RETRY_DELAYS = (1, 3, 8)
 
     _singletonServer = None
 
@@ -261,6 +267,56 @@ class GATTServer:
             logger.exception("Connection check failed", exc_info=e, stack_info=True)
             return False
 
+    @staticmethod
+    def _advertisement_is_missing(error: Exception) -> bool:
+        message = str(error).lower()
+        return "does not exist" in message or "unknown object" in message
+
+    async def _replace_ble_advertisement(self):
+        app = self.bless_gatt_server.app
+        iface = self.bless_gatt_server.adapter.get_interface("org.bluez.LEAdvertisingManager1")
+
+        advertisement = app.advertisements.pop() if app.advertisements else None
+        if advertisement is not None:
+            try:
+                await iface.call_unregister_advertisement(advertisement.path)
+            except Exception as error:
+                if self._advertisement_is_missing(error):
+                    logger.warning("Previous BLE advertisement no longer exists; rebuilding it")
+                else:
+                    app.advertisements.append(advertisement)
+                    raise
+
+            try:
+                self.bless_gatt_server.bus.unexport(advertisement.path, advertisement)
+            except Exception as error:
+                logger.warning(f"Could not unexport previous BLE advertisement: {error}")
+
+        new_advertisement = BlueZLEAdvertisement(Type.PERIPHERAL, 0, app)
+        new_advertisement._manufacturer_data = {
+            0xFFFF: Variant("ay", self.manufacturer_data),
+        }
+
+        exported = False
+        try:
+            self.bless_gatt_server.bus.export(new_advertisement.path, new_advertisement)
+            exported = True
+            await iface.call_register_advertisement(new_advertisement.path, {})
+        except Exception:
+            if exported:
+                try:
+                    self.bless_gatt_server.bus.unexport(
+                        new_advertisement.path, new_advertisement
+                    )
+                except Exception as cleanup_error:
+                    logger.warning(
+                        "Could not clean up failed BLE advertisement: "
+                        f"{cleanup_error}"
+                    )
+            raise
+
+        app.advertisements.append(new_advertisement)
+
     async def _update_data_loop(self):
         self.update_trigger.clear()
         while True:
@@ -270,27 +326,32 @@ class GATTServer:
                 logger.info("BLE GATT Server not initialized yet")
                 continue
 
-            logger.info(f"Updating BLE anouncment: {self.manufacturer_data}")
-            # self.manufacturer_data = b"000000000000000000000000000"
+            logger.info(f"Updating BLE announcement: {self.manufacturer_data}")
+            retry_delays = self.ADVERTISEMENT_UPDATE_RETRY_DELAYS
+            total_attempts = len(retry_delays) + 1
 
-            advertisement = self.bless_gatt_server.app.advertisements.pop()
-            iface = self.bless_gatt_server.adapter.get_interface(
-                "org.bluez.LEAdvertisingManager1"
-            )
-            newAdvertisement = BlueZLEAdvertisement(
-                Type.PERIPHERAL, 0, self.bless_gatt_server.app
-            )
+            for attempt in range(total_attempts):
+                try:
+                    await self._replace_ble_advertisement()
+                    break
+                except asyncio.CancelledError:
+                    raise
+                except Exception as error:
+                    if attempt == total_attempts - 1:
+                        logger.exception(
+                            "BLE advertisement update failed after retries; "
+                            "GATT server remains running",
+                            exc_info=error,
+                            stack_info=True,
+                        )
+                        break
 
-            await iface.call_unregister_advertisement(advertisement.path)  # type: ignore
-            self.bless_gatt_server.bus.unexport(advertisement.path, advertisement)
-
-            newAdvertisement._manufacturer_data = {
-                0xFFFF: Variant("ay", self.manufacturer_data),
-            }
-            self.bless_gatt_server.app.advertisements.append(newAdvertisement)
-
-            self.bless_gatt_server.bus.export(newAdvertisement.path, newAdvertisement)
-            await iface.call_register_advertisement(newAdvertisement.path, {})
+                    delay = retry_delays[attempt]
+                    logger.warning(
+                        "BLE advertisement update failed; retrying in "
+                        f"{delay}s ({attempt + 1}/{total_attempts}): {error}"
+                    )
+                    await asyncio.sleep(delay)
 
     async def _ble_gatt_server_loop(self):  # noqa: C901
         # FIXME remove once migrated away from the variscite-wifi.service towards
@@ -471,17 +532,17 @@ class GATTServer:
         try:
             ssid = ssid.decode("utf-8")
         except Exception as e:
-            logger.error(f"Failed to decode SSID: {e}")
+            logger.error(f"Failed to decode SSID ({exception_metadata(e)})")
             return None
 
         try:
             passwd = passwd.decode("utf-8")
         except Exception as e:
-            logger.error(f"Failed to decode password: {e}")
+            logger.error(f"Failed to decode password ({exception_metadata(e)})")
             return None
 
         try:
-            logger.info(f"Connecting to '{ssid}' with password: '{passwd}'")
+            logger.info(f"Connecting to Wi-Fi ({credential_metadata(ssid, passwd)})")
             credentials = WifiWpaPskCredentials(ssid=ssid, password=passwd)
             if WifiManager.connectToWifi(credentials):
                 networkConfig = WifiManager.getCurrentConfig()
@@ -496,8 +557,11 @@ class GATTServer:
                 return localServer
             return None
         except Exception as e:
-            logger.error(f"Failed to connect to WiFi: {e}, ssid={ssid} passwd={passwd}")
-            logger.exception("WiFi connection failed", exc_info=e, stack_info=True)
+            logger.error(
+                "Failed to connect to Wi-Fi "
+                f"({exception_metadata(e)}; {credential_metadata(ssid, passwd)})",
+                stack_info=True,
+            )
             return None
 
     def get_wifi_networks() -> Optional[list[str]]:
@@ -570,7 +634,7 @@ class GATTServer:
             else:
                 GATTServer.getServer().updateAuthentication()
                 value = GATTServer.getServer().improv_server.handle_read(characteristic.uuid)
-            logger.info(f"BLE READ  {char_name} -> {len(value)} bytes: {value.hex()}")
+            logger.info(f"BLE READ  {char_name} -> {payload_metadata(value)}")
             return value
 
         logger.info(f"BLE READ  {char_name} (non-improv)")
@@ -583,7 +647,7 @@ class GATTServer:
         except ValueError:
             pass
 
-        logger.info(f"BLE WRITE {char_name} <- {len(value)} bytes: {value.hex()}")
+        logger.info(f"BLE WRITE {char_name} <- {payload_metadata(value)}")
 
         if characteristic.service_uuid == ImprovUUID.SERVICE_UUID.value:
             (
@@ -597,9 +661,7 @@ class GATTServer:
                 except ValueError:
                     pass
                 for resp_value in target_values:
-                    logger.info(
-                        f"BLE RESP  {target_name} -> {len(resp_value)} bytes: {resp_value.hex()}"
-                    )
+                    logger.info(f"BLE RESP  {target_name} -> {payload_metadata(resp_value)}")
                     GATTServer.getServer().bless_gatt_server.get_characteristic(
                         target_uuid,
                     ).value = resp_value
