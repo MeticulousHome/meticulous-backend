@@ -132,9 +132,6 @@ MACHINE_HEATING_TIMEOUT_DEFAULT = 10  # minutes
 MACHINE_HEAT_ON_BOOT = "heat_on_boot"
 MACHINE_HEAT_ON_BOOT_DEFAULT = True
 
-MACHINE_DEBUG_SENDING = "allow_debug_sending"
-MACHINE_DEBUG_SENDING_DEFAULT = None
-
 PROFILE_ORDER = "profile_order"
 PROFILE_ORDER_DEFAULT = []
 
@@ -235,7 +232,6 @@ DefaultConfiguration_V1 = {
         USB_MODE: USB_MODE_DEFAULT,
         TIMEZONE_SYNC: DEFAULT_TIMEZONE_SYNC,
         TIME_ZONE: DEFAULT_TIME_ZONE,
-        MACHINE_DEBUG_SENDING: MACHINE_DEBUG_SENDING_DEFAULT,
         SSH_ENABLED: SSH_DEFAULT_ENABLED,
         PROFILE_ORDER: PROFILE_ORDER_DEFAULT,
         HOSTNAME_OVERRIDE: HOSTNAME_OVERRIDE_DEFAULT,
@@ -327,8 +323,9 @@ class MeticulousConfigDict(dict):
                     if disk_version is not None and disk_version > self["version"]:
                         _config_logger.warning("Config on disk is newer than this software")
                     merge(self, disk_config)
-                    # Remove the retired remote telemetry setting from existing configs.
+                    # Remove retired remote telemetry settings from existing configs.
                     self[CONFIG_USER].pop("telemetry_service_enabled", None)
+                    self[CONFIG_USER].pop("allow_debug_sending", None)
                     # migrate partial_retraction config data from int to float
                     retraction = self[CONFIG_USER][PROFILE_PARTIAL_RETRACTION]
                     if isinstance(retraction, int):

@@ -17,7 +17,6 @@ from config import (
     CONFIG_WIFI,
     DEBUG_HISTORY_PATH,
     DEBUG_SHOT_DATA_RETENTION,
-    MACHINE_DEBUG_SENDING,
     MeticulousConfig,
     CONFIG_SYSTEM,
     LAST_SYSTEM_VERSIONS,
@@ -328,8 +327,6 @@ class ShotDebugManager:
         data_json = ShotDebugManager._prepare_debug_shot_data(current_data_copy, start)
 
         async def compress_current_data(data_json):
-            from machine import Machine
-
             # Compress and write the shot to disk
             logger.info("Writing and compressing debug file")
             start = time.time()
@@ -345,24 +342,6 @@ class ShotDebugManager:
                 ShotDataBase.link_debug_file(ShotManager.db_history_id, debug_dir_filename)
 
             ShotManager.db_history_id = None
-
-            if MeticulousConfig[CONFIG_USER][MACHINE_DEBUG_SENDING] is True:
-                if Machine.emulated:
-                    logger.info("Not sending emulated debug shots")
-                else:
-                    try:
-                        from telemetry_service import TelemetryService
-
-                        compressed_data = None
-                        with open(file_path, "rb") as f:
-                            compressed_data = f.read()
-                        await TelemetryService.upload_debug_shot(
-                            compressed_data, str(file_path)
-                        )
-                        logger.info("Debug shot data compressed and saved")
-
-                    except Exception as e:
-                        logger.error(f"Failed to send debug shot to server: {e}")
 
             data_json = None
             logger.info("Debug shot data compressed and saved")

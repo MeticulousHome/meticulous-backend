@@ -49,8 +49,6 @@ from timezone_manager import TimezoneManager
 
 from ssh_manager import SSHManager
 from system_services import SystemServices
-from telemetry_service import TelemetryService
-
 from api.alarms import AlarmManager
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -309,7 +307,6 @@ def main():
 
     # Check for mapped timezones json
     TimezoneManager.init()
-    TelemetryService.init()
 
     MeticulousConfig.setSIO(sio)
 
