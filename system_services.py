@@ -1,12 +1,7 @@
 from pydbus import SystemBus
 
 from machine import Machine
-from config import (
-    MeticulousConfig,
-    CONFIG_USER,
-    SSH_ENABLED,
-    TELEMETRY_SERVICE_ENABLED,
-)
+from config import MeticulousConfig, CONFIG_USER, SSH_ENABLED
 
 from log import MeticulousLogger
 
@@ -52,9 +47,3 @@ class SystemServices:
         ssh_enabled = MeticulousConfig[CONFIG_USER].get(SSH_ENABLED, True)
         logger.info(f"Syncing ssh.service state: {'enabled' if ssh_enabled else 'disabled'}")
         SystemServices.set_service_state("ssh.service", ssh_enabled)
-
-        telemetry_enabled = MeticulousConfig[CONFIG_USER].get(TELEMETRY_SERVICE_ENABLED, True)
-        logger.info(
-            f"Syncing fluent-bit.service state: {'enabled' if telemetry_enabled else 'disabled'}"
-        )
-        SystemServices.set_service_state("fluent-bit.service", telemetry_enabled)

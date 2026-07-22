@@ -99,10 +99,6 @@ SOUNDS_DEFAULT_THEME = "default"
 SSH_ENABLED = "ssh_enabled"
 SSH_DEFAULT_ENABLED = True
 
-# Telemetry Service (fluent-bit) configuration
-TELEMETRY_SERVICE_ENABLED = "telemetry_service_enabled"
-TELEMETRY_SERVICE_DEFAULT_ENABLED = True
-
 # Firmware pinning
 DISALLOW_FIRMWARE_FLASHING = "disallow_firmware_flashing"
 DISALLOW_FIRMWARE_FLASHING_DEFAULT = False
@@ -241,7 +237,6 @@ DefaultConfiguration_V1 = {
         TIME_ZONE: DEFAULT_TIME_ZONE,
         MACHINE_DEBUG_SENDING: MACHINE_DEBUG_SENDING_DEFAULT,
         SSH_ENABLED: SSH_DEFAULT_ENABLED,
-        TELEMETRY_SERVICE_ENABLED: TELEMETRY_SERVICE_DEFAULT_ENABLED,
         PROFILE_ORDER: PROFILE_ORDER_DEFAULT,
         HOSTNAME_OVERRIDE: HOSTNAME_OVERRIDE_DEFAULT,
         CLOCK_FORMAT_24_HOUR: CLOCK_FORMAT_24_HOUR_DEFAULT,
@@ -332,6 +327,8 @@ class MeticulousConfigDict(dict):
                     if disk_version is not None and disk_version > self["version"]:
                         _config_logger.warning("Config on disk is newer than this software")
                     merge(self, disk_config)
+                    # Remove the retired remote telemetry setting from existing configs.
+                    self[CONFIG_USER].pop("telemetry_service_enabled", None)
                     # migrate partial_retraction config data from int to float
                     retraction = self[CONFIG_USER][PROFILE_PARTIAL_RETRACTION]
                     if isinstance(retraction, int):
