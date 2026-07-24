@@ -53,6 +53,7 @@ from images.notificationImages.base64 import WARNING_TRIANGLE_IMAGE
 import math
 
 from sentry_sdk.integrations.asyncio import AsyncioIntegration
+from sentry_privacy import drop_breadcrumb, sanitize_esp_data, sanitize_sentry_event
 
 
 from manufacturing import FORCE_MANUFACTURING_ENABLED_KEY, LAST_BOOT_MODE_KEY
@@ -67,6 +68,11 @@ ESPSentryClient = sentry_sdk.Client(
     integrations=[
         AsyncioIntegration(),
     ],
+    send_default_pii=False,
+    include_local_variables=False,
+    max_breadcrumbs=0,
+    before_breadcrumb=drop_breadcrumb,
+    before_send=sanitize_sentry_event,
 )
 
 
@@ -478,7 +484,7 @@ class Machine:
                                     logger.warning(full_message)
                                 case "error":
                                     logger.error(
-                                        f"ESP error: {full_message}"
+                                        f"ESP error: {message}"
                                     )  # Sends the error to the backend project in sentry
                             items_filtered = None
                             if len(log_data) > 2:
@@ -493,19 +499,17 @@ class Machine:
                             if send_to_sentry:
                                 with sentry_sdk.new_scope() as scope:
                                     if items_filtered is not None:
-                                        scope.set_context("esp-data", items_filtered)
-                                    scope.set_client(ESPSentryClient)
-                                    if log_level == "error":
-                                        logger.error(full_message)
-                                    else:
-                                        scope.capture_message(
-                                            message=message,
-                                            level=log_level,
+                                        scope.set_context(
+                                            "esp-data", sanitize_esp_data(items_filtered)
                                         )
+                                    scope.set_client(ESPSentryClient)
+                                    scope.capture_message(
+                                        message=message,
+                                        level=log_level,
+                                    )
                         except Exception as e:
                             logger.error(
-                                f"Error '{e}' processing Log from ESP: 'Log,{','.join(log_data)}'",
-                                exc_info=True,
+                                f"Error processing ESP log ({type(e).__name__})",
                             )
                     case [*_]:
                         logger.info(data_str.strip("\r\n"))
