@@ -500,11 +500,24 @@ class Machine:
                                 with sentry_sdk.new_scope() as scope:
                                     if items_filtered is not None:
                                         scope.set_context("esp-data", items_filtered)
+                                    firmware_version = None
+                                    if (
+                                        Machine.esp_info is not None
+                                        and Machine.firmware_running is not None
+                                    ):
+                                        firmware_version = Machine.esp_info.firmwareV.strip()
+                                        if firmware_version:
+                                            scope.set_tag("firmware-version", firmware_version)
                                     scope.set_client(ESPSentryClient)
-                                    scope.capture_message(
-                                        message=message,
-                                        level=log_level,
-                                    )
+                                    event = {
+                                        "message": message,
+                                        "level": log_level,
+                                    }
+                                    if firmware_version:
+                                        event["release"] = (
+                                            f"espresso-firmware@{firmware_version}"
+                                        )
+                                    scope.capture_event(event)
                         except Exception as e:
                             logger.error(
                                 f"Error processing ESP log ({type(e).__name__})",

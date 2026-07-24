@@ -27,7 +27,10 @@ def test_sanitize_event_removes_automatic_personal_context():
             "machine": "private-machine",
             "hostname": "private-host",
             "serial": "M123",
+            "build-version": "2026M1330-stable",
+            "firmware-version": "1.2.3-4-gabc123",
         },
+        "release": "espresso-firmware@1.2.3-4-gabc123",
         "contexts": {
             "config": {
                 "version": 1,
@@ -76,7 +79,12 @@ def test_sanitize_event_removes_automatic_personal_context():
     assert "user" not in sanitized
     assert "request" not in sanitized
     assert "breadcrumbs" not in sanitized
-    assert sanitized["tags"] == {"serial": "M123"}
+    assert sanitized["tags"] == {
+        "serial": "M123",
+        "build-version": "2026M1330-stable",
+        "firmware-version": "1.2.3-4-gabc123",
+    }
+    assert sanitized["release"] == "espresso-firmware@1.2.3-4-gabc123"
     assert sanitized["contexts"]["config"] == {
         "version": 1,
         "system": {"serial": "M123", "sounds_theme": "custom"},
