@@ -59,7 +59,7 @@ from sentry_privacy import drop_breadcrumb, sanitize_esp_data, sanitize_sentry_e
 from manufacturing import FORCE_MANUFACTURING_ENABLED_KEY, LAST_BOOT_MODE_KEY
 
 ESPSentryClient = sentry_sdk.Client(
-    dsn="https://ae0d66689e4445a4af7de61ab576d17c@sentry.meticulousespresso.com/6",
+    dsn="https://57bd3ab95e32eda7af5fca189527c235@sentry.meticulousespresso.com/6",
     traces_sample_rate=0.0,
     # Set profiles_sample_rate to 1.0 to profile 100%
     # of sampled transactions.

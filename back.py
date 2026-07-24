@@ -35,7 +35,7 @@ if BACKEND == "FIKA" or SENTRY:
     print("Initializing sentry")
 
     sentry_sdk.init(
-        dsn="https://66287e18e4d9bb8437bd9b0a963bb882@sentry.meticulousespresso.com/3",
+        dsn="https://39a03a6899dcf043dc520bc93d9e966c@sentry.meticulousespresso.com/3",
         traces_sample_rate=0.0,
         profiles_sample_rate=0.0,
         integrations=[
