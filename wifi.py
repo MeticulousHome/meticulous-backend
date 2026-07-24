@@ -285,7 +285,7 @@ class WifiManager:
                                 continue
                         except Exception as e:
                             logger.error(
-                                f"failure validating known ({network.ssid}) WI-FI security: {e}"
+                                f"Failure validating known WI-FI security ({type(e).__name__})"
                             )
 
                     if type(credentials) is str:
@@ -473,14 +473,14 @@ class WifiManager:
                 if "802-11-wireless-security.key-mgmt: property is missing" in error_msg:
                     needs_fix = True
                 else:
-                    logger.error(f"Failed to connect to wifi: {e}")
+                    logger.error(f"Failed to connect to wifi ({type(e).__name__})")
                     WifiManager.update_gatt_advertisement()
                     return False
             if needs_fix:
                 try:
                     WifiManager.fixWifiConnection(ssid, wifi_type)
                 except Exception as e:
-                    logger.error(f"Failed to connect to wifi: {e}")
+                    logger.error(f"Failed to connect to wifi ({type(e).__name__})")
                     WifiManager.update_gatt_advertisement()
                     return False
 
