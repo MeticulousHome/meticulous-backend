@@ -22,7 +22,6 @@ from hostname import HostnameManager
 from config import (
     MeticulousConfig,
     CONFIG_SYSTEM,
-    DEVICE_IDENTIFIER,
     MACHINE_SERIAL_NUMBER,
     CONFIG_LOGGING,
     LOGGING_SENSOR_MESSAGES,
@@ -280,9 +279,6 @@ def main():
         sentry_sdk.set_tag("build-channel", UpdateManager.getImageChannel())
         sentry_sdk.set_tag("build-version", UpdateManager.getImageVersion())
 
-        sentry_sdk.set_tag(
-            "machine", "".join(MeticulousConfig[CONFIG_SYSTEM][DEVICE_IDENTIFIER])
-        )
         sentry_sdk.set_tag("serial", MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER])
     except Exception as e:
         logger.error(f"Failed to set sentry context: {e}")
