@@ -19,6 +19,8 @@ import tornado.httpclient
 from sqlalchemy import and_, desc, func, insert, or_, select, update
 
 from config import DATABASE_URL, DEBUG_HISTORY_PATH
+from reportable_config import get_reportable_config
+
 from database_models import bug_reports
 from log import MeticulousLogger
 from shot_database import ShotDataBase
@@ -87,7 +89,7 @@ def _now_seconds() -> int:
 def _get_machine_info() -> dict[str, Any]:
     from .machine import get_machine_info
 
-    return get_machine_info()
+    return get_reportable_config(get_machine_info())
 
 
 def _new_local_id() -> str:
