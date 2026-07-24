@@ -1,25 +1,17 @@
-from sentry_privacy import sanitize_esp_data, sanitize_sentry_event
+from sentry_privacy import sanitize_sentry_event
 
 
-def test_sanitize_esp_data_keeps_allowlist_and_bounds_stage_name():
-    sanitized = sanitize_esp_data(
-        {
-            "stage_name": " Infusion\x00" + ("x" * 200),
-            "context": "applied_setpoint",
-            "requested": "12.5",
-            "password": "secret",
-            "future": "value",
-            "reason": "bad,value",
-        }
-    )
+def test_sanitize_event_preserves_complete_esp_diagnostics():
+    esp_data = {
+        "stage_name": "Infusion " + ("x" * 200),
+        "future_sensor": "raw=value/with,punctuation",
+        "diagnostic_code": "HW-42",
+    }
 
-    assert sanitized["stage_name"].startswith("Infusion")
-    assert len(sanitized["stage_name"]) == 128
-    assert sanitized["context"] == "applied_setpoint"
-    assert sanitized["requested"] == "12.5"
-    assert "password" not in sanitized
-    assert "future" not in sanitized
-    assert "reason" not in sanitized
+    sanitized = sanitize_sentry_event({"contexts": {"esp-data": esp_data}})
+
+    assert sanitized["contexts"]["esp-data"] == esp_data
+    assert sanitized["contexts"]["esp-data"] is not esp_data
 
 
 def test_sanitize_event_removes_automatic_personal_context():
@@ -49,7 +41,7 @@ def test_sanitize_event_removes_automatic_personal_context():
             "esp-data": {
                 "stage_name": "Infusion",
                 "requested": "10.0",
-                "password": "secret",
+                "future_sensor": "raw=value/with,punctuation",
             },
             "runtime": {
                 "hostname": "private-host",
@@ -93,6 +85,7 @@ def test_sanitize_event_removes_automatic_personal_context():
     assert sanitized["contexts"]["esp-data"] == {
         "stage_name": "Infusion",
         "requested": "10.0",
+        "future_sensor": "raw=value/with,punctuation",
     }
     assert sanitized["contexts"]["runtime"] == {"version": "3.11"}
     assert sanitized["extra"] == {"diagnostic": {"value": 2}}

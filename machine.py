@@ -53,7 +53,7 @@ from images.notificationImages.base64 import WARNING_TRIANGLE_IMAGE
 import math
 
 from sentry_sdk.integrations.asyncio import AsyncioIntegration
-from sentry_privacy import drop_breadcrumb, sanitize_esp_data, sanitize_sentry_event
+from sentry_privacy import drop_breadcrumb, sanitize_sentry_event
 
 
 from manufacturing import FORCE_MANUFACTURING_ENABLED_KEY, LAST_BOOT_MODE_KEY
@@ -499,9 +499,7 @@ class Machine:
                             if send_to_sentry:
                                 with sentry_sdk.new_scope() as scope:
                                     if items_filtered is not None:
-                                        scope.set_context(
-                                            "esp-data", sanitize_esp_data(items_filtered)
-                                        )
+                                        scope.set_context("esp-data", items_filtered)
                                     scope.set_client(ESPSentryClient)
                                     scope.capture_message(
                                         message=message,
