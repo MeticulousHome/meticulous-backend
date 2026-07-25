@@ -53,12 +53,13 @@ from images.notificationImages.base64 import WARNING_TRIANGLE_IMAGE
 import math
 
 from sentry_sdk.integrations.asyncio import AsyncioIntegration
+from sentry_privacy import drop_breadcrumb, sanitize_sentry_event
 
 
 from manufacturing import FORCE_MANUFACTURING_ENABLED_KEY, LAST_BOOT_MODE_KEY
 
 ESPSentryClient = sentry_sdk.Client(
-    dsn="https://ae0d66689e4445a4af7de61ab576d17c@sentry.meticulousespresso.com/6",
+    dsn="https://57bd3ab95e32eda7af5fca189527c235@sentry.meticulousespresso.com/6",
     traces_sample_rate=0.0,
     # Set profiles_sample_rate to 1.0 to profile 100%
     # of sampled transactions.
@@ -67,6 +68,11 @@ ESPSentryClient = sentry_sdk.Client(
     integrations=[
         AsyncioIntegration(),
     ],
+    send_default_pii=False,
+    include_local_variables=False,
+    max_breadcrumbs=0,
+    before_breadcrumb=drop_breadcrumb,
+    before_send=sanitize_sentry_event,
 )
 
 
@@ -478,7 +484,7 @@ class Machine:
                                     logger.warning(full_message)
                                 case "error":
                                     logger.error(
-                                        f"ESP error: {full_message}"
+                                        f"ESP error: {message}"
                                     )  # Sends the error to the backend project in sentry
                             items_filtered = None
                             if len(log_data) > 2:
@@ -494,18 +500,27 @@ class Machine:
                                 with sentry_sdk.new_scope() as scope:
                                     if items_filtered is not None:
                                         scope.set_context("esp-data", items_filtered)
+                                    firmware_version = None
+                                    if (
+                                        Machine.esp_info is not None
+                                        and Machine.firmware_running is not None
+                                    ):
+                                        firmware_version = Machine.esp_info.firmwareV.strip()
+                                        if firmware_version:
+                                            scope.set_tag("firmware-version", firmware_version)
                                     scope.set_client(ESPSentryClient)
-                                    if log_level == "error":
-                                        logger.error(full_message)
-                                    else:
-                                        scope.capture_message(
-                                            message=message,
-                                            level=log_level,
+                                    event = {
+                                        "message": message,
+                                        "level": log_level,
+                                    }
+                                    if firmware_version:
+                                        event["release"] = (
+                                            f"espresso-firmware@{firmware_version}"
                                         )
+                                    scope.capture_event(event)
                         except Exception as e:
                             logger.error(
-                                f"Error '{e}' processing Log from ESP: 'Log,{','.join(log_data)}'",
-                                exc_info=True,
+                                f"Error processing ESP log ({type(e).__name__})",
                             )
                     case [*_]:
                         logger.info(data_str.strip("\r\n"))

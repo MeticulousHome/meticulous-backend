@@ -471,13 +471,13 @@ class GATTServer:
         try:
             ssid = ssid.decode("utf-8")
         except Exception as e:
-            logger.error(f"Failed to decode SSID: {e}")
+            logger.error(f"Failed to decode SSID ({type(e).__name__})")
             return None
 
         try:
             passwd = passwd.decode("utf-8")
         except Exception as e:
-            logger.error(f"Failed to decode password: {e}")
+            logger.error(f"Failed to decode password ({type(e).__name__})")
             return None
 
         try:
@@ -496,8 +496,7 @@ class GATTServer:
                 return localServer
             return None
         except Exception as e:
-            logger.error(f"Failed to connect to WiFi: {e}, ssid={ssid} passwd={passwd}")
-            logger.exception("WiFi connection failed", exc_info=e, stack_info=True)
+            logger.error(f"WiFi connection failed ({type(e).__name__})")
             return None
 
     def get_wifi_networks() -> Optional[list[str]]:
