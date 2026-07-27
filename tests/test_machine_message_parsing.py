@@ -266,13 +266,47 @@ class TestESPInfo:
         assert sio["serial_number"] == "SN123"
 
     def test_roundtrip_to_args(self):
-        args = ["1.2.3", "2", "24.5", "black", "SN123", "B456", "2024-01-01", "scale1"]
+        args = [
+            "1.2.3",
+            "2",
+            "24.5",
+            "black",
+            "SN123",
+            "B456",
+            "2024-01-01",
+            "scale1",
+            "45.0",
+            "false",
+            "123e4567-e89b-42d3-a456-426614174000",
+        ]
         info = ESPInfo.from_args(args)
         output = info.to_args()
         reparsed = ESPInfo.from_args(output)
         assert reparsed.firmwareV == info.firmwareV
         assert reparsed.mainVoltage == info.mainVoltage
         assert reparsed.color == info.color
+        assert reparsed.deviceUUID == info.deviceUUID
+
+    def test_parse_device_uuid_without_exposing_it_to_sio(self):
+        device_uuid = "123e4567-e89b-42d3-a456-426614174000"
+        args = [
+            "1.2.3",
+            "2",
+            "24.5",
+            "black",
+            "SN123",
+            "B456",
+            "2024-01-01",
+            "scale1",
+            "45.0",
+            "false",
+            device_uuid,
+        ]
+
+        info = ESPInfo.from_args(args)
+
+        assert info.deviceUUID == device_uuid
+        assert "device_uuid" not in info.to_sio()
 
 
 class TestButtonEventData:

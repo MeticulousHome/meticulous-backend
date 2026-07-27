@@ -174,6 +174,7 @@ class ESPInfo:
     scaleModule: str = ""
     partialRetraction: float = 45.0
     autoPurgeAfterShot: bool = False
+    deviceUUID: str = ""
 
     def from_args(args):
         espPinout = 0
@@ -183,7 +184,21 @@ class ESPInfo:
         except Exception:
             pass
         try:
-            if len(args) >= 10:
+            if len(args) >= 11:
+                info = ESPInfo(
+                    args[0],
+                    espPinout,
+                    float(args[2]),
+                    args[3],
+                    args[4],
+                    args[5],
+                    args[6],
+                    args[7],
+                    float(args[8]),
+                    args[9].lower() == "true",
+                    args[10],
+                )
+            elif len(args) >= 10:
                 info = ESPInfo(
                     args[0],
                     espPinout,
@@ -239,6 +254,7 @@ class ESPInfo:
             self.scaleModule,
             str(self.partialRetraction),
             "true" if self.autoPurgeAfterShot else "false",
+            self.deviceUUID,
         ]
         return args
 
