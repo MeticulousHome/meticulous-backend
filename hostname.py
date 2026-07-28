@@ -59,7 +59,7 @@ class HostnameManager:
             subprocess.run(["systemctl", "restart", "rauc-hawkbit-updater"])
             logger.info("Restarted rauc-hawkbit-updater")
         except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to set hostname: {e}")
+            logger.error(f"Failed to set hostname ({type(e).__name__})")
 
     ADJECTIVES = [
         "aromatic",

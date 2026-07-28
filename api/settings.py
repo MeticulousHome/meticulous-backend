@@ -11,7 +11,6 @@ from config import (
     TIME_ZONE,
     AUTOMATIC_TIMEZONE_SYNC,
     SSH_ENABLED,
-    TELEMETRY_SERVICE_ENABLED,
     PROFILE_ORDER,
     PROFILE_AUTO_PURGE,
     PROFILE_PARTIAL_RETRACTION,
@@ -19,7 +18,6 @@ from config import (
 
 from heater_actuator import HeaterActuator
 from ssh_manager import SSHManager
-from system_services import SystemServices
 from profiles import ProfileManager
 
 from .base_handler import BaseHandler
@@ -135,29 +133,6 @@ class SettingsHandler(BaseHandler):
                             {
                                 "status": "error",
                                 "setting": SSH_ENABLED,
-                                "details": "Internal server error",
-                            }
-                        )
-
-                # Handle Telemetry Service (fluent-bit) settings
-                if setting_target == TELEMETRY_SERVICE_ENABLED:
-                    try:
-                        if not SystemServices.set_service_state("fluent-bit.service", value):
-                            self.set_status(500)
-                            self.write(
-                                {
-                                    "status": "error",
-                                    "setting": TELEMETRY_SERVICE_ENABLED,
-                                    "details": "Failed to update fluent-bit service state",
-                                }
-                            )
-                    except Exception as e:
-                        logger.error(f"Error managing fluent-bit service: {e}")
-                        self.set_status(500)
-                        self.write(
-                            {
-                                "status": "error",
-                                "setting": TELEMETRY_SERVICE_ENABLED,
                                 "details": "Internal server error",
                             }
                         )
