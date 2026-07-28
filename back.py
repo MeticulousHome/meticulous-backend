@@ -3,21 +3,10 @@ from sentry_sdk.integrations.asyncio import AsyncioIntegration
 
 import os
 
+from sentry_privacy import drop_breadcrumb, sanitize_sentry_event
+
 BACKEND = os.getenv("BACKEND", "FIKA").upper()
 SENTRY = os.getenv("SENTRY", "False").lower() in ("true", "1", "y")
-
-
-SHSentryClient = None
-
-
-def before_breadcrumb(crumb, hint):
-    # Dont log subprocess breadcrumbs
-    if crumb["type"] == "subprocess":
-        # If we wanted to allow certain threads we could do it like this:
-        # thread_name = crumb.get("data", {}).get("thread.name", None) -> e.g. MainThread or WifiAutoConnect
-        # thread_name = crumb.get("message", None) -> e.g. 'nmcli device show wlan0'
-        return None
-    return crumb
 
 
 def is_tornado_session_disconnected(event):
@@ -36,33 +25,18 @@ def is_tornado_session_disconnected(event):
     return False
 
 
-# hook the SHSentryClient to the global client
 def before_send(event, hint):
     if is_tornado_session_disconnected(event):
         return None
-    if SHSentryClient is not None:
-        SHSentryClient.capture_event(event=event)
-    return event
+    return sanitize_sentry_event(event, hint)
 
 
 if BACKEND == "FIKA" or SENTRY:
     print("Initializing sentry")
 
-    # mimic the behavior of the global client
-    SHSentryClient = sentry_sdk.Client(
-        dsn="https://66287e18e4d9bb8437bd9b0a963bb882@sentry.meticulousespresso.com/3",
-        # before_breadcrumb=before_breadcrumb,
-    )
-
-    # main sentry instance
     sentry_sdk.init(
-        dsn="https://0b7872daf08aae52a8d654472bc8bb26@o4506723336060928.ingest.us.sentry.io/4507635208224768",
-        # Set traces_sample_rate to 1.0 to capture 100%
-        # of transactions for performance monitoring.
+        dsn="https://39a03a6899dcf043dc520bc93d9e966c@sentry.meticulousespresso.com/3",
         traces_sample_rate=0.0,
-        # Set profiles_sample_rate to 1.0 to profile 100%
-        # of sampled transactions.
-        # We recommend adjusting this value in production.
         profiles_sample_rate=0.0,
         integrations=[
             AsyncioIntegration(),
@@ -70,7 +44,10 @@ if BACKEND == "FIKA" or SENTRY:
         ignore_errors=[
             KeyboardInterrupt,
         ],
-        before_breadcrumb=before_breadcrumb,
+        send_default_pii=False,
+        include_local_variables=False,
+        max_breadcrumbs=0,
+        before_breadcrumb=drop_breadcrumb,
         before_send=before_send,
     )
 

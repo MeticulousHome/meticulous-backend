@@ -1683,7 +1683,9 @@ class WifiManager:
                     e, auth_expected=auth_expected
                 )
                 WifiManager.setLastConnectionError(code, message)
-                logger.error(f"Failed to connect to wifi: {e}")
+                logger.error(
+                    f"Failed to connect to wifi ({exception_metadata(e)})"
+                )
                 WifiManager.update_gatt_advertisement()
                 return False
         if needs_fix:
@@ -1698,7 +1700,9 @@ class WifiManager:
                     e, auth_expected=auth_expected
                 )
                 WifiManager.setLastConnectionError(code, message)
-                logger.error(f"Failed to connect to wifi: {e}")
+                logger.error(
+                    f"Failed to connect to wifi ({exception_metadata(e)})"
+                )
                 WifiManager.update_gatt_advertisement()
                 return False
 
