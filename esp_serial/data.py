@@ -175,6 +175,7 @@ class ESPInfo:
     partialRetraction: float = 45.0
     autoPurgeAfterShot: bool = False
     deviceUUID: str = ""
+    deviceUUIDSupported: bool = False
 
     def from_args(args):
         espPinout = 0
@@ -197,6 +198,7 @@ class ESPInfo:
                     float(args[8]),
                     args[9].lower() == "true",
                     args[10],
+                    True,
                 )
             elif len(args) >= 10:
                 info = ESPInfo(
@@ -254,8 +256,9 @@ class ESPInfo:
             self.scaleModule,
             str(self.partialRetraction),
             "true" if self.autoPurgeAfterShot else "false",
-            self.deviceUUID,
         ]
+        if self.deviceUUIDSupported:
+            args.append(self.deviceUUID)
         return args
 
     def to_sio(self):

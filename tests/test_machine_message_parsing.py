@@ -240,6 +240,7 @@ class TestESPInfo:
         assert info.batchNumber == "B456"
         assert info.buildDate == "2024-01-01"
         assert info.scaleModule == "scale1"
+        assert not info.deviceUUIDSupported
 
     def test_parse_minimal(self):
         args = ["0.9.1", "1", "23.0"]
@@ -286,6 +287,7 @@ class TestESPInfo:
         assert reparsed.mainVoltage == info.mainVoltage
         assert reparsed.color == info.color
         assert reparsed.deviceUUID == info.deviceUUID
+        assert reparsed.deviceUUIDSupported
 
     def test_parse_device_uuid_without_exposing_it_to_sio(self):
         device_uuid = "123e4567-e89b-42d3-a456-426614174000"
@@ -306,7 +308,28 @@ class TestESPInfo:
         info = ESPInfo.from_args(args)
 
         assert info.deviceUUID == device_uuid
+        assert info.deviceUUIDSupported
         assert "device_uuid" not in info.to_sio()
+
+    def test_empty_device_uuid_still_reports_protocol_support(self):
+        args = [
+            "1.2.3",
+            "2",
+            "24.5",
+            "black",
+            "SN123",
+            "B456",
+            "2024-01-01",
+            "scale1",
+            "45.0",
+            "false",
+            "",
+        ]
+
+        info = ESPInfo.from_args(args)
+
+        assert info.deviceUUID == ""
+        assert info.deviceUUIDSupported
 
 
 class TestButtonEventData:

@@ -1,6 +1,7 @@
 import os
 import re
 import tempfile
+import uuid
 from pathlib import Path
 
 
@@ -20,6 +21,24 @@ def is_valid_device_uuid(device_uuid: str) -> bool:
     return bool(DEVICE_UUID_PATTERN.fullmatch(device_uuid))
 
 
+def generate_device_uuid() -> str:
+    """Generate a canonical UUIDv4 using the VAR-SOM OS entropy source."""
+    return str(uuid.uuid4())
+
+
+def get_device_uuid_assignment(
+    reported_uuid: str,
+    protocol_supported: bool,
+    pending_assignment: str | None,
+) -> str | None:
+    """Return the UUID to assign without consulting the VAR-SOM cache."""
+    if is_valid_device_uuid(reported_uuid) or not protocol_supported:
+        return None
+    if pending_assignment and is_valid_device_uuid(pending_assignment):
+        return pending_assignment
+    return generate_device_uuid()
+
+
 def update_device_uuid_cache(device_uuid: str) -> bool:
     """Persist the ESP-owned UUID and return whether the cache changed."""
     if not is_valid_device_uuid(device_uuid):
@@ -27,7 +46,7 @@ def update_device_uuid_cache(device_uuid: str) -> bool:
 
     try:
         cached_uuid = DEVICE_UUID_CACHE_PATH.read_text(encoding="ascii").strip()
-    except FileNotFoundError:
+    except (FileNotFoundError, UnicodeError):
         cached_uuid = ""
 
     if cached_uuid == device_uuid:
