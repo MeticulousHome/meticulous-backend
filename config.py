@@ -298,7 +298,9 @@ class MeticulousConfigDict(dict):
 
         _config_logger.info("Config initialized")
 
-        cs = yaml.dump(self.copy(), default_flow_style=False, allow_unicode=True)
+        cs = yaml.dump(
+            get_reportable_config(self.copy()), default_flow_style=False, allow_unicode=True
+        )
         for line in cs.split("\n"):
             _config_logger.debug(f"CONF: {line}")
 
@@ -334,7 +336,7 @@ class MeticulousConfigDict(dict):
                     _config_logger.info("Successfully loaded config from disk")
                     self.__configError = False
                 except Exception as e:
-                    _config_logger.warning(f"Failed to load config: {e}")
+                    _config_logger.warning(f"Failed to load config: {type(e).__name__}")
                     basename, extension = os.path.splitext(self.__path)
                     backup_path = (
                         basename

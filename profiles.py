@@ -345,9 +345,10 @@ class ProfileManager:
         return {"profile": profile, "change_id": change_id}
 
     def get_profile(id):
-        logger.info(f"Serving profile: {id}")
-        logger.info(ProfileManager._known_profiles.get(id))
-        return ProfileManager._known_profiles.get(id)
+        profile = ProfileManager._known_profiles.get(id)
+        profile_md5 = ProfileManager._get_payload_md5(profile)
+        logger.info(f"Serving profile: {id} - MD5: {profile_md5}")
+        return profile
 
     def load_profile_and_send(id):
         profile = ProfileManager._known_profiles.get(id)
@@ -367,8 +368,8 @@ class ProfileManager:
             data["id"] = str(uuid.uuid4())
 
         ProfileManager.handle_image(data)
-
-        logger.info(f"Recieved data: {data} {type(data)}")
+        data_md5 = ProfileManager._get_payload_md5(data)
+        logger.info(f"Recieved {type(data)} data with MD5: {data_md5}")
 
         logger.info("processing simplified profile")
         errors = ProfileManager.validate_profile(data)
@@ -397,7 +398,7 @@ class ProfileManager:
             )
 
         logger.info(
-            f"simplified profile streamed to ESP32: data={json.dumps(preprocessed_profile)}"
+            f"simplified profile streamed to ESP32: data MD5={ProfileManager._get_payload_md5(preprocessed_profile)}"
         )
 
         Machine.send_json_with_hash(preprocessed_profile)
@@ -674,6 +675,13 @@ class ProfileManager:
             for chunk in iter(lambda: f.read(4096), b""):
                 hash_md5.update(chunk)
         return hash_md5.hexdigest()
+
+    def _get_payload_md5(payload):
+        # Used to reference a profile in the logs without dumping its contents,
+        # which carry the author / author_id fields.
+        if payload is None:
+            return None
+        return hashlib.md5(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
 
     def validate_profile(data):
 

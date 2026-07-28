@@ -644,9 +644,7 @@ class Machine:
                         MeticulousConfig[CONFIG_USER][PROFILE_PARTIAL_RETRACTION]
                     )
                     Machine.setPartialRetraction(backend_partial_retraction)
-                    backend_auto_purge = bool(
-                        MeticulousConfig[CONFIG_USER][PROFILE_AUTO_PURGE]
-                    )
+                    backend_auto_purge = bool(MeticulousConfig[CONFIG_USER][PROFILE_AUTO_PURGE])
                     Machine.setAutoPurgeAfterShot(backend_auto_purge)
 
                     if (
@@ -888,8 +886,7 @@ class Machine:
         json_string = json.dumps(json_obj)
         json_data = "json\n" + json_string + "\x03"
 
-        logger.debug("JSON to stream to the machine:")
-        logger.debug(json_data)
+        logger.debug("streaming JSON to the machine")
 
         json_hash = hashlib.md5(json_data[5:-1].encode("utf-8")).hexdigest()
 

@@ -40,6 +40,17 @@ nmcli.set_lang("C.UTF-8")
 ZEROCONF_OVERWRITE = os.getenv("ZEROCONF_OVERWRITE", "")
 
 
+def redact_ssid(ssid: str):
+    ssid = str(ssid)
+    ssid_len = len(ssid)
+    chars_to_show = min(2, ssid_len)
+
+    if ssid_len == 2:
+        chars_to_show = 1
+
+    return f"{ssid[0:chars_to_show]}{'*'*(ssid_len - chars_to_show)}"
+
+
 class WifiType(str, Enum):
     Open = "OPEN"
     PreSharedKey = "PSK"
@@ -163,9 +174,7 @@ class WifiManager:
     def init():
         logger.info("Wifi initializing")
         if ZEROCONF_OVERWRITE != "":
-            logger.info(
-                f"Overwriting network configuration due to ZEROCONF_OVERWRITE={ZEROCONF_OVERWRITE}"
-            )
+            logger.info("Overwriting network configuration due to ZEROCONF_OVERWRITE")
 
         try:
             nmcli.device.show_all()
@@ -321,7 +330,7 @@ class WifiManager:
                 password=MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD],
             )
         except Exception as e:
-            logger.error(f"Starting hotspot failed: {e}")
+            logger.error(f"Starting hotspot failed: {type(e).__name__}")
         WifiManager._zeroconf.restart()
 
     def stopHotspot():
@@ -390,7 +399,7 @@ class WifiManager:
 
     @staticmethod
     def fixWifiConnection(ssid, wifi_type: WifiType):
-        logger.info(f"Fixing wifi connection for {ssid} with type {wifi_type}")
+        logger.info(f"Fixing wifi connection for {redact_ssid(ssid)}")
 
         keymgmt = None
         match wifi_type:
@@ -435,10 +444,12 @@ class WifiManager:
         if ssid is None:
             return False
 
-        logger.info(f"Connecting to wifi: {ssid}")
+        logger.info(f"Connecting to wifi: {redact_ssid(ssid)}")
 
         networks = WifiManager.scanForNetworks(timeout=30, target_network_ssid=ssid)
-        logger.info(networks)
+        for network in networks:
+            logger.info(f"Found network: {redact_ssid(network.ssid)}")
+
         if len(networks) > 0:
             if len([x for x in networks if x.in_use]) > 0:
                 logger.info("Already connected")
