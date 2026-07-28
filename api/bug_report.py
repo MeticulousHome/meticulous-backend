@@ -24,7 +24,6 @@ from config import (
     MACHINE_SERIAL_NUMBER,
     MeticulousConfig,
 )
-from reportable_config import get_reportable_config
 
 from database_models import bug_reports
 from log import MeticulousLogger
@@ -94,7 +93,7 @@ def _now_seconds() -> int:
 def _get_machine_info() -> dict[str, Any]:
     from .machine import get_machine_info
 
-    return get_reportable_config(get_machine_info())
+    return get_machine_info()
 
 
 def _new_local_id() -> str:
