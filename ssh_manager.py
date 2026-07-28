@@ -64,7 +64,7 @@ class SSHManager:
             logger.info("Successfully generated and set new root password")
             return True
         except Exception as e:
-            logger.error(f"Error generating or setting root password:{e}")
+            logger.error(f"Error generating or setting root password ({type(e).__name__})")
             return False
 
     @staticmethod
@@ -87,7 +87,7 @@ class SSHManager:
             subprocess.run(["chpasswd"], input=f"root:{password}".encode(), check=True)
             return True
         except Exception as e:
-            logger.error(f"Error setting the root password: {e}")
+            logger.error(f"Error setting the root password ({type(e).__name__})")
             return False
 
     @staticmethod

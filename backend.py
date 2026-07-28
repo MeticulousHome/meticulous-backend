@@ -22,7 +22,6 @@ from hostname import HostnameManager
 from config import (
     MeticulousConfig,
     CONFIG_SYSTEM,
-    DEVICE_IDENTIFIER,
     MACHINE_SERIAL_NUMBER,
     CONFIG_LOGGING,
     LOGGING_SENSOR_MESSAGES,
@@ -49,8 +48,6 @@ from timezone_manager import TimezoneManager
 
 from ssh_manager import SSHManager
 from system_services import SystemServices
-from telemetry_service import TelemetryService
-
 from api.alarms import AlarmManager
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -291,9 +288,6 @@ def main():
         sentry_sdk.set_tag("build-channel", UpdateManager.getImageChannel())
         sentry_sdk.set_tag("build-version", UpdateManager.getImageVersion())
 
-        sentry_sdk.set_tag(
-            "machine", "".join(MeticulousConfig[CONFIG_SYSTEM][DEVICE_IDENTIFIER])
-        )
         sentry_sdk.set_tag("serial", MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER])
     except Exception as e:
         logger.error(f"Failed to set sentry context: {e}")
@@ -320,7 +314,6 @@ def main():
 
     # Check for mapped timezones json
     TimezoneManager.init()
-    TelemetryService.init()
 
     MeticulousConfig.setSIO(sio)
 
@@ -340,7 +333,7 @@ def main():
         debug=DEBUG,
     )
 
-    app.listen(PORT)
+    app.listen(PORT, address="127.0.0.1")
     if not Machine.emulated:
         start_wifi_manager_in_background()
 
