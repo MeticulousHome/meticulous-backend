@@ -1,6 +1,7 @@
 from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
+import re
 
 
 class ESPCommunicationPhase(Enum):
@@ -37,6 +38,10 @@ class ESPObservability:
         "stack smashing protect failure",
         "heap corruption",
     )
+    GURU_MEDITATION_PATTERN = re.compile(
+        r"Guru Meditation Error:\s*Core\s+(\d+)\s+panic'ed\s+\(([^)]+)\)",
+        re.IGNORECASE,
+    )
 
     def __init__(self, now: float = 0.0):
         self.phase = ESPCommunicationPhase.EXPECTED_RESET
@@ -48,10 +53,13 @@ class ESPObservability:
         self.boot_seen = False
         self.pending_unexpected_reset = False
         self.reset_reported = False
+        self.panic_reported = False
         self.timeout_reported = False
         self._collecting_panic = False
         self._panic_lines: list[str] = []
         self._panic_bytes = 0
+        self._panic_core = None
+        self._panic_reason = None
         self._recent_unexpected_boots: deque[float] = deque()
 
     @property
@@ -69,6 +77,7 @@ class ESPObservability:
         self.recovery_deadline = now + self.RESET_RECOVERY_TIMEOUT_SECONDS
         self.pending_unexpected_reset = False
         self.reset_reported = False
+        self.panic_reported = False
         self.timeout_reported = False
 
     def begin_update(
@@ -82,6 +91,7 @@ class ESPObservability:
         self.recovery_deadline = None
         self.pending_unexpected_reset = False
         self.reset_reported = False
+        self.panic_reported = False
         self.timeout_reported = False
         self._clear_panic()
 
@@ -116,6 +126,10 @@ class ESPObservability:
 
         if any(marker in lowered for marker in self.PANIC_MARKERS):
             self._collecting_panic = True
+            guru_match = self.GURU_MEDITATION_PATTERN.search(normalized)
+            if guru_match:
+                self._panic_core = guru_match.group(1)
+                self._panic_reason = guru_match.group(2)
 
         if self._collecting_panic and not is_boot_banner:
             self._append_panic_line(normalized)
@@ -125,6 +139,10 @@ class ESPObservability:
 
         self.boot_seen = True
         self._collecting_panic = False
+        if self._panic_lines and not self.panic_reported:
+            events.append(self._panic_diagnostic("UNKNOWN", ""))
+            self.panic_reported = True
+            self.reset_reported = True
         if self.phase in {
             ESPCommunicationPhase.FLASHING,
             ESPCommunicationPhase.WAITING_FOR_BOOT,
@@ -160,8 +178,11 @@ class ESPObservability:
     def observe_boot_reason(self, reason: str, code: str, now: float) -> list[ESPDiagnostic]:
         reason = reason.strip().upper() or "UNKNOWN"
         code = code.strip()
+        if self.panic_reported:
+            return []
         if not self.pending_unexpected_reset:
             if reason == "PANIC" or self._panic_lines:
+                self.panic_reported = True
                 return [self._panic_diagnostic(reason, code)]
             return []
 
@@ -170,6 +191,7 @@ class ESPObservability:
 
         self.reset_reported = True
         if reason == "PANIC" or self._panic_lines:
+            self.panic_reported = True
             return [self._panic_diagnostic(reason, code)]
         return [
             ESPDiagnostic(
@@ -300,10 +322,17 @@ class ESPObservability:
         return []
 
     def _panic_diagnostic(self, reason: str, code: str) -> ESPDiagnostic:
+        tags = {"reset_reason": reason, "reset_reason_code": code}
         context: dict[str, object] = {
             "reset_reason": reason,
             "previous_firmware": self.previous_firmware,
         }
+        if self._panic_reason:
+            tags["panic_reason"] = self._panic_reason
+            context["panic_reason"] = self._panic_reason
+        if self._panic_core:
+            tags["core"] = self._panic_core
+            context["core"] = self._panic_core
         if code:
             context["reset_reason_code"] = code
         if self._panic_lines:
@@ -316,7 +345,7 @@ class ESPObservability:
             title="ESP32 firmware panic detected",
             level="critical",
             fingerprint="esp32-firmware-panic",
-            tags={"reset_reason": reason, "reset_reason_code": code},
+            tags=tags,
             context=context,
         )
 
@@ -344,12 +373,15 @@ class ESPObservability:
         self.boot_seen = False
         self.pending_unexpected_reset = False
         self.reset_reported = False
+        self.panic_reported = False
         self._clear_panic()
 
     def _clear_panic(self) -> None:
         self._collecting_panic = False
         self._panic_lines = []
         self._panic_bytes = 0
+        self._panic_core = None
+        self._panic_reason = None
 
     @staticmethod
     def _clean_version(version: str | None) -> str | None:

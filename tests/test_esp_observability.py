@@ -73,12 +73,14 @@ def test_guru_meditation_is_reported_as_panic_with_bounded_evidence():
     monitor.observe_raw_line("Guru Meditation Error: Core  1 panic'ed (LoadProhibited).", 1)
     monitor.observe_raw_line("Core  1 register dump:", 1.1)
     monitor.observe_raw_line("Backtrace: 0x40381234:0x3fceabcd", 1.2)
-    monitor.observe_raw_line(BOOT, 1.3)
+    events = monitor.observe_raw_line(BOOT, 1.3)
 
-    events = monitor.observe_boot_reason("PANIC", "4", 3.5)
+    assert monitor.observe_boot_reason("PANIC", "4", 3.5) == []
 
     assert titles(events) == ["ESP32 firmware panic detected"]
-    assert events[0].tags["reset_reason"] == "PANIC"
+    assert events[0].tags["reset_reason"] == "UNKNOWN"
+    assert events[0].tags["panic_reason"] == "LoadProhibited"
+    assert events[0].tags["core"] == "1"
     assert "Guru Meditation Error" in events[0].context["panic_output"]
     assert events[0].context["previous_firmware"] == "1.2.3"
 
@@ -99,11 +101,12 @@ def test_expected_update_still_reports_a_real_panic():
     monitor.observe_valid_message("ESPInfo", 0.1, "old")
     monitor.begin_update("new", "old", 1)
     monitor.finish_flashing(2)
-    monitor.observe_raw_line(BOOT, 2.1)
+    monitor.observe_raw_line("Guru Meditation Error: Core 1 panic'ed.", 2.05)
 
-    events = monitor.observe_boot_reason("PANIC", "4", 4)
+    events = monitor.observe_raw_line(BOOT, 2.1)
 
     assert titles(events) == ["ESP32 firmware panic detected"]
+    assert monitor.observe_boot_reason("PANIC", "4", 4) == []
     assert monitor.phase == ESPCommunicationPhase.WAITING_FOR_PROTOCOL
 
 
