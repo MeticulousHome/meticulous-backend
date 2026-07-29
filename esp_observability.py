@@ -143,14 +143,14 @@ class ESPObservability:
             events.append(self._panic_diagnostic("UNKNOWN", ""))
             self.panic_reported = True
             self.reset_reported = True
-        if self.phase in {
-            ESPCommunicationPhase.FLASHING,
-            ESPCommunicationPhase.WAITING_FOR_BOOT,
-        }:
+        if self.update_in_progress:
             self.phase = ESPCommunicationPhase.WAITING_FOR_PROTOCOL
             return events
 
-        if self.phase == ESPCommunicationPhase.EXPECTED_RESET:
+        if self.phase in {
+            ESPCommunicationPhase.EXPECTED_RESET,
+            ESPCommunicationPhase.WAITING_FOR_PROTOCOL,
+        }:
             self.phase = ESPCommunicationPhase.WAITING_FOR_PROTOCOL
             return events
 

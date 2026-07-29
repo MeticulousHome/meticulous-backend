@@ -110,6 +110,24 @@ def test_expected_update_still_reports_a_real_panic():
     assert monitor.phase == ESPCommunicationPhase.WAITING_FOR_PROTOCOL
 
 
+def test_second_boot_during_update_does_not_duplicate_panic():
+    monitor = ESPObservability(now=0)
+    monitor.observe_valid_message("ESPInfo", 0.1, "old")
+    monitor.begin_update("new", "old", 1)
+    monitor.finish_flashing(2)
+    monitor.observe_raw_line("Backtrace: 0x40381234:0x3fceabcd", 2.05)
+
+    first_boot_events = monitor.observe_raw_line(BOOT, 2.1)
+    second_boot_events = monitor.observe_raw_line(BOOT, 4)
+    reason_events = monitor.observe_boot_reason("PANIC", "4", 6)
+    protocol_events = monitor.observe_valid_message("ESPBoot", 6.1)
+
+    assert titles(first_boot_events) == ["ESP32 firmware panic detected"]
+    assert second_boot_events == []
+    assert reason_events == []
+    assert protocol_events == []
+
+
 def test_non_panic_reset_is_not_called_a_crash():
     monitor = ESPObservability(now=0)
     monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
