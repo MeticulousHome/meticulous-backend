@@ -85,6 +85,20 @@ def test_guru_meditation_is_reported_as_panic_with_bounded_evidence():
     assert events[0].context["previous_firmware"] == "1.2.3"
 
 
+def test_abort_panic_extracts_core_and_keeps_the_cause_line():
+    monitor = ESPObservability(now=0)
+    monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
+    monitor.observe_raw_line("abort() was called at PC 0x420037e1 on core 1", 1)
+    monitor.observe_raw_line("Backtrace: 0x4037801a:0x3fcebce0", 1.1)
+
+    events = monitor.observe_raw_line(BOOT, 1.2)
+
+    assert titles(events) == ["ESP32 firmware panic detected"]
+    assert events[0].tags["panic_reason"] == "abort"
+    assert events[0].tags["core"] == "1"
+    assert events[0].context["panic_output"].startswith("abort() was called")
+
+
 def test_watchdog_reset_is_classified_as_unexpected_reset_without_raw_backtrace():
     monitor = ESPObservability(now=0)
     monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")

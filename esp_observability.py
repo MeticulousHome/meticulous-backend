@@ -32,6 +32,7 @@ class ESPObservability:
 
     PANIC_MARKERS = (
         "guru meditation error",
+        "abort() was called",
         "register dump",
         "backtrace",
         "assert failed",
@@ -40,6 +41,10 @@ class ESPObservability:
     )
     GURU_MEDITATION_PATTERN = re.compile(
         r"Guru Meditation Error:\s*Core\s+(\d+)\s+panic'ed\s+\(([^)]+)\)",
+        re.IGNORECASE,
+    )
+    ABORT_PATTERN = re.compile(
+        r"abort\(\) was called at PC\s+\S+\s+on core\s+(\d+)",
         re.IGNORECASE,
     )
 
@@ -130,6 +135,10 @@ class ESPObservability:
             if guru_match:
                 self._panic_core = guru_match.group(1)
                 self._panic_reason = guru_match.group(2)
+            abort_match = self.ABORT_PATTERN.search(normalized)
+            if abort_match:
+                self._panic_core = abort_match.group(1)
+                self._panic_reason = "abort"
 
         if self._collecting_panic and not is_boot_banner:
             self._append_panic_line(normalized)
