@@ -75,8 +75,15 @@ class TimezoneManager:
                 TimezoneManager.set_system_timezone(target_timezone)
             except TimezoneManagerError as e:
                 # If fails, set the system_timezone as the user timezone and report the error
+                # Redact the timezones on the exception message
+                error_text = TimezoneManager._redact_timezone_in(e, target_timezone)
+                error_text = TimezoneManager._redact_timezone_in(
+                    error_text, TimezoneManager.__system_timezone
+                )
                 logger.error(
-                    f"failed to set system TZ, syncing user TZ with system to {TimezoneManager.redact_timezone(TimezoneManager.__system_timezone)}. Error: {e}"
+                    "failed to set system TZ, syncing user TZ with system to "
+                    f"{TimezoneManager.redact_timezone(TimezoneManager.__system_timezone)}"
+                    f". Error: {error_text}"
                 )
                 MeticulousConfig[CONFIG_USER][TIME_ZONE] = TimezoneManager.__system_timezone
             finally:

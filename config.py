@@ -350,6 +350,8 @@ class MeticulousConfigDict(dict):
 
     def save(self):
         sentry_sdk.set_context("config", get_reportable_config(self))
+        # invalidate log redactor known ssid data and refetch that, in case they have changed
+        MeticulousLogger.invalidate_redaction_values()
 
         Path(self.__path).parent.mkdir(parents=True, exist_ok=True)
         with open(self.__path, "w") as f:
@@ -382,3 +384,40 @@ class MeticulousConfigDict(dict):
 MeticulousConfig = MeticulousConfigDict(
     os.path.join(CONFIG_PATH, "config.yml"), DefaultConfiguration_V1
 )
+
+
+def _redaction_values():
+    """Values the log redaction filter should strip from any log message.
+
+    The shape-based rules cannot catch a bare network name in an arbitrary
+    message -- "Found known WIFI HomeNet. Connecting" has nothing to anchor on --
+    but the backend does not have to guess at them the way the watcher does.
+
+    APName is deliberately absent. wifi.py overwrites it on every init with
+    HostnameManager.generateDeviceName(), so it is machine-derived rather than
+    user-typed, and it embeds the same machine_name as the hostname. Redacting it
+    here would tokenise it in backend lines while kernel, avahi and
+    NetworkManager lines keep it in the clear, which helps nobody.
+    """
+    wifi = MeticulousConfig.get(CONFIG_WIFI) or {}
+    system = MeticulousConfig.get(CONFIG_SYSTEM) or {}
+    known_wifis = wifi.get(WIFI_KNOWN_WIFIS) or {}
+
+    ssids = list(known_wifis.keys())
+
+    credentials = [
+        wifi.get(WIFI_AP_PASSWORD),
+        system.get(ROOT_PASSWORD),
+        system.get(HTTP_AUTH_KEY),
+    ]
+    for entry in known_wifis.values():
+        # Legacy entries are the bare password; current ones are a dict.
+        if isinstance(entry, str):
+            credentials.append(entry)
+        elif isinstance(entry, dict):
+            credentials.append(entry.get("password"))
+
+    return ssids, credentials
+
+
+MeticulousLogger.set_redaction_value_provider(_redaction_values)

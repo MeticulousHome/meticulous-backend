@@ -29,6 +29,8 @@ from timezone_manager import TimezoneManager
 from machine import Machine
 
 from log import MeticulousLogger
+from log_redaction_filter import load_cached_key
+from log_redactor import pseudonym
 from named_thread import NamedThread
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -41,14 +43,29 @@ ZEROCONF_OVERWRITE = os.getenv("ZEROCONF_OVERWRITE", "")
 
 
 def redact_ssid(ssid: str):
+    """Pseudonymise a network name for logging.
+
+    Returns the same token the emit-time redaction filter and the watcher produce
+    for that network -- all three derive it from the same per-device key. That is
+    what lets an occurrence in a backend log line be matched up with the same
+    network in the NetworkManager line beside it.
+
+    This used to keep the first two characters. A prefix is still a fragment of a
+    unique identifier, and it broke that correlation for no benefit.
+
+    Kept as a call-site helper rather than left to the filter because a scan
+    result is a *neighbour's* network name: it is not in our config, so the filter
+    has nothing to seed a sweep with and no anchored phrasing to learn it from.
+    """
     ssid = str(ssid)
-    ssid_len = len(ssid)
-    chars_to_show = min(2, ssid_len)
+    if not ssid:
+        return ssid
 
-    if ssid_len == 2:
-        chars_to_show = 1
-
-    return f"{ssid[0:chars_to_show]}{'*'*(ssid_len - chars_to_show)}"
+    try:
+        return pseudonym("SSID", ssid, load_cached_key())
+    except Exception:
+        # Never leak just because the key is unavailable.
+        return "*" * len(ssid)
 
 
 class WifiType(str, Enum):
@@ -276,7 +293,7 @@ class WifiManager:
                         break
 
                 if network.ssid in previousNetworks:
-                    logger.info(f"Found known WIFI {network.ssid}. Connecting")
+                    logger.info(f"Found known WIFI {redact_ssid(network.ssid)}. Connecting")
                     credentials = previousNetworks[network.ssid]
                     # Mark WiFi connection if the security type has changed or is missing
                     if type(credentials) is dict:
@@ -288,7 +305,8 @@ class WifiManager:
                                 != WifiType.from_nmcli_security(network.security).value
                             ):
                                 logger.warning(
-                                    f"known WI-FI ({network.ssid}) has changed its security, forgetting connection"
+                                    f"known WI-FI ({redact_ssid(network.ssid)}) has changed"
+                                    " its security, forgetting connection"
                                 )
                                 WifiManager.deleteWifi(network.ssid)
                                 continue
