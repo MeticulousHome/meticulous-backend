@@ -62,3 +62,5 @@ dev = [
 [tool.black]
 line-length = 96
 target-version = ["py311"]
+# log_redactor submodule formats itself
+extend-exclude = "/log_redactor/"
