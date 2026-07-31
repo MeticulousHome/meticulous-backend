@@ -185,7 +185,7 @@ class ESPToolWrapper:
         try:
             esptool.write_flash(esp, args)
         except Exception as e:
-            logger.error(f"Failed to flash: {e}")
+            logger.error(f"Failed to flash: {type(e).__name__}")
             failure = e
         sys.stdout = _stdout
 

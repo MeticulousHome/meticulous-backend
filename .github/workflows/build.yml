@@ -11,6 +11,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        submodules: 'true'
 
     - name: Install uv
       uses: astral-sh/setup-uv@v5
@@ -33,6 +35,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        submodules: 'true' # required for the log_refactor submodule
 
     - name: Install uv
       uses: astral-sh/setup-uv@v5
@@ -44,4 +48,28 @@ jobs:
       run: uv sync --group dev
 
     - name: Run tests
-      run: uv run pytest tests/ -v
+      run: uv run pytest -v
+
+  # Check the pinned log_redactor submodule commit is part of the main branch
+  # ideally main's HEAD but at list within main's branch commit history ( not an
+  # unmerged branch )
+  redactor-pin:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: 'true'
+
+    - name: Pinned redactor commit must be on the module's main branch
+      run: |
+        set -euo pipefail
+        SHA=$(git -C log_redactor rev-parse HEAD)
+        git -C log_redactor fetch --quiet origin main
+        if ! git -C log_redactor merge-base --is-ancestor "$SHA" origin/main; then
+            echo "::error::log_redactor is pinned to $SHA, which is not on the module's main branch."
+            echo "Land the redactor change first, then bump this submodule to a merged commit."
+            exit 1
+        fi
+        echo "log_redactor pinned to $SHA (on main)"

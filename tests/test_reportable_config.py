@@ -4,11 +4,7 @@ from reportable_config import get_reportable_config
 def _leaf_paths(value, prefix=()):
     if not isinstance(value, dict):
         return {prefix}
-    return {
-        path
-        for key, item in value.items()
-        for path in _leaf_paths(item, (*prefix, key))
-    }
+    return {path for key, item in value.items() for path in _leaf_paths(item, (*prefix, key))}
 
 
 def test_reportable_config_is_allowlist_only_and_does_not_mutate_input():

@@ -13,12 +13,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote_plus
-from hostname import HostnameManager
 
 import tornado.httpclient
 from sqlalchemy import and_, desc, func, insert, or_, select, update
 
-from config import DATABASE_URL, DEBUG_HISTORY_PATH
+from config import (
+    DATABASE_URL,
+    DEBUG_HISTORY_PATH,
+    CONFIG_SYSTEM,
+    MACHINE_SERIAL_NUMBER,
+    MeticulousConfig,
+)
+
 from database_models import bug_reports
 from log import MeticulousLogger
 from shot_database import ShotDataBase
@@ -829,7 +835,7 @@ class ReportsCreateHandler(BaseHandler):
                 "dateAndTime": now,
                 "attachments": attachments,
                 "multimedia": None,
-                "machineID": HostnameManager.generateHostname(),
+                "machineID": MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER],
                 "eventID": None,
                 "baseEventID": None,
                 "ticket": None,

@@ -306,7 +306,9 @@ class DiscImager:
             logger.warning(f'system date set to {new_date.strftime("%Y-%m-%d %H:%M:%S")}')
 
         except Exception as e:
-            logger.warning(f"could not set system dat to ${ROOTFS_ARCHIVE} birth date: {e}")
+            logger.warning(
+                f"could not set system dat to ${ROOTFS_ARCHIVE} birth date: {type(e).__name__}"
+            )
 
         tar_cmd = f"tar -x -C {mountpoint}"
         pv = subprocess.Popen(

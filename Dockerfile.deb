@@ -46,6 +46,7 @@ RUN mkdir -p opt/meticulous-venv \
     opt/meticulous-backend/db-migrations \
     opt/meticulous-backend/profile_schema \
     opt/meticulous-backend/default_profiles/community \
+    opt/meticulous-backend/log_redactor \
     opt/meticulous-backend/sounds/default
 
 # Copy the venv from builder
@@ -67,6 +68,11 @@ COPY images/notificationImages/*.py /pkg/opt/meticulous-backend/images/notificat
 # Alembic migrations
 COPY alembic/env.py alembic/README alembic/script.py.mako /pkg/opt/meticulous-backend/alembic/
 COPY alembic/versions/*.py /pkg/opt/meticulous-backend/alembic/versions/
+
+# Code submodule. *.py rather than the directory, so the module's own test suite
+# stays out of the package. Not optional: log.py installs the redaction filter at
+# import time, so a .deb built without this fails at service start.
+COPY log_redactor/*.py /pkg/opt/meticulous-backend/log_redactor/
 
 # Data files (submodules - must be checked out before building)
 COPY profile_schema/ /pkg/opt/meticulous-backend/profile_schema/
