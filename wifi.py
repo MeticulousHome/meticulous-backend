@@ -186,8 +186,7 @@ class WifiHealthStatus:
             "ap_active": self.ap_active,
             "degraded": self.degraded,
             "last_error": self.last_error,
-            "message": self.message
-            or WifiManager.getHealthErrorMessage(self.last_error),
+            "message": self.message or WifiManager.getHealthErrorMessage(self.last_error),
             "last_recovery_action": self.last_recovery_action,
             "last_recovery_result": self.last_recovery_result,
         }
@@ -312,9 +311,7 @@ class WifiManager:
                 "invalid_credentials",
                 "Incorrect Wi-Fi password. Please check it and try again.",
             )
-        if auth_expected and any(
-            marker in lower_error for marker in auth_activation_markers
-        ):
+        if auth_expected and any(marker in lower_error for marker in auth_activation_markers):
             return (
                 "wifi_join_failed",
                 "Could not join this Wi-Fi network. Check the password and try again, or move closer to the router.",
@@ -346,8 +343,7 @@ class WifiManager:
     def healthCacheIsValid(config: WifiSystemConfig = None):
         if (
             WifiManager._cached_health is None
-            or time.time() - WifiManager._health_cache_time
-            >= WifiManager._health_cache_ttl
+            or time.time() - WifiManager._health_cache_time >= WifiManager._health_cache_ttl
         ):
             return False
 
@@ -527,9 +523,7 @@ class WifiManager:
             )
             if add_result is None or add_result.returncode != 0:
                 stderr = (
-                    add_result.stderr.strip()
-                    if add_result is not None
-                    else "command failed"
+                    add_result.stderr.strip() if add_result is not None else "command failed"
                 )
                 stdout = add_result.stdout.strip() if add_result is not None else ""
                 last_error = f"channel={channel}: {stderr or stdout or 'connection add failed'}"
@@ -586,7 +580,9 @@ class WifiManager:
                     else "command failed"
                 )
                 stdout = modify_result.stdout.strip() if modify_result is not None else ""
-                last_error = f"channel={channel}: {stderr or stdout or 'connection modify failed'}"
+                last_error = (
+                    f"channel={channel}: {stderr or stdout or 'connection modify failed'}"
+                )
                 logger.error(f"Starting hotspot failed: {last_error}")
                 WifiManager.deleteConnectionProfile(WifiManager._conname)
                 time.sleep(1)
@@ -611,9 +607,7 @@ class WifiManager:
                 last_error = f"channel={channel}: hotspot did not become active"
                 logger.error(f"Starting hotspot failed: {last_error}")
             else:
-                stderr = (
-                    result.stderr.strip() if result is not None else "command failed"
-                )
+                stderr = result.stderr.strip() if result is not None else "command failed"
                 stdout = result.stdout.strip() if result is not None else ""
                 last_error = f"channel={channel}: {stderr or stdout or 'unknown error'}"
                 logger.error(f"Starting hotspot failed: {last_error}")
@@ -880,9 +874,11 @@ class WifiManager:
                 last_error,
                 WifiManager._last_recovery_action,
                 WifiManager._last_recovery_result,
-                "Hotspot active. Connect your phone or computer to the machine's Wi-Fi network."
-                if ap_active
-                else "",
+                (
+                    "Hotspot active. Connect your phone or computer to the machine's Wi-Fi network."
+                    if ap_active
+                    else ""
+                ),
             )
             WifiManager._cached_health = health
             WifiManager._health_cache_time = time.time()
@@ -1080,7 +1076,10 @@ class WifiManager:
                 ]
             else:
                 steps = [
-                    ("restart_connection", lambda: WifiManager.restartActiveConnection(current)),
+                    (
+                        "restart_connection",
+                        lambda: WifiManager.restartActiveConnection(current),
+                    ),
                     ("restart_wifi_radio", WifiManager.restartWifiRadio),
                     ("driver_in_band_reset", WifiManager.driverInBandReset),
                     ("restart_wifi_service", WifiManager.restartWifiService),
@@ -1130,9 +1129,7 @@ class WifiManager:
                     return False
 
             WifiManager._last_recovery_result = "failed"
-            WifiManager._last_health_error = WifiManager.getHealthStatus(
-                force=True
-            ).last_error
+            WifiManager._last_health_error = WifiManager.getHealthStatus(force=True).last_error
             WifiManager.update_gatt_advertisement()
             record("completed", result="failed")
             return False
@@ -1288,10 +1285,7 @@ class WifiManager:
         known_wifis = {}
         try:
             for connection in nmcli.connection():
-                if (
-                    connection.conn_type == "wifi"
-                    and connection.name != WifiManager._conname
-                ):
+                if connection.conn_type == "wifi" and connection.name != WifiManager._conname:
                     known_wifis[connection.name] = {
                         "ssid": connection.name,
                         "type": WifiManager.getSavedWifiType(connection.name),
@@ -1375,9 +1369,7 @@ class WifiManager:
     @staticmethod
     def createNetworkManagerWifiProfile(ssid: str, wifi_type: WifiType, password=None):
         if wifi_type in {WifiType.PreSharedKey, WifiType.PSK_SAE} and not password:
-            logger.warning(
-                f"Cannot migrate Wi-Fi profile {ssid}: password is not available"
-            )
+            logger.warning(f"Cannot migrate Wi-Fi profile {ssid}: password is not available")
             return False
 
         keymgmt = None
@@ -1557,7 +1549,9 @@ class WifiManager:
             time.sleep(0.5)
         return False
 
-    def connectToWifi(credentials: WiFiCredentials, source: str = "manual") -> bool:  # noqa: C901
+    def connectToWifi(  # noqa: C901
+        credentials: WiFiCredentials, source: str = "manual"
+    ) -> bool:
 
         WifiManager.clearLastConnectionError()
 
@@ -1590,9 +1584,7 @@ class WifiManager:
 
         is_auto_connect = source == "auto"
         if is_auto_connect and WifiManager.isAutoConnectSuppressed():
-            logger.info(
-                f"Skipping auto-connect to {ssid}; manual WiFi connect is in progress"
-            )
+            logger.info(f"Skipping auto-connect to {ssid}; manual WiFi connect is in progress")
             return False
         if not is_auto_connect:
             WifiManager.suppressAutoConnect(90, f"manual connect to {ssid}")
@@ -1604,9 +1596,7 @@ class WifiManager:
             logger.info("Already connected")
             if not is_auto_connect:
                 WifiManager.persistClientModeAfterManualConnect(ssid)
-                WifiManager.suppressAutoConnect(
-                    45, f"manual connect to {ssid} completed"
-                )
+                WifiManager.suppressAutoConnect(45, f"manual connect to {ssid} completed")
             WifiManager._zeroconf.restart()
             WifiManager.update_gatt_advertisement()
             return True
@@ -1635,10 +1625,7 @@ class WifiManager:
         logger.info(networks)
 
         for network in networks:
-            if (
-                wifi_type == WifiType.PreSharedKey
-                and "WPA3" in network.security.upper()
-            ):
+            if wifi_type == WifiType.PreSharedKey and "WPA3" in network.security.upper():
                 wifi_type = WifiType.PSK_SAE
                 credentials["type"] = WifiType.PSK_SAE
                 logger.info("Network supports WPA3, switching to SAE")
@@ -1683,9 +1670,7 @@ class WifiManager:
                     e, auth_expected=auth_expected
                 )
                 WifiManager.setLastConnectionError(code, message)
-                logger.error(
-                    f"Failed to connect to wifi ({exception_metadata(e)})"
-                )
+                logger.error(f"Failed to connect to wifi ({exception_metadata(e)})")
                 WifiManager.update_gatt_advertisement()
                 return False
         if needs_fix:
@@ -1700,9 +1685,7 @@ class WifiManager:
                     e, auth_expected=auth_expected
                 )
                 WifiManager.setLastConnectionError(code, message)
-                logger.error(
-                    f"Failed to connect to wifi ({exception_metadata(e)})"
-                )
+                logger.error(f"Failed to connect to wifi ({exception_metadata(e)})")
                 WifiManager.update_gatt_advertisement()
                 return False
 
@@ -1710,9 +1693,7 @@ class WifiManager:
         if WifiManager.waitForConnection(ssid, timeout=8):
             logger.info("Successfully connected")
             if not is_auto_connect:
-                WifiManager.suppressAutoConnect(
-                    45, f"manual connect to {ssid} completed"
-                )
+                WifiManager.suppressAutoConnect(45, f"manual connect to {ssid} completed")
                 WifiManager.persistClientModeAfterManualConnect(ssid)
             WifiManager._zeroconf.restart()
             WifiManager.invalidateHealthCache()
@@ -1728,9 +1709,7 @@ class WifiManager:
                 f"Connected to {current.connection_name or 'another network'} instead of {ssid}.",
             )
             if not is_auto_connect:
-                WifiManager.suppressAutoConnect(
-                    30, f"manual connect to {ssid} was preempted"
-                )
+                WifiManager.suppressAutoConnect(30, f"manual connect to {ssid} was preempted")
         elif wifi_type == WifiType.PreSharedKey or wifi_type == WifiType.PSK_SAE:
             WifiManager.setLastConnectionError(
                 "wifi_join_failed",

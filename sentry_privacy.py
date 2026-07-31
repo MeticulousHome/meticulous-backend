@@ -6,7 +6,6 @@ from typing import Any
 
 from reportable_config import get_reportable_config
 
-
 _SENSITIVE_KEY_PARTS = {
     "password",
     "passwd",

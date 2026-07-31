@@ -251,7 +251,10 @@ class TimezoneManager:
     def tz_background_update():
         tz_config = MeticulousConfig[CONFIG_USER][TIMEZONE_SYNC]
         if tz_config == "automatic" and not TimezoneManager.__system_synced:
-            if TimezoneManager.__timezone_fetch_attempts >= TimezoneManager._MAX_TIMEZONE_FETCH_ATTEMPTS:
+            if (
+                TimezoneManager.__timezone_fetch_attempts
+                >= TimezoneManager._MAX_TIMEZONE_FETCH_ATTEMPTS
+            ):
                 return
             TimezoneManager.__timezone_fetch_attempts += 1
             try:
