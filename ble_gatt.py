@@ -58,11 +58,11 @@ class NoInputNoOutputAgent(ServiceInterface):
         logger.info("[BLE Agent] Released")
 
     @method()
-    def RequestConfirmation(self, device: "o", passkey: "u"):
+    def RequestConfirmation(self, device: "o", passkey: "u"):  # noqa: F821
         logger.info(f"[BLE Agent] Auto-confirming pairing for {device}")
 
     @method()
-    def AuthorizeService(self, device: "o", uuid: "s"):
+    def AuthorizeService(self, device: "o", uuid: "s"):  # noqa: F821
         logger.info(f"[BLE Agent] Authorizing service {uuid} for {device}")
 
     @method()
@@ -87,6 +87,7 @@ async def register_pairing_agent():
         return bus  # keep reference alive
     except Exception as e:
         logger.warning(f"[BLE Agent] Failed to register pairing agent: {e}")
+
 
 # FIXME Remove once the tornado server logic is in its own class
 PORT = int(os.getenv("PORT", "8080"))
@@ -310,8 +311,7 @@ class GATTServer:
                     )
                 except Exception as cleanup_error:
                     logger.warning(
-                        "Could not clean up failed BLE advertisement: "
-                        f"{cleanup_error}"
+                        "Could not clean up failed BLE advertisement: " f"{cleanup_error}"
                     )
             raise
 

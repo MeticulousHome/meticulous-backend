@@ -61,9 +61,7 @@ class WiFiQRHandler(BaseHandler):
         config = WifiManager.getCurrentConfig()
         qr_contents: str = ""
         if config.is_hotspot():
-            ssid = self.escape_wifi_qr_value(
-                MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME]
-            )
+            ssid = self.escape_wifi_qr_value(MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME])
             password = self.escape_wifi_qr_value(
                 MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
             )
@@ -149,9 +147,7 @@ class WiFiConfigHandler(BaseHandler):
                     )
                     return
 
-            config = await asyncio.get_event_loop().run_in_executor(
-                None, self.getWifiConfig
-            )
+            config = await asyncio.get_event_loop().run_in_executor(None, self.getWifiConfig)
             self.write(config)
         except json.JSONDecodeError as e:
             self.set_status(400)
