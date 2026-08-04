@@ -311,8 +311,7 @@ class GATTServer:
                     )
                 except Exception as cleanup_error:
                     logger.warning(
-                        "Could not clean up failed BLE advertisement: "
-                        f"{cleanup_error}"
+                        "Could not clean up failed BLE advertisement: " f"{cleanup_error}"
                     )
             raise
 

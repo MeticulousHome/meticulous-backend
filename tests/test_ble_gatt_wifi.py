@@ -412,9 +412,7 @@ class TestCredentialLogRedaction:
         assert "ssid_bytes=" in logged
         assert "password_bytes=" in logged
 
-    def test_wifi_connect_exception_does_not_log_exception_credentials(
-        self, mock_wifi_manager
-    ):
+    def test_wifi_connect_exception_does_not_log_exception_credentials(self, mock_wifi_manager):
         password = "SENTINEL-EXCEPTION-SECRET"
         mock_wifi_manager.connectToWifi.side_effect = RuntimeError(
             f"NetworkManager rejected {password}"
