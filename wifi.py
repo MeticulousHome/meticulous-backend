@@ -33,6 +33,8 @@ from timezone_manager import TimezoneManager
 from machine import Machine
 
 from log import MeticulousLogger
+from log_redaction_filter import load_cached_key
+from log_redactor import pseudonym
 from named_thread import NamedThread
 from sensitive_logging import command_metadata, exception_metadata
 from radio_diagnostics import emit_radio_recovery_event
@@ -44,6 +46,32 @@ nmcli.set_lang("C.UTF-8")
 
 # Should be something like "192.168.2.123/24,MyHostname"
 ZEROCONF_OVERWRITE = os.getenv("ZEROCONF_OVERWRITE", "")
+
+
+def redact_ssid(ssid: str):
+    """Pseudonymise a network name for logging.
+
+    Returns the same token the emit-time redaction filter and the watcher produce
+    for that network -- all three derive it from the same per-device key. That is
+    what lets an occurrence in a backend log line be matched up with the same
+    network in the NetworkManager line beside it.
+
+    This used to keep the first two characters. A prefix is still a fragment of a
+    unique identifier, and it broke that correlation for no benefit.
+
+    Kept as a call-site helper rather than left to the filter because a scan
+    result is a *neighbour's* network name: it is not in our config, so the filter
+    has nothing to seed a sweep with and no anchored phrasing to learn it from.
+    """
+    ssid = str(ssid)
+    if not ssid:
+        return ssid
+
+    try:
+        return pseudonym("SSID", ssid, load_cached_key())
+    except Exception:
+        # Never leak just because the key is unavailable.
+        return "*" * len(ssid)
 
 
 class WifiType(str, Enum):
@@ -357,9 +385,7 @@ class WifiManager:
     def init():
         logger.info("Wifi initializing")
         if ZEROCONF_OVERWRITE != "":
-            logger.info(
-                f"Overwriting network configuration due to ZEROCONF_OVERWRITE={ZEROCONF_OVERWRITE}"
-            )
+            logger.info("Overwriting network configuration due to ZEROCONF_OVERWRITE")
 
         try:
             nmcli.device.show_all()
@@ -473,7 +499,9 @@ class WifiManager:
                         break
 
                 if network.ssid in known_networks:
-                    logger.info(f"Found known WIFI {network.ssid}. Connecting")
+                    logger.info(
+                        f"Found known WIFI {redact_ssid(network.ssid)}. Connecting"
+                    )
                     credentials = {
                         "ssid": network.ssid,
                         "type": WifiType.from_nmcli_security(network.security),
@@ -1523,7 +1551,7 @@ class WifiManager:
 
     @staticmethod
     def fixWifiConnection(ssid, wifi_type: WifiType):
-        logger.info(f"Fixing wifi connection for {ssid} with type {wifi_type}")
+        logger.info(f"Fixing wifi connection for {redact_ssid(ssid)}")
 
         keymgmt = None
         match wifi_type:
@@ -1591,13 +1619,16 @@ class WifiManager:
         is_auto_connect = source == "auto"
         if is_auto_connect and WifiManager.isAutoConnectSuppressed():
             logger.info(
-                f"Skipping auto-connect to {ssid}; manual WiFi connect is in progress"
+                f"Skipping auto-connect to {redact_ssid(ssid)}; "
+                "manual WiFi connect is in progress"
             )
             return False
         if not is_auto_connect:
-            WifiManager.suppressAutoConnect(90, f"manual connect to {ssid}")
+            WifiManager.suppressAutoConnect(
+                90, f"manual connect to {redact_ssid(ssid)}"
+            )
 
-        logger.info(f"Connecting to wifi: {ssid}")
+        logger.info(f"Connecting to wifi: {redact_ssid(ssid)}")
 
         current = WifiManager.getCurrentConfig()
         if current.connected and current.connection_name == ssid:
@@ -1605,7 +1636,7 @@ class WifiManager:
             if not is_auto_connect:
                 WifiManager.persistClientModeAfterManualConnect(ssid)
                 WifiManager.suppressAutoConnect(
-                    45, f"manual connect to {ssid} completed"
+                    45, f"manual connect to {redact_ssid(ssid)} completed"
                 )
             WifiManager._zeroconf.restart()
             WifiManager.update_gatt_advertisement()

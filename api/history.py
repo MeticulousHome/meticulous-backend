@@ -42,7 +42,7 @@ class LastDebugFileHandler(BaseHandler):
         except FileNotFoundError as e:
             self._handle_error(404, str(e))
         except Exception as e:
-            logger.error(f"Unexpected error getting last debug file: {e}")
+            logger.error(f"Unexpected error getting last debug file: {type(e).__name__}")
             self._handle_error(500, "Internal server error")
 
     def _find_latest_debug_file(self):
@@ -80,7 +80,7 @@ class CompressedDebugHistoryHandler(BaseHandler):
             result = await compress_debug_file()
             self.redirect(f"{last_version_path}/history/debug/{result}")
         except Exception as e:
-            logger.error(f"Error compressing debug file: {e}")
+            logger.error(f"Error compressing debug file: {type(e).__name__}")
             self.set_status(500)
             self.write({"status": "error", "error": "Internal server error"})
 
@@ -266,7 +266,7 @@ class ShotRatingHandler(BaseHandler):
             rating = ShotDataBase.get_shot_rating(shot_id)
             self.write({"shot_id": shot_id, "rating": rating})
         except Exception as e:
-            logger.error(f"Error getting shot rating: {e}")
+            logger.error(f"Error getting shot rating: {type(e).__name__}")
             self.set_status(500)
             self.write({"status": "error", "error": "Internal server error"})
 
@@ -301,7 +301,7 @@ class ShotRatingHandler(BaseHandler):
             self.set_status(400)
             self.write({"status": "error", "error": "Invalid JSON"})
         except Exception as e:
-            logger.error(f"Error updating shot rating: {e}")
+            logger.error(f"Error updating shot rating: {type(e).__name__}")
             self.set_status(500)
             self.write({"status": "error", "error": "Internal server error"})
 

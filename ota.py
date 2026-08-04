@@ -241,7 +241,7 @@ class UpdateManager:
         except FileNotFoundError:
             logger.warning(f"{REPO_INFO_FILE} file not found")
         except Exception as e:
-            logger.error(f"Error reading repository info: {e}")
+            logger.error(f"Error reading repository info: {type(e).__name__}")
 
         return UpdateManager.REPO_INFO
 

@@ -11,7 +11,7 @@ from config import (
     WIFI_MODE_AP,
     WIFI_MODE_CLIENT,
 )
-from wifi import WifiManager, WifiType
+from wifi import WifiManager, WifiType, redact_ssid
 from ble_gatt import PORT
 
 from .base_handler import BaseHandler
@@ -156,12 +156,12 @@ class WiFiConfigHandler(BaseHandler):
         except json.JSONDecodeError as e:
             self.set_status(400)
             self.write("Invalid JSON")
-            logger.warning(f"Failed to parse passed JSON: {e}", stack_info=False)
+            logger.warning(f"Failed to parse passed JSON: {type(e).__name__}", stack_info=False)
 
         except Exception as e:
             self.set_status(400)
             self.write("Failed to write config")
-            logger.warning("Failed to accept passed config: ", exc_info=e, stack_info=True)
+            logger.warning(f"Failed to accept passed config: {type(e).__name__}")
 
 
 class WiFiListHandler(BaseHandler):
@@ -187,7 +187,8 @@ class WiFiListHandler(BaseHandler):
                         networks[s.ssid] = formated.copy()
                     else:
                         # Dont overwrite the in_use network
-                        logger.info(f"{exists}, {exists.get('signal')}")
+                        redacted_ssid = redact_ssid(s.ssid)
+                        logger.info(f"{redacted_ssid}, {exists.get('signal')}")
                         if exists["in_use"]:
                             continue
                         if s.signal > exists["signal"]:
@@ -196,8 +197,10 @@ class WiFiListHandler(BaseHandler):
             return response
         except Exception as e:
             self.set_status(400)
-            self.write({"status": "error", "error": f"failed to fetch wifi list: {e}"})
-            logger.warning("Failed to fetch / format wifi list: ", exc_info=e, stack_info=True)
+            self.write(
+                {"status": "error", "error": f"failed to fetch wifi list: {type(e).__name__}"}
+            )
+            logger.warning(f"Failed to fetch / format wifi list: {type(e).__name__}")
 
     async def get(self):
         loop = asyncio.get_event_loop()
@@ -230,8 +233,10 @@ class WiFiConnectHandler(BaseHandler):
                 )
         except Exception as e:
             self.set_status(400)
-            self.write({"status": "error", "error": f"failed to connect to wifi: {e}"})
-            logger.warning("Failed to connect: ", exc_info=e, stack_info=True)
+            self.write(
+                {"status": "error", "error": f"failed to connect to wifi: {type(e).__name__}"}
+            )
+            logger.warning(f"Failed to connect: {type(e).__name__}")
 
 
 class WiFiRepairHandler(BaseHandler):
@@ -274,8 +279,10 @@ class WiFiDeleteHandler(BaseHandler):
                 self.write({"status": "error", "error": "failed to delete unknown wifi"})
         except Exception as e:
             self.set_status(400)
-            self.write({"status": "error", "error": f"failed to delete wifi: {e}"})
-            logger.warning("Failed to connect: ", exc_info=e, stack_info=True)
+            self.write(
+                {"status": "error", "error": f"failed to delete wifi: {type(e).__name__}"}
+            )
+            logger.warning(f"Failed to delete wifi: {type(e).__name__}")
 
 
 API.register_handler(APIVersion.V1, r"/wifi/config", WiFiConfigHandler),

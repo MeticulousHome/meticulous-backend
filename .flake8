@@ -11,6 +11,7 @@ exclude =
     *.egg-info,
     .tox,
     .mypy_cache,
+    log_redactor, # Submodule. It owns its own lint and format config
     .pytest_cache
 
 # Set the maximum allowed line length
