@@ -483,7 +483,6 @@ class GATTServer:
                         localServer.append(f"http://[{str(localIP.ip)}]:{PORT}")
                     else:
                         localServer.append(f"http://{str(localIP.ip)}:{PORT}")
-
                 logger.debug(f"Backend redirect IP/URL: {localServer}")
                 return localServer
             return None
@@ -561,6 +560,8 @@ class GATTServer:
             else:
                 GATTServer.getServer().updateAuthentication()
                 value = GATTServer.getServer().improv_server.handle_read(characteristic.uuid)
+            if isinstance(value, list):
+                value = bytearray(value[0])
             logger.info(f"BLE READ  {char_name} -> {len(value)} bytes: {value.hex()}")
             return value
 
@@ -587,6 +588,8 @@ class GATTServer:
                     target_name = ImprovUUID(target_uuid).name
                 except ValueError:
                     pass
+                if isinstance(target_values, (bytes, bytearray)):
+                    target_values = [bytearray(target_values)]
                 for resp_value in target_values:
                     logger.info(
                         f"BLE RESP  {target_name} -> {len(resp_value)} bytes: {resp_value.hex()}"
