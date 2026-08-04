@@ -389,6 +389,8 @@ class TestAdvertisementUpdateRecovery:
             bus.unexport.assert_any_call(failed_advertisement.path, failed_advertisement)
         finally:
             server.loop.close()
+
+
 class TestCredentialLogRedaction:
     @staticmethod
     def logged_output():
