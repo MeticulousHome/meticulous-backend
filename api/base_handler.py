@@ -15,6 +15,19 @@ from log import MeticulousLogger
 logger = MeticulousLogger.getLogger(__name__)
 
 
+def redact_ip(ip: str) -> str:
+    """Keeps only the first two segments of an IPv4 or IPv6 address.
+
+    i.e 192.168.1.42 -> 192.168.x.xx, 2001:db8:1:2::7 -> 2001:db8:x:x:x:x
+    """
+    separator = ":" if ":" in ip else "."
+
+    return separator.join(
+        segment if index < 2 else "x" * max(len(segment), 1)
+        for index, segment in enumerate(ip.split(separator))
+    )
+
+
 class BaseHandler(tornado.web.RequestHandler):
     def set_default_headers(self):
         # FIXME: I know this is not great, you know this isn't great. What shall we do about this?
@@ -87,7 +100,10 @@ class LocalAccessHandler(BaseHandler):
                 "127.0.0.1",
             )
         ):
-            logger.warning(f"Unauthorized access to {self.request.uri} from {remote_ip}")
+            logger.warning(
+                f"Unauthorized access to {self.request.uri} "
+                f"from remote IP: {redact_ip(remote_ip)}"
+            )
             self.set_status(403)
             self.write(
                 {

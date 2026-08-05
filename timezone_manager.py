@@ -31,6 +31,29 @@ class TimezoneManager:
     _MAX_TIMEZONE_FETCH_ATTEMPTS: int = 5
 
     @staticmethod
+    def redact_timezone(timezone: str | None):
+        """Shows only the broader timezone zone
+
+        i.e America/Mexico_City -> America/******
+        """
+        if not timezone:
+            return ""
+
+        tz_split = str(timezone).split("/")
+
+        return tz_split[0] + ("/*****" if len(tz_split) > 1 else "")
+
+    @staticmethod
+    def _redact_timezone_in(text, timezone: str | None) -> str:
+        """Strips a raw timezone out of free-form text (command lines, stdout,
+        stderr, exception messages) so it cannot leak through error paths.
+        """
+        if not text or not timezone:
+            return str(text)
+
+        return str(text).replace(str(timezone), TimezoneManager.redact_timezone(timezone))
+
+    @staticmethod
     def init():
         TimezoneManager.validate_timezones_json()
         TimezoneManager.__system_timezone = TimezoneManager.get_system_timezone()
@@ -44,7 +67,7 @@ class TimezoneManager:
                 MeticulousConfig[CONFIG_USER][TIME_ZONE] = target_timezone
             else:
                 logger.warning(
-                    f"user config and system timezones confilct, updating system config to {MeticulousConfig[CONFIG_USER][TIME_ZONE]}"
+                    f"user config and system timezones confilct, updating system config to {TimezoneManager.redact_timezone(MeticulousConfig[CONFIG_USER][TIME_ZONE])}"
                 )
 
             # Try to set the system_timezone to the user specified tz
@@ -52,8 +75,15 @@ class TimezoneManager:
                 TimezoneManager.set_system_timezone(target_timezone)
             except TimezoneManagerError as e:
                 # If fails, set the system_timezone as the user timezone and report the error
+                # Redact the timezones on the exception message
+                error_text = TimezoneManager._redact_timezone_in(e, target_timezone)
+                error_text = TimezoneManager._redact_timezone_in(
+                    error_text, TimezoneManager.__system_timezone
+                )
                 logger.error(
-                    f"failed to set system TZ, syncing user TZ with system to {TimezoneManager.__system_timezone}. Error: {e}"
+                    "failed to set system TZ, syncing user TZ with system to "
+                    f"{TimezoneManager.redact_timezone(TimezoneManager.__system_timezone)}"
+                    f". Error: {error_text}"
                 )
                 MeticulousConfig[CONFIG_USER][TIME_ZONE] = TimezoneManager.__system_timezone
             finally:
@@ -88,14 +118,19 @@ class TimezoneManager:
                 error = f"[ Out:{cmd_result.stdout} | Err: {cmd_result.stderr} ]"
                 raise Exception(error)
 
-            logger.info(f"new system time zone: {TimezoneManager.get_system_timezone()}")
+            logger.info(
+                f"new system time zone: {TimezoneManager.redact_timezone(TimezoneManager.get_system_timezone())}"
+            )
         except subprocess.CalledProcessError as e:
-            message = (
-                f"Error setting system time zone: {e} [ Out: {e.stdout} | Err: {e.stderr} ]"
+            message = TimezoneManager._redact_timezone_in(
+                f"Error setting system time zone: {e} [ Out: {e.stdout} | Err: {e.stderr} ]",
+                new_timezone,
             )
             raise TimezoneManagerError(message)
         except Exception as e:
-            message = f"Error setting system time zone: {e}"
+            message = TimezoneManager._redact_timezone_in(
+                f"Error setting system time zone: {e}", new_timezone
+            )
             logger.error(message)
             raise TimezoneManagerError(message)
 
@@ -251,7 +286,10 @@ class TimezoneManager:
     def tz_background_update():
         tz_config = MeticulousConfig[CONFIG_USER][TIMEZONE_SYNC]
         if tz_config == "automatic" and not TimezoneManager.__system_synced:
-            if TimezoneManager.__timezone_fetch_attempts >= TimezoneManager._MAX_TIMEZONE_FETCH_ATTEMPTS:
+            if (
+                TimezoneManager.__timezone_fetch_attempts
+                >= TimezoneManager._MAX_TIMEZONE_FETCH_ATTEMPTS
+            ):
                 return
             TimezoneManager.__timezone_fetch_attempts += 1
             try:

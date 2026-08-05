@@ -2,7 +2,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-RUN_COMMAND="pytest tests/ -v"
+RUN_COMMAND="pytest -v"
 
 if [ "$(uname)" = "Darwin" ]; then
     echo "macOS detected, running tests inside Docker..."
