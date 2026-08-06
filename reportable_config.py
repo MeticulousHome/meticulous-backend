@@ -4,7 +4,6 @@ from collections.abc import Mapping
 from copy import deepcopy
 from typing import Any, Callable
 
-
 Validator = Callable[[Any], bool]
 
 

@@ -7,6 +7,10 @@ os.environ.setdefault("CONFIG_PATH", "/tmp/meticulous-test/config")
 os.environ.setdefault("LOG_PATH", "/tmp/meticulous-test/logs")
 os.environ.setdefault("HISTORY_PATH", "/tmp/meticulous-test/history")
 os.environ.setdefault("DEBUG_HISTORY_PATH", "/tmp/meticulous-test/history/debug")
+# The real redaction key lives in /root, which the test runner cannot read.
+# Without this every record would come out as the failure placeholder.
+os.makedirs("/tmp/meticulous-test", exist_ok=True)
+os.environ.setdefault("REDACTION_KEY_PATH", "/tmp/meticulous-test/.redaction_key")
 
 # Add the backend root to sys.path so imports like "from config import ..."
 # work without installing the package.

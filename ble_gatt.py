@@ -58,11 +58,11 @@ class NoInputNoOutputAgent(ServiceInterface):
         logger.info("[BLE Agent] Released")
 
     @method()
-    def RequestConfirmation(self, device: "o", passkey: "u"):
+    def RequestConfirmation(self, device: "o", passkey: "u"):  # noqa: F821
         logger.info(f"[BLE Agent] Auto-confirming pairing for {device}")
 
     @method()
-    def AuthorizeService(self, device: "o", uuid: "s"):
+    def AuthorizeService(self, device: "o", uuid: "s"):  # noqa: F821
         logger.info(f"[BLE Agent] Authorizing service {uuid} for {device}")
 
     @method()
@@ -86,7 +86,8 @@ async def register_pairing_agent():
         logger.info("[BLE Agent] Registered NoInputNoOutput pairing agent")
         return bus  # keep reference alive
     except Exception as e:
-        logger.warning(f"[BLE Agent] Failed to register pairing agent: {e}")
+        logger.warning(f"[BLE Agent] Failed to register pairing agent: {type(e).__name__}")
+
 
 # FIXME Remove once the tornado server logic is in its own class
 PORT = int(os.getenv("PORT", "8080"))
@@ -310,8 +311,7 @@ class GATTServer:
                     )
                 except Exception as cleanup_error:
                     logger.warning(
-                        "Could not clean up failed BLE advertisement: "
-                        f"{cleanup_error}"
+                        "Could not clean up failed BLE advertisement: " f"{cleanup_error}"
                     )
             raise
 
@@ -423,28 +423,19 @@ class GATTServer:
                 and msg.body[0] == "org.bluez.Device1"
             ):
                 changed_props = msg.body[1]
+                # Only the device name is reported; the DBus object path and the
+                # Address property both embed the peer's MAC address.
+                name = changed_props.get("Name", None)
+                name = name.value if name else "unknown"
                 if "Connected" in changed_props:
                     connected = changed_props["Connected"].value
-                    device_path = msg.path
-                    # Try to extract device address and name from changed properties
-                    address = changed_props.get("Address", None)
-                    if address:
-                        address = address.value
-                    name = changed_props.get("Name", None)
-                    if name:
-                        name = name.value
-                    device_info = f"path={device_path}"
-                    if address:
-                        device_info += f", address={address}"
-                    if name:
-                        device_info += f", name={name}"
                     if connected:
-                        logger.info(f"BLE client connected ({device_info})")
+                        logger.info(f"BLE client connected (name={name})")
                     else:
-                        logger.info(f"BLE client disconnected ({device_info})")
+                        logger.info(f"BLE client disconnected (name={name})")
                 if "DisconnectReason" in changed_props:
                     reason = changed_props["DisconnectReason"].value
-                    logger.info(f"BLE disconnect reason: {reason} (path={msg.path})")
+                    logger.info(f"BLE disconnect reason: {reason} (name={name})")
 
         bus.add_message_handler(_on_dbus_message)
         await bus.call(

@@ -208,7 +208,7 @@ class DeleteProfileHandler(BaseHandler):
         logger.info("Deletion for profile " + profile_id)
         data = ProfileManager.delete_profile(profile_id, change_id=change_id)
         if data:
-            logger.info(f"Deleted profile: {data}")
+            logger.info(f"Deleted profile: {profile_id}")
             self.write(data)
         else:
             self.set_status(404)
