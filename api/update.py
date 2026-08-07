@@ -1,14 +1,16 @@
 from esp_serial.esp_tool_wrapper import ESPToolWrapper, FikaSupportedESP32
 from machine import Machine
 import os
+import subprocess
 import tempfile
 import zipfile
 from named_thread import NamedThread
 
 from tornado.web import MissingArgumentError
 
-from .base_handler import BaseHandler
+from .base_handler import BaseHandler, LocalAccessHandler
 from .api import API, APIVersion
+from .machine import OSStatus, UpdateOSStatus
 
 from log import MeticulousLogger
 
@@ -125,4 +127,26 @@ class UpdateFirmwareWithZipHandler(BaseHandler):
         return False
 
 
+class UpdateCheckHandler(LocalAccessHandler):
+    def post(self):
+        if UpdateOSStatus.last_status in (OSStatus.DOWNLOADING, OSStatus.INSTALLING):
+            self.set_status(409)
+            self.write({"status": "error", "error": "An update is already active"})
+            return
+
+        try:
+            subprocess.run(
+                ["systemctl", "restart", "rauc-hawkbit-updater"],
+                check=True,
+            )
+        except (OSError, subprocess.CalledProcessError):
+            logger.error("Failed to request a Hawkbit update check")
+            self.set_status(500)
+            self.write({"status": "error", "error": "Failed to request update check"})
+            return
+
+        self.write({"status": "success"})
+
+
 API.register_handler(APIVersion.V1, r"/update/firmware", UpdateFirmwareWithZipHandler)
+API.register_handler(APIVersion.V1, r"/update/check", UpdateCheckHandler)
