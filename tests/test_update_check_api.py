@@ -7,7 +7,6 @@ from tornado.testing import AsyncHTTPTestCase
 
 from api.api import API, APIVersion
 from api.base_handler import LocalAccessHandler
-from api.machine import OSStatus, UpdateOSStatus
 from api.update import UpdateCheckHandler
 
 
@@ -17,15 +16,10 @@ class TestUpdateCheckHandler(AsyncHTTPTestCase):
 
     def setUp(self):
         super().setUp()
-        self.previous_status = UpdateOSStatus.last_status
-        UpdateOSStatus.last_status = OSStatus.IDLE
 
-    def tearDown(self):
-        UpdateOSStatus.last_status = self.previous_status
-        super().tearDown()
-
+    @patch("api.update.os_update_is_active", return_value=False)
     @patch("api.update.subprocess.run")
-    def test_restarts_existing_updater(self, run):
+    def test_restarts_existing_updater(self, run, _active):
         response = self.fetch("/api/v1/update/check", method="POST", body="")
 
         assert response.code == 200
@@ -34,19 +28,18 @@ class TestUpdateCheckHandler(AsyncHTTPTestCase):
             ["systemctl", "restart", "rauc-hawkbit-updater"], check=True
         )
 
+    @patch("api.update.os_update_is_active", return_value=True)
     @patch("api.update.subprocess.run")
-    def test_rejects_active_update_without_restart(self, run):
-        for status in (OSStatus.DOWNLOADING, OSStatus.INSTALLING):
-            UpdateOSStatus.last_status = status
+    def test_rejects_active_update_without_restart(self, run, _active):
+        response = self.fetch("/api/v1/update/check", method="POST", body="")
 
-            response = self.fetch("/api/v1/update/check", method="POST", body="")
-
-            assert response.code == 409
+        assert response.code == 409
 
         run.assert_not_called()
 
+    @patch("api.update.os_update_is_active", return_value=False)
     @patch("api.update.subprocess.run")
-    def test_rejects_non_loopback_proxy_address(self, run):
+    def test_rejects_non_loopback_proxy_address(self, run, _active):
         response = self.fetch(
             "/api/v1/update/check",
             method="POST",
@@ -57,8 +50,9 @@ class TestUpdateCheckHandler(AsyncHTTPTestCase):
         assert response.code == 403
         run.assert_not_called()
 
+    @patch("api.update.os_update_is_active", return_value=False)
     @patch("api.update.subprocess.run")
-    def test_restart_failure_is_sanitized(self, run):
+    def test_restart_failure_is_sanitized(self, run, _active):
         sensitive_detail = "token=secret /private/updater stderr detail"
         run.side_effect = subprocess.CalledProcessError(
             1,

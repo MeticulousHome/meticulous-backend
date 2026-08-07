@@ -1,20 +1,25 @@
 from esp_serial.esp_tool_wrapper import ESPToolWrapper, FikaSupportedESP32
-from machine import Machine
 import os
 import subprocess
 import tempfile
 import zipfile
 from named_thread import NamedThread
 
-from tornado.web import MissingArgumentError
+from tornado.web import HTTPError, MissingArgumentError
 
-from .base_handler import BaseHandler, LocalAccessHandler
+from .base_handler import BaseHandler, LocalAccessHandler, redact_ip
 from .api import API, APIVersion
-from .machine import OSStatus, UpdateOSStatus
 
 from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
+
+
+def os_update_is_active():
+    """Read update state lazily without initializing machine hardware on import."""
+    from .machine import OSStatus, UpdateOSStatus
+
+    return UpdateOSStatus.last_status in (OSStatus.DOWNLOADING, OSStatus.INSTALLING)
 
 
 class UpdateFirmwareWithZipHandler(BaseHandler):
@@ -70,6 +75,8 @@ class UpdateFirmwareWithZipHandler(BaseHandler):
         if error_occured:
             self.write("failure during upload")
             return
+
+        from machine import Machine
 
         Machine.refreshAvailableFirmware()
 
@@ -128,8 +135,17 @@ class UpdateFirmwareWithZipHandler(BaseHandler):
 
 
 class UpdateCheckHandler(LocalAccessHandler):
+    def prepare(self):
+        super().prepare()
+        if self._finished:
+            return
+        remote_ip = self.request.headers.get("X-Real-IP")
+        if remote_ip and remote_ip not in ("127.0.0.1", "::1", "localhost"):
+            logger.warning("Unauthorized update check from remote IP: %s", redact_ip(remote_ip))
+            raise HTTPError(403)
+
     def post(self):
-        if UpdateOSStatus.last_status in (OSStatus.DOWNLOADING, OSStatus.INSTALLING):
+        if os_update_is_active():
             self.set_status(409)
             self.write({"status": "error", "error": "An update is already active"})
             return
@@ -139,8 +155,18 @@ class UpdateCheckHandler(LocalAccessHandler):
                 ["systemctl", "restart", "rauc-hawkbit-updater"],
                 check=True,
             )
-        except (OSError, subprocess.CalledProcessError):
-            logger.error("Failed to request a Hawkbit update check")
+        except subprocess.CalledProcessError as error:
+            logger.error(
+                "Hawkbit update check service restart failed with exit code %s",
+                error.returncode,
+            )
+            self.set_status(500)
+            self.write({"status": "error", "error": "Failed to request update check"})
+            return
+        except OSError as error:
+            logger.error(
+                "Hawkbit update check service restart failed: %s", type(error).__name__
+            )
             self.set_status(500)
             self.write({"status": "error", "error": "Failed to request update check"})
             return
