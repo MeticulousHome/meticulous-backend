@@ -880,3 +880,98 @@ def test_submit_without_ticket_preserves_existing_ticket(report_module):
     assert row.ticketNumber == 42
     assert archived_info["eventID"] == "event-1"
     assert archived_info["ticket"] == 42
+
+
+class _DeleteDraftHandler:
+    def __init__(self, body=b""):
+        self.request = SimpleNamespace(body=body)
+        self.status = None
+        self.response = None
+        self.finished = False
+
+    def set_status(self, status):
+        self.status = status
+
+    def write(self, body):
+        self.response = body
+
+    def finish(self):
+        self.finished = True
+
+
+def _insert_deletable_report(report_module, local_id: str, status: str = "draft"):
+    with ShotDataBase.engine.begin() as connection:
+        connection.execute(
+            insert(bug_reports).values(
+                localID=local_id,
+                issueTime=1,
+                creationTime=1,
+                machineInfo=False,
+                machineLogs=False,
+                machineStatus=False,
+                status=status,
+            )
+        )
+
+
+@pytest.mark.parametrize("representation", ["directory", "archive", "both"])
+def test_delete_draft_removes_all_report_representations_and_db_row(
+    report_module, representation
+):
+    local_id = f"delete-{representation}"
+    draft_dir = report_module._draft_path(local_id)
+    archive_path = report_module._finalized_draft_path(local_id)
+    if representation in {"directory", "both"}:
+        draft_dir.mkdir()
+        draft_dir.joinpath("report.txt").write_text("draft", encoding="utf-8")
+    if representation in {"archive", "both"}:
+        archive_path.write_bytes(b"archive")
+    _insert_deletable_report(report_module, local_id)
+
+    handler = _DeleteDraftHandler()
+    asyncio.run(report_module.ReportDraftHandler.delete(handler, local_id))
+
+    assert handler.status == 204
+    assert handler.finished is True
+    assert not draft_dir.exists()
+    assert not archive_path.exists()
+    with ShotDataBase.engine.connect() as connection:
+        row = connection.execute(
+            select(bug_reports).where(bug_reports.c.localID == local_id)
+        ).first()
+    assert row is None
+
+
+def test_delete_draft_allows_submitted_report(report_module):
+    local_id = "submitted-report"
+    archive_path = report_module._finalized_draft_path(local_id)
+    archive_path.write_bytes(b"archive")
+    _insert_deletable_report(report_module, local_id, status="submitted")
+
+    handler = _DeleteDraftHandler()
+    asyncio.run(report_module.ReportDraftHandler.delete(handler, local_id))
+
+    assert handler.status == 204
+    assert not archive_path.exists()
+    assert report_module._get_report_row(local_id) is None
+
+
+def test_delete_draft_returns_not_found_for_unknown_local_id(report_module):
+    handler = _DeleteDraftHandler()
+
+    asyncio.run(report_module.ReportDraftHandler.delete(handler, "unknown-id"))
+
+    assert handler.status == 404
+    assert handler.response == {"error": "Unknown localID", "description": ""}
+
+
+def test_delete_draft_rejects_request_body(report_module):
+    handler = _DeleteDraftHandler(body=b"{}")
+
+    asyncio.run(report_module.ReportDraftHandler.delete(handler, "unknown-id"))
+
+    assert handler.status == 400
+    assert handler.response == {
+        "error": "Delete report draft request must not contain a body",
+        "description": "",
+    }

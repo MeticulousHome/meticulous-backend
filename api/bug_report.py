@@ -15,7 +15,7 @@ from typing import Any
 from urllib.parse import unquote_plus
 
 import tornado.httpclient
-from sqlalchemy import and_, desc, func, insert, or_, select, update
+from sqlalchemy import and_, delete, desc, func, insert, or_, select, update
 
 from config import (
     DATABASE_URL,
@@ -533,6 +533,35 @@ def _get_report_row(local_id: str):
         ).first()
 
 
+def _remove_report_representation(path: Path):
+    if path.is_dir():
+        shutil.rmtree(path)
+    elif path.exists() or path.is_symlink():
+        path.unlink()
+
+
+def _delete_report(local_id: str) -> bool:
+    """Remove all stored report files, then delete the matching database row."""
+    if local_id in {"", ".", ".."} or Path(local_id).name != local_id:
+        return False
+    if _get_report_row(local_id) is None:
+        return False
+
+    _remove_report_representation(_draft_path(local_id))
+    _remove_report_representation(_finalized_draft_path(local_id))
+
+    _ensure_database_initialized()
+    with ShotDataBase.engine.connect() as connection:
+        with connection.begin():
+            result = connection.execute(
+                delete(bug_reports).where(bug_reports.c.localID == local_id)
+            )
+            logger.info(
+                f"Deleted bug report draft with localID: {local_id}, affected rows: {result.rowcount}"
+            )
+            return result.rowcount > 0
+
+
 def _list_report_page(page: int, size: int, condition=None) -> dict[str, Any]:
     _ensure_database_initialized()
     query = select(bug_reports).order_by(
@@ -875,6 +904,25 @@ class ReportDraftHandler(BaseHandler):
         except Exception as exc:
             logger.exception("Failed to update bug report draft")
             _api_error(self, 500, "Failed to update report draft", {"message": str(exc)})
+
+    async def delete(self, local_id: str):
+        if self.request.body:
+            _api_error(self, 400, "Delete report draft request must not contain a body")
+            return
+
+        try:
+            deleted = _delete_report(local_id)
+            logger.info(f"Deleted bug report draft with localID: {local_id}")
+        except Exception as exc:
+            logger.exception("Failed to delete bug report draft")
+            _api_error(self, 500, "Failed to delete report draft", {"message": str(exc)})
+            return
+
+        if not deleted:
+            _api_error(self, 404, "Unknown localID")
+            return
+        self.set_status(204)
+        self.finish()
 
 
 class ReportsListHandler(BaseHandler):
