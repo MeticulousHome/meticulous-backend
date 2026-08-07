@@ -48,6 +48,10 @@ class TestUpdateCheckHandler(AsyncHTTPTestCase):
         )
 
         assert response.code == 403
+        assert json.loads(response.body) == {
+            "status": "error",
+            "error": "This endpoint can only be accessed locally",
+        }
         run.assert_not_called()
 
     @patch("api.update.os_update_is_active", return_value=False)
@@ -70,6 +74,21 @@ class TestUpdateCheckHandler(AsyncHTTPTestCase):
             "error": "Failed to request update check",
         }
         assert sensitive_detail not in response_body
+
+    @patch("api.update.os_update_is_active", return_value=False)
+    @patch("api.update.subprocess.run")
+    def test_os_error_is_sanitized(self, run, _active):
+        run.side_effect = FileNotFoundError(2, "systemctl missing", "/private/systemctl")
+
+        response = self.fetch("/api/v1/update/check", method="POST", body="")
+
+        assert response.code == 500
+        response_body = response.body.decode()
+        assert json.loads(response_body) == {
+            "status": "error",
+            "error": "Failed to request update check",
+        }
+        assert "/private/systemctl" not in response_body
 
 
 def test_route_is_registered_as_local_access_handler():

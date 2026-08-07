@@ -5,9 +5,9 @@ import tempfile
 import zipfile
 from named_thread import NamedThread
 
-from tornado.web import HTTPError, MissingArgumentError
+from tornado.web import MissingArgumentError
 
-from .base_handler import BaseHandler, LocalAccessHandler, redact_ip
+from .base_handler import BaseHandler, LocalAccessHandler
 from .api import API, APIVersion
 
 from log import MeticulousLogger
@@ -135,15 +135,6 @@ class UpdateFirmwareWithZipHandler(BaseHandler):
 
 
 class UpdateCheckHandler(LocalAccessHandler):
-    def prepare(self):
-        super().prepare()
-        if self._finished:
-            return
-        remote_ip = self.request.headers.get("X-Real-IP")
-        if remote_ip and remote_ip not in ("127.0.0.1", "::1", "localhost"):
-            logger.warning("Unauthorized update check from remote IP: %s", redact_ip(remote_ip))
-            raise HTTPError(403)
-
     def post(self):
         if os_update_is_active():
             self.set_status(409)
@@ -165,7 +156,9 @@ class UpdateCheckHandler(LocalAccessHandler):
             return
         except OSError as error:
             logger.error(
-                "Hawkbit update check service restart failed: %s", type(error).__name__
+                "Hawkbit update check service restart failed: %s (errno=%s)",
+                type(error).__name__,
+                error.errno,
             )
             self.set_status(500)
             self.write({"status": "error", "error": "Failed to request update check"})
