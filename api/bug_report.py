@@ -815,6 +815,11 @@ class ReportsCreateHandler(BaseHandler):
         collection_range = (
             _collection_range(issue_time, now) if requested_issue_time is not None else None
         )
+        if collection_range is not None:
+            start, end = collection_range
+            logger.debug(f"information requested from {start} to {end}")
+        else:
+            logger.debug("information requested from the last day")
         draft_dir = _draft_path(local_id)
         try:
             fetched = await _fetch_report_files(
