@@ -427,7 +427,13 @@ def test_create_report_returns_machine_id_matching_report_info(report_module, mo
     monkeypatch.setattr(report_module, "_now_seconds", lambda: 1)
     monkeypatch.setattr(report_module, "_fetch_report_files", fake_fetch_report_files)
     monkeypatch.setattr(
-        report_module.HostnameManager, "generateHostname", lambda: "machine-test-id"
+        report_module,
+        "MeticulousConfig",
+        {
+            report_module.CONFIG_SYSTEM: {
+                report_module.MACHINE_SERIAL_NUMBER: "machine-test-id",
+            },
+        },
     )
 
     handler = FakeHandler()
