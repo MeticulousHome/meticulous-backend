@@ -1,0 +1,94 @@
+name: E2E emulated shot
+
+on:
+  pull_request:
+  push:
+    branches:
+      - nightly
+  schedule:
+    - cron: "41 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  emulated-shot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout backend
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build backend runtime image
+        run: docker build --tag meticulous-backend-e2e .
+
+      - name: Create isolated runtime state
+        run: |
+          mkdir -p \
+            "$RUNNER_TEMP/backend-e2e/config" \
+            "$RUNNER_TEMP/backend-e2e/logs" \
+            "$RUNNER_TEMP/backend-e2e/profiles" \
+            "$RUNNER_TEMP/backend-e2e/history/debug" \
+            "$RUNNER_TEMP/backend-e2e/history/energy" \
+            "$RUNNER_TEMP/backend-e2e/firmware" \
+            "$RUNNER_TEMP/backend-e2e/images/profile-images" \
+            "$RUNNER_TEMP/backend-e2e/db-migrations" \
+            "$RUNNER_TEMP/backend-e2e/alarms" \
+            "$RUNNER_TEMP/backend-e2e/reports"
+
+      - name: Start headless ESP emulation
+        run: |
+          docker run --detach \
+            --name meticulous-backend-e2e \
+            --publish 18080:8080 \
+            --env BACKEND=emulation \
+            --env HEADLESS_EMULATION=true \
+            --env BIND_ADDRESS=0.0.0.0 \
+            --env EMULATION_SPEED=1000 \
+            --env SENTRY=false \
+            --env PYTHONDONTWRITEBYTECODE=1 \
+            --env PORT=8080 \
+            --env CONFIG_PATH=/runtime/config \
+            --env LOG_PATH=/runtime/logs \
+            --env PROFILE_PATH=/runtime/profiles \
+            --env HISTORY_PATH=/runtime/history \
+            --env DEBUG_HISTORY_PATH=/runtime/history/debug \
+            --env MOTOR_ENERGY_PATH=/runtime/history/energy \
+            --env UPDATE_PATH=/runtime/firmware \
+            --env USER_SOUNDS=/app/sounds \
+            --env DEFAULT_IMAGES=/app/images/default \
+            --env IMAGES_PATH=/runtime/images/profile-images \
+            --env DEFAULT_PROFILES=/app/default_profiles \
+            --env TIMEZONE_JSON_FILE_PATH=/app/UI_timezones.json \
+            --env USER_DB_MIGRATION_DIR=/runtime/db-migrations \
+            --env ALARMS_PATH=/runtime/alarms \
+            --env REPORTS_DIR=/runtime/reports \
+            --volume "$GITHUB_WORKSPACE:/app" \
+            --volume "$RUNNER_TEMP/backend-e2e:/runtime" \
+            --entrypoint /opt/venv/bin/python3 \
+            meticulous-backend-e2e \
+            /app/back.py
+
+      - name: Run emulated espresso lifecycle
+        env:
+          E2E_BACKEND_URL: http://127.0.0.1:18080
+        run: python -m unittest tests.e2e.test_emulated_shot -v
+
+      - name: Capture backend log
+        if: always()
+        run: docker logs meticulous-backend-e2e > backend-e2e.log 2>&1
+
+      - name: Upload backend log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-e2e-log
+          path: backend-e2e.log
+
+      - name: Stop emulated backend
+        if: always()
+        run: docker rm --force meticulous-backend-e2e

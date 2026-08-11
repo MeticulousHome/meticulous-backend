@@ -105,6 +105,13 @@ uv run flake8
 
 You can interact with the backend using the command line interface. For instance, you can enter the commands `l` and `r` to move the dial left or right, respectively.
 
+### Emulated shot E2E
+
+The headless backend E2E workflow runs a complete recorded espresso lifecycle
+against the real API, serial parser, shot manager and history database. Its
+scope, execution model and local command are documented in
+[`docs/testing/emulated-shot-e2e.md`](docs/testing/emulated-shot-e2e.md).
+
 ## Database Migrations Guide
 
 This project uses Alembic for managing database migrations. Follow these steps to handle any changes in the database structure:

@@ -7,6 +7,7 @@ from sentry_privacy import drop_breadcrumb, sanitize_sentry_event
 
 BACKEND = os.getenv("BACKEND", "FIKA").upper()
 SENTRY = os.getenv("SENTRY", "False").lower() in ("true", "1", "y")
+SENTRY_ENABLED = BACKEND == "FIKA" or SENTRY
 
 
 def is_tornado_session_disconnected(event):
@@ -31,7 +32,7 @@ def before_send(event, hint):
     return sanitize_sentry_event(event, hint)
 
 
-if BACKEND == "FIKA" or SENTRY:
+if SENTRY_ENABLED:
     print("Initializing sentry")
 
     sentry_sdk.init(
@@ -64,8 +65,9 @@ def run():
     from shot_manager import ShotManager
 
     # Add ignored errors to sentry now that the import suceeded
-    client = sentry_sdk.get_client()
-    client.options["ignore_errors"].append(WebSocketClosedError)
+    if SENTRY_ENABLED:
+        client = sentry_sdk.get_client()
+        client.options["ignore_errors"].append(WebSocketClosedError)
 
     logger = MeticulousLogger.getLogger(__name__)
 
