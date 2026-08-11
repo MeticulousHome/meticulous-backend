@@ -1,4 +1,5 @@
 import asyncio
+import math
 import os
 import random
 import string
@@ -124,8 +125,16 @@ PROFILE_AUTO_START = "auto_start_shot"
 PROFILE_AUTO_START_DEFAULT = False
 PROFILE_AUTO_PURGE = "auto_purge_after_shot"
 PROFILE_AUTO_PURGE_DEFAULT = False
+PROFILE_TARE_BEHAVIOR = "tare_behavior"
+TARE_BEHAVIOR_AFTER_RETRACTION = "after_retraction"
+TARE_BEHAVIOR_BEFORE_RETRACTION = "before_retraction"
+TARE_BEHAVIORS = frozenset({TARE_BEHAVIOR_AFTER_RETRACTION, TARE_BEHAVIOR_BEFORE_RETRACTION})
+PROFILE_TARE_BEHAVIOR_DEFAULT = TARE_BEHAVIOR_AFTER_RETRACTION
 PROFILE_PARTIAL_RETRACTION = "partial_retraction"
-PROFILE_PARTIAL_RETRACTION_DEFAULT = 45.0
+PROFILE_PARTIAL_RETRACTION_LEGACY_DEFAULT = 45.0
+PROFILE_PARTIAL_RETRACTION_DEFAULT = 45.33
+PROFILE_PARTIAL_RETRACTION_MIN = 36.26
+PROFILE_PARTIAL_RETRACTION_MAX = 67.99
 
 MACHINE_HEATING_TIMEOUT = "heating_timeout"
 MACHINE_HEATING_TIMEOUT_DEFAULT = 10  # minutes
@@ -222,6 +231,7 @@ DefaultConfiguration_V1 = {
         DEBUG_SHOT_DATA_RETENTION: DEBUG_SHOT_DATA_RETENTION_DEFAULT,
         PROFILE_AUTO_START: PROFILE_AUTO_START_DEFAULT,
         PROFILE_AUTO_PURGE: PROFILE_AUTO_PURGE_DEFAULT,
+        PROFILE_TARE_BEHAVIOR: PROFILE_TARE_BEHAVIOR_DEFAULT,
         PROFILE_PARTIAL_RETRACTION: PROFILE_PARTIAL_RETRACTION_DEFAULT,
         MACHINE_HEAT_ON_BOOT: MACHINE_HEAT_ON_BOOT_DEFAULT,
         MACHINE_HEATING_TIMEOUT: MACHINE_HEATING_TIMEOUT_DEFAULT,
@@ -329,10 +339,44 @@ class MeticulousConfigDict(dict):
                     # Remove retired remote telemetry settings from existing configs.
                     self[CONFIG_USER].pop("telemetry_service_enabled", None)
                     self[CONFIG_USER].pop("allow_debug_sending", None)
-                    # migrate partial_retraction config data from int to float
+                    # Migrate and constrain partial_retraction values written by older releases.
                     retraction = self[CONFIG_USER][PROFILE_PARTIAL_RETRACTION]
-                    if isinstance(retraction, int):
-                        self[CONFIG_USER][PROFILE_PARTIAL_RETRACTION] = float(retraction)
+                    stored_retraction = retraction
+                    if (
+                        not isinstance(retraction, (int, float))
+                        or isinstance(retraction, bool)
+                        or not math.isfinite(float(retraction))
+                    ):
+                        retraction = PROFILE_PARTIAL_RETRACTION_DEFAULT
+                    else:
+                        retraction = float(retraction)
+                        if math.isclose(
+                            retraction,
+                            PROFILE_PARTIAL_RETRACTION_LEGACY_DEFAULT,
+                            rel_tol=0.0,
+                            abs_tol=1e-6,
+                        ):
+                            retraction = PROFILE_PARTIAL_RETRACTION_DEFAULT
+                        retraction = min(
+                            max(retraction, PROFILE_PARTIAL_RETRACTION_MIN),
+                            PROFILE_PARTIAL_RETRACTION_MAX,
+                        )
+                    self[CONFIG_USER][PROFILE_PARTIAL_RETRACTION] = retraction
+                    if stored_retraction != retraction:
+                        _config_logger.info(
+                            "Normalized partial_retraction to supported value "
+                            f"{retraction:.2f} mm"
+                        )
+
+                    tare_behavior = self[CONFIG_USER][PROFILE_TARE_BEHAVIOR]
+                    if (
+                        not isinstance(tare_behavior, str)
+                        or tare_behavior not in TARE_BEHAVIORS
+                    ):
+                        self[CONFIG_USER][PROFILE_TARE_BEHAVIOR] = PROFILE_TARE_BEHAVIOR_DEFAULT
+                        _config_logger.warning(
+                            "Reset unsupported tare_behavior to after_retraction"
+                        )
                     _config_logger.info("Successfully loaded config from disk")
                     self.__configError = False
                 except Exception as e:

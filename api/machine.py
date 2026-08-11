@@ -38,6 +38,10 @@ def get_machine_info():
         response["firmware"] = Machine.esp_info.firmwareV
         response["mainVoltage"] = Machine.esp_info.mainVoltage
 
+    response["tare_behavior_supported"] = bool(
+        Machine.esp_info is not None and Machine.esp_info.tareBehavior is not None
+    )
+
     response["serial"] = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
 
     response["color"] = ""
