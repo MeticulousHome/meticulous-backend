@@ -40,8 +40,6 @@ from api.web_ui import WEB_UI_HANDLER
 
 from log import MeticulousLogger
 
-from dbus_monitor import DBusMonitor
-
 from api.machine import UpdateOSStatus
 
 from timezone_manager import TimezoneManager
@@ -58,6 +56,16 @@ tornado.log.gen_log = MeticulousLogger.getLogger("tornado.general")
 
 PORT = int(os.getenv("PORT", "8080"))
 DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "y")
+HEADLESS_EMULATION = os.getenv("HEADLESS_EMULATION", "False").lower() in (
+    "true",
+    "1",
+    "y",
+)
+BIND_ADDRESS = os.getenv("BIND_ADDRESS", "127.0.0.1")
+BACKEND_MODE = os.getenv("BACKEND", "FIKA").upper()
+
+if HEADLESS_EMULATION and BACKEND_MODE not in ("EMULATION", "EMULATOR"):
+    raise RuntimeError("HEADLESS_EMULATION requires BACKEND=emulation")
 
 
 sio = socketio.AsyncServer(
@@ -275,45 +283,68 @@ def main():
 
     pyprctl.set_name("Main")
 
-    DBusMonitor.init()
+    if HEADLESS_EMULATION:
+        logger.info("Skipping D-Bus hardware monitoring in headless emulation mode")
+    else:
+        from dbus_monitor import DBusMonitor
+
+        DBusMonitor.init()
     HostnameManager.init()
-    UpdateManager.init()
+    if HEADLESS_EMULATION:
+        logger.info("Skipping image metadata initialization in headless emulation mode")
+    else:
+        UpdateManager.init()
 
-    try:
-        # Context is arbitrary data that will be sent with every event
-        sentry_sdk.set_context("build-info", UpdateManager.getRepositoryInfo())
+        try:
+            # Context is arbitrary data that will be sent with every event
+            sentry_sdk.set_context("build-info", UpdateManager.getRepositoryInfo())
 
-        # Tags are indexed and searchable
-        sentry_sdk.set_tag("build-timestamp", UpdateManager.getBuildTimestamp())
-        sentry_sdk.set_tag("build-channel", UpdateManager.getImageChannel())
-        sentry_sdk.set_tag("build-version", UpdateManager.getImageVersion())
+            # Tags are indexed and searchable
+            sentry_sdk.set_tag("build-timestamp", UpdateManager.getBuildTimestamp())
+            sentry_sdk.set_tag("build-channel", UpdateManager.getImageChannel())
+            sentry_sdk.set_tag("build-version", UpdateManager.getImageVersion())
 
-        sentry_sdk.set_tag("serial", MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER])
-    except Exception as e:
-        logger.error(f"Failed to set sentry context: {e}")
+            sentry_sdk.set_tag("serial", MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER])
+        except Exception as e:
+            logger.error(f"Failed to set sentry context: {e}")
 
     AlarmManager.init()
     Machine.init(sio)
-    SSHManager.init()
-    SystemServices.init()
+    if HEADLESS_EMULATION:
+        logger.info("Skipping SSH and system service control in headless emulation mode")
+    else:
+        SSHManager.init()
+        SystemServices.init()
 
-    USBManager.init()
-    DBusMonitor.enableUSBTest()
+    if HEADLESS_EMULATION:
+        logger.info("Skipping USB hardware monitoring in headless emulation mode")
+    else:
+        USBManager.init()
+        DBusMonitor.enableUSBTest()
 
     send_data_thread = NamedThread("SendSocketIO", target=send_data_loop)
     send_data_thread.start()
 
-    GATTServer.getServer().start()
+    if Machine.emulated and HEADLESS_EMULATION:
+        logger.info("Skipping BLE GATT server in headless emulation mode")
+    else:
+        GATTServer.getServer().start()
 
-    if Machine.emulated:
+    if Machine.emulated and HEADLESS_EMULATION:
+        logger.info("Skipping NetworkManager and Zeroconf in headless emulation mode")
+        WifiManager._networking_available = False
+    elif Machine.emulated:
         WifiManager.init()
 
     NotificationManager.init(sio)
     ProfileManager.init(sio)
-    SoundPlayer.init(emulation=Machine.emulated)
+    if HEADLESS_EMULATION:
+        logger.info("Skipping audio and host timezone setup in headless emulation mode")
+    else:
+        SoundPlayer.init(emulation=Machine.emulated)
 
-    # Check for mapped timezones json
-    TimezoneManager.init()
+        # Check for mapped timezones json
+        TimezoneManager.init()
 
     MeticulousConfig.setSIO(sio)
 
@@ -333,11 +364,14 @@ def main():
         debug=DEBUG,
     )
 
-    app.listen(PORT, address="127.0.0.1")
+    app.listen(PORT, address=BIND_ADDRESS)
     if not Machine.emulated:
         start_wifi_manager_in_background()
 
     sio.start_background_task(live)
 
-    DiscImager.flash_if_required()
+    if HEADLESS_EMULATION:
+        logger.info("Skipping disk image flashing in headless emulation mode")
+    else:
+        DiscImager.flash_if_required()
     tornado.ioloop.IOLoop.current().start()

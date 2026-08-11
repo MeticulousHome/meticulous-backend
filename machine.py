@@ -59,22 +59,31 @@ from sentry_privacy import drop_breadcrumb, sanitize_sentry_event
 
 from manufacturing import FORCE_MANUFACTURING_ENABLED_KEY, LAST_BOOT_MODE_KEY
 
-ESPSentryClient = sentry_sdk.Client(
-    dsn="https://57bd3ab95e32eda7af5fca189527c235@sentry.meticulousespresso.com/6",
-    traces_sample_rate=0.0,
-    # Set profiles_sample_rate to 1.0 to profile 100%
-    # of sampled transactions.
-    # We recommend adjusting this value in production.
-    profiles_sample_rate=0.0,
-    integrations=[
-        AsyncioIntegration(),
-    ],
-    send_default_pii=False,
-    include_local_variables=False,
-    max_breadcrumbs=0,
-    before_breadcrumb=drop_breadcrumb,
-    before_send=sanitize_sentry_event,
+HEADLESS_EMULATION = os.getenv("HEADLESS_EMULATION", "False").lower() in (
+    "true",
+    "1",
+    "y",
 )
+
+if HEADLESS_EMULATION:
+    ESPSentryClient = sentry_sdk.Client(dsn=None, default_integrations=False)
+else:
+    ESPSentryClient = sentry_sdk.Client(
+        dsn="https://57bd3ab95e32eda7af5fca189527c235@sentry.meticulousespresso.com/6",
+        traces_sample_rate=0.0,
+        # Set profiles_sample_rate to 1.0 to profile 100%
+        # of sampled transactions.
+        # We recommend adjusting this value in production.
+        profiles_sample_rate=0.0,
+        integrations=[
+            AsyncioIntegration(),
+        ],
+        send_default_pii=False,
+        include_local_variables=False,
+        max_breadcrumbs=0,
+        before_breadcrumb=drop_breadcrumb,
+        before_send=sanitize_sentry_event,
+    )
 
 
 def toggle_sentry(enabled):
