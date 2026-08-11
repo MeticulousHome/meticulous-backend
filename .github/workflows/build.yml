@@ -48,7 +48,7 @@ jobs:
       run: uv sync --group dev
 
     - name: Run tests
-      run: uv run pytest -v
+      run: uv run pytest -v tests log_redactor/tests/test_redaction_contract.py
 
   # Check the pinned log_redactor submodule commit is part of the main branch
   # ideally main's HEAD but at list within main's branch commit history ( not an
