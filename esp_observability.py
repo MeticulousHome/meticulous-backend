@@ -305,6 +305,11 @@ class ESPObservability:
             and self.recovery_deadline is not None
             and now > self.recovery_deadline
         ):
+            events = []
+            if self._panic_lines and not self.panic_reported:
+                self.panic_reported = True
+                self.reset_reported = True
+                events.append(self._panic_diagnostic("UNKNOWN", ""))
             phase = self.phase.value
             event = ESPDiagnostic(
                 title="ESP32 did not recover after firmware update",
@@ -319,7 +324,7 @@ class ESPObservability:
             )
             self._return_to_normal(now)
             self.timeout_reported = True
-            return [event]
+            return events + [event]
 
         if (
             not self._update_active
@@ -330,6 +335,11 @@ class ESPObservability:
             and self.recovery_deadline is not None
             and now > self.recovery_deadline
         ):
+            events = []
+            if self._panic_lines and not self.panic_reported:
+                self.panic_reported = True
+                self.reset_reported = True
+                events.append(self._panic_diagnostic("UNKNOWN", ""))
             phase = self.phase.value
             operation = (
                 "unexpected_reset"
@@ -338,7 +348,7 @@ class ESPObservability:
             )
             self._return_to_normal(now)
             self.timeout_reported = True
-            return [
+            return events + [
                 ESPDiagnostic(
                     title="ESP32 valid-message timeout",
                     level="error",

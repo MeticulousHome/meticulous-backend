@@ -1,3 +1,5 @@
+import pytest
+
 from esp_observability import ESPCommunicationPhase, ESPObservability
 
 BOOT = "rst:0xc (RTC_SW_CPU_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)"
@@ -238,6 +240,70 @@ def test_unexpected_boot_without_protocol_reaches_reset_recovery_timeout():
     assert events[0].tags["operation"] == "unexpected_reset"
     assert events[0].context["threshold_seconds"] == 15.0
     assert monitor.check_timeouts(20) == []
+
+
+@pytest.mark.parametrize("update_recovery", [False, True], ids=["reset", "update"])
+@pytest.mark.parametrize(
+    ("panic_lines", "core", "fingerprint"),
+    [
+        (
+            [
+                "Guru Meditation Error: Core 1 panic'ed (LoadProhibited).",
+                "Core 1 register dump:",
+                "Backtrace: 0x40381234:0x3fceabcd",
+            ],
+            "1",
+            "esp32-firmware-panic-load-prohibited",
+        ),
+        (
+            [
+                "abort() was called at PC 0x420037e1 on core 0",
+                "Register dump:",
+                "Backtrace: 0x4037801a:0x3fcebce0",
+            ],
+            "0",
+            "esp32-firmware-panic-abort",
+        ),
+    ],
+    ids=["guru", "abort"],
+)
+def test_recovery_timeout_reports_retained_panic_once(
+    update_recovery, panic_lines, core, fingerprint
+):
+    monitor = ESPObservability(now=0)
+    monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
+    if update_recovery:
+        monitor.begin_update("2.0.0", "1.2.3", 1)
+        monitor.finish_flashing(2)
+
+    for index, line in enumerate(panic_lines):
+        monitor.observe_raw_line(line, 2.1 + index / 10)
+    assert monitor.observe_raw_line(BOOT, 3) == []
+
+    timeout = 32.1 if update_recovery else 18.1
+    events = monitor.check_timeouts(timeout)
+    assert monitor.check_timeouts(timeout + 0.1) == []
+    assert monitor.observe_valid_message("ESPBoot", timeout + 0.2) == []
+
+    panic_events = [
+        event for event in events if event.title == "ESP32 firmware panic detected"
+    ]
+    assert len(panic_events) == 1
+    panic = panic_events[0]
+    assert panic.tags["reset_reason"] == "UNKNOWN"
+    assert panic.context["reset_reason"] == "UNKNOWN"
+    assert panic.context["core"] == core
+    assert panic.context["previous_firmware"] == "1.2.3"
+    assert panic.context["backtrace"].startswith("Backtrace:")
+    assert len(panic.context["panic_output"].splitlines()) <= monitor.MAX_PANIC_LINES
+    assert len(panic.context["panic_output"].encode()) <= monitor.MAX_PANIC_BYTES
+    assert panic.fingerprint == fingerprint
+    expected_recovery_title = (
+        "ESP32 did not recover after firmware update"
+        if update_recovery
+        else "ESP32 valid-message timeout"
+    )
+    assert titles(events).count(expected_recovery_title) == 1
 
 
 def test_unexpected_boot_protocol_message_clears_recovery_timeout():
