@@ -6,10 +6,7 @@ from pathlib import Path
 
 
 DEVICE_UUID_CACHE_PATH = Path(
-    os.getenv(
-        "DEVICE_UUID_CACHE_PATH",
-        "/meticulous-user/.device-identity/device-uuid",
-    )
+    os.getenv("DEVICE_UUID_CACHE_PATH", "/meticulous-user/.device-identity/device-uuid")
 )
 
 DEVICE_UUID_PATTERN = re.compile(

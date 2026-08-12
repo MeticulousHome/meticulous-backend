@@ -661,9 +661,7 @@ class Machine:
                         MeticulousConfig[CONFIG_USER][PROFILE_PARTIAL_RETRACTION]
                     )
                     Machine.setPartialRetraction(backend_partial_retraction)
-                    backend_auto_purge = bool(
-                        MeticulousConfig[CONFIG_USER][PROFILE_AUTO_PURGE]
-                    )
+                    backend_auto_purge = bool(MeticulousConfig[CONFIG_USER][PROFILE_AUTO_PURGE])
                     Machine.setAutoPurgeAfterShot(backend_auto_purge)
                     Machine.syncDeviceUUID(info.deviceUUID, info.deviceUUIDSupported)
 

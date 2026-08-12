@@ -21,9 +21,7 @@ def test_validates_canonical_uuid_v4():
     assert device_identity.is_valid_device_uuid(FIRST_UUID)
     assert not device_identity.is_valid_device_uuid("")
     assert not device_identity.is_valid_device_uuid(FIRST_UUID.upper())
-    assert not device_identity.is_valid_device_uuid(
-        "123e4567-e89b-32d3-a456-426614174000"
-    )
+    assert not device_identity.is_valid_device_uuid("123e4567-e89b-32d3-a456-426614174000")
 
 
 def test_generates_canonical_uuid_v4():
