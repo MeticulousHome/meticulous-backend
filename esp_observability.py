@@ -288,8 +288,7 @@ class ESPObservability:
         }:
             self._return_to_normal(now)
         elif self.pending_unexpected_reset:
-            self.pending_unexpected_reset = False
-            self._clear_panic()
+            self._return_to_normal(now)
 
         if observed_firmware:
             self.previous_firmware = observed_firmware

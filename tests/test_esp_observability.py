@@ -132,6 +132,28 @@ def test_abort_waits_for_boot_reason_and_emits_once():
     assert monitor.observe_valid_message("ESPBoot", 3.1) == []
 
 
+def test_independent_panics_are_reported_after_esp_info_recovery():
+    monitor = ESPObservability(now=0)
+    monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
+
+    capture_guru(monitor, reason="LoadProhibited", now=1)
+    monitor.observe_raw_line(BOOT, 1.3)
+    first_events = monitor.observe_boot_reason("PANIC", "4", 2)
+    assert monitor.observe_boot_reason("PANIC", "4", 2.1) == []
+    assert monitor.observe_valid_message("ESPInfo", 2.2, "1.2.3") == []
+
+    capture_guru(monitor, reason="StoreProhibited", now=3)
+    monitor.observe_raw_line(BOOT, 3.3)
+    second_events = monitor.observe_boot_reason("PANIC", "4", 4)
+
+    assert titles(first_events) == ["ESP32 firmware panic detected"]
+    assert titles(second_events) == ["ESP32 firmware panic detected"]
+    assert [event.fingerprint for event in first_events + second_events] == [
+        "esp32-firmware-panic-load-prohibited",
+        "esp32-firmware-panic-store-prohibited",
+    ]
+
+
 def test_older_firmware_valid_message_provides_one_unknown_reset_fallback():
     monitor = ESPObservability(now=0)
     monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
