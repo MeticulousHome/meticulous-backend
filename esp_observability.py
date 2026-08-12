@@ -323,7 +323,8 @@ class ESPObservability:
 
         if (
             not self._update_active
-            and self.phase in {
+            and self.phase
+            in {
                 ESPCommunicationPhase.EXPECTED_RESET,
                 ESPCommunicationPhase.WAITING_FOR_PROTOCOL,
             }

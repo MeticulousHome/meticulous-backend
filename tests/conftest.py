@@ -9,7 +9,6 @@ os.environ.setdefault("LOG_PATH", "/tmp/meticulous-test/logs")
 os.environ.setdefault("HISTORY_PATH", "/tmp/meticulous-test/history")
 os.environ.setdefault("DEBUG_HISTORY_PATH", "/tmp/meticulous-test/history/debug")
 os.environ.setdefault("ALARMS_PATH", "/tmp/meticulous-test/alarms")
-os.environ.setdefault("MOTOR_ENERGY_PATH", "/tmp/meticulous-test/energy")
 os.environ.setdefault(
     "SMOKE_VALIDATION_STATE_FILE", "/tmp/meticulous-test/smoke-validation.json"
 )
