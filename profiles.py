@@ -24,10 +24,6 @@ from config import (
 import asyncio
 from log import MeticulousLogger
 from machine import Machine
-from profile_migrations import (
-    canonicalize_exit_trigger_comparisons,
-    migrate_legacy_exit_trigger_comparisons,
-)
 from profile_preprocessor import ProfilePreprocessor
 from api.alarms import AlarmManager, AlarmType
 from images.notificationImages.base64 import WARNING_TRIANGLE_IMAGE
@@ -109,8 +105,6 @@ class ProfileManager:
         with open(profile_schema, "r") as schema_file:
             ProfileManager._schema = json.load(schema_file)
 
-        ProfileManager._migrate_last_profile()
-
         ProfileManager.refresh_image_list()
         ProfileManager.refresh_default_profile_list()
         ProfileManager.refresh_profile_list()
@@ -174,28 +168,8 @@ class ProfileManager:
         asyncio.run_coroutine_threadsafe(emit(), ProfileManager._loop)
 
     def _set_last_profile(profile) -> None:
-        last_profile = {
-            "load_time": time.time(),
-            "profile": migrate_legacy_exit_trigger_comparisons(profile),
-        }
+        last_profile = {"load_time": time.time(), "profile": profile}
         MeticulousConfig[CONFIG_PROFILES][PROFILE_LAST] = last_profile
-        MeticulousConfig.save()
-
-    def _migrate_last_profile() -> None:
-        last_profile = MeticulousConfig[CONFIG_PROFILES][PROFILE_LAST]
-        if not isinstance(last_profile, dict) or "profile" not in last_profile:
-            return
-
-        migrated_profile, changed = canonicalize_exit_trigger_comparisons(
-            last_profile["profile"]
-        )
-        if not changed:
-            return
-
-        MeticulousConfig[CONFIG_PROFILES][PROFILE_LAST] = {
-            **last_profile,
-            "profile": migrated_profile,
-        }
         MeticulousConfig.save()
 
     def get_profile_changes() -> list[object]:
@@ -283,7 +257,6 @@ class ProfileManager:
         change_id: Optional[str] = None,
         skip_validation: bool = False,
     ) -> dict:
-        data = migrate_legacy_exit_trigger_comparisons(data)
 
         if "id" not in data or data["id"] == "":
             data["id"] = str(uuid.uuid4())
@@ -380,9 +353,7 @@ class ProfileManager:
     def load_profile_and_send(id):
         profile = ProfileManager._known_profiles.get(id)
         if profile is not None:
-            profile = ProfileManager.send_profile_to_esp32(profile)
-            if profile is not False:
-                ProfileManager._known_profiles[id] = profile
+            ProfileManager.send_profile_to_esp32(profile)
         return profile
 
     def send_profile_to_esp32(data):
@@ -392,8 +363,6 @@ class ProfileManager:
                 image=WARNING_TRIANGLE_IMAGE,
             )
             return False
-
-        data = migrate_legacy_exit_trigger_comparisons(data)
 
         if "id" not in data:
             data["id"] = str(uuid.uuid4())
@@ -466,9 +435,6 @@ class ProfileManager:
                     logger.warning(f"Could not decode profile {f.name}: {error}")
                     continue
 
-                profile, comparison_migrated = canonicalize_exit_trigger_comparisons(
-                    profile
-                )
                 profile_changed = False
 
                 if "id" not in profile or profile["id"] == "":
@@ -504,22 +470,10 @@ class ProfileManager:
 
                 if profile_changed:
                     try:
-                        saved = ProfileManager.save_profile(
-                            profile,
-                            set_last_changed=True,
-                            skip_validation=True,
+                        ProfileManager.save_profile(
+                            profile, set_last_changed=True, skip_validation=True
                         )
-                        profile = saved["profile"]
                     except Exception:
-                        continue
-                elif comparison_migrated:
-                    try:
-                        with open(file_path, "w") as f:
-                            json.dump(profile, f, indent=4)
-                    except OSError as error:
-                        logger.warning(
-                            f"Could not migrate profile comparison in {file_path}: {error}"
-                        )
                         continue
 
                 id = profile["id"]
@@ -568,7 +522,6 @@ class ProfileManager:
                 except json.decoder.JSONDecodeError as error:
                     logger.warning(f"Could not decode default profile {f.name}: {error}")
                     continue
-                profile = migrate_legacy_exit_trigger_comparisons(profile)
                 logger.info("Found default profile: " + filename)
                 ProfileManager._default_profiles.append(profile)
 
@@ -590,7 +543,6 @@ class ProfileManager:
                     except json.decoder.JSONDecodeError as error:
                         logger.warning(f"Could not decode community profile {f.name}: {error}")
                         continue
-                    profile = migrate_legacy_exit_trigger_comparisons(profile)
                     logger.info("Found community profile: " + filename)
                     ProfileManager._community_profiles.append(profile)
 
@@ -693,7 +645,6 @@ class ProfileManager:
         }
 
     def get_last_profile():
-        ProfileManager._migrate_last_profile()
         return MeticulousConfig[CONFIG_PROFILES][PROFILE_LAST]
 
     async def handle_profile_hover(data, sid=None) -> None:

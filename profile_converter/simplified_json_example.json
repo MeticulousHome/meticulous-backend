@@ -30,19 +30,19 @@
             },
             "exit_triggers": [
                 {
-                    "comparison": ">",
+                    "comparison": ">=",
                     "relative": true,
                     "type": "time",
                     "value": 30
                 },
                 {
-                    "comparison": ">",
+                    "comparison": ">=",
                     "relative": true,
                     "type": "weight",
                     "value": 0.3
                 },
                 {
-                    "comparison": ">",
+                    "comparison": ">=",
                     "relative": false,
                     "type": "pressure",
                     "value": 8

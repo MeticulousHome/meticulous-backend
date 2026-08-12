@@ -93,24 +93,19 @@ class SimplifiedJson:
         current_reference_id += 1
         return current_reference_id - 1
 
-    def set_comparison_type(self, comparison_value=None, canonicalize_legacy_greater=False):
-        default_comparison = (
-            TriggerOperatorType.GREATER_THAN
-            if canonicalize_legacy_greater
-            else TriggerOperatorType.GREATER_THAN_OR_EQUAL
-        )
-
+    def set_comparison_type(self, comparison_value=None):
         if comparison_value == ">":
             comparison = TriggerOperatorType.GREATER_THAN
-        elif comparison_value in (None, ">="):
-            comparison = default_comparison
+        elif comparison_value == "<":
+            comparison = TriggerOperatorType.LESS_THAN
+        elif comparison_value == ">=" or comparison_value is None:
+            comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
         elif comparison_value == "<=":
             comparison = TriggerOperatorType.LESS_THAN_OR_EQUAL
         else:
-            comparison = default_comparison
+            comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
             print(
-                f"Comparison: {comparison_value} not supported. "
-                f"Using default value: {'>' if canonicalize_legacy_greater else '>='} ."
+                f"Comparison: {comparison_value} not supported. Using default value: >= ."
             )
 
         return comparison
@@ -252,9 +247,7 @@ class SimplifiedJson:
                             reference_id = init_node.get_time_id()
                         else:
                             reference_id = 1
-                        time_comparison = self.set_comparison_type(
-                            json_comparison, canonicalize_legacy_greater=True
-                        )
+                        time_comparison = self.set_comparison_type(json_comparison)
                         exit_trigger = TimerTrigger(
                             time_comparison,
                             exit_trigger_value,
@@ -270,9 +263,7 @@ class SimplifiedJson:
                             reference_id = init_node.get_weight_id()
                         else:
                             reference_id = 1
-                        weight_comparison = self.set_comparison_type(
-                            json_comparison, canonicalize_legacy_greater=True
-                        )
+                        weight_comparison = self.set_comparison_type(json_comparison)
                         exit_trigger = WeightTrigger(
                             SourceType.PREDICTIVE,
                             weight_comparison,
@@ -283,9 +274,7 @@ class SimplifiedJson:
                         exit_triggers.append(exit_trigger.get_trigger())
 
                     case "pressure":
-                        pressure_comparison = self.set_comparison_type(
-                            json_comparison, canonicalize_legacy_greater=True
-                        )
+                        pressure_comparison = self.set_comparison_type(json_comparison)
                         exit_trigger_value = exits["value"]
                         exit_trigger = PressureValueTrigger(
                             SourceType.RAW,
@@ -296,9 +285,7 @@ class SimplifiedJson:
                         exit_triggers.append(exit_trigger.get_trigger())
 
                     case "flow":
-                        flow_comparison = self.set_comparison_type(
-                            json_comparison, canonicalize_legacy_greater=True
-                        )
+                        flow_comparison = self.set_comparison_type(json_comparison)
                         exit_trigger_value = exits["value"]
                         exit_trigger = FlowValueTrigger(
                             SourceType.RAW,
@@ -318,9 +305,7 @@ class SimplifiedJson:
                             reference_id = init_node.get_position_id()
                         else:
                             reference_id = 0
-                        piston_position_comparison = self.set_comparison_type(
-                            json_comparison, canonicalize_legacy_greater=True
-                        )
+                        piston_position_comparison = self.set_comparison_type(json_comparison)
                         exit_trigger = PistonPositionTrigger(
                             piston_position_comparison,
                             exit_trigger_value,
@@ -330,9 +315,7 @@ class SimplifiedJson:
                         exit_triggers.append(exit_trigger.get_trigger())
 
                     case "power":
-                        power_comparison = self.set_comparison_type(
-                            json_comparison, canonicalize_legacy_greater=True
-                        )
+                        power_comparison = self.set_comparison_type(json_comparison)
                         exit_trigger_value = exits["value"]
                         exit_trigger = PowerValueTrigger(
                             SourceType.RAW,
