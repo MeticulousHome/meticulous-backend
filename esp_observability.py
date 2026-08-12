@@ -351,7 +351,9 @@ class ESPObservability:
         ):
             events = self._pending_panic_diagnostics()
             phase = self.phase.value
-            operation = "unexpected_reset" if self.pending_unexpected_reset else "expected_reset"
+            operation = (
+                "unexpected_reset" if self.pending_unexpected_reset else "expected_reset"
+            )
             self._return_to_normal(now)
             self.timeout_reported = True
             return events + [
