@@ -1004,11 +1004,17 @@ Build Date: {build_date}
 
         try:
             restart_result = subprocess.run(
-                ["systemctl", "try-restart", "rauc-hawkbit-updater.service"],
+                [
+                    "systemctl",
+                    "--no-block",
+                    "try-restart",
+                    "rauc-hawkbit-updater.service",
+                ],
                 capture_output=True,
                 text=True,
+                timeout=5,
             )
-        except OSError:
+        except (OSError, subprocess.TimeoutExpired):
             logger.exception(
                 "Could not restart rauc-hawkbit-updater after updating device UUID cache"
             )
