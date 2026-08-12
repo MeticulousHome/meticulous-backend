@@ -1,11 +1,18 @@
 import asyncio
+import importlib
 import subprocess
+import sys
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 
-import machine
-from machine import Machine
+# GPIO access is available only on the target machine. Isolate it here so this
+# machine-level test can exercise the UUID synchronization logic with CI's dev
+# dependencies, without adding a hardware-only package to that environment.
+sys.modules.setdefault("gpiod", MagicMock())
+machine = importlib.import_module("machine")
+Machine = machine.Machine
 
 
 FIRST_UUID = "123e4567-e89b-42d3-a456-426614174000"
@@ -32,7 +39,9 @@ def test_missing_uuid_reuses_pending_assignment_within_boot(monkeypatch):
     generated_assignments = []
 
     def assign(reported_uuid, protocol_supported, pending_assignment):
-        generated_assignments.append((reported_uuid, protocol_supported, pending_assignment))
+        generated_assignments.append(
+            (reported_uuid, protocol_supported, pending_assignment)
+        )
         return pending_assignment or FIRST_UUID
 
     monkeypatch.setattr(Machine, "writeStr", writes.append)
