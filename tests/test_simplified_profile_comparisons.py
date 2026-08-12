@@ -1,13 +1,15 @@
 import copy
+import importlib
 import json
 import operator
+import sys
+import types
+from unittest.mock import patch
 
 import jsonschema
 import pytest
 
-import profiles
 from profile_converter.simplified_json import SimplifiedJson
-from profiles import ProfileManager
 
 
 NUMERIC_TRIGGER_KINDS = {
@@ -32,6 +34,22 @@ EXPECTED_BOUNDARIES = {
     ">=": (False, True, True),
     "<=": (True, True, False),
 }
+
+
+def _load_host_safe_profile_manager():
+    machine_module = types.ModuleType("machine")
+    machine_module.Machine = object
+    alarms_module = types.ModuleType("api.alarms")
+    alarms_module.AlarmManager = types.SimpleNamespace(is_alarm_set=lambda _: None)
+    alarms_module.AlarmType = types.SimpleNamespace(MOTOR_STRESSED="motor_stressed")
+
+    with patch.dict(
+        sys.modules,
+        {"api.alarms": alarms_module, "machine": machine_module},
+    ):
+        profiles_module = importlib.import_module("profiles")
+
+    return profiles_module, profiles_module.ProfileManager
 
 
 def _convert_exit_trigger(trigger_type, comparison_marker):
@@ -141,6 +159,7 @@ def test_numeric_exit_trigger_preserves_comparison_and_boundary_semantics(
 def test_explicit_comparisons_validate_persist_and_convert_unchanged(
     comparison, tmp_path, monkeypatch
 ):
+    profiles_module, profile_manager = _load_host_safe_profile_manager()
     profile = _profile_with_all_numeric_triggers(comparison)
     original = copy.deepcopy(profile)
 
@@ -148,14 +167,14 @@ def test_explicit_comparisons_validate_persist_and_convert_unchanged(
         schema = json.load(schema_file)
     jsonschema.validate(profile, schema)
 
-    monkeypatch.setattr(profiles, "PROFILE_PATH", str(tmp_path))
-    monkeypatch.setattr(ProfileManager, "_schema", schema)
-    monkeypatch.setattr(ProfileManager, "_known_profiles", {profile["id"]: profile})
-    monkeypatch.setattr(ProfileManager, "_emit_profile_event", lambda *args: None)
+    monkeypatch.setattr(profiles_module, "PROFILE_PATH", str(tmp_path))
+    monkeypatch.setattr(profile_manager, "_schema", schema)
+    monkeypatch.setattr(profile_manager, "_known_profiles", {profile["id"]: profile})
+    monkeypatch.setattr(profile_manager, "_emit_profile_event", lambda *args: None)
 
-    ProfileManager.save_profile(profile)
-    ProfileManager.refresh_profile_list()
-    persisted = ProfileManager.get_profile(profile["id"])
+    profile_manager.save_profile(profile)
+    profile_manager.refresh_profile_list()
+    persisted = profile_manager.get_profile(profile["id"])
 
     assert persisted == original
     assert json.loads((tmp_path / f'{profile["id"]}.json').read_text()) == original
