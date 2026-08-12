@@ -6,7 +6,6 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-
 # GPIO access is available only on the target machine. Isolate it here so this
 # machine-level test can exercise the UUID synchronization logic with CI's dev
 # dependencies, without adding a hardware-only package to that environment.
