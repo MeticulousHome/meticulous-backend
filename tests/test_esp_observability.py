@@ -134,11 +134,19 @@ def test_abort_waits_for_boot_reason_and_emits_once():
     assert monitor.observe_valid_message("ESPBoot", 3.1) == []
 
 
-def test_active_panic_collection_suppresses_normal_timeout():
+@pytest.mark.parametrize(
+    "panic_line",
+    [
+        "Guru Meditation Error: Core 1 panic'ed (LoadProhibited).",
+        "abort() was called at PC 0x420037e1 on core 0",
+    ],
+    ids=["guru", "abort"],
+)
+def test_active_panic_collection_suppresses_normal_timeout(panic_line):
     monitor = ESPObservability(now=0)
     monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
 
-    monitor.observe_raw_line("abort() was called at PC 0x420037e1 on core 1", 3)
+    monitor.observe_raw_line(panic_line, 1)
 
     assert monitor.phase == ESPCommunicationPhase.NORMAL
     assert monitor.check_timeouts(3.1) == []
@@ -282,12 +290,11 @@ def test_recovery_timeout_reports_retained_panic_once(
 
     timeout = 32.1 if update_recovery else 18.1
     events = monitor.check_timeouts(timeout)
-    assert monitor.check_timeouts(timeout + 0.1) == []
-    assert monitor.observe_valid_message("ESPBoot", timeout + 0.2) == []
+    events += monitor.check_timeouts(timeout + 0.1)
+    events += monitor.observe_boot_reason("PANIC", "4", timeout + 0.2)
+    events += monitor.observe_valid_message("ESPBoot", timeout + 0.3)
 
-    panic_events = [
-        event for event in events if event.title == "ESP32 firmware panic detected"
-    ]
+    panic_events = [event for event in events if event.title == "ESP32 firmware panic detected"]
     assert len(panic_events) == 1
     panic = panic_events[0]
     assert panic.tags["reset_reason"] == "UNKNOWN"
@@ -304,6 +311,13 @@ def test_recovery_timeout_reports_retained_panic_once(
         else "ESP32 valid-message timeout"
     )
     assert titles(events).count(expected_recovery_title) == 1
+
+    capture_guru(monitor, reason="StoreProhibited", now=timeout + 1)
+    monitor.observe_raw_line(BOOT, timeout + 1.3)
+    new_events = monitor.observe_boot_reason("PANIC", "4", timeout + 1.4)
+    assert [event.fingerprint for event in new_events] == [
+        "esp32-firmware-panic-store-prohibited"
+    ]
 
 
 def test_unexpected_boot_protocol_message_clears_recovery_timeout():

@@ -89,6 +89,7 @@ class ESPObservability:
         self.pending_unexpected_reset = False
         self.reset_reported = False
         self.panic_reported = False
+        self._resolved_panic_incident = False
         self.timeout_reported = False
         self._collecting_panic = False
         self._panic_lines: list[str] = []
@@ -162,6 +163,16 @@ class ESPObservability:
         )
 
         if any(marker in lowered for marker in self.PANIC_MARKERS):
+            starts_panic_incident = (
+                "guru meditation error" in lowered
+                or "abort() was called" in lowered
+                or "assert failed" in lowered
+                or "stack smashing protect failure" in lowered
+                or "heap corruption" in lowered
+            )
+            if not self._collecting_panic and starts_panic_incident:
+                self._resolved_panic_incident = False
+                self.panic_reported = False
             self._collecting_panic = True
             guru_match = self.GURU_MEDITATION_PATTERN.search(normalized)
             if guru_match:
@@ -229,8 +240,11 @@ class ESPObservability:
         code = code.strip()
         if self.panic_reported:
             return []
+        if reason == "PANIC" and self._resolved_panic_incident:
+            return []
         if reason == "PANIC" or self._panic_lines:
             self.panic_reported = True
+            self._resolved_panic_incident = True
             self.reset_reported = True
             return [self._panic_diagnostic(reason, code)]
         if not self.pending_unexpected_reset or self.reset_reported:
@@ -258,6 +272,7 @@ class ESPObservability:
 
         if self._panic_lines and not self.panic_reported:
             self.panic_reported = True
+            self._resolved_panic_incident = True
             self.reset_reported = True
             events = [self._panic_diagnostic("UNKNOWN", "")]
         elif self.pending_unexpected_reset and not self.reset_reported:
@@ -297,6 +312,8 @@ class ESPObservability:
 
         if observed_firmware:
             self.previous_firmware = observed_firmware
+        if message_type == "ESPInfo" and self.phase == ESPCommunicationPhase.NORMAL:
+            self._resolved_panic_incident = False
         return events
 
     def check_timeouts(self, now: float) -> list[ESPDiagnostic]:
@@ -305,11 +322,7 @@ class ESPObservability:
             and self.recovery_deadline is not None
             and now > self.recovery_deadline
         ):
-            events = []
-            if self._panic_lines and not self.panic_reported:
-                self.panic_reported = True
-                self.reset_reported = True
-                events.append(self._panic_diagnostic("UNKNOWN", ""))
+            events = self._pending_panic_diagnostics()
             phase = self.phase.value
             event = ESPDiagnostic(
                 title="ESP32 did not recover after firmware update",
@@ -328,24 +341,17 @@ class ESPObservability:
 
         if (
             not self._update_active
-            and self.phase in {
+            and self.phase
+            in {
                 ESPCommunicationPhase.EXPECTED_RESET,
                 ESPCommunicationPhase.WAITING_FOR_PROTOCOL,
             }
             and self.recovery_deadline is not None
             and now > self.recovery_deadline
         ):
-            events = []
-            if self._panic_lines and not self.panic_reported:
-                self.panic_reported = True
-                self.reset_reported = True
-                events.append(self._panic_diagnostic("UNKNOWN", ""))
+            events = self._pending_panic_diagnostics()
             phase = self.phase.value
-            operation = (
-                "unexpected_reset"
-                if self.pending_unexpected_reset
-                else "expected_reset"
-            )
+            operation = "unexpected_reset" if self.pending_unexpected_reset else "expected_reset"
             self._return_to_normal(now)
             self.timeout_reported = True
             return events + [
@@ -385,6 +391,14 @@ class ESPObservability:
                 )
             ]
         return []
+
+    def _pending_panic_diagnostics(self) -> list[ESPDiagnostic]:
+        if not self._panic_lines or self.panic_reported:
+            return []
+        self.panic_reported = True
+        self._resolved_panic_incident = True
+        self.reset_reported = True
+        return [self._panic_diagnostic("UNKNOWN", "")]
 
     def _panic_diagnostic(self, reason: str, code: str) -> ESPDiagnostic:
         tags = {"reset_reason": reason, "reset_reason_code": code}
