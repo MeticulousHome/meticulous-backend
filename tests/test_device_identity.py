@@ -5,7 +5,6 @@ import pytest
 
 import device_identity
 
-
 FIRST_UUID = "123e4567-e89b-42d3-a456-426614174000"
 SECOND_UUID = "987e6543-e21b-45d3-b654-426614174999"
 
