@@ -759,6 +759,7 @@ class Machine:
 
                     if (
                         needs_update
+                        and not Machine.esp_observability.update_in_progress
                         and not MeticulousConfig[CONFIG_USER][DISALLOW_FIRMWARE_FLASHING]
                     ):
                         info_string = f"Firmware {Machine.firmware_running.get('Release')}-{Machine.firmware_running['ExtraCommits']} is outdated, upgrading"
