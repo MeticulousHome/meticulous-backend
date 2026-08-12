@@ -265,7 +265,7 @@ class ESPObservability:
         if self.update_in_progress:
             if not self.boot_seen:
                 return events
-            if self.expected_firmware and observed_firmware != self.expected_firmware:
+            if self.expected_firmware is None or observed_firmware != self.expected_firmware:
                 return events
             self._return_to_normal(now)
         elif self.phase in {

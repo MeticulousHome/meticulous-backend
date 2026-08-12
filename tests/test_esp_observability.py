@@ -42,6 +42,19 @@ def test_update_requires_boot_and_exact_expected_esp_info_without_false_timeout(
     assert monitor.phase == ESPCommunicationPhase.NORMAL
 
 
+def test_update_without_expected_artifact_version_stays_in_recovery():
+    monitor = ESPObservability(now=0)
+    monitor.begin_update(None, "old", 1)
+    monitor.finish_flashing(2)
+
+    assert monitor.observe_raw_line(BOOT, 2.1) == []
+    assert monitor.observe_valid_message("ESPInfo", 2.2, "new") == []
+    assert monitor.phase == ESPCommunicationPhase.WAITING_FOR_PROTOCOL
+    assert titles(monitor.check_timeouts(32.1)) == [
+        "ESP32 did not recover after firmware update"
+    ]
+
+
 def test_update_recovery_failure_is_specific_and_bounded():
     monitor = ESPObservability(now=0)
     monitor.begin_update("new", "old", 1)
