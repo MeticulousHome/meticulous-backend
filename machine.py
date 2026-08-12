@@ -43,6 +43,11 @@ from esp_serial.data import (
     HeaterTimeoutInfo,
 )
 from esp_serial.esp_tool_wrapper import ESPToolWrapper
+from device_identity import (
+    get_device_uuid_assignment,
+    is_valid_device_uuid,
+    update_device_uuid_cache,
+)
 from log import MeticulousLogger
 from notifications import Notification, NotificationManager, NotificationResponse
 from shot_debug_manager import ShotDebugManager
@@ -159,6 +164,7 @@ class Machine:
     aborted_by_motor_consumtion = False
 
     esp_restart_request = False
+    pending_device_uuid_assignment: str | None = None
 
     @staticmethod
     def get_somrev():
@@ -385,6 +391,7 @@ class Machine:
                     info_requested = False
                     Machine.infoReady = False
                     Machine.profileReady = False
+                    Machine.pending_device_uuid_assignment = None
                     is_valid_message = False
                     collect_tracing_info = False
 
@@ -430,6 +437,13 @@ class Machine:
                         sensor = SensorData.from_args(sensorArgs)
                     case ["ESPInfo", *infoArgs]:
                         info = ESPInfo.from_args(infoArgs)
+                    case ["device_uuid_response", response]:
+                        if response == "ERROR_WRITE_FAILED":
+                            logger.error("ESP32 failed to persist its assigned device UUID")
+                        elif response.startswith("ERROR_"):
+                            logger.error("ESP32 rejected the device UUID assignment")
+                        else:
+                            logger.info("ESP32 accepted the device UUID assignment command")
                     case ["Notify", *notifyArgs]:
                         notify = MachineNotify(
                             notifyArgs[0], ",".join(notifyArgs[1:]).replace(";", "\n")
@@ -647,8 +661,11 @@ class Machine:
                         MeticulousConfig[CONFIG_USER][PROFILE_PARTIAL_RETRACTION]
                     )
                     Machine.setPartialRetraction(backend_partial_retraction)
-                    backend_auto_purge = bool(MeticulousConfig[CONFIG_USER][PROFILE_AUTO_PURGE])
+                    backend_auto_purge = bool(
+                        MeticulousConfig[CONFIG_USER][PROFILE_AUTO_PURGE]
+                    )
                     Machine.setAutoPurgeAfterShot(backend_auto_purge)
+                    Machine.syncDeviceUUID(info.deviceUUID, info.deviceUUIDSupported)
 
                     if (
                         info.serialNumber != ""
@@ -952,6 +969,57 @@ Build Date: {build_date}
 
         MeticulousConfig.save()
         # TODO FIXME IMPLEMENT THIS!!!!
+
+    def syncDeviceUUID(device_uuid: str, device_uuid_supported: bool):
+        if is_valid_device_uuid(device_uuid):
+            Machine.pending_device_uuid_assignment = None
+        elif not device_uuid_supported:
+            Machine.pending_device_uuid_assignment = None
+            return
+        else:
+            if device_uuid:
+                logger.error("ESP32 reported an invalid device UUID")
+
+            Machine.pending_device_uuid_assignment = get_device_uuid_assignment(
+                device_uuid,
+                device_uuid_supported,
+                Machine.pending_device_uuid_assignment,
+            )
+
+            Machine.writeStr(
+                "device_uuid,assign," + Machine.pending_device_uuid_assignment + "\x03"
+            )
+            return
+
+        try:
+            cache_changed = update_device_uuid_cache(device_uuid)
+        except OSError:
+            logger.exception("Failed to update OTA device UUID cache")
+            return
+
+        if not cache_changed:
+            return
+
+        logger.info("Updated OTA device UUID cache from ESP32")
+        if Machine.emulated:
+            return
+
+        try:
+            restart_result = subprocess.run(
+                ["systemctl", "try-restart", "rauc-hawkbit-updater.service"],
+                capture_output=True,
+                text=True,
+            )
+        except OSError:
+            logger.exception(
+                "Could not restart rauc-hawkbit-updater after updating device UUID cache"
+            )
+            return
+
+        if restart_result.returncode != 0:
+            logger.warning(
+                "Could not restart rauc-hawkbit-updater after updating device UUID cache"
+            )
 
     def setPartialRetraction(partial_retraction: float):
         desired_value = float(partial_retraction)
