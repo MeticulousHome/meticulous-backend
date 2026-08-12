@@ -274,9 +274,7 @@ class ESPObservability:
         else:
             events = []
 
-        recovering_unexpected_reset = (
-            self.pending_unexpected_reset and not self._update_active
-        )
+        recovering_unexpected_reset = self.pending_unexpected_reset and not self._update_active
         if message_type != "ESPInfo":
             if recovering_unexpected_reset:
                 self._return_to_normal(now)
@@ -325,8 +323,7 @@ class ESPObservability:
 
         if (
             not self._update_active
-            and self.phase
-            in {
+            and self.phase in {
                 ESPCommunicationPhase.EXPECTED_RESET,
                 ESPCommunicationPhase.WAITING_FOR_PROTOCOL,
             }
@@ -355,7 +352,11 @@ class ESPObservability:
                 )
             ]
 
-        if self.phase != ESPCommunicationPhase.NORMAL or self.pending_unexpected_reset:
+        if (
+            self.phase != ESPCommunicationPhase.NORMAL
+            or self.pending_unexpected_reset
+            or self._collecting_panic
+        ):
             return []
 
         elapsed = now - self.last_valid_message

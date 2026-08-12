@@ -188,6 +188,40 @@ def test_machine_routes_one_bounded_panic_with_firmware_context(run_machine_uart
     assert len(context["panic_output"].encode()) <= monitor.MAX_PANIC_BYTES
 
 
+def test_machine_routes_one_bounded_abort_with_firmware_context(run_machine_uart):
+    monitor = ESPObservability(now=0)
+    monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
+
+    sentry_events, update_calls = run_machine_uart(
+        [
+            "abort() was called at PC 0x42000000 on core 0\n",
+            "Register dump:\n",
+            "Backtrace: 0x42000000:0x3fc00000\n",
+            "rst:0x3 (SW_RESET),boot:0x8 (SPI_FAST_FLASH_BOOT)\n",
+            "ESPBoot,PANIC,4\n",
+        ],
+        monitor,
+        available_firmware="1.2.3",
+    )
+
+    assert update_calls == []
+    assert len(sentry_events) == 1
+    captured = sentry_events[0]
+    event = captured["event"]
+    context = captured["contexts"]["esp-diagnostic"]
+    assert event["message"] == "ESP32 firmware panic detected"
+    assert event["release"] == "espresso-firmware@1.2.3"
+    assert event["fingerprint"] == ["esp32-firmware-panic-abort"]
+    assert captured["tags"]["firmware-version"] == "1.2.3"
+    assert context["previous_firmware"] == "1.2.3"
+    assert context["reset_reason"] == "PANIC"
+    assert context["core"] == "0"
+    assert context["panic_reason"] == "abort"
+    assert context["backtrace"] == "Backtrace: 0x42000000:0x3fc00000"
+    assert context["panic_output"].startswith("abort() was called")
+    assert len(context["panic_output"].encode()) <= monitor.MAX_PANIC_BYTES
+
+
 def test_machine_missing_expected_version_cannot_complete_or_reflash(run_machine_uart):
     monitor = ESPObservability(now=0)
     monitor.observe_valid_message("ESPInfo", 0.1, "1.0.0")

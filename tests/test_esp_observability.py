@@ -132,6 +132,16 @@ def test_abort_waits_for_boot_reason_and_emits_once():
     assert monitor.observe_valid_message("ESPBoot", 3.1) == []
 
 
+def test_active_panic_collection_suppresses_normal_timeout():
+    monitor = ESPObservability(now=0)
+    monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
+
+    monitor.observe_raw_line("abort() was called at PC 0x420037e1 on core 1", 3)
+
+    assert monitor.phase == ESPCommunicationPhase.NORMAL
+    assert monitor.check_timeouts(3.1) == []
+
+
 def test_independent_panics_are_reported_after_esp_info_recovery():
     monitor = ESPObservability(now=0)
     monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
@@ -240,7 +250,9 @@ def test_unexpected_boot_protocol_message_clears_recovery_timeout():
 
     assert titles(events) == ["ESP32 unexpected reset detected"]
     assert monitor.phase == ESPCommunicationPhase.NORMAL
-    assert monitor.check_timeouts(16.1) == []
+    assert monitor.recovery_deadline is None
+    assert monitor.check_timeouts(4) == []
+    assert titles(monitor.check_timeouts(4.1)) == ["ESP32 valid-message timeout"]
 
 
 def test_unexpected_boot_loop_is_detected_without_protocol_follow_up():
