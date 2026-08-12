@@ -1,6 +1,5 @@
 from esp_observability import ESPCommunicationPhase, ESPObservability
 
-
 BOOT = "rst:0xc (RTC_SW_CPU_RST),boot:0x8 (SPI_FAST_FLASH_BOOT)"
 
 
