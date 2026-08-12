@@ -214,6 +214,46 @@ def test_expected_reset_timeout_is_distinct():
     assert events[0].tags["operation"] == "expected_reset"
 
 
+def test_unexpected_boot_without_protocol_reaches_reset_recovery_timeout():
+    monitor = ESPObservability(now=0)
+    monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
+
+    assert monitor.observe_raw_line(BOOT, 1) == []
+    assert monitor.phase == ESPCommunicationPhase.WAITING_FOR_PROTOCOL
+    assert monitor.check_timeouts(16) == []
+
+    events = monitor.check_timeouts(16.1)
+
+    assert titles(events) == ["ESP32 valid-message timeout"]
+    assert events[0].tags["operation"] == "unexpected_reset"
+    assert events[0].context["threshold_seconds"] == 15.0
+    assert monitor.check_timeouts(20) == []
+
+
+def test_unexpected_boot_protocol_message_clears_recovery_timeout():
+    monitor = ESPObservability(now=0)
+    monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
+    monitor.observe_raw_line(BOOT, 1)
+
+    events = monitor.observe_boot_reason("SW", "3", 2)
+    assert monitor.observe_valid_message("ESPBoot", 2) == []
+
+    assert titles(events) == ["ESP32 unexpected reset detected"]
+    assert monitor.phase == ESPCommunicationPhase.NORMAL
+    assert monitor.check_timeouts(16.1) == []
+
+
+def test_unexpected_boot_loop_is_detected_without_protocol_follow_up():
+    monitor = ESPObservability(now=0)
+    monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
+
+    events = []
+    for timestamp in (1, 10, 20):
+        events += monitor.observe_raw_line(BOOT, timestamp)
+
+    assert titles(events) == ["ESP32 firmware boot loop detected"]
+
+
 def test_three_unexpected_boots_report_boot_loop_once():
     monitor = ESPObservability(now=0)
     monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")

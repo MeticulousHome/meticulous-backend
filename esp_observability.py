@@ -194,15 +194,17 @@ class ESPObservability:
             self.phase = ESPCommunicationPhase.WAITING_FOR_PROTOCOL
             return events
 
-        if self.phase in {
-            ESPCommunicationPhase.EXPECTED_RESET,
-            ESPCommunicationPhase.WAITING_FOR_PROTOCOL,
-        }:
+        if self.phase == ESPCommunicationPhase.EXPECTED_RESET or (
+            self.phase == ESPCommunicationPhase.WAITING_FOR_PROTOCOL
+            and not self.pending_unexpected_reset
+        ):
             self.phase = ESPCommunicationPhase.WAITING_FOR_PROTOCOL
             return events
 
         self.pending_unexpected_reset = True
         self.reset_reported = False
+        self.phase = ESPCommunicationPhase.WAITING_FOR_PROTOCOL
+        self.recovery_deadline = now + self.RESET_RECOVERY_TIMEOUT_SECONDS
         self._recent_unexpected_boots.append(now)
         cutoff = now - self.BOOT_LOOP_WINDOW_SECONDS
         while self._recent_unexpected_boots and self._recent_unexpected_boots[0] < cutoff:
@@ -272,7 +274,12 @@ class ESPObservability:
         else:
             events = []
 
+        recovering_unexpected_reset = (
+            self.pending_unexpected_reset and not self._update_active
+        )
         if message_type != "ESPInfo":
+            if recovering_unexpected_reset:
+                self._return_to_normal(now)
             return events
 
         observed_firmware = self._clean_version(firmware_version)
@@ -282,12 +289,12 @@ class ESPObservability:
             if self.expected_firmware is None or observed_firmware != self.expected_firmware:
                 return events
             self._return_to_normal(now)
+        elif recovering_unexpected_reset:
+            self._return_to_normal(now)
         elif self.phase in {
             ESPCommunicationPhase.EXPECTED_RESET,
             ESPCommunicationPhase.WAITING_FOR_PROTOCOL,
         }:
-            self._return_to_normal(now)
-        elif self.pending_unexpected_reset:
             self._return_to_normal(now)
 
         if observed_firmware:
@@ -327,6 +334,11 @@ class ESPObservability:
             and now > self.recovery_deadline
         ):
             phase = self.phase.value
+            operation = (
+                "unexpected_reset"
+                if self.pending_unexpected_reset
+                else "expected_reset"
+            )
             self._return_to_normal(now)
             self.timeout_reported = True
             return [
@@ -334,7 +346,7 @@ class ESPObservability:
                     title="ESP32 valid-message timeout",
                     level="error",
                     fingerprint="esp32-valid-message-timeout",
-                    tags={"operation": "expected_reset"},
+                    tags={"operation": operation},
                     context={
                         "recovery_phase": phase,
                         "threshold_seconds": self.RESET_RECOVERY_TIMEOUT_SECONDS,
