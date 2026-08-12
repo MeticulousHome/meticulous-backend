@@ -47,9 +47,7 @@ class ESPObservability:
         r"abort\(\) was called at PC\s+\S+\s+on core\s+(\d+)",
         re.IGNORECASE,
     )
-    DEBUG_EXCEPTION_PATTERN = re.compile(
-        r"Debug exception reason:\s*(.+)", re.IGNORECASE
-    )
+    DEBUG_EXCEPTION_PATTERN = re.compile(r"Debug exception reason:\s*(.+)", re.IGNORECASE)
     PANIC_CAUSE_ALIASES = {
         "abort": "abort",
         "stack canary watchpoint triggered": "stack-canary",
@@ -193,10 +191,7 @@ class ESPObservability:
         self.reset_reported = False
         self._recent_unexpected_boots.append(now)
         cutoff = now - self.BOOT_LOOP_WINDOW_SECONDS
-        while (
-            self._recent_unexpected_boots
-            and self._recent_unexpected_boots[0] < cutoff
-        ):
+        while self._recent_unexpected_boots and self._recent_unexpected_boots[0] < cutoff:
             self._recent_unexpected_boots.popleft()
         if len(self._recent_unexpected_boots) == self.BOOT_LOOP_THRESHOLD:
             events.append(
@@ -213,9 +208,7 @@ class ESPObservability:
             )
         return events
 
-    def observe_boot_reason(
-        self, reason: str, code: str, now: float
-    ) -> list[ESPDiagnostic]:
+    def observe_boot_reason(self, reason: str, code: str, now: float) -> list[ESPDiagnostic]:
         reason = reason.strip().upper() or "UNKNOWN"
         code = code.strip()
         if self.panic_reported:
@@ -312,8 +305,7 @@ class ESPObservability:
 
         if (
             not self._update_active
-            and self.phase
-            in {
+            and self.phase in {
                 ESPCommunicationPhase.EXPECTED_RESET,
                 ESPCommunicationPhase.WAITING_FOR_PROTOCOL,
             }

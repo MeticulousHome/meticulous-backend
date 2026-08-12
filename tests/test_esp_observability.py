@@ -9,9 +9,7 @@ def titles(events):
 
 
 def capture_guru(monitor, reason="LoadProhibited", now=1):
-    monitor.observe_raw_line(
-        f"Guru Meditation Error: Core 1 panic'ed ({reason}).", now
-    )
+    monitor.observe_raw_line(f"Guru Meditation Error: Core 1 panic'ed ({reason}).", now)
     monitor.observe_raw_line("Core 1 register dump:", now + 0.1)
     monitor.observe_raw_line("Backtrace: 0x40381234:0x3fceabcd", now + 0.2)
 
@@ -197,9 +195,7 @@ def test_three_unexpected_boots_report_boot_loop_once():
 def test_panic_evidence_is_bounded_by_line_count():
     monitor = ESPObservability(now=0)
     monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
-    monitor.observe_raw_line(
-        "Guru Meditation Error: Core 1 panic'ed (LoadProhibited).", 1
-    )
+    monitor.observe_raw_line("Guru Meditation Error: Core 1 panic'ed (LoadProhibited).", 1)
     for index in range(100):
         monitor.observe_raw_line(f"register {index}", 1.1 + index / 100)
     monitor.observe_raw_line(BOOT, 3)

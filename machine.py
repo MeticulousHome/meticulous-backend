@@ -822,16 +822,12 @@ class Machine:
                         valid_message_type, now, firmware_version
                     )
                 )
-                Machine.esp_restart_request = (
-                    Machine.esp_observability.phase.value != "normal"
-                )
+                Machine.esp_restart_request = Machine.esp_observability.phase.value != "normal"
                 Machine.reset_count = 0
                 AlarmManager.clear_alarm(AlarmType.ESP_DISCONNECTED)
                 AlarmManager.clear_alarm(AlarmType.ESP_RESTART)
 
-            Machine._report_esp_diagnostics(
-                Machine.esp_observability.check_timeouts(now)
-            )
+            Machine._report_esp_diagnostics(Machine.esp_observability.check_timeouts(now))
 
     def stopMotorIfHot(_shotData: ShotData, _sensorData: SensorData):
         from monitoring.motor_power_monitoring import MAX_ENERGY_ALLOWED
@@ -855,9 +851,7 @@ class Machine:
         Machine.action("scale_master_calibration")
 
     def startUpdate():
-        previous_firmware = (
-            Machine.esp_info.firmwareV if Machine.esp_info is not None else None
-        )
+        previous_firmware = Machine.esp_info.firmwareV if Machine.esp_info is not None else None
         Machine.esp_observability.begin_update(
             Machine.firmware_available_string,
             previous_firmware,
@@ -889,9 +883,7 @@ class Machine:
             )
         finally:
             Machine._stopESPcomm = False
-            Machine.esp_restart_request = (
-                Machine.esp_observability.phase.value != "normal"
-            )
+            Machine.esp_restart_request = Machine.esp_observability.phase.value != "normal"
 
         if error_msg:
             updateNotification = Notification(
