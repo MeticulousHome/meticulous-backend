@@ -21,6 +21,20 @@ class ESPDiagnostic:
     context: dict[str, object] = field(default_factory=dict)
 
 
+def should_start_firmware_update(
+    available_firmware: object,
+    running_firmware: object,
+    update_in_progress: bool,
+    flashing_disallowed: bool,
+) -> bool:
+    return (
+        available_firmware is not None
+        and available_firmware != running_firmware
+        and not update_in_progress
+        and not flashing_disallowed
+    )
+
+
 class ESPObservability:
     VALID_MESSAGE_TIMEOUT_SECONDS = 2.0
     UPDATE_RECOVERY_TIMEOUT_SECONDS = 30.0

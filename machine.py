@@ -43,7 +43,11 @@ from esp_serial.data import (
     HeaterTimeoutInfo,
 )
 from esp_serial.esp_tool_wrapper import ESPToolWrapper
-from esp_observability import ESPDiagnostic, ESPObservability
+from esp_observability import (
+    ESPDiagnostic,
+    ESPObservability,
+    should_start_firmware_update,
+)
 from log import MeticulousLogger
 from notifications import Notification, NotificationManager, NotificationResponse
 from shot_debug_manager import ShotDebugManager
@@ -753,14 +757,13 @@ class Machine:
                         )
                         emulated_firmware = Machine.emulated
 
-                    needs_update = Machine.firmware_available is not None and (
-                        Machine.firmware_available != Machine.firmware_running
-                    )
-
-                    if (
-                        needs_update
-                        and not Machine.esp_observability.update_in_progress
-                        and not MeticulousConfig[CONFIG_USER][DISALLOW_FIRMWARE_FLASHING]
+                    if should_start_firmware_update(
+                        available_firmware=Machine.firmware_available,
+                        running_firmware=Machine.firmware_running,
+                        update_in_progress=Machine.esp_observability.update_in_progress,
+                        flashing_disallowed=MeticulousConfig[CONFIG_USER][
+                            DISALLOW_FIRMWARE_FLASHING
+                        ],
                     ):
                         info_string = f"Firmware {Machine.firmware_running.get('Release')}-{Machine.firmware_running['ExtraCommits']} is outdated, upgrading"
                         logger.info(info_string)
