@@ -307,9 +307,30 @@ class TestESPInfo:
 
         info = ESPInfo.from_args(args)
 
+        payload = info.to_sio()
+
+        def contains_value(value):
+            if isinstance(value, dict):
+                return any(contains_value(item) for item in value.values())
+            if isinstance(value, (list, tuple)):
+                return any(contains_value(item) for item in value)
+            return value == device_uuid
+
         assert info.deviceUUID == device_uuid
         assert info.deviceUUIDSupported
-        assert "device_uuid" not in info.to_sio()
+        assert set(payload) == {
+            "firmware_version",
+            "esp_pinout",
+            "main_voltage",
+            "color",
+            "serial_number",
+            "batch_number",
+            "build_date",
+            "scale_module",
+            "partial_retraction",
+            "auto_purge_after_shot",
+        }
+        assert not contains_value(payload)
 
     def test_empty_device_uuid_still_reports_protocol_support(self):
         args = [

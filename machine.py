@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 from named_thread import NamedThread
+import threading
 import time
 from enum import Enum
 import sentry_sdk
@@ -165,6 +166,12 @@ class Machine:
 
     esp_restart_request = False
     pending_device_uuid_assignment: str | None = None
+    device_uuid_assignment_attempts = 0
+    device_uuid_retry_timer: threading.Timer | None = None
+
+    DEVICE_UUID_MAX_ASSIGNMENT_ATTEMPTS = 3
+    DEVICE_UUID_RETRY_DELAY_SECONDS = 2.0
+    HAWKBIT_UPDATER_RESTART_TIMEOUT_SECONDS = 5
 
     @staticmethod
     def get_somrev():
@@ -391,7 +398,7 @@ class Machine:
                     info_requested = False
                     Machine.infoReady = False
                     Machine.profileReady = False
-                    Machine.pending_device_uuid_assignment = None
+                    Machine._resetDeviceUUIDEnrollment()
                     is_valid_message = False
                     collect_tracing_info = False
 
@@ -438,12 +445,7 @@ class Machine:
                     case ["ESPInfo", *infoArgs]:
                         info = ESPInfo.from_args(infoArgs)
                     case ["device_uuid_response", response]:
-                        if response == "ERROR_WRITE_FAILED":
-                            logger.error("ESP32 failed to persist its assigned device UUID")
-                        elif response.startswith("ERROR_"):
-                            logger.error("ESP32 rejected the device UUID assignment")
-                        else:
-                            logger.info("ESP32 accepted the device UUID assignment command")
+                        Machine.handleDeviceUUIDResponse(response)
                     case ["Notify", *notifyArgs]:
                         notify = MachineNotify(
                             notifyArgs[0], ",".join(notifyArgs[1:]).replace(";", "\n")
@@ -970,23 +972,22 @@ Build Date: {build_date}
 
     def syncDeviceUUID(device_uuid: str, device_uuid_supported: bool):
         if is_valid_device_uuid(device_uuid):
-            Machine.pending_device_uuid_assignment = None
+            Machine._resetDeviceUUIDEnrollment()
         elif not device_uuid_supported:
-            Machine.pending_device_uuid_assignment = None
+            Machine._resetDeviceUUIDEnrollment()
             return
         else:
             if device_uuid:
-                logger.error("ESP32 reported an invalid device UUID")
+                logger.error("ESP32 reported an invalid device UUID: %r", device_uuid)
 
-            Machine.pending_device_uuid_assignment = get_device_uuid_assignment(
-                device_uuid,
-                device_uuid_supported,
-                Machine.pending_device_uuid_assignment,
-            )
-
-            Machine.writeStr(
-                "device_uuid,assign," + Machine.pending_device_uuid_assignment + "\x03"
-            )
+            if Machine.pending_device_uuid_assignment is None:
+                Machine.pending_device_uuid_assignment = get_device_uuid_assignment(
+                    device_uuid,
+                    device_uuid_supported,
+                    None,
+                )
+                Machine.device_uuid_assignment_attempts = 0
+                Machine._sendDeviceUUIDAssignment()
             return
 
         try:
@@ -1002,17 +1003,126 @@ Build Date: {build_date}
         if Machine.emulated:
             return
 
+        restart_thread = NamedThread(
+            "HawkbitRestart",
+            target=Machine._restartHawkbitUpdater,
+            daemon=True,
+        )
+        restart_thread.start()
+
+    def _resetDeviceUUIDEnrollment():
+        Machine._cancelDeviceUUIDRetry()
+        Machine.pending_device_uuid_assignment = None
+        Machine.device_uuid_assignment_attempts = 0
+
+    def _cancelDeviceUUIDRetry():
+        retry_timer = Machine.device_uuid_retry_timer
+        if retry_timer is not None:
+            retry_timer.cancel()
+        Machine.device_uuid_retry_timer = None
+
+    def _sendDeviceUUIDAssignment():
+        candidate = Machine.pending_device_uuid_assignment
+        if candidate is None:
+            return
+        if (
+            Machine.device_uuid_assignment_attempts
+            >= Machine.DEVICE_UUID_MAX_ASSIGNMENT_ATTEMPTS
+        ):
+            logger.error(
+                "ESP32 device UUID assignment exhausted %d attempts; "
+                "the OTA identity cache will remain unchanged until ESPInfo "
+                "confirms a valid UUID",
+                Machine.DEVICE_UUID_MAX_ASSIGNMENT_ATTEMPTS,
+            )
+            return
+
+        Machine.device_uuid_assignment_attempts += 1
+        Machine.writeStr("device_uuid,assign," + candidate + "\x03")
+
+    def _retryDeviceUUIDAssignment():
+        Machine.device_uuid_retry_timer = None
+        Machine._sendDeviceUUIDAssignment()
+
+    def handleDeviceUUIDResponse(response: str):
+        if response == "SUCCESS":
+            Machine._cancelDeviceUUIDRetry()
+            logger.info(
+                "ESP32 device UUID assignment response: SUCCESS; awaiting ESPInfo confirmation"
+            )
+            return
+
+        if response == "ALREADY_ASSIGNED":
+            Machine._cancelDeviceUUIDRetry()
+            logger.info(
+                "ESP32 device UUID assignment response: ALREADY_ASSIGNED; "
+                "awaiting ESPInfo confirmation of the stored UUID"
+            )
+            return
+
+        if response == "ERROR_WRITE_FAILED":
+            if Machine.pending_device_uuid_assignment is None:
+                logger.error(
+                    "ESP32 device UUID assignment response: ERROR_WRITE_FAILED, "
+                    "but no same-boot assignment is pending; no retry scheduled"
+                )
+                return
+
+            if (
+                Machine.device_uuid_assignment_attempts
+                >= Machine.DEVICE_UUID_MAX_ASSIGNMENT_ATTEMPTS
+            ):
+                logger.error(
+                    "ESP32 device UUID assignment response: ERROR_WRITE_FAILED; "
+                    "exhausted %d attempts and the OTA identity cache remains unchanged",
+                    Machine.DEVICE_UUID_MAX_ASSIGNMENT_ATTEMPTS,
+                )
+                return
+
+            if Machine.device_uuid_retry_timer is not None:
+                logger.warning(
+                    "ESP32 device UUID assignment response: ERROR_WRITE_FAILED; "
+                    "a bounded retry is already scheduled"
+                )
+                return
+
+            logger.warning(
+                "ESP32 device UUID assignment response: ERROR_WRITE_FAILED; "
+                "scheduling attempt %d of %d in %.1f seconds",
+                Machine.device_uuid_assignment_attempts + 1,
+                Machine.DEVICE_UUID_MAX_ASSIGNMENT_ATTEMPTS,
+                Machine.DEVICE_UUID_RETRY_DELAY_SECONDS,
+            )
+            retry_timer = threading.Timer(
+                Machine.DEVICE_UUID_RETRY_DELAY_SECONDS,
+                Machine._retryDeviceUUIDAssignment,
+            )
+            retry_timer.daemon = True
+            Machine.device_uuid_retry_timer = retry_timer
+            retry_timer.start()
+            return
+
+        if response in {"ERROR_INVALID_FORMAT", "ERROR_INVALID_UUID"}:
+            logger.error(
+                "ESP32 device UUID assignment response: %s; "
+                "the OTA identity cache remains unchanged",
+                response,
+            )
+            return
+
+        logger.error(
+            "ESP32 device UUID assignment response: %s; "
+            "unrecognized response and no retry scheduled",
+            response,
+        )
+
+    def _restartHawkbitUpdater():
         try:
             restart_result = subprocess.run(
-                [
-                    "systemctl",
-                    "--no-block",
-                    "try-restart",
-                    "rauc-hawkbit-updater.service",
-                ],
+                ["systemctl", "restart", "rauc-hawkbit-updater.service"],
                 capture_output=True,
                 text=True,
-                timeout=5,
+                timeout=Machine.HAWKBIT_UPDATER_RESTART_TIMEOUT_SECONDS,
             )
         except (OSError, subprocess.TimeoutExpired):
             logger.exception(
@@ -1022,7 +1132,10 @@ Build Date: {build_date}
 
         if restart_result.returncode != 0:
             logger.warning(
-                "Could not restart rauc-hawkbit-updater after updating device UUID cache"
+                "Could not restart rauc-hawkbit-updater after updating device UUID cache: "
+                "exit=%d stderr=%r",
+                restart_result.returncode,
+                restart_result.stderr,
             )
 
     def setPartialRetraction(partial_retraction: float):
