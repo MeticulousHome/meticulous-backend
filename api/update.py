@@ -19,9 +19,9 @@ logger = MeticulousLogger.getLogger(__name__)
 
 HAWKBIT_UPDATER_SERVICE = "rauc-hawkbit-updater"
 HAWKBIT_RESTART_TIMEOUT_SECONDS = 60
-# The updater unit allows five starts in 20,000 seconds. Keep manual checks
-# farther apart than the average start-limit budget so they cannot exhaust it.
-HAWKBIT_CHECK_COOLDOWN_SECONDS = 4_001
+# The updater unit allows five starts in 20,000 seconds. Limit manual checks to
+# two in that window, preserving three starts for boot and configuration changes.
+HAWKBIT_CHECK_COOLDOWN_SECONDS = 10_001
 HAWKBIT_CHECK_STATE_PATH = "/run/meticulous-backend-hawkbit-update-check"
 _update_check_lock = asyncio.Lock()
 

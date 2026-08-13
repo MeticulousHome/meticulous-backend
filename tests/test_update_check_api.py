@@ -114,7 +114,10 @@ class TestUpdateCheckHandler(AsyncHTTPTestCase):
         response = self.fetch("/api/v1/update/check", method="POST", body="")
 
         assert response.code == 429
-        assert json.loads(response.body)["retry_after_seconds"] == 4_000
+        assert (
+            json.loads(response.body)["retry_after_seconds"]
+            == HAWKBIT_CHECK_COOLDOWN_SECONDS - 1
+        )
         run.assert_not_called()
 
     @patch("api.update.os_update_is_active", return_value=False)
@@ -230,8 +233,14 @@ class TestUpdateCheckHandler(AsyncHTTPTestCase):
         assert b"/private/systemctl" not in response.body
 
 
-def test_cooldown_exceeds_updater_start_limit_average():
-    assert HAWKBIT_CHECK_COOLDOWN_SECONDS > 20_000 / 5
+def test_cooldown_reserves_three_updater_starts_for_other_paths():
+    start_limit_interval = 20_000
+    start_limit_burst = 5
+    reserved_starts = 3
+
+    assert HAWKBIT_CHECK_COOLDOWN_SECONDS > start_limit_interval / (
+        start_limit_burst - reserved_starts
+    )
 
 
 def test_route_is_registered_as_local_access_handler():
