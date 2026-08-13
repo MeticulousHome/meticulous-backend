@@ -53,14 +53,16 @@ def _load_host_safe_profile_manager():
 
 
 def _convert_exit_trigger(trigger_type, comparison_marker):
-    trigger = {"type": trigger_type, "value": 0, "relative": False}
+    exit_trigger = {"type": trigger_type, "value": 0, "relative": False}
     if comparison_marker is not None:
-        trigger["comparison"] = comparison_marker
+        exit_trigger["comparison"] = comparison_marker
 
     profile = {
         "name": "Comparison test",
         "temperature": 93,
-        "final_weight": 0,
+        # Keep the generated global final-weight trigger distinct from the
+        # stage exit under test. Both are valid Weight Predictive triggers.
+        "final_weight": 36,
         "stages": [
             {
                 "name": "Test stage",
@@ -71,19 +73,23 @@ def _convert_exit_trigger(trigger_type, comparison_marker):
                     "interpolation": "linear",
                 },
                 "limits": [],
-                "exit_triggers": [trigger],
+                "exit_triggers": [exit_trigger],
             }
         ],
     }
 
     converted_stage = SimplifiedJson(profile).to_complex(1000, 2000)[0]
     converted_triggers = [
-        trigger
+        converted_trigger
         for node in converted_stage["nodes"]
-        for trigger in node["triggers"]
-        if trigger.get("kind") == NUMERIC_TRIGGER_KINDS[trigger_type]
+        for converted_trigger in node["triggers"]
+        if converted_trigger.get("kind") == NUMERIC_TRIGGER_KINDS[trigger_type]
         and (
-            trigger_type != "weight" or trigger.get("source") == "Weight Predictive"
+            trigger_type != "weight"
+            or (
+                converted_trigger.get("source") == "Weight Predictive"
+                and converted_trigger.get("value") == exit_trigger["value"]
+            )
         )
     ]
     assert len(converted_triggers) == 1
@@ -182,6 +188,11 @@ def test_explicit_comparisons_validate_persist_and_convert_unchanged(
     assert json.loads((tmp_path / f'{profile["id"]}.json').read_text()) == original
 
     converted_stage = SimplifiedJson(persisted).to_complex(1000, 2000)[0]
+    expected_weight_value = next(
+        trigger["value"]
+        for trigger in persisted["stages"][0]["exit_triggers"]
+        if trigger["type"] == "weight"
+    )
     converted_triggers = {
         trigger["kind"]: trigger
         for node in converted_stage["nodes"]
@@ -189,7 +200,10 @@ def test_explicit_comparisons_validate_persist_and_convert_unchanged(
         if trigger.get("kind") in NUMERIC_TRIGGER_KINDS.values()
         and (
             trigger.get("kind") != NUMERIC_TRIGGER_KINDS["weight"]
-            or trigger.get("source") == "Weight Predictive"
+            or (
+                trigger.get("source") == "Weight Predictive"
+                and trigger.get("value") == expected_weight_value
+            )
         )
     }
     assert set(converted_triggers) == set(NUMERIC_TRIGGER_KINDS.values())
