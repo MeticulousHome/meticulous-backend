@@ -104,9 +104,7 @@ class SimplifiedJson:
             comparison = TriggerOperatorType.LESS_THAN_OR_EQUAL
         else:
             comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
-            print(
-                f"Comparison: {comparison_value} not supported. Using default value: >= ."
-            )
+            print(f"Comparison: {comparison_value} not supported. Using default value: >= .")
 
         return comparison
 

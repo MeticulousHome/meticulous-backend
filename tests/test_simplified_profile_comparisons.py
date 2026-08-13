@@ -11,7 +11,6 @@ import pytest
 
 from profile_converter.simplified_json import SimplifiedJson
 
-
 NUMERIC_TRIGGER_KINDS = {
     "weight": "weight_value_trigger",
     "time": "timer_trigger",
@@ -230,7 +229,4 @@ def test_unsupported_comparison_retains_documented_compatibility_fallback(capsys
     converted = _convert_exit_trigger("weight", "==")
 
     assert converted["operator"] == ">="
-    assert (
-        "Comparison: == not supported. Using default value: >= ."
-        in capsys.readouterr().out
-    )
+    assert "Comparison: == not supported. Using default value: >= ." in capsys.readouterr().out
