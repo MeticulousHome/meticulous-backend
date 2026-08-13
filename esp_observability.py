@@ -44,15 +44,6 @@ class ESPObservability:
     MAX_PANIC_LINES = 80
     MAX_PANIC_BYTES = 8192
 
-    PANIC_MARKERS = (
-        "guru meditation error",
-        "abort() was called",
-        "register dump",
-        "backtrace",
-        "assert failed",
-        "stack smashing protect failure",
-        "heap corruption",
-    )
     GURU_MEDITATION_PATTERN = re.compile(
         r"Guru Meditation Error:\s*Core\s+(\d+)\s+panic'ed(?:\s+\(([^)]+)\))?",
         re.IGNORECASE,
@@ -92,6 +83,7 @@ class ESPObservability:
         self._resolved_panic_incident = False
         self.timeout_reported = False
         self._collecting_panic = False
+        self._panic_deadline = None
         self._panic_lines: list[str] = []
         self._panic_bytes = 0
         self._panic_core = None
@@ -120,11 +112,15 @@ class ESPObservability:
 
     def begin_update(
         self, expected_firmware: str | None, previous_firmware: str | None, now: float
-    ) -> None:
+    ) -> list[ESPDiagnostic]:
+        previous_firmware = self._clean_version(previous_firmware)
+        if previous_firmware is not None:
+            self.previous_firmware = previous_firmware
+        events = self._pending_panic_diagnostics()
         self.phase = ESPCommunicationPhase.FLASHING
         self._update_active = True
         self.expected_firmware = self._clean_version(expected_firmware)
-        self.previous_firmware = self._clean_version(previous_firmware)
+        self.previous_firmware = previous_firmware
         self.boot_seen = False
         self.recovery_deadline = None
         self.pending_unexpected_reset = False
@@ -132,6 +128,7 @@ class ESPObservability:
         self.panic_reported = False
         self.timeout_reported = False
         self._clear_panic()
+        return events
 
     def finish_flashing(self, now: float) -> None:
         self.phase = ESPCommunicationPhase.WAITING_FOR_BOOT
@@ -162,29 +159,39 @@ class ESPObservability:
             and " (SPI_FAST_FLASH_BOOT)" in normalized
         )
 
-        if any(marker in lowered for marker in self.PANIC_MARKERS):
-            starts_panic_incident = (
-                "guru meditation error" in lowered
-                or "abort() was called" in lowered
-                or "assert failed" in lowered
-                or "stack smashing protect failure" in lowered
-                or "heap corruption" in lowered
-            )
-            if not self._collecting_panic and starts_panic_incident:
+        starts_panic_incident = (
+            "guru meditation error" in lowered
+            or "abort() was called" in lowered
+            or "assert failed" in lowered
+            or "stack smashing protect failure" in lowered
+            or "heap corruption" in lowered
+        )
+        if starts_panic_incident:
+            if not self._collecting_panic:
                 self._resolved_panic_incident = False
                 self.panic_reported = False
+                self._clear_panic()
+                self._panic_deadline = now + self.VALID_MESSAGE_TIMEOUT_SECONDS
             self._collecting_panic = True
             guru_match = self.GURU_MEDITATION_PATTERN.search(normalized)
             if guru_match:
                 self._panic_core = guru_match.group(1)
                 self._panic_reason = guru_match.group(2)
+            elif "abort() was called" in lowered:
+                self._panic_reason = "abort"
+            elif "assert failed" in lowered:
+                self._panic_reason = "assert failed"
+            elif "stack smashing protect failure" in lowered:
+                self._panic_reason = "stack smashing protect failure"
+            elif "heap corruption" in lowered:
+                self._panic_reason = "heap corruption"
             abort_match = self.ABORT_PATTERN.search(normalized)
             if abort_match:
                 self._panic_core = abort_match.group(1)
                 self._panic_reason = "abort"
 
         debug_match = self.DEBUG_EXCEPTION_PATTERN.search(normalized)
-        if debug_match:
+        if self._collecting_panic and debug_match:
             detail = debug_match.group(1).strip().rstrip(".")
             location_match = re.fullmatch(r"(.+?)\s*\(([^()]*)\)", detail)
             if location_match:
@@ -195,12 +202,14 @@ class ESPObservability:
 
         if self._collecting_panic and not is_boot_banner:
             self._append_panic_line(normalized)
+            self._panic_deadline = now + self.VALID_MESSAGE_TIMEOUT_SECONDS
 
         if not is_boot_banner:
             return events
 
         self.boot_seen = True
         self._collecting_panic = False
+        self._panic_deadline = None
         if self.update_in_progress:
             self.phase = ESPCommunicationPhase.WAITING_FOR_PROTOCOL
             return events
@@ -213,7 +222,7 @@ class ESPObservability:
             return events
 
         self.pending_unexpected_reset = True
-        self.reset_reported = False
+        self.reset_reported = self._resolved_panic_incident
         self.phase = ESPCommunicationPhase.WAITING_FOR_PROTOCOL
         self.recovery_deadline = now + self.RESET_RECOVERY_TIMEOUT_SECONDS
         self._recent_unexpected_boots.append(now)
@@ -243,10 +252,7 @@ class ESPObservability:
         if reason == "PANIC" and self._resolved_panic_incident:
             return []
         if reason == "PANIC" or self._panic_lines:
-            self.panic_reported = True
-            self._resolved_panic_incident = True
-            self.reset_reported = True
-            return [self._panic_diagnostic(reason, code)]
+            return self._finalize_panic(reason, code, force=reason == "PANIC")
         if not self.pending_unexpected_reset or self.reset_reported:
             return []
 
@@ -271,10 +277,7 @@ class ESPObservability:
         self.timeout_reported = False
 
         if self._panic_lines and not self.panic_reported:
-            self.panic_reported = True
-            self._resolved_panic_incident = True
-            self.reset_reported = True
-            events = [self._panic_diagnostic("UNKNOWN", "")]
+            events = self._pending_panic_diagnostics()
         elif self.pending_unexpected_reset and not self.reset_reported:
             self.reset_reported = True
             events = [
@@ -289,9 +292,16 @@ class ESPObservability:
         else:
             events = []
 
-        recovering_unexpected_reset = self.pending_unexpected_reset and not self._update_active
+        recovering_non_update_reset = (
+            not self._update_active
+            and self.phase
+            in {
+                ESPCommunicationPhase.EXPECTED_RESET,
+                ESPCommunicationPhase.WAITING_FOR_PROTOCOL,
+            }
+        )
         if message_type != "ESPInfo":
-            if recovering_unexpected_reset:
+            if recovering_non_update_reset:
                 self._return_to_normal(now)
             return events
 
@@ -302,7 +312,7 @@ class ESPObservability:
             if self.expected_firmware is None or observed_firmware != self.expected_firmware:
                 return events
             self._return_to_normal(now)
-        elif recovering_unexpected_reset:
+        elif recovering_non_update_reset:
             self._return_to_normal(now)
         elif self.phase in {
             ESPCommunicationPhase.EXPECTED_RESET,
@@ -317,6 +327,15 @@ class ESPObservability:
         return events
 
     def check_timeouts(self, now: float) -> list[ESPDiagnostic]:
+        if (
+            self._collecting_panic
+            and self._panic_deadline is not None
+            and now > self._panic_deadline
+        ):
+            events = self._pending_panic_diagnostics()
+            self.timeout_reported = True
+            return events
+
         if (
             self.update_in_progress
             and self.recovery_deadline is not None
@@ -395,12 +414,19 @@ class ESPObservability:
         return []
 
     def _pending_panic_diagnostics(self) -> list[ESPDiagnostic]:
-        if not self._panic_lines or self.panic_reported:
+        return self._finalize_panic("UNKNOWN", "")
+
+    def _finalize_panic(
+        self, reason: str, code: str, force: bool = False
+    ) -> list[ESPDiagnostic]:
+        if (not self._panic_lines and not force) or self.panic_reported:
             return []
+        event = self._panic_diagnostic(reason, code)
         self.panic_reported = True
         self._resolved_panic_incident = True
         self.reset_reported = True
-        return [self._panic_diagnostic("UNKNOWN", "")]
+        self._clear_panic()
+        return [event]
 
     def _panic_diagnostic(self, reason: str, code: str) -> ESPDiagnostic:
         tags = {"reset_reason": reason, "reset_reason_code": code}
@@ -479,6 +505,7 @@ class ESPObservability:
 
     def _clear_panic(self) -> None:
         self._collecting_panic = False
+        self._panic_deadline = None
         self._panic_lines = []
         self._panic_bytes = 0
         self._panic_core = None

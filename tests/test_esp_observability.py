@@ -90,6 +90,18 @@ def test_expected_api_reset_emits_no_error():
     assert monitor.phase == ESPCommunicationPhase.NORMAL
 
 
+@pytest.mark.parametrize("message_type", ["Data", "Sensors"])
+def test_any_valid_message_completes_non_update_expected_reset(message_type):
+    monitor = ESPObservability(now=0)
+    monitor.observe_valid_message("ESPInfo", 0.1, "current")
+    monitor.begin_expected_reset(1)
+
+    assert monitor.observe_valid_message(message_type, 2) == []
+    assert monitor.phase == ESPCommunicationPhase.NORMAL
+    assert monitor.recovery_deadline is None
+    assert monitor.check_timeouts(16.1) == []
+
+
 def test_exact_debug_exception_is_structured_and_correlated_with_boot_reason():
     monitor = ESPObservability(now=0)
     monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
@@ -142,14 +154,68 @@ def test_abort_waits_for_boot_reason_and_emits_once():
     ],
     ids=["guru", "abort"],
 )
-def test_active_panic_collection_suppresses_normal_timeout(panic_line):
+def test_silent_panic_is_finalized_without_duplicate_timeout(panic_line):
     monitor = ESPObservability(now=0)
     monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
 
     monitor.observe_raw_line(panic_line, 1)
 
     assert monitor.phase == ESPCommunicationPhase.NORMAL
-    assert monitor.check_timeouts(3.1) == []
+    events = monitor.check_timeouts(3.4)
+    events += monitor.check_timeouts(4)
+
+    assert titles(events) == ["ESP32 firmware panic detected"]
+    assert monitor.observe_boot_reason("PANIC", "4", 5) == []
+
+
+def test_delayed_boot_reason_after_silent_panic_remains_deduplicated():
+    monitor = ESPObservability(now=0)
+    monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
+    capture_guru(monitor, now=1)
+    events = monitor.check_timeouts(3.3)
+
+    events += monitor.observe_raw_line(BOOT, 4)
+    events += monitor.observe_boot_reason("PANIC", "4", 4.1)
+    events += monitor.observe_valid_message("ESPBoot", 4.1)
+
+    assert titles(events) == ["ESP32 firmware panic detected"]
+    assert monitor.phase == ESPCommunicationPhase.NORMAL
+
+
+def test_normal_timeout_resumes_after_panic_recovery_traffic():
+    monitor = ESPObservability(now=0)
+    monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
+    capture_guru(monitor, now=1)
+    assert titles(monitor.check_timeouts(3.3)) == [
+        "ESP32 firmware panic detected"
+    ]
+
+    assert monitor.observe_valid_message("Data", 4) == []
+    assert titles(monitor.check_timeouts(6.1)) == ["ESP32 valid-message timeout"]
+
+
+@pytest.mark.parametrize("line", ["Register dump:", "Backtrace: 0x1:0x2"])
+def test_standalone_panic_evidence_does_not_suppress_timeout(line):
+    monitor = ESPObservability(now=0)
+    monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
+
+    assert monitor.observe_raw_line(line, 1) == []
+    events = monitor.check_timeouts(2.2)
+
+    assert titles(events) == ["ESP32 valid-message timeout"]
+
+
+def test_garbled_boot_after_panic_is_bounded_and_finalized_on_silence():
+    monitor = ESPObservability(now=0)
+    monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
+    capture_guru(monitor, now=1)
+    monitor.observe_raw_line("rst:garbled boot output", 1.3)
+
+    events = monitor.check_timeouts(3.4)
+
+    assert titles(events) == ["ESP32 firmware panic detected"]
+    assert "rst:garbled boot output" in events[0].context["panic_output"]
+    assert monitor.check_timeouts(4) == []
 
 
 def test_independent_panics_are_reported_after_esp_info_recovery():
@@ -172,6 +238,35 @@ def test_independent_panics_are_reported_after_esp_info_recovery():
         "esp32-firmware-panic-load-prohibited",
         "esp32-firmware-panic-store-prohibited",
     ]
+
+
+def test_valid_traffic_finalizes_panic_and_clears_evidence_for_next_incident():
+    monitor = ESPObservability(now=0)
+    monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
+    capture_guru(monitor, reason="LoadProhibited", now=1)
+
+    first_events = monitor.observe_valid_message("Data", 1.5)
+    capture_guru(monitor, reason="StoreProhibited", now=2)
+    second_events = monitor.observe_valid_message("Sensors", 2.5)
+
+    assert [event.fingerprint for event in first_events + second_events] == [
+        "esp32-firmware-panic-load-prohibited",
+        "esp32-firmware-panic-store-prohibited",
+    ]
+    assert "LoadProhibited" in first_events[0].context["panic_output"]
+    assert "LoadProhibited" not in second_events[0].context["panic_output"]
+
+
+def test_begin_update_emits_pending_panic_before_clearing_state():
+    monitor = ESPObservability(now=0)
+    monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
+    capture_guru(monitor, now=1)
+
+    events = monitor.begin_update("2.0.0", "1.2.3", 1.5)
+
+    assert titles(events) == ["ESP32 firmware panic detected"]
+    assert events[0].context["backtrace"].startswith("Backtrace:")
+    assert monitor.phase == ESPCommunicationPhase.FLASHING
 
 
 def test_older_firmware_valid_message_provides_one_unknown_reset_fallback():
@@ -398,6 +493,26 @@ def test_known_panic_causes_have_separate_fingerprints():
 
     assert load_event.fingerprint == "esp32-firmware-panic-load-prohibited"
     assert abort_event.fingerprint == "esp32-firmware-panic-abort"
+
+
+@pytest.mark.parametrize(
+    ("line", "fingerprint"),
+    [
+        ("assert failed: x.cpp:42", "esp32-firmware-panic-assert"),
+        (
+            "Stack smashing protect failure!",
+            "esp32-firmware-panic-stack-smashing",
+        ),
+        ("Heap corruption detected", "esp32-firmware-panic-heap-corruption"),
+    ],
+)
+def test_other_primary_panic_lines_have_normalized_fingerprints(line, fingerprint):
+    monitor = ESPObservability(now=0)
+    monitor.observe_raw_line(line, 1)
+
+    event = monitor.check_timeouts(3.1)[0]
+
+    assert event.fingerprint == fingerprint
 
 
 def test_variable_unknown_panic_causes_share_bounded_fingerprint():

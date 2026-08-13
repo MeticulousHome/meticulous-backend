@@ -422,9 +422,14 @@ class Machine:
 
                 data_str_sensors = data_str.strip("\r\n").split(",")
                 now = time.monotonic()
-                Machine._report_esp_diagnostics(
-                    Machine.esp_observability.observe_raw_line(data_str, now)
+                is_boot_banner = data_str.startswith("rst:0x") and all(
+                    boot_check in data_str
+                    for boot_check in ["boot:0x", " (SPI_FAST_FLASH_BOOT)"]
                 )
+                if is_boot_banner:
+                    Machine._report_esp_diagnostics(
+                        Machine.esp_observability.observe_raw_line(data_str, now)
+                    )
 
                 # potential message types
                 button_event = None
@@ -436,10 +441,7 @@ class Machine:
                 valid_message_type = None
                 is_valid_message = True
 
-                if data_str.startswith("rst:0x") and all(
-                    boot_check in data_str
-                    for boot_check in ["boot:0x", " (SPI_FAST_FLASH_BOOT)"]
-                ):
+                if is_boot_banner:
                     Machine.reset_count += 1
                     Machine.startTime = time.time()
                     Machine.esp_info = None
@@ -589,6 +591,14 @@ class Machine:
                     case [*_]:
                         logger.info(data_str.strip("\r\n"))
                         is_valid_message = False
+
+                if (
+                    (not is_valid_message or valid_message_type is None)
+                    and not is_boot_banner
+                ):
+                    Machine._report_esp_diagnostics(
+                        Machine.esp_observability.observe_raw_line(data_str, now)
+                    )
 
                 if boot_reason is not None:
                     Machine._report_esp_diagnostics(
@@ -856,10 +866,12 @@ class Machine:
 
     def startUpdate():
         previous_firmware = Machine.esp_info.firmwareV if Machine.esp_info is not None else None
-        Machine.esp_observability.begin_update(
-            Machine.firmware_available_string,
-            previous_firmware,
-            time.monotonic(),
+        Machine._report_esp_diagnostics(
+            Machine.esp_observability.begin_update(
+                Machine.firmware_available_string,
+                previous_firmware,
+                time.monotonic(),
+            )
         )
         Machine._stopESPcomm = True
         Machine.esp_restart_request = True

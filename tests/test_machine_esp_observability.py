@@ -60,6 +60,7 @@ class CapturedSentryScope:
 def run_machine_uart(monkeypatch):
     sentry_events = []
     update_calls = []
+    alarm_calls = []
     port = SimpleNamespace(reset_input_buffer=lambda: None, write=lambda _data: None)
 
     monkeypatch.setattr(Machine, "_connection", SimpleNamespace(port=port))
@@ -82,7 +83,11 @@ def run_machine_uart(monkeypatch):
         lambda: CapturedSentryScope(sentry_events),
     )
     monkeypatch.setattr(AlarmManager, "is_alarm_set", lambda _alarm: None)
-    monkeypatch.setattr(AlarmManager, "set_alarm", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        AlarmManager,
+        "set_alarm",
+        lambda alarm, *_args, **_kwargs: alarm_calls.append(alarm),
+    )
     monkeypatch.setattr(AlarmManager, "clear_alarm", lambda _alarm: None)
     monkeypatch.setitem(MeticulousConfig[CONFIG_USER], DISALLOW_FIRMWARE_FLASHING, False)
 
@@ -107,6 +112,7 @@ def run_machine_uart(monkeypatch):
             asyncio.run(Machine._read_data())
         return sentry_events, update_calls
 
+    run.alarm_calls = alarm_calls
     return run
 
 
@@ -220,6 +226,52 @@ def test_machine_routes_one_bounded_abort_with_firmware_context(run_machine_uart
     assert context["backtrace"] == "Backtrace: 0x42000000:0x3fc00000"
     assert context["panic_output"].startswith("abort() was called")
     assert len(context["panic_output"].encode()) <= monitor.MAX_PANIC_BYTES
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "assert failed in old diagnostic text",
+        "Backtrace: is a troubleshooting label",
+        "heap corruption is not what this log reports",
+    ],
+)
+def test_valid_log_marker_text_does_not_start_raw_panic(run_machine_uart, message):
+    monitor = ESPObservability(now=0)
+    monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
+
+    sentry_events, update_calls = run_machine_uart(
+        [f"Log,info,{message}\n"],
+        monitor,
+        available_firmware="1.2.3",
+    )
+
+    assert sentry_events == []
+    assert update_calls == []
+    assert run_machine_uart.alarm_calls == []
+
+
+def test_start_update_reports_pending_panic_before_automatic_reflash_cleanup(
+    monkeypatch,
+):
+    monitor = ESPObservability(now=0)
+    monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
+    monitor.observe_raw_line(
+        "Guru Meditation Error: Core 1 panic'ed (LoadProhibited).", 1
+    )
+    captured = []
+
+    monkeypatch.setattr(Machine, "esp_observability", monitor)
+    monkeypatch.setattr(Machine, "esp_info", SimpleNamespace(firmwareV="1.2.3"))
+    monkeypatch.setattr(Machine, "firmware_available_string", "2.0.0")
+    monkeypatch.setattr(Machine, "_connection", SimpleNamespace(sendUpdate=lambda: None))
+    monkeypatch.setattr(Machine, "_report_esp_diagnostics", captured.extend)
+    monkeypatch.setattr("machine.time.monotonic", lambda: 2)
+
+    Machine.startUpdate()
+
+    assert [event.title for event in captured] == ["ESP32 firmware panic detected"]
+    assert monitor.phase == ESPCommunicationPhase.WAITING_FOR_BOOT
 
 
 def test_machine_missing_expected_version_cannot_complete_or_reflash(run_machine_uart):
