@@ -1119,7 +1119,12 @@ Build Date: {build_date}
     def _restartHawkbitUpdater():
         try:
             restart_result = subprocess.run(
-                ["systemctl", "restart", "rauc-hawkbit-updater.service"],
+                [
+                    "systemctl",
+                    "--no-block",
+                    "restart",
+                    "rauc-hawkbit-updater.service",
+                ],
                 capture_output=True,
                 text=True,
                 timeout=Machine.HAWKBIT_UPDATER_RESTART_TIMEOUT_SECONDS,

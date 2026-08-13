@@ -133,7 +133,7 @@ def test_changed_cache_starts_background_updater_restart(monkeypatch):
     assert thread.started
 
 
-def test_updater_restart_starts_inactive_unit_and_is_bounded(monkeypatch):
+def test_updater_restart_is_enqueued_for_inactive_unit_and_is_bounded(monkeypatch):
     calls = []
     monkeypatch.setattr(
         machine.subprocess,
@@ -146,7 +146,14 @@ def test_updater_restart_starts_inactive_unit_and_is_bounded(monkeypatch):
 
     assert calls == [
         (
-            (["systemctl", "restart", "rauc-hawkbit-updater.service"],),
+            (
+                [
+                    "systemctl",
+                    "--no-block",
+                    "restart",
+                    "rauc-hawkbit-updater.service",
+                ],
+            ),
             {
                 "capture_output": True,
                 "text": True,
@@ -156,13 +163,36 @@ def test_updater_restart_starts_inactive_unit_and_is_bounded(monkeypatch):
     ]
 
 
-def test_updater_restart_timeout_does_not_escape(monkeypatch):
-    def timeout(*args, **kwargs):
-        raise subprocess.TimeoutExpired(args[0], kwargs["timeout"])
+@pytest.mark.parametrize(
+    "error",
+    [OSError("systemctl unavailable"), subprocess.TimeoutExpired("systemctl", 5)],
+)
+def test_updater_restart_command_errors_do_not_escape(monkeypatch, error):
+    log = MagicMock()
 
-    monkeypatch.setattr(machine.subprocess, "run", timeout)
+    def fail(*_args, **_kwargs):
+        raise error
+
+    monkeypatch.setattr(machine, "logger", log)
+    monkeypatch.setattr(machine.subprocess, "run", fail)
 
     Machine._restartHawkbitUpdater()
+
+    log.exception.assert_called_once()
+
+
+def test_updater_restart_nonzero_result_is_logged(monkeypatch):
+    log = MagicMock()
+    monkeypatch.setattr(machine, "logger", log)
+    monkeypatch.setattr(
+        machine.subprocess,
+        "run",
+        lambda *args, **_kwargs: subprocess.CompletedProcess(args[0], 1, "", "failed"),
+    )
+
+    Machine._restartHawkbitUpdater()
+
+    log.warning.assert_called_once()
 
 
 @pytest.mark.parametrize(
