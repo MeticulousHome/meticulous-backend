@@ -1,4 +1,6 @@
 import json
+from pathlib import Path
+import shutil
 import subprocess
 
 from hostname import HostnameManager
@@ -26,6 +28,24 @@ from config import (
 )
 
 logger = MeticulousLogger.getLogger(__name__)
+
+FACTORY_RESET_ROOT = Path("/meticulous-user")
+
+
+def cleanup_factory_reset_data(root: Path = FACTORY_RESET_ROOT):
+    """Remove the same non-hidden user data matched by the historical shell glob."""
+    if not root.exists():
+        return
+    for entry in root.iterdir():
+        if entry.name.startswith("."):
+            continue
+        try:
+            if entry.is_dir() and not entry.is_symlink():
+                shutil.rmtree(entry)
+            else:
+                entry.unlink()
+        except OSError as error:
+            logger.warning("Could not remove factory reset entry %s: %s", entry, error)
 
 
 def get_machine_info():
@@ -180,7 +200,7 @@ class MachineResetHandler(LocalAccessHandler):
             self.write({"status": "success", "message": "Emulated mode"})
             return
         logger.warning("Performing factory reset")
-        subprocess.run("rm -rf /meticulous-user/*", shell=True)
+        cleanup_factory_reset_data()
         subprocess.run("reboot")
 
 
