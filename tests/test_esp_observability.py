@@ -68,6 +68,18 @@ def test_update_recovery_failure_is_specific_and_bounded():
     assert events[0].context["timeout_seconds"] == 30.0
 
 
+def test_update_without_current_info_retains_last_known_firmware():
+    monitor = ESPObservability(now=0)
+    monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
+
+    monitor.begin_update("2.0.0", None, 1)
+    monitor.finish_flashing(2)
+    event = monitor.check_timeouts(32.1)[0]
+
+    assert monitor.previous_firmware == "1.2.3"
+    assert event.context["previous_firmware"] == "1.2.3"
+
+
 def test_flash_error_is_specific_bounded_and_restores_normal_state():
     monitor = ESPObservability(now=0)
     monitor.begin_update("new", "old", 1)

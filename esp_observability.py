@@ -120,7 +120,6 @@ class ESPObservability:
         self.phase = ESPCommunicationPhase.FLASHING
         self._update_active = True
         self.expected_firmware = self._clean_version(expected_firmware)
-        self.previous_firmware = previous_firmware
         self.boot_seen = False
         self.recovery_deadline = None
         self.pending_unexpected_reset = False
