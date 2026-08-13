@@ -256,9 +256,7 @@ def test_start_update_reports_pending_panic_before_automatic_reflash_cleanup(
 ):
     monitor = ESPObservability(now=0)
     monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
-    monitor.observe_raw_line(
-        "Guru Meditation Error: Core 1 panic'ed (LoadProhibited).", 1
-    )
+    monitor.observe_raw_line("Guru Meditation Error: Core 1 panic'ed (LoadProhibited).", 1)
     captured = []
 
     monkeypatch.setattr(Machine, "esp_observability", monitor)

@@ -99,7 +99,8 @@ def test_any_valid_message_completes_non_update_expected_reset(message_type):
     assert monitor.observe_valid_message(message_type, 2) == []
     assert monitor.phase == ESPCommunicationPhase.NORMAL
     assert monitor.recovery_deadline is None
-    assert monitor.check_timeouts(16.1) == []
+    assert monitor.check_timeouts(3.9) == []
+    assert titles(monitor.check_timeouts(4.1)) == ["ESP32 valid-message timeout"]
 
 
 def test_exact_debug_exception_is_structured_and_correlated_with_boot_reason():
@@ -186,9 +187,7 @@ def test_normal_timeout_resumes_after_panic_recovery_traffic():
     monitor = ESPObservability(now=0)
     monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
     capture_guru(monitor, now=1)
-    assert titles(monitor.check_timeouts(3.3)) == [
-        "ESP32 firmware panic detected"
-    ]
+    assert titles(monitor.check_timeouts(3.3)) == ["ESP32 firmware panic detected"]
 
     assert monitor.observe_valid_message("Data", 4) == []
     assert titles(monitor.check_timeouts(6.1)) == ["ESP32 valid-message timeout"]

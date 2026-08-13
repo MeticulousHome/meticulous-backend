@@ -592,10 +592,7 @@ class Machine:
                         logger.info(data_str.strip("\r\n"))
                         is_valid_message = False
 
-                if (
-                    (not is_valid_message or valid_message_type is None)
-                    and not is_boot_banner
-                ):
+                if (not is_valid_message or valid_message_type is None) and not is_boot_banner:
                     Machine._report_esp_diagnostics(
                         Machine.esp_observability.observe_raw_line(data_str, now)
                     )

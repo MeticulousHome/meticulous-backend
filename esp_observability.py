@@ -292,14 +292,10 @@ class ESPObservability:
         else:
             events = []
 
-        recovering_non_update_reset = (
-            not self._update_active
-            and self.phase
-            in {
-                ESPCommunicationPhase.EXPECTED_RESET,
-                ESPCommunicationPhase.WAITING_FOR_PROTOCOL,
-            }
-        )
+        recovering_non_update_reset = not self._update_active and self.phase in {
+            ESPCommunicationPhase.EXPECTED_RESET,
+            ESPCommunicationPhase.WAITING_FOR_PROTOCOL,
+        }
         if message_type != "ESPInfo":
             if recovering_non_update_reset:
                 self._return_to_normal(now)
