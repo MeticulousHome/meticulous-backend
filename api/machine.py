@@ -39,10 +39,13 @@ def cleanup_factory_reset_data(root: Path = FACTORY_RESET_ROOT):
     for entry in root.iterdir():
         if entry.name.startswith("."):
             continue
-        if entry.is_dir() and not entry.is_symlink():
-            shutil.rmtree(entry)
-        else:
-            entry.unlink()
+        try:
+            if entry.is_dir() and not entry.is_symlink():
+                shutil.rmtree(entry)
+            else:
+                entry.unlink()
+        except OSError as error:
+            logger.warning("Could not remove factory reset entry %s: %s", entry, error)
 
 
 def get_machine_info():

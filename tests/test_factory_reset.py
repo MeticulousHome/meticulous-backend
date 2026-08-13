@@ -1,4 +1,5 @@
 import importlib
+from pathlib import Path
 import sys
 from unittest.mock import MagicMock
 
@@ -27,3 +28,31 @@ def test_factory_reset_cleanup_preserves_hidden_identity_cache(tmp_path):
     )
     assert not ordinary_file.exists()
     assert not ordinary_directory.exists()
+
+
+def test_factory_reset_cleanup_continues_after_deletion_error(tmp_path, monkeypatch, caplog):
+    undeletable_file = tmp_path / "undeletable.json"
+    undeletable_file.write_text("in use", encoding="utf-8")
+    removable_file = tmp_path / "removable.json"
+    removable_file.write_text("user data", encoding="utf-8")
+    original_iterdir = Path.iterdir
+    original_unlink = Path.unlink
+
+    def ordered_iterdir(path):
+        if path == tmp_path:
+            return iter((undeletable_file, removable_file))
+        return original_iterdir(path)
+
+    def unlink_with_error(path, *args, **kwargs):
+        if path == undeletable_file:
+            raise OSError("file is busy")
+        return original_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "iterdir", ordered_iterdir)
+    monkeypatch.setattr(Path, "unlink", unlink_with_error)
+
+    api_machine.cleanup_factory_reset_data(tmp_path)
+
+    assert undeletable_file.exists()
+    assert not removable_file.exists()
+    assert "Could not remove factory reset entry" in caplog.text
