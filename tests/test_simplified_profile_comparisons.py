@@ -51,6 +51,11 @@ def _load_host_safe_profile_manager():
     return profiles_module, profiles_module.ProfileManager
 
 
+@pytest.fixture(scope="module")
+def host_safe_profile_manager():
+    return _load_host_safe_profile_manager()
+
+
 def _convert_exit_trigger(trigger_type, comparison_marker):
     exit_trigger = {"type": trigger_type, "value": 0, "relative": False}
     if comparison_marker is not None:
@@ -164,9 +169,9 @@ def test_numeric_exit_trigger_preserves_comparison_and_boundary_semantics(
 
 @pytest.mark.parametrize("comparison", COMPARISON_FUNCTIONS)
 def test_explicit_comparisons_validate_persist_and_convert_unchanged(
-    comparison, tmp_path, monkeypatch
+    comparison, tmp_path, monkeypatch, host_safe_profile_manager
 ):
-    profiles_module, profile_manager = _load_host_safe_profile_manager()
+    profiles_module, profile_manager = host_safe_profile_manager
     profile = _profile_with_all_numeric_triggers(comparison)
     original = copy.deepcopy(profile)
 
