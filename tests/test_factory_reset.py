@@ -2,7 +2,6 @@ import importlib
 import sys
 from unittest.mock import MagicMock
 
-
 # GPIO access is available only on the target machine.
 sys.modules.setdefault("gpiod", MagicMock())
 api_machine = importlib.import_module("api.machine")
