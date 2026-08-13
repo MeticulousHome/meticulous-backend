@@ -102,17 +102,29 @@ def test_expected_api_reset_emits_no_error():
     assert monitor.phase == ESPCommunicationPhase.NORMAL
 
 
-@pytest.mark.parametrize("message_type", ["Data", "Sensors"])
-def test_any_valid_message_completes_non_update_expected_reset(message_type):
+def test_startup_attachment_accepts_valid_protocol_without_boot_banner():
+    monitor = ESPObservability(now=0)
+
+    assert monitor.phase == ESPCommunicationPhase.EXPECTED_RESET
+    assert monitor.observe_valid_message("Data", 0.1) == []
+    assert monitor.phase == ESPCommunicationPhase.NORMAL
+
+
+@pytest.mark.parametrize("message_type", ["Data", "Sensors", "Log", "ESPInfo", "ESPBoot"])
+def test_stale_valid_message_cannot_complete_explicit_reset_before_boot(message_type):
     monitor = ESPObservability(now=0)
     monitor.observe_valid_message("ESPInfo", 0.1, "current")
     monitor.begin_expected_reset(1)
 
-    assert monitor.observe_valid_message(message_type, 2) == []
+    firmware_version = "current" if message_type == "ESPInfo" else None
+    assert monitor.observe_valid_message(message_type, 2, firmware_version) == []
+    assert monitor.phase == ESPCommunicationPhase.WAITING_FOR_BOOT
+    assert monitor.recovery_deadline == 16
+
+    assert monitor.observe_raw_line(BOOT, 2.1) == []
+    assert monitor.observe_boot_reason("SW", "3", 2.2) == []
+    assert monitor.observe_valid_message("ESPInfo", 2.3, "current") == []
     assert monitor.phase == ESPCommunicationPhase.NORMAL
-    assert monitor.recovery_deadline is None
-    assert monitor.check_timeouts(3.9) == []
-    assert titles(monitor.check_timeouts(4.1)) == ["ESP32 valid-message timeout"]
 
 
 def test_exact_debug_exception_is_structured_and_correlated_with_boot_reason():
@@ -338,6 +350,7 @@ def test_expected_reset_timeout_is_distinct():
 
     assert titles(events) == ["ESP32 valid-message timeout"]
     assert events[0].tags["operation"] == "expected_reset"
+    assert events[0].context["recovery_phase"] == "waiting_for_boot"
 
 
 def test_unexpected_boot_without_protocol_reaches_reset_recovery_timeout():

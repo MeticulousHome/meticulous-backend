@@ -158,6 +158,29 @@ def test_machine_update_recovery_requires_boot_and_exact_version(run_machine_uar
     assert Machine.firmware_running == Machine._parseVersionString("2.0.0")
 
 
+def test_machine_explicit_reset_ignores_stale_protocol_until_boot(run_machine_uart):
+    monitor = ESPObservability(now=0)
+    monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
+    monitor.begin_expected_reset(1)
+
+    sentry_events, update_calls = run_machine_uart(
+        [
+            "Log,info,stale pre-reset message\n",
+            "ESPInfo,1.2.3,1,24.0\n",
+            "rst:0x3 (SW_RESET),boot:0x8 (SPI_FAST_FLASH_BOOT)\n",
+            "ESPBoot,SW,3\n",
+            "ESPInfo,1.2.3,1,24.0\n",
+        ],
+        monitor,
+        available_firmware="1.2.3",
+    )
+
+    assert sentry_events == []
+    assert update_calls == []
+    assert run_machine_uart.alarm_calls == []
+    assert monitor.phase == ESPCommunicationPhase.NORMAL
+
+
 def test_machine_routes_one_bounded_panic_with_firmware_context(run_machine_uart):
     monitor = ESPObservability(now=0)
     monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")

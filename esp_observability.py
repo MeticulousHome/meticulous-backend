@@ -101,7 +101,7 @@ class ESPObservability:
         }
 
     def begin_expected_reset(self, now: float) -> None:
-        self.phase = ESPCommunicationPhase.EXPECTED_RESET
+        self.phase = ESPCommunicationPhase.WAITING_FOR_BOOT
         self._update_active = False
         self.boot_seen = False
         self.recovery_deadline = now + self.RESET_RECOVERY_TIMEOUT_SECONDS
@@ -213,7 +213,10 @@ class ESPObservability:
             self.phase = ESPCommunicationPhase.WAITING_FOR_PROTOCOL
             return events
 
-        if self.phase == ESPCommunicationPhase.EXPECTED_RESET or (
+        if self.phase in {
+            ESPCommunicationPhase.EXPECTED_RESET,
+            ESPCommunicationPhase.WAITING_FOR_BOOT,
+        } or (
             self.phase == ESPCommunicationPhase.WAITING_FOR_PROTOCOL
             and not self.pending_unexpected_reset
         ):
@@ -358,6 +361,7 @@ class ESPObservability:
             and self.phase
             in {
                 ESPCommunicationPhase.EXPECTED_RESET,
+                ESPCommunicationPhase.WAITING_FOR_BOOT,
                 ESPCommunicationPhase.WAITING_FOR_PROTOCOL,
             }
             and self.recovery_deadline is not None
