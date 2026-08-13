@@ -12,8 +12,7 @@ def test_factory_reset_cleanup_preserves_hidden_identity_cache(tmp_path):
     identity_cache = tmp_path / ".device-identity" / "device-uuid"
     identity_cache.parent.mkdir()
     identity_cache.write_text(
-        "123e4567-e89b-42d3-a456-426614174000\n",
-        encoding="ascii",
+        "123e4567-e89b-42d3-a456-426614174000\n", encoding="ascii"
     )
     ordinary_file = tmp_path / "settings.json"
     ordinary_file.write_text("user data", encoding="utf-8")
