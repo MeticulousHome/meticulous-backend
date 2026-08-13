@@ -82,7 +82,9 @@ def _convert_exit_trigger(trigger_type, comparison_marker):
         for node in converted_stage["nodes"]
         for trigger in node["triggers"]
         if trigger.get("kind") == NUMERIC_TRIGGER_KINDS[trigger_type]
-        and (trigger_type != "weight" or trigger.get("source") == "Weight Average")
+        and (
+            trigger_type != "weight" or trigger.get("source") == "Weight Predictive"
+        )
     ]
     assert len(converted_triggers) == 1
     return converted_triggers[0]
@@ -187,7 +189,7 @@ def test_explicit_comparisons_validate_persist_and_convert_unchanged(
         if trigger.get("kind") in NUMERIC_TRIGGER_KINDS.values()
         and (
             trigger.get("kind") != NUMERIC_TRIGGER_KINDS["weight"]
-            or trigger.get("source") == "Weight Average"
+            or trigger.get("source") == "Weight Predictive"
         )
     }
     assert set(converted_triggers) == set(NUMERIC_TRIGGER_KINDS.values())
