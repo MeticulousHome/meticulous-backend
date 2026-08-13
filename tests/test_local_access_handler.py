@@ -57,9 +57,7 @@ def test_local_access_rejects_spoofed_loopback_header_from_remote_peer():
 
 
 def test_local_access_allows_loopback_proxy_for_loopback_caller():
-    assert LocalAccessHandler._request_is_local(
-        request("127.0.0.1", forwarded_address="::1")
-    )
+    assert LocalAccessHandler._request_is_local(request("127.0.0.1", forwarded_address="::1"))
 
 
 @pytest.mark.parametrize("forwarded_address", ["localhost", "unknown", ""])
