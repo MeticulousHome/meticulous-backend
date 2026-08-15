@@ -13,6 +13,7 @@ from config import (
     SSH_ENABLED,
     PROFILE_ORDER,
     PROFILE_AUTO_PURGE,
+    PROFILE_TARE_BEHAVIOR,
     PROFILE_PARTIAL_RETRACTION,
 )
 
@@ -32,6 +33,7 @@ import copy
 from timezone_manager import TimezoneManager
 
 from machine import Machine
+from settings_validation import validate_partial_retraction, validate_tare_behavior
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -63,6 +65,12 @@ class SettingsHandler(BaseHandler):
         if type(value) is not type(MeticulousConfig[CONFIG_USER][setting_target]):
             error_message = f"setting value invalid, received {type(value)} and expected {type(MeticulousConfig[CONFIG_USER][setting_target])}"
             raise KeyError(error_message)
+
+        if setting_target == PROFILE_TARE_BEHAVIOR:
+            validate_tare_behavior(value)
+
+        if setting_target == PROFILE_PARTIAL_RETRACTION:
+            validate_partial_retraction(value)
 
     async def update_timezone_sync(self, value) -> str:
         if value == AUTOMATIC_TIMEZONE_SYNC:
@@ -163,6 +171,9 @@ class SettingsHandler(BaseHandler):
 
                 if setting_target == PROFILE_AUTO_PURGE:
                     Machine.setAutoPurgeAfterShot(value)
+
+                if setting_target == PROFILE_TARE_BEHAVIOR:
+                    Machine.setTareBehavior(value)
 
                 # If we made it here without exception we can update the setting
                 workConfig[setting_target] = value
