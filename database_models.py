@@ -53,6 +53,20 @@ history = Table(
     Column("debug_file", Text, nullable=True),
 )
 
+brew_history = Table(
+    "brew_history",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("uuid", Text, nullable=False, unique=True),
+    Column("brew_type", Text, nullable=False),
+    Column("mode", Text, nullable=False),
+    Column("file", Text, nullable=False, unique=True),
+    Column("time", DateTime, nullable=False),
+    Column("completed_time", DateTime, nullable=False),
+    Column("name", Text, nullable=False),
+    Column("schema_version", Integer, nullable=False),
+)
+
 shot_annotation = Table(
     "shot_annotation",
     metadata,
