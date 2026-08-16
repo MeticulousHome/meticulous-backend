@@ -7,7 +7,7 @@ under an isolated module name with small system dependency stubs.
 import importlib.util
 import sys
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -165,6 +165,90 @@ def test_identity_initialization_requires_hostname_change_to_settle(monkeypatch)
 
     hostname_manager.setHostname.assert_called_once_with("meticulousSpicyCrema-003312")
     module.MeticulousConfig.save.assert_not_called()
+
+
+def _connected_ipv4_config(module, *, connection_name="Home", address="192.0.2.10"):
+    config = _wifi_config(module, connected=True, connection_name=connection_name)
+    config.ips = [
+        SimpleNamespace(
+            ip=SimpleNamespace(version=4),
+            __str__=lambda: address,
+        )
+    ]
+    config.gateway = "192.0.2.1"
+    return config
+
+
+def _health(module, *, degraded=False, dns_resolves=True):
+    return module.WifiHealthStatus(
+        "client",
+        True,
+        True,
+        True,
+        dns_resolves,
+        True,
+        False,
+        degraded,
+        "dns_unreachable" if degraded else "",
+        "",
+        "",
+    )
+
+
+def test_initial_shallow_health_does_not_cache_unchecked_probe_failures(monkeypatch):
+    module = _load_wifi_module(monkeypatch)
+    manager = module.WifiManager
+    current = _connected_ipv4_config(module)
+
+    manager.invalidateHealthCache()
+    with patch.object(manager, "refreshHealthInBackground") as refresh:
+        result = manager.getHealthStatus(current, deep=False)
+
+    assert result.link_connected is True
+    assert result.has_ipv4 is True
+    assert result.gateway_reachable is False
+    assert result.dns_resolves is False
+    assert result.internet_reachable is False
+    assert result.degraded is False
+    assert manager._cached_health is None
+    refresh.assert_called_once_with(current)
+
+
+def test_expired_matching_health_stays_visible_during_background_refresh(monkeypatch):
+    module = _load_wifi_module(monkeypatch)
+    manager = module.WifiManager
+    current = _connected_ipv4_config(module)
+    previous = _health(module)
+
+    manager._cached_health = previous
+    manager._health_cache_signature = manager.getHealthCacheSignature(current)
+    manager._health_cache_time = 0
+
+    with patch.object(manager, "refreshHealthInBackground") as refresh:
+        result = manager.getHealthStatus(current, deep=False)
+
+    assert result is previous
+    assert result.dns_resolves is True
+    refresh.assert_called_once_with(current)
+
+
+def test_changed_connection_does_not_reuse_previous_network_health(monkeypatch):
+    module = _load_wifi_module(monkeypatch)
+    manager = module.WifiManager
+    old_config = _connected_ipv4_config(module, connection_name="Old network")
+    current = _connected_ipv4_config(module, connection_name="New network")
+
+    manager._cached_health = _health(module)
+    manager._health_cache_signature = manager.getHealthCacheSignature(old_config)
+    manager._health_cache_time = 0
+
+    with patch.object(manager, "refreshHealthInBackground") as refresh:
+        result = manager.getHealthStatus(current, deep=False)
+
+    assert result is not manager._cached_health
+    assert result.degraded is False
+    assert result.dns_resolves is False
+    refresh.assert_called_once_with(current)
 
 
 def test_repair_without_saved_client_connection_never_resets_hardware(monkeypatch):
