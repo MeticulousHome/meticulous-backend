@@ -58,6 +58,7 @@ tornado.log.gen_log = MeticulousLogger.getLogger("tornado.general")
 
 PORT = int(os.getenv("PORT", "8080"))
 DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "y")
+IDENTITY_READY_PATH = os.getenv("IDENTITY_READY_PATH", "/run/meticulous-backend-identity-ready")
 
 
 sio = socketio.AsyncServer(
@@ -276,7 +277,18 @@ def main():
     pyprctl.set_name("Main")
 
     DBusMonitor.init()
+    try:
+        os.remove(IDENTITY_READY_PATH)
+    except FileNotFoundError:
+        pass
     HostnameManager.init()
+    WifiManager.initializeIdentity()
+    identity_ready_temporary = f"{IDENTITY_READY_PATH}.{os.getpid()}"
+    with open(identity_ready_temporary, "w", encoding="utf-8") as ready_file:
+        ready_file.write("ready\n")
+        ready_file.flush()
+        os.fsync(ready_file.fileno())
+    os.replace(identity_ready_temporary, IDENTITY_READY_PATH)
     UpdateManager.init()
 
     try:

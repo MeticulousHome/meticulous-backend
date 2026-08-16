@@ -10,6 +10,8 @@ from pathlib import Path
 from types import ModuleType
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 
 def _module(name: str, **attributes):
     module = ModuleType(name)
@@ -19,15 +21,20 @@ def _module(name: str, **attributes):
 
 
 def _load_wifi_module(monkeypatch):
-    config_values = {
-        "wifi": {
-            "mode": "client",
-            "ap_name": "Meticulous",
-            "ap_password": "",
-            "known_wifis": {},
-        },
-        "user": {"hostname_override": None},
-    }
+    class Config(dict):
+        save = MagicMock()
+
+    config_values = Config(
+        {
+            "wifi": {
+                "mode": "client",
+                "ap_name": "Meticulous",
+                "ap_password": "",
+                "known_wifis": {},
+            },
+            "user": {"hostname_override": None},
+        }
+    )
     config_module = _module(
         "config",
         CONFIG_WIFI="wifi",
@@ -85,6 +92,79 @@ def _wifi_config(module, *, connected, connection_name):
         hostname="meticulous",
         domains=[],
     )
+
+
+@pytest.mark.parametrize(
+    ("current", "generated", "override", "expected"),
+    [
+        (
+            "meticulousSpicyCrema-003312",
+            "meticulousRenownedBody-003312",
+            None,
+            None,
+        ),
+        (
+            "meticulousRenownedBody-003312",
+            "meticulousSpicyCrema-003312",
+            None,
+            None,
+        ),
+        ("imx8mn-var-som", "meticulousSpicyCrema-003312", None, "meticulousSpicyCrema-003312"),
+        (
+            "imx8mn-var-som-003312",
+            "meticulousSpicyCrema-003312",
+            None,
+            "meticulousSpicyCrema-003312",
+        ),
+        ("meticulous", "meticulousSpicyCrema-003312", None, "meticulousSpicyCrema-003312"),
+        (
+            "meticulousSpicyCrema-003312",
+            "meticulousRenownedBody-003312",
+            "custom-machine",
+            "custom-machine",
+        ),
+        (
+            "meticulousSpicyCrema-003312",
+            "meticulousRenownedBody-003312",
+            "none",
+            None,
+        ),
+    ],
+)
+def test_hostname_update_only_targets_factory_or_explicit_override(
+    monkeypatch, current, generated, override, expected
+):
+    module = _load_wifi_module(monkeypatch)
+
+    assert module.WifiManager.hostnameUpdateTarget(current, generated, override) == expected
+
+
+def test_identity_initialization_preserves_established_hostname(monkeypatch):
+    module = _load_wifi_module(monkeypatch)
+    hostname_manager = sys.modules["hostname"].HostnameManager
+    hostname_manager.generateHostname.return_value = "meticulousRenownedBody-003312"
+    hostname_manager.generateDeviceName.return_value = "MeticulousSpicyCrema"
+
+    settled = module.WifiManager.initializeIdentity("meticulousSpicyCrema-003312")
+
+    assert settled == "meticulousSpicyCrema-003312"
+    hostname_manager.setHostname.assert_not_called()
+    assert module.MeticulousConfig["wifi"]["ap_name"] == "MeticulousSpicyCrema"
+    module.MeticulousConfig.save.assert_called_once_with()
+
+
+def test_identity_initialization_requires_hostname_change_to_settle(monkeypatch):
+    module = _load_wifi_module(monkeypatch)
+    hostname_manager = sys.modules["hostname"].HostnameManager
+    hostname_manager.generateHostname.return_value = "meticulousSpicyCrema-003312"
+    hostname_manager.generateDeviceName.return_value = "MeticulousSpicyCrema"
+
+    with patch.object(module.socket, "gethostname", return_value="meticulous"):
+        with pytest.raises(RuntimeError, match="did not settle"):
+            module.WifiManager.initializeIdentity("meticulous")
+
+    hostname_manager.setHostname.assert_called_once_with("meticulousSpicyCrema-003312")
+    module.MeticulousConfig.save.assert_not_called()
 
 
 def test_repair_without_saved_client_connection_never_resets_hardware(monkeypatch):
