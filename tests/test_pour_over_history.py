@@ -2,6 +2,7 @@ import json
 import tempfile
 from pathlib import Path
 
+import pytest
 import zstandard as zstd
 from sqlalchemy import create_engine
 from tornado.testing import AsyncHTTPTestCase
@@ -15,7 +16,13 @@ from api.pour_over_history import (
     PourOverHistoryHandler,
 )
 from database_models import metadata
-from pour_over_history import PourOverHistoryManager, PourOverSession
+from pour_over_history import (
+    MAX_POUR_OVER_RECORD_BYTES,
+    PourOverHistoryManager,
+    PourOverHistoryRecordTooLargeError,
+    PourOverSession,
+    read_compressed_record,
+)
 from shot_database import ShotDataBase
 
 
@@ -206,6 +213,33 @@ class TestPourOverHistoryAPI(AsyncHTTPTestCase):
         assert response.code == 200
         assert json.loads(response.body)["history"][0]["id"] == legacy["id"]
 
+    def test_prunes_oldest_records_at_the_history_limit(self):
+        previous_max_records = pour_over_history.MAX_POUR_OVER_HISTORY_RECORDS
+        previous_min_free = pour_over_history.MIN_POUR_OVER_FREE_BYTES
+        try:
+            pour_over_history.MAX_POUR_OVER_HISTORY_RECORDS = 2
+            pour_over_history.MIN_POUR_OVER_FREE_BYTES = 0
+            sessions = [
+                free_pour_session(
+                    session_id=f"00000000-0000-4000-8000-{index:012d}",
+                    started_at=f"2026-08-16T0{index}:00:00.000Z",
+                )
+                for index in (1, 2, 3)
+            ]
+            for session in sessions:
+                session["completedAt"] = session["startedAt"]
+                assert self.save(session).code == 201
+
+            records = PourOverHistoryManager.search(descending=False)
+            assert [record["id"] for record in records] == [
+                sessions[1]["id"],
+                sessions[2]["id"],
+            ]
+            assert len(list(self.history_path.rglob("*.zst"))) == 2
+        finally:
+            pour_over_history.MAX_POUR_OVER_HISTORY_RECORDS = previous_max_records
+            pour_over_history.MIN_POUR_OVER_FREE_BYTES = previous_min_free
+
 
 def test_session_validation_rejects_non_finite_and_reversed_ranges():
     payload = free_pour_session()
@@ -215,6 +249,30 @@ def test_session_validation_rejects_non_finite_and_reversed_ranges():
         raise AssertionError("Expected non-finite flow to be rejected")
     except ValueError:
         pass
+
+    payload = free_pour_session()
+    payload["measurements"]["durationMs"] = 600_001
+    with pytest.raises(ValueError):
+        PourOverSession.model_validate(payload)
+
+    payload = free_pour_session()
+    payload["samples"][-1]["t"] = 600_001
+    with pytest.raises(ValueError):
+        PourOverSession.model_validate(payload)
+
+    payload = free_pour_session()
+    payload["samples"] = payload["samples"] * 1_501
+    with pytest.raises(ValueError):
+        PourOverSession.model_validate(payload)
+
+
+def test_compressed_record_reader_bounds_expansion(tmp_path):
+    compressed_path = tmp_path.joinpath("oversized.pour-over.json.zst")
+    compressed_path.write_bytes(
+        zstd.ZstdCompressor(level=10).compress(b"0" * (MAX_POUR_OVER_RECORD_BYTES + 1))
+    )
+    with pytest.raises(PourOverHistoryRecordTooLargeError):
+        read_compressed_record(compressed_path)
 
     payload = free_pour_session()
     payload["recipe"]["pourTargets"] = [

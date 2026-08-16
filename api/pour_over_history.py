@@ -10,7 +10,10 @@ from log import MeticulousLogger
 from pour_over_history import (
     PourOverHistoryConflictError,
     PourOverHistoryManager,
+    PourOverHistoryRecordTooLargeError,
     PourOverSession,
+    MAX_POUR_OVER_RECORD_BYTES,
+    read_compressed_record,
 )
 
 from .api import API, APIVersion
@@ -18,7 +21,8 @@ from .base_handler import BaseHandler, LocalAccessHandler
 
 logger = MeticulousLogger.getLogger(__name__)
 last_version_path = f"/api/{APIVersion.latest_version().name.lower()}"
-MAX_POUR_OVER_BODY_BYTES = 2 * 1024 * 1024
+MAX_POUR_OVER_BODY_BYTES = MAX_POUR_OVER_RECORD_BYTES
+MAX_DIRECTORY_RESULTS = 200
 
 
 class PourOverFileHandler(BaseHandler):
@@ -37,7 +41,7 @@ class PourOverFileHandler(BaseHandler):
         if requested.is_dir():
             entries = sorted(
                 requested.iterdir(), key=lambda entry: entry.stat().st_mtime, reverse=True
-            )
+            )[:MAX_DIRECTORY_RESULTS]
             self.write(
                 [
                     {
@@ -64,9 +68,8 @@ class PourOverFileHandler(BaseHandler):
             return
 
         try:
-            with compressed_path.open("rb") as compressed:
-                raw = zstd.ZstdDecompressor().stream_reader(compressed).read()
-        except zstd.ZstdError:
+            raw = read_compressed_record(compressed_path)
+        except (zstd.ZstdError, PourOverHistoryRecordTooLargeError):
             logger.warning("Invalid compressed Pour Over history file: %s", compressed_path)
             self.set_status(500)
             self.write({"status": "error", "error": "Invalid history entry"})
@@ -101,6 +104,10 @@ class PourOverHistoryHandler(LocalAccessHandler):
 
         try:
             history, created = PourOverHistoryManager.save(session)
+        except PourOverHistoryRecordTooLargeError:
+            self.set_status(413)
+            self.write({"status": "error", "error": "Pour Over record is too large"})
+            return
         except PourOverHistoryConflictError:
             self.set_status(409)
             self.write(

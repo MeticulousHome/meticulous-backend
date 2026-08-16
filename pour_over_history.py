@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import shutil
 import uuid
 from datetime import timezone
 from pathlib import Path
@@ -8,7 +9,7 @@ from typing import Any, Literal
 
 import zstandard as zstd
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
-from sqlalchemy import asc, desc, insert, select
+from sqlalchemy import asc, delete, desc, insert, select
 from sqlalchemy.exc import IntegrityError
 
 from config import POUR_OVER_PATH
@@ -18,9 +19,34 @@ from shot_database import ShotDataBase
 
 logger = MeticulousLogger.getLogger(__name__)
 
+MAX_POUR_OVER_DURATION_MS = 10 * 60 * 1000
+MAX_POUR_OVER_SAMPLES = MAX_POUR_OVER_DURATION_MS // 200 + 1
+MAX_POUR_OVER_RECORD_BYTES = 2 * 1024 * 1024
+MAX_POUR_OVER_HISTORY_RECORDS = 1_000
+MAX_POUR_OVER_HISTORY_BYTES = 128 * 1024 * 1024
+MIN_POUR_OVER_FREE_BYTES = 128 * 1024 * 1024
+
 
 class PourOverHistoryConflictError(Exception):
     pass
+
+
+class PourOverHistoryRecordTooLargeError(Exception):
+    pass
+
+
+def read_compressed_record(path: Path) -> bytes:
+    with path.open("rb") as compressed:
+        raw = (
+            zstd.ZstdDecompressor()
+            .stream_reader(compressed)
+            .read(MAX_POUR_OVER_RECORD_BYTES + 1)
+        )
+    if len(raw) > MAX_POUR_OVER_RECORD_BYTES:
+        raise PourOverHistoryRecordTooLargeError(
+            "Pour Over history entry exceeds the decompressed size limit"
+        )
+    return raw
 
 
 class PourOverContractModel(BaseModel):
@@ -28,7 +54,7 @@ class PourOverContractModel(BaseModel):
 
 
 class FreePourSample(PourOverContractModel):
-    t: float = Field(ge=0)
+    t: float = Field(ge=0, le=MAX_POUR_OVER_DURATION_MS)
     w: float = Field(ge=0)
     f: float = Field(ge=0)
     p: int = Field(ge=0)
@@ -36,8 +62,8 @@ class FreePourSample(PourOverContractModel):
 
 class FreePourPour(PourOverContractModel):
     number: int = Field(gt=0)
-    startTimeMs: float = Field(ge=0)
-    endTimeMs: float = Field(ge=0)
+    startTimeMs: float = Field(ge=0, le=MAX_POUR_OVER_DURATION_MS)
+    endTimeMs: float = Field(ge=0, le=MAX_POUR_OVER_DURATION_MS)
     startWeightG: float = Field(ge=0)
     endWeightG: float = Field(ge=0)
     waterG: float = Field(ge=0)
@@ -53,7 +79,7 @@ class FreePourPour(PourOverContractModel):
 
 class PourOverPourTarget(PourOverContractModel):
     number: int = Field(gt=0)
-    startTimeMs: float = Field(ge=0)
+    startTimeMs: float = Field(ge=0, le=MAX_POUR_OVER_DURATION_MS)
     stopWeightG: float = Field(ge=0)
     flowGps: float | None = Field(default=None, ge=0)
     flowRangeGps: tuple[float, float] | None = None
@@ -73,7 +99,7 @@ class PourOverRecipe(PourOverContractModel):
     doseG: float = Field(gt=0)
     temperatureC: float | None = Field(default=None, gt=0)
     targetWaterG: float | None = Field(gt=0)
-    targetDurationMs: float | None = Field(default=None, gt=0)
+    targetDurationMs: float | None = Field(default=None, gt=0, le=MAX_POUR_OVER_DURATION_MS)
     pourTargets: list[PourOverPourTarget] = Field(max_length=128)
 
 
@@ -87,7 +113,7 @@ class PourOverMeasurements(PourOverContractModel):
     waterPouredG: float = Field(ge=0)
     beverageG: float | None = Field(ge=0)
     retainedG: float | None = Field(ge=0)
-    durationMs: float = Field(ge=0)
+    durationMs: float = Field(ge=0, le=MAX_POUR_OVER_DURATION_MS)
     status: Literal["measured", "skipped"]
 
     @model_validator(mode="after")
@@ -115,7 +141,7 @@ class PourOverSession(PourOverContractModel):
     recipe: PourOverRecipe
     measurements: PourOverMeasurements
     pours: list[FreePourPour] = Field(max_length=128)
-    samples: list[FreePourSample] = Field(min_length=1, max_length=20_000)
+    samples: list[FreePourSample] = Field(min_length=1, max_length=MAX_POUR_OVER_SAMPLES)
     completion: Literal["brewer_removed", "dial_fallback"]
     sync: PourOverSync
 
@@ -171,7 +197,83 @@ class PourOverHistoryManager:
             ).fetchone()
 
     @staticmethod
-    def _write_record(relative_path: Path, payload: dict[str, Any]) -> None:
+    def _history_rows():
+        engine = PourOverHistoryManager._require_engine()
+        statement = (
+            select(brew_history)
+            .where(brew_history.c.brew_type == "pour_over")
+            .order_by(asc(brew_history.c.time), asc(brew_history.c.id))
+        )
+        with engine.connect() as connection:
+            return connection.execute(statement).fetchall()
+
+    @staticmethod
+    def _available_history_bytes() -> int:
+        path = POUR_OVER_PATH if POUR_OVER_PATH.exists() else POUR_OVER_PATH.parent
+        path.mkdir(parents=True, exist_ok=True)
+        return shutil.disk_usage(path).free
+
+    @staticmethod
+    def _remove_history_row(row) -> int:
+        engine = PourOverHistoryManager._require_engine()
+        record_path = POUR_OVER_PATH.joinpath(row.file)
+        try:
+            record_size = record_path.stat().st_size
+        except OSError:
+            record_size = 0
+        with engine.begin() as connection:
+            connection.execute(delete(brew_history).where(brew_history.c.id == row.id))
+        try:
+            record_path.unlink(missing_ok=True)
+        except OSError as error:
+            logger.warning(
+                "Could not remove pruned Pour Over history file %s: %s",
+                record_path,
+                type(error).__name__,
+            )
+        logger.info("Pruned Pour Over history entry %s", row.uuid)
+        return record_size
+
+    @staticmethod
+    def _ensure_storage_capacity(incoming_bytes: int, additional_records: int) -> None:
+        if incoming_bytes > MAX_POUR_OVER_HISTORY_BYTES:
+            raise OSError("Pour Over record exceeds the history storage quota")
+
+        rows = PourOverHistoryManager._history_rows()
+        sizes = []
+        for row in rows:
+            try:
+                sizes.append(POUR_OVER_PATH.joinpath(row.file).stat().st_size)
+            except OSError:
+                sizes.append(0)
+        total_bytes = sum(sizes)
+        free_bytes = PourOverHistoryManager._available_history_bytes()
+
+        while rows and (
+            len(rows) + additional_records > MAX_POUR_OVER_HISTORY_RECORDS
+            or total_bytes + incoming_bytes > MAX_POUR_OVER_HISTORY_BYTES
+            or free_bytes < MIN_POUR_OVER_FREE_BYTES + incoming_bytes
+        ):
+            row = rows.pop(0)
+            expected_size = sizes.pop(0)
+            removed_size = PourOverHistoryManager._remove_history_row(row)
+            total_bytes = max(0, total_bytes - max(expected_size, removed_size))
+            free_bytes = PourOverHistoryManager._available_history_bytes()
+
+        if (
+            len(rows) + additional_records > MAX_POUR_OVER_HISTORY_RECORDS
+            or total_bytes + incoming_bytes > MAX_POUR_OVER_HISTORY_BYTES
+            or free_bytes < MIN_POUR_OVER_FREE_BYTES + incoming_bytes
+        ):
+            raise OSError("Insufficient reserved space for Pour Over history")
+
+    @staticmethod
+    def _write_record(
+        relative_path: Path,
+        payload: dict[str, Any],
+        *,
+        additional_records: int,
+    ) -> None:
         destination = POUR_OVER_PATH.joinpath(relative_path)
         destination.parent.mkdir(parents=True, exist_ok=True)
         raw = json.dumps(
@@ -180,7 +282,12 @@ class PourOverHistoryManager:
             allow_nan=False,
             separators=(",", ":"),
         ).encode("utf-8")
+        if len(raw) > MAX_POUR_OVER_RECORD_BYTES:
+            raise PourOverHistoryRecordTooLargeError(
+                "Pour Over history entry exceeds the size limit"
+            )
         compressed = zstd.ZstdCompressor(level=10).compress(raw)
+        PourOverHistoryManager._ensure_storage_capacity(len(compressed), additional_records)
         temporary = destination.parent.joinpath(f".{destination.name}.{uuid.uuid4()}.tmp")
         try:
             with temporary.open("xb") as output:
@@ -194,15 +301,14 @@ class PourOverHistoryManager:
 
     @staticmethod
     def _read_record(relative_path: Path) -> dict[str, Any]:
-        with POUR_OVER_PATH.joinpath(relative_path).open("rb") as compressed:
-            raw = zstd.ZstdDecompressor().stream_reader(compressed).read()
+        raw = read_compressed_record(POUR_OVER_PATH.joinpath(relative_path))
         return json.loads(raw)
 
     @staticmethod
     def _validate_existing_record(row, payload: dict[str, Any]) -> None:
         existing_path = POUR_OVER_PATH.joinpath(row.file)
         if not existing_path.is_file():
-            PourOverHistoryManager._write_record(Path(row.file), payload)
+            PourOverHistoryManager._write_record(Path(row.file), payload, additional_records=0)
             logger.warning("Repaired missing Pour Over history file for session %s", row.uuid)
             return
         if PourOverHistoryManager._read_record(Path(row.file)) != payload:
@@ -220,7 +326,7 @@ class PourOverHistoryManager:
             return PourOverHistoryManager._row_to_metadata(existing), False
 
         relative_path = PourOverHistoryManager._timestamp_to_file_path(session)
-        PourOverHistoryManager._write_record(relative_path, payload)
+        PourOverHistoryManager._write_record(relative_path, payload, additional_records=1)
         try:
             with engine.begin() as connection:
                 result = connection.execute(
