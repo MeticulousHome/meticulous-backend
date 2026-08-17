@@ -107,10 +107,35 @@ def test_fetch_machine_logs_uses_emulated_response_without_watcher(report_module
 
     monkeypatch.setattr(report_module.tornado.httpclient.AsyncHTTPClient, "fetch", fail_fetch)
 
-    logs = asyncio.run(report_module._fetch_machine_logs(reference_time=123))
+    logs = asyncio.run(report_module._fetch_machine_logs(123, 456))
 
     assert "Emulated machine logs generated for bug report" in logs
-    assert "reference_time=123" in logs
+    assert "start_time=123, end_time=456" in logs
+
+
+def test_fetch_machine_logs_converts_range_to_watcher_hours(report_module, monkeypatch):
+    captured = {}
+
+    class FakeClient:
+        async def fetch(self, url, request_timeout):
+            captured["url"] = url
+            captured["request_timeout"] = request_timeout
+            return SimpleNamespace(body=b"logs")
+
+    monkeypatch.setattr(report_module, "_machine_is_emulated", lambda: False)
+    monkeypatch.setattr(report_module, "_now_seconds", lambda: 100000)
+    monkeypatch.setattr(report_module.tornado.httpclient, "AsyncHTTPClient", FakeClient)
+
+    logs = asyncio.run(
+        report_module._fetch_machine_logs(
+            100000 - (24 * 60 * 60) - 1,
+            100000 - (60 * 60) - 1,
+        )
+    )
+
+    assert logs == "logs"
+    assert captured["url"].endswith("&since=25&until=1")
+    assert captured["request_timeout"] == 600
 
 
 def test_fetch_machine_status_uses_emulated_response_without_watcher(
@@ -175,6 +200,60 @@ def test_fetch_report_files_includes_active_incomplete_debug_shot_first(
     )
 
 
+def test_select_debug_files_prioritizes_range_then_older_history(report_module):
+    for name in (
+        "09:00:00.shot.json.zst",
+        "10:00:00.shot.json.zst",
+        "11:00:00.shot.json.zst",
+        "12:00:00.shot.json.zst",
+        "13:00:00.shot.json.zst",
+    ):
+        _debug_file(report_module.DEBUG_HISTORY_ROOT, "2026-05-18", name)
+
+    start = int(datetime(2026, 5, 18, 10, 0, 0).timestamp())
+    end = int(datetime(2026, 5, 18, 12, 0, 0).timestamp())
+    selected, errors = report_module._select_debug_files(
+        limit=4, start_time=start, end_time=end
+    )
+
+    assert [path.name for path in selected] == [
+        "12:00:00.shot.json.zst",
+        "11:00:00.shot.json.zst",
+        "10:00:00.shot.json.zst",
+        "09:00:00.shot.json.zst",
+    ]
+    assert errors == []
+
+
+def test_fetch_report_files_skips_active_debug_shot_for_historical_range(
+    report_module, monkeypatch
+):
+    async def fail_capture(_draft_dir):
+        raise AssertionError("Historical reports must not capture the active debug shot")
+
+    async def fake_machine_logs(*_args):
+        return "logs"
+
+    async def fake_machine_status():
+        return "status"
+
+    monkeypatch.setattr(report_module, "_get_machine_info", lambda: {"machine": "info"})
+    monkeypatch.setattr(report_module, "_fetch_machine_logs", fake_machine_logs)
+    monkeypatch.setattr(report_module, "_fetch_machine_status", fake_machine_status)
+    monkeypatch.setattr(report_module, "_capture_incomplete_debug_shot", fail_capture)
+
+    fetched = asyncio.run(
+        report_module._fetch_report_files(
+            report_module._draft_path("historic"),
+            start_time=1,
+            end_time=2,
+            capture_active_debug_shot=False,
+        )
+    )
+
+    assert fetched.automatic_debug_files == []
+
+
 def test_incomplete_debug_shot_snapshot_keeps_active_state(tmp_path):
     from shot_debug_manager import ShotDebugManager
 
@@ -227,88 +306,11 @@ def test_fiql_filter_ignores_invalid_fields_and_rejects_empty(report_module):
     assert empty_invalid is True
 
 
-def test_draft_patch_preserves_user_file_when_date_changes(report_module, monkeypatch):
-    old_auto = _debug_file(
-        report_module.DEBUG_HISTORY_ROOT, "2026-05-17", "11:00:00.old.json.zst"
-    )
-    old_user = _debug_file(
-        report_module.DEBUG_HISTORY_ROOT, "2026-05-17", "12:00:00.user.json.zst"
-    )
-    new_auto = _debug_file(
-        report_module.DEBUG_HISTORY_ROOT, "2026-05-18", "13:00:00.new.json.zst"
-    )
-    old_auto_name = report_module._safe_archive_name(old_auto)
-    old_user_name = report_module._safe_archive_name(old_user)
-    new_auto_name = report_module._safe_archive_name(new_auto)
-
-    async def fake_machine_logs(reference_time=None):
-        return "new logs"
-
-    monkeypatch.setattr(report_module, "_fetch_machine_logs", fake_machine_logs)
-    monkeypatch.setattr(
-        report_module,
-        "_select_debug_files",
-        lambda limit=10, reference_time=None: ([new_auto], []),
-    )
-
-    local_id = "local-test-id"
-    draft_dir = report_module._draft_path(local_id)
-    draft_dir.mkdir(parents=True)
-    report_info = {
-        "description": None,
-        "dateAndTime": 1,
-        "attachments": {
-            "debugFiles": {
-                "automatic": [old_auto_name, old_user_name],
-                "user": [old_user_name],
-            },
-            "machineInfo": True,
-            "machineLogs": True,
-            "machineStatus": True,
-        },
-        "multimedia": None,
-        "machineID": "machine",
-        "eventID": None,
-        "baseEventID": None,
-        "ticket": None,
-        "localID": local_id,
-    }
-    report_module._copy_draft_file(
-        draft_dir, report_module._debug_archive_name(old_auto_name), old_auto
-    )
-    report_module._copy_draft_file(
-        draft_dir, report_module._debug_archive_name(old_user_name), old_user
-    )
-    report_module._write_draft_report_info(draft_dir, report_info)
-    with ShotDataBase.engine.begin() as connection:
-        connection.execute(
-            insert(bug_reports).values(
-                localID=local_id,
-                issueTime=1,
-                creationTime=1,
-                logFiles=f"{old_auto_name},{old_user_name}",
-                machineInfo=True,
-                machineLogs=True,
-                machineStatus=True,
-                status="draft",
-            )
-        )
-
-    updated = asyncio.run(report_module._apply_draft_patch(local_id, {"dateAndTime": 2}))
-    archived_info = report_module._read_draft_report_info(draft_dir)
-    archived_names = set(report_module._draft_files(draft_dir).keys())
-
-    assert updated["attachments"]["debugFiles"]["automatic"] == [new_auto_name]
-    assert report_module._debug_archive_name(old_auto_name) not in archived_names
-    assert report_module._debug_archive_name(old_user_name) in archived_names
-    assert report_module._debug_archive_name(new_auto_name) in archived_names
-    assert archived_info["dateAndTime"] == 2
-
-    with ShotDataBase.engine.connect() as connection:
-        row = connection.execute(select(bug_reports)).first()
-    assert row.issueTime == 2
-    assert old_user_name in row.logFiles
-    assert new_auto_name in row.logFiles
+def test_draft_patch_rejects_date_and_issue_times(report_module):
+    with pytest.raises(PermissionError):
+        report_module._validate_draft_patch({"dateAndTime": 2})
+    with pytest.raises(PermissionError):
+        report_module._validate_draft_patch({"issueTime": 2})
 
 
 def test_draft_patch_adds_user_debug_file_to_draft_directory(report_module):
@@ -408,7 +410,10 @@ def test_draft_directory_can_be_compressed(report_module):
 
 
 def test_create_report_returns_machine_id_matching_report_info(report_module, monkeypatch):
-    async def fake_fetch_report_files(draft_dir):
+    calls = []
+
+    async def fake_fetch_report_files(draft_dir, *args, **kwargs):
+        calls.append((args, kwargs))
         draft_dir.mkdir(parents=True, exist_ok=True)
         machine_status = draft_dir.joinpath(report_module.MACHINE_STATUS_NAME)
         machine_status.write_text('{"ok": true}', encoding="utf-8")
@@ -435,6 +440,11 @@ def test_create_report_returns_machine_id_matching_report_info(report_module, mo
             },
         },
     )
+    monkeypatch.setitem(
+        report_module.MeticulousConfig[report_module.CONFIG_SYSTEM],
+        report_module.MACHINE_SERIAL_NUMBER,
+        "machine-test-id",
+    )
 
     handler = FakeHandler()
     asyncio.run(report_module.ReportsCreateHandler.post(handler))
@@ -444,11 +454,129 @@ def test_create_report_returns_machine_id_matching_report_info(report_module, mo
 
     assert handler.body == {"localID": "local-test-id", "machineID": "machine-test-id"}
     assert report_info["machineID"] == handler.body["machineID"]
+    assert report_info["dateAndTime"] == 1
+    assert report_info["issueTime"] == 1
+    assert calls == [((None, None), {"capture_active_debug_shot": True})]
     with ShotDataBase.engine.connect() as connection:
         row = connection.execute(select(bug_reports)).first()
     assert row.localID == "local-test-id"
     assert row.machineID == "machine-test-id"
     assert row.machineStatus is True
+    assert row.creationTime == 1
+    assert row.issueTime == 1
+
+
+def test_create_report_with_historical_issue_time_persists_metadata_and_range(
+    report_module, monkeypatch
+):
+    now = 200000
+    issue_time = now - (25 * 60 * 60)
+    calls = []
+
+    async def fake_fetch_report_files(draft_dir, *args, **kwargs):
+        calls.append((args, kwargs))
+        draft_dir.mkdir(parents=True, exist_ok=True)
+        return report_module.FetchResult()
+
+    class FakeHandler:
+        request = SimpleNamespace(body=json.dumps({"issueTime": issue_time}).encode())
+
+        def write(self, body):
+            self.body = body
+
+    monkeypatch.setattr(report_module, "_new_local_id", lambda: "historical-id")
+    monkeypatch.setattr(report_module, "_now_seconds", lambda: now)
+    monkeypatch.setattr(report_module, "_fetch_report_files", fake_fetch_report_files)
+    monkeypatch.setitem(
+        report_module.MeticulousConfig[report_module.CONFIG_SYSTEM],
+        report_module.MACHINE_SERIAL_NUMBER,
+        "machine-test-id",
+    )
+
+    handler = FakeHandler()
+    asyncio.run(report_module.ReportsCreateHandler.post(handler))
+
+    report_info = report_module._read_draft_report_info(
+        report_module._draft_path("historical-id")
+    )
+    listed = report_module._list_report_page(page=0, size=1)["content"][0]
+    with ShotDataBase.engine.connect() as connection:
+        row = connection.execute(select(bug_reports)).first()
+
+    assert calls == [
+        (
+            (issue_time - (12 * 60 * 60), issue_time + (12 * 60 * 60)),
+            {"capture_active_debug_shot": False},
+        )
+    ]
+    assert report_info["dateAndTime"] == now
+    assert report_info["issueTime"] == issue_time
+    assert row.creationTime == now
+    assert row.issueTime == issue_time
+    assert listed["dateAndTime"] == now
+    assert listed["issueTime"] == issue_time
+
+
+def test_create_report_uses_trailing_range_for_recent_and_future_issue_times(report_module):
+    now = 200000
+
+    assert report_module._collection_range(now - 1, now) == (
+        now - (24 * 60 * 60),
+        now,
+    )
+    assert report_module._collection_range(now + 1, now) == (
+        now - (24 * 60 * 60),
+        now,
+    )
+    assert report_module._collection_range(now - (12 * 60 * 60), now) == (
+        now - (24 * 60 * 60),
+        now,
+    )
+
+
+def test_create_report_with_recent_issue_time_keeps_active_shot_eligible(
+    report_module, monkeypatch
+):
+    now = 200000
+    issue_time = now - 1
+    calls = []
+
+    async def fake_fetch_report_files(draft_dir, *args, **kwargs):
+        calls.append((args, kwargs))
+        draft_dir.mkdir(parents=True, exist_ok=True)
+        return report_module.FetchResult()
+
+    class FakeHandler:
+        request = SimpleNamespace(body=json.dumps({"issueTime": issue_time}).encode())
+
+        def write(self, body):
+            self.body = body
+
+    monkeypatch.setattr(report_module, "_new_local_id", lambda: "recent-id")
+    monkeypatch.setattr(report_module, "_now_seconds", lambda: now)
+    monkeypatch.setattr(report_module, "_fetch_report_files", fake_fetch_report_files)
+    monkeypatch.setitem(
+        report_module.MeticulousConfig[report_module.CONFIG_SYSTEM],
+        report_module.MACHINE_SERIAL_NUMBER,
+        "machine-test-id",
+    )
+
+    asyncio.run(report_module.ReportsCreateHandler.post(FakeHandler()))
+
+    assert calls == [
+        (
+            (now - (24 * 60 * 60), now),
+            {"capture_active_debug_shot": True},
+        )
+    ]
+
+
+def test_create_report_request_requires_only_integer_issue_time(report_module):
+    assert report_module._create_report_issue_time(b"") is None
+    assert report_module._create_report_issue_time(b'{"issueTime": 123}') == 123
+    for body in (b"{}", b'{"issueTime": true}', b'{"issueTime": 1.5}', b"[]"):
+        with pytest.raises(ValueError):
+            report_module._create_report_issue_time(body)
 
 
 def test_draft_patch_persists_ticket_and_multimedia_in_db_and_report_info(
@@ -537,6 +665,8 @@ def test_list_report_page_returns_newest_first_with_machine_id(report_module):
 
     assert response["content"][0]["localID"] == "newer-id"
     assert response["content"][0]["machineID"] == "newer-machine"
+    assert response["content"][0]["dateAndTime"] == 2
+    assert response["content"][0]["issueTime"] == 2
     assert response["hasMore"] is True
 
 
@@ -750,3 +880,98 @@ def test_submit_without_ticket_preserves_existing_ticket(report_module):
     assert row.ticketNumber == 42
     assert archived_info["eventID"] == "event-1"
     assert archived_info["ticket"] == 42
+
+
+class _DeleteDraftHandler:
+    def __init__(self, body=b""):
+        self.request = SimpleNamespace(body=body)
+        self.status = None
+        self.response = None
+        self.finished = False
+
+    def set_status(self, status):
+        self.status = status
+
+    def write(self, body):
+        self.response = body
+
+    def finish(self):
+        self.finished = True
+
+
+def _insert_deletable_report(report_module, local_id: str, status: str = "draft"):
+    with ShotDataBase.engine.begin() as connection:
+        connection.execute(
+            insert(bug_reports).values(
+                localID=local_id,
+                issueTime=1,
+                creationTime=1,
+                machineInfo=False,
+                machineLogs=False,
+                machineStatus=False,
+                status=status,
+            )
+        )
+
+
+@pytest.mark.parametrize("representation", ["directory", "archive", "both"])
+def test_delete_draft_removes_all_report_representations_and_db_row(
+    report_module, representation
+):
+    local_id = f"delete-{representation}"
+    draft_dir = report_module._draft_path(local_id)
+    archive_path = report_module._finalized_draft_path(local_id)
+    if representation in {"directory", "both"}:
+        draft_dir.mkdir()
+        draft_dir.joinpath("report.txt").write_text("draft", encoding="utf-8")
+    if representation in {"archive", "both"}:
+        archive_path.write_bytes(b"archive")
+    _insert_deletable_report(report_module, local_id)
+
+    handler = _DeleteDraftHandler()
+    asyncio.run(report_module.ReportDraftHandler.delete(handler, local_id))
+
+    assert handler.status == 204
+    assert handler.finished is True
+    assert not draft_dir.exists()
+    assert not archive_path.exists()
+    with ShotDataBase.engine.connect() as connection:
+        row = connection.execute(
+            select(bug_reports).where(bug_reports.c.localID == local_id)
+        ).first()
+    assert row is None
+
+
+def test_delete_draft_allows_submitted_report(report_module):
+    local_id = "submitted-report"
+    archive_path = report_module._finalized_draft_path(local_id)
+    archive_path.write_bytes(b"archive")
+    _insert_deletable_report(report_module, local_id, status="submitted")
+
+    handler = _DeleteDraftHandler()
+    asyncio.run(report_module.ReportDraftHandler.delete(handler, local_id))
+
+    assert handler.status == 204
+    assert not archive_path.exists()
+    assert report_module._get_report_row(local_id) is None
+
+
+def test_delete_draft_returns_not_found_for_unknown_local_id(report_module):
+    handler = _DeleteDraftHandler()
+
+    asyncio.run(report_module.ReportDraftHandler.delete(handler, "unknown-id"))
+
+    assert handler.status == 404
+    assert handler.response == {"error": "Unknown localID", "description": ""}
+
+
+def test_delete_draft_rejects_request_body(report_module):
+    handler = _DeleteDraftHandler(body=b"{}")
+
+    asyncio.run(report_module.ReportDraftHandler.delete(handler, "unknown-id"))
+
+    assert handler.status == 400
+    assert handler.response == {
+        "error": "Delete report draft request must not contain a body",
+        "description": "",
+    }
