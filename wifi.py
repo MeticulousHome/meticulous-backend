@@ -252,6 +252,62 @@ class WifiManager:
     _scan_in_progress = False
     _scan_lock = threading.Lock()
 
+    @staticmethod
+    def hostnameUpdateTarget(
+        current_hostname: str,
+        generated_hostname: str,
+        hostname_override,
+    ) -> str | None:
+        """Return an explicitly requested hostname change, if one is safe to make."""
+        if hostname_override is not None and hostname_override != "none":
+            return str(hostname_override)
+
+        # Automatic naming is only appropriate for an unprovisioned factory hostname.
+        # An existing Meticulous name is user-visible over Wi-Fi and Bluetooth and must
+        # remain stable even if stored identity data is briefly missing or inconsistent.
+        factory_hostname = (
+            current_hostname == "meticulous"
+            or current_hostname == "imx8mn-var-som"
+            or current_hostname.startswith("imx8mn-var-som-")
+        )
+        if hostname_override is None and factory_hostname:
+            return generated_hostname
+        return None
+
+    @staticmethod
+    def initializeIdentity(current_hostname: str | None = None) -> str:
+        """Synchronously settle hostname and advertised identity before API readiness."""
+        if current_hostname is None:
+            current_hostname = socket.gethostname()
+
+        logger.info(f"Current hostname is '{current_hostname}'")
+        hostname_override = MeticulousConfig[CONFIG_USER][HOSTNAME_OVERRIDE]
+        generated_hostname = HostnameManager.generateHostname()
+        requested_hostname = WifiManager.hostnameUpdateTarget(
+            current_hostname,
+            generated_hostname,
+            hostname_override,
+        )
+        if requested_hostname is not None and current_hostname != requested_hostname:
+            if hostname_override is None:
+                logger.info(f"Naming factory hostname as {requested_hostname}")
+            else:
+                logger.info(f"Hostname override is set to {hostname_override}")
+                logger.info(f"Setting hostname to override: {hostname_override}")
+            HostnameManager.setHostname(requested_hostname)
+            current_hostname = socket.gethostname()
+            if current_hostname != requested_hostname:
+                raise RuntimeError("Hostname update did not settle to the requested identity")
+        elif hostname_override is None and current_hostname != generated_hostname:
+            logger.warning(f"Preserving established hostname '{current_hostname}'")
+        elif hostname_override is not None and hostname_override != "none":
+            logger.info(f"Hostname override is set to {hostname_override}")
+
+        ap_name = HostnameManager.generateDeviceName()
+        MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME] = ap_name[:31]
+        MeticulousConfig.save()
+        return current_hostname
+
     def clearLastConnectionError():
         WifiManager._last_connection_error_code = ""
         WifiManager._last_connection_error_message = ""
@@ -388,32 +444,6 @@ class WifiManager:
         except Exception as e:
             logger.warning(f"Networking unavailable! {e}")
             WifiManager._networking_available = False
-
-        config = WifiManager.getCurrentConfig()
-
-        # Only update the hostname if it is a new system or if the hostname has been
-        # set before. Do so in case the lookup table ever changed or the hostname is only
-        # saved transient
-        logger.info(f"Current hostname is '{config.hostname}'")
-
-        hostname_override = MeticulousConfig[CONFIG_USER][HOSTNAME_OVERRIDE]
-        # Check if we are on a deployed machine, a container or if we are running elsewhere
-        # In the later case we dont want to set the hostname
-        MACHINE_HOSTNAMES = ("imx8mn-var-som", "meticulous")
-        if config.hostname.startswith(MACHINE_HOSTNAMES) and hostname_override is None:
-            new_hostname = HostnameManager.generateHostname()
-            if config.hostname != new_hostname:
-                logger.info(f"Changing hostname new = {new_hostname}")
-                HostnameManager.setHostname(new_hostname)
-        elif hostname_override is not None and hostname_override != "none":
-            logger.info(f"Hostname override is set to {hostname_override}")
-            if config.hostname != str(hostname_override):
-                logger.info(f"Setting hostname to override: {hostname_override}")
-                HostnameManager.setHostname(str(hostname_override))
-
-        ap_name = HostnameManager.generateDeviceName()
-        MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME] = ap_name[:31]
-        MeticulousConfig.save()
 
         if WifiManager._zeroconf is None:
             logger.info("Creating Zeroconf Object")

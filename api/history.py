@@ -13,7 +13,7 @@ from config import DEBUG_HISTORY_PATH, SHOT_PATH
 from shot_manager import ShotManager
 
 from .api import API, APIVersion
-from .base_handler import BaseHandler
+from .base_handler import BaseHandler, LocalAccessHandler
 import asyncio
 from shot_debug_manager import ShotDebugManager
 from pathlib import Path
@@ -215,6 +215,22 @@ class LastShotHandler(BaseHandler):
         self.write(last_shot_json)
 
 
+class UploadHistoryIndexHandler(LocalAccessHandler):
+    async def get(self):
+        try:
+            max_results = min(max(int(self.get_query_argument("max_results", "200")), 1), 200)
+        except ValueError:
+            self.set_status(400)
+            self.write({"status": "error", "error": "max_results must be an integer"})
+            return
+        after = self.get_query_argument("after", None)
+        loop = asyncio.get_event_loop()
+        history = await loop.run_in_executor(
+            None, ShotDataBase.list_history_files, after, max_results
+        )
+        self.write({"history": history})
+
+
 class HistoryHandler(BaseHandler):
     async def searchHistory(self, params: SearchParams):
         loop = asyncio.get_event_loop()
@@ -309,6 +325,7 @@ class ShotRatingHandler(BaseHandler):
 API.register_handler(APIVersion.V1, r"/history/search", ProfileSearchHandler),
 API.register_handler(APIVersion.V1, r"/history/current", CurrentShotHandler),
 API.register_handler(APIVersion.V1, r"/history/last", LastShotHandler),
+API.register_handler(APIVersion.V1, r"/history/upload-index", UploadHistoryIndexHandler),
 API.register_handler(APIVersion.V1, r"/history/stats", StatisticsHandler),
 
 API.register_handler(APIVersion.V1, r"/history", HistoryHandler),
