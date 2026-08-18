@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote_plus
 
-import tornado.httpclient
+import aiohttp
 from sqlalchemy import and_, delete, desc, func, insert, or_, select, update
 
 from config import (
@@ -63,6 +63,31 @@ class FetchResult:
     machine_info: bool = False
     machine_logs: bool = False
     machine_status: bool = False
+
+
+@dataclass
+class CollectionCancellation:
+    """Per-request cancellation signal for `ReportsCreateHandler`.
+
+    `on_connection_close` sets `disconnected` and cancels whichever watcher
+    HTTP call is currently registered as `active_task`, so its socket closes
+    instead of the collection running to completion for a client that left.
+    `_fetch_report_files` also checks `disconnected` at each stage boundary,
+    which is what stops a stage that isn't an in-flight watcher call.
+    """
+
+    disconnected: bool = False
+    active_task: asyncio.Task[Any] | None = None
+
+    def cancel(self) -> None:
+        self.disconnected = True
+        task = self.active_task
+        if task is not None and not task.done():
+            task.cancel()
+
+    def raise_if_disconnected(self) -> None:
+        if self.disconnected:
+            raise asyncio.CancelledError("client disconnected during report collection")
 
 
 def _ensure_database_initialized():
@@ -395,8 +420,48 @@ def _emulated_machine_status() -> str:
     )
 
 
+async def _get_watcher_body(url: str, timeout_seconds: int) -> bytes:
+    """Issue the actual watcher HTTP GET.
+
+    Runs inside its own task (see `_fetch_watcher_text`) so a disconnect can
+    cancel exactly this call. Cancelling a task awaiting inside aiohttp
+    closes the transport; `tornado.httpclient.AsyncHTTPClient` cannot do
+    this, since its fetch() resolves through
+    `future_set_result_unless_cancelled`, which discards the result without
+    ever closing the socket.
+
+    `raise_for_status=True` matches `tornado.httpclient`'s default of
+    raising on a non-2xx response.
+    """
+    timeout = aiohttp.ClientTimeout(total=timeout_seconds)
+    async with aiohttp.ClientSession(timeout=timeout, raise_for_status=True) as session:
+        async with session.get(url) as response:
+            return await response.read()
+
+
+async def _fetch_watcher_text(
+    url: str,
+    timeout_seconds: int,
+    cancellation: CollectionCancellation | None = None,
+) -> str:
+    if cancellation is not None:
+        cancellation.raise_if_disconnected()
+
+    task: asyncio.Task[bytes] = asyncio.ensure_future(_get_watcher_body(url, timeout_seconds))
+    if cancellation is not None:
+        cancellation.active_task = task
+    try:
+        body = await task
+    finally:
+        if cancellation is not None and cancellation.active_task is task:
+            cancellation.active_task = None
+    return body.decode("utf-8", errors="replace")
+
+
 async def _fetch_machine_logs(
-    start_time: int | None = None, end_time: int | None = None
+    start_time: int | None = None,
+    end_time: int | None = None,
+    cancellation: CollectionCancellation | None = None,
 ) -> str:
     if _machine_is_emulated():
         return _emulated_machine_logs(start_time, end_time)
@@ -408,29 +473,19 @@ async def _fetch_machine_logs(
         end_hours = max(0, (collection_time - end_time) // 3600)
         separator = "&" if "?" in url else "?"
         url = f"{url}{separator}since={start_hours}&until={end_hours}"
-    client = tornado.httpclient.AsyncHTTPClient()
-    response = await client.fetch(url, request_timeout=600)
-    return response.body.decode("utf-8", errors="replace")
+    return await _fetch_watcher_text(url, 600, cancellation)
 
 
-async def _fetch_machine_status() -> str:
+async def _fetch_machine_status(
+    cancellation: CollectionCancellation | None = None,
+) -> str:
     if _machine_is_emulated():
         return _emulated_machine_status()
 
-    client = tornado.httpclient.AsyncHTTPClient()
-    response = await client.fetch(WATCHER_STATUS_URL, request_timeout=120)
-    return response.body.decode("utf-8", errors="replace")
+    return await _fetch_watcher_text(WATCHER_STATUS_URL, 120, cancellation)
 
 
-async def _fetch_report_files(
-    draft_dir: Path,
-    start_time: int | None = None,
-    end_time: int | None = None,
-    capture_active_debug_shot: bool = True,
-) -> FetchResult:
-    result = FetchResult()
-    draft_dir.mkdir(parents=True, exist_ok=True)
-
+def _record_machine_info(result: FetchResult, draft_dir: Path) -> None:
     try:
         machine_info_path = draft_dir.joinpath(MACHINE_INFO_NAME)
         machine_info_path.write_text(
@@ -441,47 +496,109 @@ async def _fetch_report_files(
     except Exception as exc:
         result.errors.append(f"Failed to fetch machine info: {exc}")
 
+
+async def _record_machine_logs(
+    result: FetchResult,
+    draft_dir: Path,
+    start_time: int | None,
+    end_time: int | None,
+    cancellation: CollectionCancellation | None,
+) -> None:
     try:
         machine_logs_path = draft_dir.joinpath(MACHINE_LOGS_NAME)
         machine_logs_path.write_text(
-            await _fetch_machine_logs(start_time, end_time), encoding="utf-8"
+            await _fetch_machine_logs(start_time, end_time, cancellation), encoding="utf-8"
         )
         result.files[MACHINE_LOGS_NAME] = machine_logs_path
         result.machine_logs = True
     except Exception as exc:
         result.errors.append(f"Failed to fetch machine logs: {exc}")
 
+
+async def _record_machine_status(
+    result: FetchResult, draft_dir: Path, cancellation: CollectionCancellation | None
+) -> None:
     try:
         machine_status_path = draft_dir.joinpath(MACHINE_STATUS_NAME)
-        machine_status_path.write_text(await _fetch_machine_status(), encoding="utf-8")
+        machine_status_path.write_text(
+            await _fetch_machine_status(cancellation), encoding="utf-8"
+        )
         result.files[MACHINE_STATUS_NAME] = machine_status_path
         result.machine_status = True
     except Exception as exc:
         result.errors.append(f"Failed to fetch machine status: {exc}")
 
-    debug_limit = MAX_DEBUG_SHOTS
-    if capture_active_debug_shot:
-        try:
-            incomplete_debug_file = await _capture_incomplete_debug_shot(draft_dir)
-            if incomplete_debug_file is not None:
-                archive_name = _debug_archive_name(incomplete_debug_file)
-                result.files[archive_name] = draft_dir.joinpath(archive_name)
-                result.automatic_debug_files.append(incomplete_debug_file)
-                debug_limit -= 1
-        except Exception as exc:
-            result.errors.append(f"Failed to capture active debug shot: {exc}")
 
-    debug_files, debug_errors = _select_debug_files(
-        limit=debug_limit, start_time=start_time, end_time=end_time
-    )
-    result.errors.extend(debug_errors)
+async def _record_active_debug_shot(result: FetchResult, draft_dir: Path) -> int:
+    """Capture the in-progress shot's debug file, if any.
+
+    Returns how much the remaining debug-file limit should shrink by: 1 if a
+    file was captured, 0 otherwise (including on failure).
+    """
+    try:
+        incomplete_debug_file = await _capture_incomplete_debug_shot(draft_dir)
+    except Exception as exc:
+        result.errors.append(f"Failed to capture active debug shot: {exc}")
+        return 0
+
+    if incomplete_debug_file is None:
+        return 0
+    archive_name = _debug_archive_name(incomplete_debug_file)
+    result.files[archive_name] = draft_dir.joinpath(archive_name)
+    result.automatic_debug_files.append(incomplete_debug_file)
+    return 1
+
+
+def _copy_selected_debug_files(
+    result: FetchResult,
+    draft_dir: Path,
+    debug_files: list[Path],
+    cancellation: CollectionCancellation | None,
+) -> None:
     for path in debug_files:
+        if cancellation is not None:
+            cancellation.raise_if_disconnected()
         archive_name = _debug_archive_name(_safe_archive_name(path))
         try:
             result.files[archive_name] = _copy_draft_file(draft_dir, archive_name, path)
             result.automatic_debug_files.append(_safe_archive_name(path))
         except Exception as exc:
             result.errors.append(f"Failed to copy debug file {path}: {exc}")
+
+
+async def _fetch_report_files(
+    draft_dir: Path,
+    start_time: int | None = None,
+    end_time: int | None = None,
+    capture_active_debug_shot: bool = True,
+    cancellation: CollectionCancellation | None = None,
+) -> FetchResult:
+    result = FetchResult()
+    draft_dir.mkdir(parents=True, exist_ok=True)
+
+    _record_machine_info(result, draft_dir)
+
+    if cancellation is not None:
+        cancellation.raise_if_disconnected()
+    await _record_machine_logs(result, draft_dir, start_time, end_time, cancellation)
+
+    if cancellation is not None:
+        cancellation.raise_if_disconnected()
+    await _record_machine_status(result, draft_dir, cancellation)
+
+    if cancellation is not None:
+        cancellation.raise_if_disconnected()
+    debug_limit = MAX_DEBUG_SHOTS
+    if capture_active_debug_shot:
+        debug_limit -= await _record_active_debug_shot(result, draft_dir)
+
+    if cancellation is not None:
+        cancellation.raise_if_disconnected()
+    debug_files, debug_errors = _select_debug_files(
+        limit=debug_limit, start_time=start_time, end_time=end_time
+    )
+    result.errors.extend(debug_errors)
+    _copy_selected_debug_files(result, draft_dir, debug_files, cancellation)
 
     _append_reporting_log_to_dir(draft_dir, result.errors)
     if draft_dir.joinpath(REPORT_LOG_NAME).exists():
@@ -802,6 +919,15 @@ def _collection_range(issue_time: int, now: int) -> tuple[int, int]:
 
 
 class ReportsCreateHandler(BaseHandler):
+    def initialize(self) -> None:
+        self._cancellation = CollectionCancellation()
+
+    def on_connection_close(self) -> None:
+        # Tornado delivers this on the IOLoop while collection is still
+        # awaiting, so this arrives in time to stop the collection instead
+        # of letting it run to completion for a client that already left.
+        self._cancellation.cancel()
+
     async def post(self):
         now = _now_seconds()
         try:
@@ -828,6 +954,7 @@ class ReportsCreateHandler(BaseHandler):
                 capture_active_debug_shot=(
                     collection_range is None or collection_range[1] == now
                 ),
+                cancellation=self._cancellation,
             )
             attachments = {
                 "debugFiles": {"automatic": fetched.automatic_debug_files},
@@ -850,6 +977,11 @@ class ReportsCreateHandler(BaseHandler):
             _write_draft_report_info(draft_dir, report_info)
             _insert_report(report_info)
             self.write({"localID": local_id, "machineID": report_info["machineID"]})
+        except asyncio.CancelledError:
+            # The client disconnected. This is not an error: no Sentry
+            # report, no error-level log, no response. Leave the system
+            # exactly as if this create had never run.
+            shutil.rmtree(draft_dir, ignore_errors=True)
         except Exception as exc:
             shutil.rmtree(draft_dir, ignore_errors=True)
             logger.exception("Failed to create bug report draft")
