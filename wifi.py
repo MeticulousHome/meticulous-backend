@@ -369,10 +369,16 @@ class WifiManager:
         )
 
     def healthCacheIsValid(config: WifiSystemConfig = None):
-        if (
-            WifiManager._cached_health is None
-            or time.time() - WifiManager._health_cache_time >= WifiManager._health_cache_ttl
-        ):
+        if not WifiManager.healthCacheMatches(config):
+            return False
+
+        if time.time() - WifiManager._health_cache_time >= WifiManager._health_cache_ttl:
+            return False
+
+        return True
+
+    def healthCacheMatches(config: WifiSystemConfig = None):
+        if WifiManager._cached_health is None:
             return False
 
         signature = WifiManager.getHealthCacheSignature(config)
@@ -842,11 +848,21 @@ class WifiManager:
     def getHealthStatus(
         config: WifiSystemConfig = None, force: bool = False, deep: bool = True
     ) -> WifiHealthStatus:
+        if config is None:
+            config = WifiManager.getCurrentConfig()
+
         if not force and WifiManager.healthCacheIsValid(config):
             return WifiManager._cached_health
 
         if not deep:
-            health = WifiManager.buildHealthStatus(config, deep=False)
+            # Keep displaying the last conclusive result while its replacement is
+            # calculated. A shallow result has not run any probes, so caching its
+            # default False values would make the UI report a false failure on
+            # every cache refresh.
+            if WifiManager.healthCacheMatches(config):
+                health = WifiManager._cached_health
+            else:
+                health = WifiManager.buildHealthStatus(config, deep=False)
             WifiManager.refreshHealthInBackground(config)
             return health
 
@@ -912,7 +928,10 @@ class WifiManager:
             return health
 
         if config.connected and has_ipv4 and not deep:
-            health = WifiHealthStatus(
+            # False means "not checked yet" in this shallow response. Do not cache
+            # it as a completed health check; the background deep check below will
+            # replace it with conclusive probe results.
+            return WifiHealthStatus(
                 mode,
                 config.connected,
                 has_ipv4,
@@ -925,10 +944,6 @@ class WifiManager:
                 WifiManager._last_recovery_action,
                 WifiManager._last_recovery_result,
             )
-            WifiManager._cached_health = health
-            WifiManager._health_cache_time = time.time()
-            WifiManager._health_cache_signature = signature
-            return health
 
         if config.connected and has_ipv4:
             gateway_reachable = WifiManager.gatewayReachable(config.gateway)
