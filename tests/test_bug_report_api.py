@@ -238,6 +238,102 @@ def test_fetch_report_files_raises_cancelled_at_next_boundary_after_disconnect(
         asyncio.run(report_module._fetch_report_files(draft_dir, cancellation=cancellation))
 
 
+def test_fetch_report_files_logs_stage_error_as_it_happens(report_module, monkeypatch):
+    warnings = []
+
+    async def failing_machine_logs(start_time=None, end_time=None, cancellation=None):
+        raise RuntimeError("watcher unreachable")
+
+    async def fake_machine_status(cancellation=None):
+        return '{"ok": true}'
+
+    async def no_incomplete_debug_shot(draft_dir):
+        return None
+
+    monkeypatch.setattr(report_module, "_get_machine_info", lambda: {"machine": "info"})
+    monkeypatch.setattr(report_module, "_fetch_machine_logs", failing_machine_logs)
+    monkeypatch.setattr(report_module, "_fetch_machine_status", fake_machine_status)
+    monkeypatch.setattr(
+        report_module, "_capture_incomplete_debug_shot", no_incomplete_debug_shot
+    )
+    monkeypatch.setattr(
+        report_module.logger, "warning", lambda message, *a, **kw: warnings.append(message)
+    )
+
+    draft_dir = report_module._draft_path("logged-error-id")
+    fetched = asyncio.run(report_module._fetch_report_files(draft_dir))
+
+    # Logged at the point of failure, tagged with the localID, and the journal
+    # copy says exactly what the bundle copy says.
+    assert warnings == ["[logged-error-id] Failed to fetch machine logs: watcher unreachable"]
+    assert fetched.errors[0] == "Failed to fetch machine logs: watcher unreachable"
+
+
+def test_cancelled_stage_is_never_logged_as_a_collection_error(report_module, monkeypatch):
+    """A disconnect must leave no trace, including in the journal.
+
+    `CancelledError` is a `BaseException`, so it sails past every stage
+    handler's `except Exception` without being recorded or logged. Widening
+    one of those handlers would silently break that.
+    """
+
+    def fail_if_called(*args, **kwargs):
+        raise AssertionError("A client disconnect must not be logged as a collection error")
+
+    async def cancelled_machine_logs(start_time=None, end_time=None, cancellation=None):
+        raise asyncio.CancelledError()
+
+    async def no_incomplete_debug_shot(draft_dir):
+        return None
+
+    monkeypatch.setattr(report_module, "_get_machine_info", lambda: {"machine": "info"})
+    monkeypatch.setattr(report_module, "_fetch_machine_logs", cancelled_machine_logs)
+    monkeypatch.setattr(
+        report_module, "_capture_incomplete_debug_shot", no_incomplete_debug_shot
+    )
+    monkeypatch.setattr(report_module.logger, "warning", fail_if_called)
+    monkeypatch.setattr(report_module.logger, "info", fail_if_called)
+
+    draft_dir = report_module._draft_path("cancelled-stage-id")
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(report_module._fetch_report_files(draft_dir))
+
+
+def test_short_debug_file_count_logs_at_info_not_warning(report_module, monkeypatch):
+    """Every machine that has not brewed 10 shots reports a short count on
+    every single report, so it must not reach the warning channel."""
+    infos = []
+
+    def fail_if_called(*args, **kwargs):
+        raise AssertionError("An expected short debug-file count must not warn")
+
+    async def fake_machine_logs(start_time=None, end_time=None, cancellation=None):
+        return "logs"
+
+    async def fake_machine_status(cancellation=None):
+        return '{"ok": true}'
+
+    async def no_incomplete_debug_shot(draft_dir):
+        return None
+
+    monkeypatch.setattr(report_module, "_get_machine_info", lambda: {"machine": "info"})
+    monkeypatch.setattr(report_module, "_fetch_machine_logs", fake_machine_logs)
+    monkeypatch.setattr(report_module, "_fetch_machine_status", fake_machine_status)
+    monkeypatch.setattr(
+        report_module, "_capture_incomplete_debug_shot", no_incomplete_debug_shot
+    )
+    monkeypatch.setattr(report_module.logger, "warning", fail_if_called)
+    monkeypatch.setattr(
+        report_module.logger, "info", lambda message, *a, **kw: infos.append(message)
+    )
+
+    draft_dir = report_module._draft_path("few-shots-id")
+    fetched = asyncio.run(report_module._fetch_report_files(draft_dir))
+
+    assert infos == ["[few-shots-id] Only found 0 debug files while reporting; requested 10."]
+    assert "Only found 0 debug files while reporting; requested 10." in fetched.errors
+
+
 def test_fetch_report_files_includes_active_incomplete_debug_shot_first(
     report_module, monkeypatch
 ):

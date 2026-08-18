@@ -494,7 +494,9 @@ def _record_machine_info(result: FetchResult, draft_dir: Path) -> None:
         result.files[MACHINE_INFO_NAME] = machine_info_path
         result.machine_info = True
     except Exception as exc:
-        result.errors.append(f"Failed to fetch machine info: {exc}")
+        message = f"Failed to fetch machine info: {exc}"
+        result.errors.append(message)
+        logger.warning(f"[{draft_dir.name}] {message}", exc_info=True)
 
 
 async def _record_machine_logs(
@@ -512,7 +514,9 @@ async def _record_machine_logs(
         result.files[MACHINE_LOGS_NAME] = machine_logs_path
         result.machine_logs = True
     except Exception as exc:
-        result.errors.append(f"Failed to fetch machine logs: {exc}")
+        message = f"Failed to fetch machine logs: {exc}"
+        result.errors.append(message)
+        logger.warning(f"[{draft_dir.name}] {message}", exc_info=True)
 
 
 async def _record_machine_status(
@@ -526,7 +530,9 @@ async def _record_machine_status(
         result.files[MACHINE_STATUS_NAME] = machine_status_path
         result.machine_status = True
     except Exception as exc:
-        result.errors.append(f"Failed to fetch machine status: {exc}")
+        message = f"Failed to fetch machine status: {exc}"
+        result.errors.append(message)
+        logger.warning(f"[{draft_dir.name}] {message}", exc_info=True)
 
 
 async def _record_active_debug_shot(result: FetchResult, draft_dir: Path) -> int:
@@ -538,7 +544,9 @@ async def _record_active_debug_shot(result: FetchResult, draft_dir: Path) -> int
     try:
         incomplete_debug_file = await _capture_incomplete_debug_shot(draft_dir)
     except Exception as exc:
-        result.errors.append(f"Failed to capture active debug shot: {exc}")
+        message = f"Failed to capture active debug shot: {exc}"
+        result.errors.append(message)
+        logger.warning(f"[{draft_dir.name}] {message}", exc_info=True)
         return 0
 
     if incomplete_debug_file is None:
@@ -563,7 +571,11 @@ def _copy_selected_debug_files(
             result.files[archive_name] = _copy_draft_file(draft_dir, archive_name, path)
             result.automatic_debug_files.append(_safe_archive_name(path))
         except Exception as exc:
-            result.errors.append(f"Failed to copy debug file {path}: {exc}")
+            # No exc_info here: this loop runs once per debug file, and a
+            # traceback per file buries the one line that names which file.
+            message = f"Failed to copy debug file {path}: {exc}"
+            result.errors.append(message)
+            logger.warning(f"[{draft_dir.name}] {message}")
 
 
 async def _fetch_report_files(
@@ -598,6 +610,11 @@ async def _fetch_report_files(
         limit=debug_limit, start_time=start_time, end_time=end_time
     )
     result.errors.extend(debug_errors)
+    for message in debug_errors:
+        # info, not warning: a machine that has not brewed 10 shots yet reports
+        # a short debug-file count on every single report. That is expected, and
+        # warning-level would train everyone to ignore the channel.
+        logger.info(f"[{draft_dir.name}] {message}")
     _copy_selected_debug_files(result, draft_dir, debug_files, cancellation)
 
     _append_reporting_log_to_dir(draft_dir, result.errors)
@@ -756,7 +773,9 @@ def _apply_user_debug_file_patch(
             continue
         source_path = _find_debug_file(name)
         if source_path is None:
-            log_errors.append(f"User selected debug file not found: {name}")
+            message = f"User selected debug file not found: {name}"
+            log_errors.append(message)
+            logger.warning(f"[{draft_dir.name}] {message}")
             continue
         archive_name = _debug_archive_name(name)
         try:
@@ -764,7 +783,9 @@ def _apply_user_debug_file_patch(
                 archive_name, _copy_draft_file(draft_dir, archive_name, source_path)
             )
         except Exception as exc:
-            log_errors.append(f"Failed to copy user selected debug file {name}: {exc}")
+            message = f"Failed to copy user selected debug file {name}: {exc}"
+            log_errors.append(message)
+            logger.warning(f"[{draft_dir.name}] {message}")
             continue
         user_files.append(name)
 
