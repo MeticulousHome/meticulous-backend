@@ -150,6 +150,7 @@ class ProfileManager:
         change: PROFILE_EVENT,
         profile_id: Optional[str] = None,
         change_id: Optional[str] = None,
+        brew_type: Optional[str] = None,
     ) -> None:
 
         if not ProfileManager._loop:
@@ -161,6 +162,8 @@ class ProfileManager:
             payload["profile_id"] = profile_id
         if change_id is not None:
             payload["change_id"] = change_id
+        if brew_type is not None:
+            payload["brew_type"] = brew_type
 
         async def emit() -> None:
             await ProfileManager._sio.emit("profile", payload)

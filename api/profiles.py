@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import datetime, timezone
 
 import jsonschema
@@ -12,6 +13,13 @@ from profile_preprocessor import (
     VariableTypeException,
 )
 from profiles import IMAGES_PATH, ProfileManager
+from pour_over_profiles import (
+    MAX_POUR_OVER_PROFILE_BYTES,
+    PourOverProfileError,
+    PourOverProfileManager,
+    PourOverProfileTooLargeError,
+)
+from .pour_over_profiles import write_pour_over_profile_error
 
 from .api import API, APIVersion
 from .base_handler import BaseHandler
@@ -20,6 +28,8 @@ from config import MeticulousConfig, ALLOW_LEGACY_JSON, CONFIG_USER
 from .emulation import LEGACY_DUMMY_PROFILE
 
 logger = MeticulousLogger.getLogger(__name__)
+
+POUR_OVER_BREW_TYPE_PATTERN = re.compile(rb'"brew_type"\s*:\s*"pour_over"')
 
 
 class ListHandler(BaseHandler):
@@ -44,11 +54,41 @@ class ListDefaultsHandler(BaseHandler):
 
 class SaveProfileHandler(BaseHandler):
     def post(self):
+        data = None
         try:
             change_id = self.request.headers.get("X-Change-Id", None)
-            data = json.loads(self.request.body)
-            profile_response = ProfileManager.save_profile(data, change_id=change_id)
+            # Tornado already owns the request bytes, but parsing a very large
+            # JSON object would create another large object graph on a small
+            # machine. Reject recognizable Pour Over payloads at the canonical
+            # stored-profile limit before decoding them. Espresso retains its
+            # existing, separate image limits and behavior.
+            if len(
+                self.request.body
+            ) > MAX_POUR_OVER_PROFILE_BYTES and POUR_OVER_BREW_TYPE_PATTERN.search(
+                self.request.body
+            ):
+                raise PourOverProfileTooLargeError()
+            data = json.loads(
+                self.request.body,
+                parse_constant=lambda value: (_ for _ in ()).throw(
+                    ValueError(f"Invalid number {value}")
+                ),
+            )
+            if isinstance(data, dict) and data.get("brew_type") == "pour_over":
+                profile_response = PourOverProfileManager.save_profile(
+                    data, change_id=change_id
+                )
+            else:
+                profile_response = ProfileManager.save_profile(data, change_id=change_id)
             self.write(profile_response)
+        except PourOverProfileError as error:
+            profile_id = data.get("id") if isinstance(data, dict) else None
+            logger.warning(
+                "Rejected Pour Over profile %s: %s",
+                profile_id,
+                error.__class__.__name__,
+            )
+            write_pour_over_profile_error(self, error)
         except jsonschema.exceptions.ValidationError as err:
             errors = {
                 "status": "error",
@@ -57,7 +97,8 @@ class SaveProfileHandler(BaseHandler):
 
             self.set_status(400)
             self.write(errors)
-            logger.debug(data)
+            profile_id = data.get("id") if isinstance(data, dict) else None
+            logger.warning("Rejected espresso profile %s: %s", profile_id, err.message)
             return
         except Exception as e:
             self.set_status(400)
