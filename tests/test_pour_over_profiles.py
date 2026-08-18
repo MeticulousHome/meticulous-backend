@@ -29,6 +29,7 @@ import pour_over_profiles  # noqa: E402
 from api.pour_over_profiles import (  # noqa: E402
     DeletePourOverProfileHandler,
     GetPourOverProfileHandler,
+    GetPourOverProfileImageHandler,
     ListPourOverProfilesHandler,
     PourOverProfileSchemaHandler,
 )
@@ -256,6 +257,10 @@ class TestPourOverProfilesAPI(AsyncHTTPTestCase):
                     GetPourOverProfileHandler,
                 ),
                 (
+                    r"/api/v1/pour-over/profile/image/([0-9a-fA-F-]+)",
+                    GetPourOverProfileImageHandler,
+                ),
+                (
                     r"/api/v1/pour-over/profile/delete/([0-9a-fA-F-]+)",
                     DeletePourOverProfileHandler,
                 ),
@@ -291,12 +296,26 @@ class TestPourOverProfilesAPI(AsyncHTTPTestCase):
         )
         assert "image" not in json.loads(without_image.body).get("display", {})
 
+        image = self.fetch(f"/api/v1/pour-over/profile/image/{profile['id']}")
+        assert image.code == 200
+        assert image.headers["Content-Type"].startswith("image/jpeg")
+        assert image.body == b"\xff\xd8\xff\xd9"
+
         deleted = self.fetch(
             f"/api/v1/pour-over/profile/delete/{profile['id']}",
             method="DELETE",
         )
         assert deleted.code == 200
         assert self.fetch(f"/api/v1/pour-over/profile/get/{profile['id']}").code == 404
+
+    def test_profile_image_endpoint_returns_404_without_an_image(self):
+        profile = valid_pour_over_profile()
+        saved = self.fetch("/api/v1/profile/save", method="POST", body=json.dumps(profile))
+        assert saved.code == 200
+
+        response = self.fetch(f"/api/v1/pour-over/profile/image/{profile['id']}")
+
+        assert response.code == 404
 
     def test_delete_endpoint_does_not_mutate_on_get(self):
         profile = valid_pour_over_profile()

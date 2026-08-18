@@ -397,6 +397,29 @@ class PourOverProfileManager:
             raise PourOverProfileStorageError("Could not read profile") from error
 
     @classmethod
+    def get_profile_image(cls, profile_id: str) -> bytes | None:
+        """Return one validated JPEG without adding images to list responses."""
+        profile = cls.get_profile(profile_id, include_image=True)
+        if profile is None:
+            return None
+        image = profile.get("display", {}).get("image")
+        prefix = "data:image/jpeg;base64,"
+        if not isinstance(image, str) or not image.startswith(prefix):
+            return None
+        try:
+            decoded = base64.b64decode(image[len(prefix) :], validate=True)
+        except (binascii.Error, ValueError) as error:
+            raise PourOverProfileStorageError("Could not read profile image") from error
+        if (
+            len(decoded) > MAX_EMBEDDED_PROFILE_IMAGE_BYTES
+            or len(decoded) < 4
+            or not decoded.startswith(b"\xff\xd8")
+            or not decoded.endswith(b"\xff\xd9")
+        ):
+            raise PourOverProfileStorageError("Could not read profile image")
+        return decoded
+
+    @classmethod
     def save_profile(cls, value: Any, change_id: str | None = None) -> dict[str, Any]:
         cls._require_available()
         profile = cls.validate_profile(value)

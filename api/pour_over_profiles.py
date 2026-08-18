@@ -41,6 +41,22 @@ class GetPourOverProfileHandler(BaseHandler):
         self.write(profile)
 
 
+class GetPourOverProfileImageHandler(BaseHandler):
+    def get(self, profile_id):
+        try:
+            image = PourOverProfileManager.get_profile_image(profile_id)
+        except (PourOverProfileUnavailableError, PourOverProfileStorageError) as error:
+            write_pour_over_profile_error(self, error)
+            return
+        if image is None:
+            self.set_status(404)
+            self.write({"status": "error", "error": "Pour Over profile image not found"})
+            return
+        self.set_header("Content-Type", "image/jpeg")
+        self.set_header("Cache-Control", "private, max-age=300")
+        self.write(image)
+
+
 class DeletePourOverProfileHandler(BaseHandler):
     def delete(self, profile_id):
         change_id = self.request.headers.get("X-Change-Id", None)
@@ -101,6 +117,11 @@ API.register_handler(
     APIVersion.V1,
     r"/pour-over/profile/get/([0-9a-fA-F-]+)",
     GetPourOverProfileHandler,
+)
+API.register_handler(
+    APIVersion.V1,
+    r"/pour-over/profile/image/([0-9a-fA-F-]+)",
+    GetPourOverProfileImageHandler,
 )
 API.register_handler(
     APIVersion.V1,
