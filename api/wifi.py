@@ -12,8 +12,6 @@ from config import (
     WIFI_MODE_CLIENT,
 )
 from wifi import WifiManager, WifiType, redact_ssid
-from ble_gatt import PORT
-
 from .base_handler import BaseHandler
 from .api import API, APIVersion
 
@@ -69,11 +67,11 @@ class WiFiQRHandler(BaseHandler):
         elif len(config.ips) > 0:
             current_ip = config.ips[0]
             if current_ip.ip.version == 6:
-                qr_contents = f"http://[{str(current_ip.ip)}]:{PORT}"
+                qr_contents = f"http://[{str(current_ip.ip)}]"
             else:
-                qr_contents = f"http://{str(current_ip.ip)}:{PORT}"
+                qr_contents = f"http://{str(current_ip.ip)}"
         else:
-            qr_contents = f"http://{str(config.hostname)}.local:{PORT}"
+            qr_contents = f"http://{str(config.hostname)}.local"
 
         buffer = io.BytesIO()
 
