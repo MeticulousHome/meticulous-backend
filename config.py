@@ -34,6 +34,12 @@ CONFIG_SYSTEM = "system"
 CONFIG_USER = "user"
 CONFIG_WIFI = "wifi"
 CONFIG_PROFILES = "profiles"
+# Paired devices (per-device API access tokens). Stored as a mapping of
+# device_id -> {name, token_hash, created_at, last_seen_at}. Lives in config.yml
+# (not a dotfile) so a factory reset wipes it. Deliberately absent from
+# reportable_config's allowlist, so token hashes never reach diagnostic reports.
+CONFIG_PAIRED_DEVICES = "paired_devices"
+PAIRED_DEVICES_DEFAULT = {}
 
 #
 # SYSTEM config
@@ -246,6 +252,7 @@ DefaultConfiguration_V1 = {
     },
     CONFIG_PROFILES: {PROFILE_LAST: PROFILE_DEFAULT_LAST},
     CONFIG_MANUFACTURING: copy.deepcopy(Default_manufacturing_config),
+    CONFIG_PAIRED_DEVICES: copy.deepcopy(PAIRED_DEVICES_DEFAULT),
 }
 
 
@@ -416,6 +423,14 @@ def _redaction_values():
             credentials.append(entry)
         elif isinstance(entry, dict):
             credentials.append(entry.get("password"))
+
+    # Stored pairing token hashes are not secrets on their own (the plaintext
+    # token never touches the machine), but redacting them keeps device-linkable
+    # material out of logs as defence in depth.
+    paired_devices = MeticulousConfig.get(CONFIG_PAIRED_DEVICES) or {}
+    for record in paired_devices.values():
+        if isinstance(record, dict):
+            credentials.append(record.get("token_hash"))
 
     return ssids, credentials
 

@@ -60,10 +60,16 @@ def test_reportable_config_is_allowlist_only_and_does_not_mutate_input():
             "last_boot_mode": "normal",
             "skip_stage": False,
         },
+        "paired_devices": {
+            "abc-123": {"device_name": "Phone", "token_hash": "deadbeef"},
+        },
         "future": {"secret": "drop"},
     }
 
     reportable = get_reportable_config(config)
+
+    # Paired-device tokens must never reach diagnostic reports.
+    assert "paired_devices" not in reportable
 
     assert reportable["system"]["sounds_theme"] == "custom"
     assert reportable["wifi"] == {"mode": "CLIENT"}
