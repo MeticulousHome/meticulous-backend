@@ -15,6 +15,7 @@ from wifi import WifiManager, WifiType, redact_ssid
 from ble_gatt import PORT
 
 from .base_handler import BaseHandler
+from .auth import request_is_local
 from .api import API, APIVersion
 
 from log import MeticulousLogger
@@ -95,10 +96,15 @@ class WiFiQRHandler(BaseHandler):
 
 
 class WiFiConfigHandler(BaseHandler):
-    def getWifiConfig(self):
+    def getWifiConfig(self, include_ap_password: bool):
         mode = MeticulousConfig[CONFIG_WIFI][WIFI_MODE]
         apName = MeticulousConfig[CONFIG_WIFI][WIFI_AP_NAME]
-        apPassword = MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD]
+        # The AP password is only returned to loopback/Dial callers. LAN clients
+        # (even paired ones) get an empty value so the hotspot credential is not
+        # readable over the network.
+        apPassword = (
+            MeticulousConfig[CONFIG_WIFI][WIFI_AP_PASSWORD] if include_ap_password else ""
+        )
         current = WifiManager.getCurrentConfig()
         wifi_config = {
             "config": WiFiConfig(mode, apName, apPassword).to_json(),
@@ -109,11 +115,13 @@ class WiFiConfigHandler(BaseHandler):
         return wifi_config
 
     async def get(self):
+        include_ap_password = request_is_local(self)
         loop = asyncio.get_event_loop()
-        config = await loop.run_in_executor(None, self.getWifiConfig)
+        config = await loop.run_in_executor(None, self.getWifiConfig, include_ap_password)
         self.write(config)
 
     async def post(self):
+        include_ap_password = request_is_local(self)
         try:
             config_changed = False
             data = json.loads(self.request.body)
@@ -142,12 +150,14 @@ class WiFiConfigHandler(BaseHandler):
                             "error": WifiManager.getLastHealthErrorMessage()
                             or "Failed to apply Wi-Fi settings.",
                             "code": WifiManager._last_health_error,
-                            "config": self.getWifiConfig(),
+                            "config": self.getWifiConfig(include_ap_password),
                         }
                     )
                     return
 
-            config = await asyncio.get_event_loop().run_in_executor(None, self.getWifiConfig)
+            config = await asyncio.get_event_loop().run_in_executor(
+                None, self.getWifiConfig, include_ap_password
+            )
             self.write(config)
         except json.JSONDecodeError as e:
             self.set_status(400)

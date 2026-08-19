@@ -202,7 +202,13 @@ class PairingManager:
     # --- token verification & device management ------------------------------
 
     def verify_token(self, token: Optional[str]) -> Optional[str]:
-        """Return the device_id for a valid token, else None. Updates last_seen."""
+        """Return the device_id for a valid token, else None.
+
+        Updates last_seen in memory only; verification runs on every authorized
+        request, so we do not flush to disk each time. The updated timestamp is
+        persisted lazily on the next config save (best-effort; last_seen is
+        informational).
+        """
         if not token:
             return None
         candidate = hash_token(token)
@@ -212,7 +218,6 @@ class PairingManager:
                 stored = record.get("token_hash", "") if isinstance(record, dict) else ""
                 if stored and hmac.compare_digest(stored, candidate):
                     record["last_seen_at"] = _iso_now()
-                    MeticulousConfig.save()
                     return device_id
         return None
 

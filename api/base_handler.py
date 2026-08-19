@@ -1,15 +1,5 @@
 import tornado.web
-from netaddr import IPNetwork
 
-from config import (
-    CONFIG_SYSTEM,
-    CONFIG_WIFI,
-    HTTP_ALLOWED_NETWORKS,
-    HTTP_AUTH_KEY,
-    WIFI_MODE,
-    WIFI_MODE_AP,
-    MeticulousConfig,
-)
 from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -30,9 +20,18 @@ def redact_ip(ip: str) -> str:
 
 class BaseHandler(tornado.web.RequestHandler):
     def set_default_headers(self):
-        # FIXME: I know this is not great, you know this isn't great. What shall we do about this?
-        self.set_header("Access-Control-Allow-Origin", "*")
-        self.set_header("Access-Control-Allow-Headers", "*")
+        # Reflect the requesting Origin instead of a literal "*". CORS is not the
+        # security boundary here -- the bearer token is (see api/auth.py). We stay
+        # permissive so first-party and community web tools keep working, but
+        # reflecting the origin (rather than "*") lets us expose specific headers
+        # and never sets Access-Control-Allow-Credentials (we use a header token,
+        # not cookies, which also keeps us immune to CSRF).
+        origin = self.request.headers.get("Origin")
+        if origin:
+            self.set_header("Access-Control-Allow-Origin", origin)
+            self.set_header("Vary", "Origin")
+        else:
+            self.set_header("Access-Control-Allow-Origin", "*")
         self.set_header("Access-Control-Expose-Headers", "*")
 
         self.set_header("Content-type", "application/json")
@@ -54,34 +53,9 @@ class BaseHandler(tornado.web.RequestHandler):
         self.set_status(204)
         self.finish()
 
-    def prepare(self):
-
-        return
-
-        # Skip the check if the request is from localhost
-        if self.request.remote_ip == "127.0.0.1" and self.request.remote_ip == "::1":
-            return
-
-        if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP:
-            return
-
-        allowed_networks = [
-            IPNetwork(x) for x in MeticulousConfig[CONFIG_SYSTEM][HTTP_ALLOWED_NETWORKS]
-        ]
-
-        # TODO test me well!
-        if (
-            len([network for network in allowed_networks if self.request.remote_ip in network])
-            > 0
-        ):
-            return
-
-        # Validate the X-Authorized header
-        x_authorized = self.request.headers.get("X-Authorized")
-        if not x_authorized or x_authorized != MeticulousConfig[CONFIG_SYSTEM][HTTP_AUTH_KEY]:
-            self.set_status(401)
-            self.finish("Unauthorized: Missing X-Authorized header")
-            return
+    # Authorization is enforced uniformly by AuthMixin (api/auth.py), which is
+    # prepended to every route in API.get_routes(). BaseHandler no longer carries
+    # its own auth check.
 
 
 class LocalAccessHandler(BaseHandler):
