@@ -58,6 +58,37 @@ tornado.log.gen_log = MeticulousLogger.getLogger("tornado.general")
 
 PORT = int(os.getenv("PORT", "8080"))
 DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "y")
+IDENTITY_READY_PATH = os.getenv("IDENTITY_READY_PATH", "/run/meticulous-backend-identity-ready")
+
+
+def clear_identity_ready_marker():
+    try:
+        os.remove(IDENTITY_READY_PATH)
+    except FileNotFoundError:
+        pass
+    except OSError as error:
+        logger.warning(
+            f"Could not clear identity-ready marker at {IDENTITY_READY_PATH}: "
+            f"{type(error).__name__}"
+        )
+
+
+def publish_identity_ready_marker():
+    # Best-effort: consumers treat a missing marker as "identity not settled
+    # yet". Failing to write it (e.g. non-root development runs without access
+    # to /run) must never prevent the backend from serving.
+    try:
+        identity_ready_temporary = f"{IDENTITY_READY_PATH}.{os.getpid()}"
+        with open(identity_ready_temporary, "w", encoding="utf-8") as ready_file:
+            ready_file.write("ready\n")
+            ready_file.flush()
+            os.fsync(ready_file.fileno())
+        os.replace(identity_ready_temporary, IDENTITY_READY_PATH)
+    except OSError as error:
+        logger.warning(
+            f"Could not publish identity-ready marker at {IDENTITY_READY_PATH}: "
+            f"{type(error).__name__}"
+        )
 
 
 sio = socketio.AsyncServer(
@@ -276,7 +307,18 @@ def main():
     pyprctl.set_name("Main")
 
     DBusMonitor.init()
+    clear_identity_ready_marker()
     HostnameManager.init()
+    # Identity settling is best-effort: any failure is logged and startup
+    # continues, so a slow or missing systemd-hostnamed can never keep the
+    # backend from serving.
+    try:
+        WifiManager.initializeIdentity()
+    except Exception as error:
+        logger.warning(
+            f"Could not settle machine identity, continuing startup: {type(error).__name__}"
+        )
+    publish_identity_ready_marker()
     UpdateManager.init()
 
     try:
