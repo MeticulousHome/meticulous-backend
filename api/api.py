@@ -52,6 +52,7 @@ class API:
         from . import serial as _serial  # noqa
         from . import password_handler as _password_handler  # noqa
         from . import smoke_validation as _smoke_validation  # noqa
+        from . import pairing as _pairing  # noqa
 
         routes = []
         logger.info("API Routes registered:")
