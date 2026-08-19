@@ -1,5 +1,4 @@
 import asyncio
-import os
 import sys
 import time
 from threading import Thread
@@ -87,10 +86,6 @@ async def register_pairing_agent():
         return bus  # keep reference alive
     except Exception as e:
         logger.warning(f"[BLE Agent] Failed to register pairing agent: {type(e).__name__}")
-
-
-# FIXME Remove once the tornado server logic is in its own class
-PORT = int(os.getenv("PORT", "8080"))
 
 
 class GATTServer:
@@ -540,9 +535,9 @@ class GATTServer:
                 localServer = []
                 for localIP in networkConfig.ips:
                     if localIP.ip.version == 6:
-                        localServer.append(f"http://[{str(localIP.ip)}]:{PORT}")
+                        localServer.append(f"http://[{str(localIP.ip)}]")
                     else:
-                        localServer.append(f"http://{str(localIP.ip)}:{PORT}")
+                        localServer.append(f"http://{str(localIP.ip)}")
 
                 logger.debug(f"Backend redirect IP/URL: {localServer}")
                 return localServer
