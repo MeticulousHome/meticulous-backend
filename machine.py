@@ -41,6 +41,8 @@ from esp_serial.data import (
     ShotData,
     MachineNotify,
     HeaterTimeoutInfo,
+    TestRAData,
+    TestRASchema,
 )
 from esp_serial.esp_tool_wrapper import ESPToolWrapper
 from log import MeticulousLogger
@@ -137,6 +139,13 @@ class Machine:
         state=MachineStatus.IDLE, status=MachineStatus.IDLE, profile=MachineStatus.IDLE
     )
     sensor_sensors: SensorData = None
+
+    # TestRA bench harness state. Stays None/0 against any shipping firmware,
+    # which never emits the prefix.
+    testra_names = None
+    testra_last_seq = None
+    testra_diverged_counts = {}
+
     esp_info = None
     reset_count = 0
     shot_start_time = 0
@@ -372,6 +381,7 @@ class Machine:
                 data = None
                 info = None
                 notify = None
+                testra = None
                 is_valid_message = True
 
                 if data_str.startswith("rst:0x") and all(
@@ -427,6 +437,20 @@ class Machine:
                         sensor = SensorData.from_color_coded_args(colorCodedString)
                     case ["Sensors", *sensorArgs]:
                         sensor = SensorData.from_args(sensorArgs)
+                    # Bench harness for the RunningAverage race. Only the
+                    # fika_testra-s3 firmware emits these; a shipping firmware
+                    # never sends the prefix, so this stays inert in the field.
+                    case ["TestRASchema", *schemaArgs]:
+                        try:
+                            schema = TestRASchema.from_args(schemaArgs)
+                            Machine.testra_names = schema.names
+                        except Exception as e:
+                            logger.warning(f"Failed to parse TestRASchema: {e}")
+                    case ["TestRA", *testraArgs]:
+                        try:
+                            testra = TestRAData.from_args(testraArgs, Machine.testra_names)
+                        except Exception as e:
+                            logger.warning(f"Failed to parse TestRA: {e}")
                     case ["ESPInfo", *infoArgs]:
                         info = ESPInfo.from_args(infoArgs)
                     case ["Notify", *notifyArgs]:
@@ -633,6 +657,54 @@ class Machine:
                     if time_flag:
                         ShotManager.handleSensorData(Machine.sensor_sensors)
                         ShotManager.handleShotData(Machine.data_sensors)
+
+                if testra is not None:
+                    # The firmware emits TestRA immediately after "Sensors,",
+                    # so Machine.sensor_sensors is this cycle's data and the
+                    # publish cross-check compares the same instant.
+                    issues = []
+
+                    if Machine.testra_last_seq is not None:
+                        expected = Machine.testra_last_seq + 1
+                        if testra.seq != expected:
+                            issues.append(
+                                {
+                                    "kind": "sequence_gap",
+                                    "expected": expected,
+                                    "received": testra.seq,
+                                    "lost": testra.seq - expected,
+                                }
+                            )
+                    Machine.testra_last_seq = testra.seq
+
+                    for entry in testra.diverged_entries():
+                        seen = Machine.testra_diverged_counts.get(entry.name, 0) + 1
+                        Machine.testra_diverged_counts[entry.name] = seen
+                        # Log the first hit per averager so the harness firing is
+                        # visible to anyone tailing the journal, then stay quiet -
+                        # at 10 Hz this would otherwise flood the log.
+                        if seen == 1:
+                            logger.warning(
+                                f"TestRA divergence on {entry.name}: "
+                                f"og={entry.og} safe={entry.safe} "
+                                f"({entry.divergence_pct:.3f}%)"
+                            )
+                        issues.append({"kind": "divergence", "count": seen, **entry.to_sio()})
+
+                    for mismatch in testra.publish_mismatches(Machine.sensor_sensors):
+                        issues.append({"kind": "publish_mismatch", **mismatch})
+
+                    await Machine._sio.emit("TestRA", testra.to_sio())
+
+                    if issues:
+                        await Machine._sio.emit(
+                            "TestRAIssue",
+                            {
+                                "seq": testra.seq,
+                                "uptime_ms": testra.uptime_ms,
+                                "issues": issues,
+                            },
+                        )
 
                 if info is not None:
                     Machine.esp_info = info

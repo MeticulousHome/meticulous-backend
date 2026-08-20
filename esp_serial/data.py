@@ -620,3 +620,204 @@ class HeaterTimeoutInfo:
                 "timeout": self.preheat_timeout,
             },
         }
+
+
+# ---------------------------------------------------------------------------
+# TestRA - bench harness for the RunningAverage reentrancy investigation.
+# ---------------------------------------------------------------------------
+#
+# Emitted only by the fika_testra-s3 firmware env, once per Data,/Sensors,
+# cycle. Nothing here runs against a shipping firmware, which never sends the
+# prefix. See EspressoFirmware include/TestRunningAverage.h for the wire format.
+#
+# The signal being measured is `og` vs `safe`: the same samples summed in the
+# same order at the same precision, once through the non-reentrant
+# RunningAverage the machine actually reads and once through a reentrant
+# mirror. Absent a race those agree bit for bit, so any divergence is real.
+
+TESTRA_FIELDS_PER_ENTRY = 5
+
+# Entry name -> SensorData attribute, for the entries whose published float has
+# a directly comparable counterpart in the "Sensors," message. Pressure is
+# deliberately absent: it is averaged a second time inside FikaUart before it
+# reaches "Data,", so the two are not the same quantity.
+TESTRA_SENSOR_COUNTERPARTS = {
+    "ext_temp_1": "external_1",
+    "ext_temp_2": "external_2",
+    "lam_temp": "lam_temp",
+    "tube_temp": "tube",
+    "motor_temp": "motor_temp",
+}
+
+# "Sensors," prints 2 decimals, TestRA prints 4, so the echo and its counterpart
+# can legitimately differ by up to half a cent unit from quantisation alone.
+TESTRA_PUBLISH_TOLERANCE = 0.01
+
+
+def testra_float(value):
+    """Parse a TestRA field, preserving nan. nan is meaningful here: it marks an
+    averager with no published counterpart, or a window that holds no samples
+    yet. Collapsing it to 0.0 the way safeFloat does would invent a divergence."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return float("nan")
+
+
+@dataclass
+class TestRAEntry:
+    """One averager's readings for a single cycle."""
+
+    name: str
+    raw: float = float("nan")
+    og: float = float("nan")
+    safe: float = float("nan")
+    echo: float = float("nan")
+    coherent: bool = True
+
+    @property
+    def divergence(self):
+        """Absolute difference between the original and the reentrant mirror."""
+        if math.isnan(self.og) or math.isnan(self.safe):
+            return float("nan")
+        return abs(self.og - self.safe)
+
+    @property
+    def divergence_pct(self):
+        """Divergence relative to the mirror, which is the trustworthy value."""
+        delta = self.divergence
+        if math.isnan(delta):
+            return float("nan")
+        if delta == 0.0:
+            return 0.0
+        scale = abs(self.safe)
+        if scale < 1e-9:
+            # Mirror is at zero and the original is not: relative error is
+            # unbounded. Report it as such rather than dividing by ~0.
+            return float("inf")
+        return 100.0 * delta / scale
+
+    def is_diverged(self):
+        """A divergence only counts when the window did not move mid-read.
+        Otherwise og and safe were computed over different sample sets and the
+        difference says nothing about reentrancy."""
+        if not self.coherent:
+            return False
+        delta = self.divergence
+        return not math.isnan(delta) and delta > 0.0
+
+    def to_sio(self):
+        return {
+            "name": self.name,
+            "raw": safe_float_with_nan(self.raw),
+            "og": safe_float_with_nan(self.og),
+            "safe": safe_float_with_nan(self.safe),
+            "echo": safe_float_with_nan(self.echo),
+            "coherent": self.coherent,
+            "divergence": safe_float_with_nan(self.divergence),
+            "divergence_pct": safe_float_with_nan(self.divergence_pct),
+        }
+
+
+@dataclass
+class TestRASchema:
+    """The self-describing header the bench firmware repeats every few seconds,
+    so a consumer attaching mid-run can label the positional TestRA columns."""
+
+    version: int = 0
+    names: list = None
+
+    @staticmethod
+    def from_args(args):
+        if len(args) < 1:
+            raise ValueError("TestRASchema needs at least a version")
+        names = [n.strip() for n in args[1:] if n.strip() != ""]
+        return TestRASchema(version=int(args[0]), names=names)
+
+
+@dataclass
+class TestRAData:
+    """One TestRA row: every instrumented averager, sampled in one pass."""
+
+    schema: int = 0
+    seq: int = 0
+    uptime_ms: int = 0
+    entries: list = None
+
+    @staticmethod
+    def from_args(args, names=None):
+        if len(args) < 3:
+            raise ValueError("TestRA needs schema, seq and uptime")
+
+        schema = int(args[0])
+        seq = int(args[1])
+        uptime_ms = int(args[2])
+
+        # The firmware terminates every field with a comma, so the split leaves
+        # a trailing empty element.
+        fields = [f for f in args[3:] if f.strip() != ""]
+
+        count = len(fields) // TESTRA_FIELDS_PER_ENTRY
+        if count == 0:
+            raise ValueError("TestRA carried no entries")
+
+        entries = []
+        for i in range(count):
+            base = i * TESTRA_FIELDS_PER_ENTRY
+            if names is not None and i < len(names):
+                name = names[i]
+            else:
+                name = f"idx_{i}"
+            entries.append(
+                TestRAEntry(
+                    name=name,
+                    raw=testra_float(fields[base]),
+                    og=testra_float(fields[base + 1]),
+                    safe=testra_float(fields[base + 2]),
+                    echo=testra_float(fields[base + 3]),
+                    coherent=fields[base + 4].strip() == "1",
+                )
+            )
+
+        return TestRAData(schema=schema, seq=seq, uptime_ms=uptime_ms, entries=entries)
+
+    def diverged_entries(self):
+        return [e for e in (self.entries or []) if e.is_diverged()]
+
+    def publish_mismatches(self, sensor):
+        """Cross-check each echoed float against the value that reached
+        "Sensors," this cycle. This does not test reentrancy - it proves the
+        TestRA columns and the Sensors columns still describe the same
+        quantities, so a field-order desync between firmware and backend cannot
+        masquerade as a race."""
+        if sensor is None:
+            return []
+
+        mismatches = []
+        for entry in self.entries or []:
+            attribute = TESTRA_SENSOR_COUNTERPARTS.get(entry.name)
+            if attribute is None or math.isnan(entry.echo):
+                continue
+            reported = getattr(sensor, attribute, None)
+            if reported is None:
+                continue
+            delta = abs(entry.echo - reported)
+            if delta > TESTRA_PUBLISH_TOLERANCE:
+                mismatches.append(
+                    {
+                        "name": entry.name,
+                        "sensors_field": attribute,
+                        "echo": safe_float_with_nan(entry.echo),
+                        "reported": safe_float_with_nan(reported),
+                        "delta": safe_float_with_nan(delta),
+                    }
+                )
+        return mismatches
+
+    def to_sio(self):
+        return {
+            "schema": self.schema,
+            "seq": self.seq,
+            "uptime_ms": self.uptime_ms,
+            "entries": [e.to_sio() for e in (self.entries or [])],
+        }
