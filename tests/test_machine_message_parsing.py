@@ -9,6 +9,8 @@ from esp_serial.data import (
     HeaterTimeoutInfo,
     MachineNotify,
     MachineState,
+    TestRAData,
+    TestRASchema,
     safeFloat,
     safe_float_with_nan,
 )
@@ -350,3 +352,156 @@ class TestMachineNotify:
     def test_parse_empty_args_returns_none(self):
         notify = MachineNotify.from_args([])
         assert notify is None
+
+
+SCHEMA_ARGS = [
+    "1",
+    "pressure",
+    "water_temp",
+    "ext_temp",
+    "ext_temp_1",
+    "ext_temp_2",
+    "lam_temp",
+    "tube_temp",
+    "plunger_temp",
+    "motor_temp",
+]
+
+NAMES = TestRASchema.from_args(SCHEMA_ARGS).names
+
+# These are named after the TestRA wire prefix, not after pytest. Without this,
+# pytest tries to collect them as test classes and warns on every run.
+TestRAData.__test__ = False
+TestRASchema.__test__ = False
+
+
+def build_testra_args(entries, seq=1, uptime=12345):
+    """Build a TestRA argument list. `entries` is a list of
+    (raw, og, safe, echo, coherent) tuples, one per averager."""
+    fields = []
+    for raw, og, safe, echo, coherent in entries:
+        fields += [str(raw), str(og), str(safe), str(echo), str(coherent)]
+    # The firmware terminates every field with a comma, leaving a trailing
+    # empty element after the split.
+    return ["1", str(seq), str(uptime)] + fields + [""]
+
+
+CLEAN_ROW = [(1.0, 9.0, 9.0, "nan", 1)] * 9
+
+
+class TestRASchemaParsing:
+    def test_names_and_version(self):
+        schema = TestRASchema.from_args(SCHEMA_ARGS)
+        assert schema.version == 1
+        assert schema.names[0] == "pressure"
+        assert schema.names[-1] == "motor_temp"
+        assert len(schema.names) == 9
+
+    def test_requires_version(self):
+        with pytest.raises(ValueError):
+            TestRASchema.from_args([])
+
+
+class TestRAParsing:
+    def test_parses_all_entries(self):
+        data = TestRAData.from_args(build_testra_args(CLEAN_ROW), NAMES)
+        assert data.seq == 1
+        assert data.uptime_ms == 12345
+        assert len(data.entries) == 9
+        assert [e.name for e in data.entries] == NAMES
+
+    def test_falls_back_to_positional_names_without_schema(self):
+        data = TestRAData.from_args(build_testra_args(CLEAN_ROW), None)
+        assert data.entries[0].name == "idx_0"
+
+    def test_rejects_truncated_row(self):
+        with pytest.raises(ValueError):
+            TestRAData.from_args(["1", "2"], NAMES)
+
+    def test_rejects_row_without_entries(self):
+        with pytest.raises(ValueError):
+            TestRAData.from_args(["1", "2", "3"], NAMES)
+
+
+class TestRADivergence:
+    def test_matching_windows_do_not_diverge(self):
+        data = TestRAData.from_args(build_testra_args(CLEAN_ROW), NAMES)
+        assert data.diverged_entries() == []
+
+    def test_race_is_detected(self):
+        rows = list(CLEAN_ROW)
+        # The defect's signature: the original reads roughly 2x the true value.
+        rows[6] = (93.5, 187.02, 93.51, 93.51, 1)
+        data = TestRAData.from_args(build_testra_args(rows), NAMES)
+        diverged = data.diverged_entries()
+        assert len(diverged) == 1
+        assert diverged[0].name == "tube_temp"
+        assert diverged[0].divergence == pytest.approx(93.51, abs=1e-6)
+        assert diverged[0].divergence_pct == pytest.approx(100.0, abs=1e-6)
+
+    def test_incoherent_read_is_not_counted(self):
+        rows = list(CLEAN_ROW)
+        # Same divergence, but the window moved mid-read, so og and safe cover
+        # different sample sets and the difference proves nothing.
+        rows[6] = (93.5, 187.02, 93.51, 93.51, 0)
+        data = TestRAData.from_args(build_testra_args(rows), NAMES)
+        assert data.diverged_entries() == []
+
+    def test_zero_mirror_reports_infinite_relative_error(self):
+        rows = list(CLEAN_ROW)
+        rows[1] = (0.0, 4.2, 0.0, "nan", 1)
+        data = TestRAData.from_args(build_testra_args(rows), NAMES)
+        entry = data.diverged_entries()[0]
+        assert entry.divergence_pct == float("inf")
+
+    def test_nan_average_is_not_a_divergence(self):
+        rows = list(CLEAN_ROW)
+        rows[0] = ("nan", "nan", "nan", "nan", 1)
+        data = TestRAData.from_args(build_testra_args(rows), NAMES)
+        assert data.diverged_entries() == []
+
+
+class TestRAPublishCrossCheck:
+    def sensor(self):
+        return SensorData(
+            external_1=20.0,
+            external_2=21.0,
+            tube=93.51,
+            motor_temp=40.0,
+            lam_temp=55.0,
+        )
+
+    def test_matching_echo_is_silent(self):
+        rows = list(CLEAN_ROW)
+        rows[3] = (20.0, 20.0, 20.0, 20.0, 1)
+        data = TestRAData.from_args(build_testra_args(rows), NAMES)
+        assert data.publish_mismatches(self.sensor()) == []
+
+    def test_two_decimal_quantisation_is_tolerated(self):
+        rows = list(CLEAN_ROW)
+        # TestRA prints 4 decimals, "Sensors," prints 2. That gap must not
+        # register as a mismatch.
+        rows[6] = (93.5, 93.51, 93.51, 93.5137, 1)
+        data = TestRAData.from_args(build_testra_args(rows), NAMES)
+        assert data.publish_mismatches(self.sensor()) == []
+
+    def test_field_desync_is_caught(self):
+        rows = list(CLEAN_ROW)
+        rows[8] = (40.0, 40.0, 40.0, 47.9, 1)
+        data = TestRAData.from_args(build_testra_args(rows), NAMES)
+        mismatches = data.publish_mismatches(self.sensor())
+        assert len(mismatches) == 1
+        assert mismatches[0]["name"] == "motor_temp"
+        assert mismatches[0]["sensors_field"] == "motor_temp"
+
+    def test_averager_without_counterpart_is_skipped(self):
+        # Pressure is averaged a second time before it reaches "Data,", so it
+        # carries a nan echo and must never be cross-checked.
+        rows = list(CLEAN_ROW)
+        rows[0] = (5.0, 5.0, 5.0, "nan", 1)
+        data = TestRAData.from_args(build_testra_args(rows), NAMES)
+        assert data.publish_mismatches(self.sensor()) == []
+
+    def test_no_sensor_data_yet(self):
+        data = TestRAData.from_args(build_testra_args(CLEAN_ROW), NAMES)
+        assert data.publish_mismatches(None) == []
