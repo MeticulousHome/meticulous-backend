@@ -73,10 +73,10 @@ def test_fetch_report_files_uses_parent_debug_file_names(report_module, monkeypa
     debug_name = "2026-05-18/10:00:00.shot.json.zst"
     _debug_file(report_module.DEBUG_HISTORY_ROOT, "2026-05-18", "10:00:00.shot.json.zst")
 
-    async def fake_machine_logs(reference_time=None):
+    async def fake_machine_logs(start_time=None, end_time=None, cancellation=None):
         return "logs"
 
-    async def fake_machine_status():
+    async def fake_machine_status(cancellation=None):
         return '{"ok": true}'
 
     monkeypatch.setattr(report_module, "_get_machine_info", lambda: {"machine": "info"})
@@ -105,7 +105,7 @@ def test_fetch_machine_logs_uses_emulated_response_without_watcher(report_module
     def fail_fetch(*args, **kwargs):
         raise AssertionError("Emulated machine logs should not call watcher")
 
-    monkeypatch.setattr(report_module.tornado.httpclient.AsyncHTTPClient, "fetch", fail_fetch)
+    monkeypatch.setattr(report_module, "_fetch_watcher_text", fail_fetch)
 
     logs = asyncio.run(report_module._fetch_machine_logs(123, 456))
 
@@ -116,15 +116,15 @@ def test_fetch_machine_logs_uses_emulated_response_without_watcher(report_module
 def test_fetch_machine_logs_converts_range_to_watcher_hours(report_module, monkeypatch):
     captured = {}
 
-    class FakeClient:
-        async def fetch(self, url, request_timeout):
-            captured["url"] = url
-            captured["request_timeout"] = request_timeout
-            return SimpleNamespace(body=b"logs")
+    async def fake_fetch_watcher_text(url, timeout_seconds, cancellation=None):
+        captured["url"] = url
+        captured["timeout_seconds"] = timeout_seconds
+        captured["cancellation"] = cancellation
+        return "logs"
 
     monkeypatch.setattr(report_module, "_machine_is_emulated", lambda: False)
     monkeypatch.setattr(report_module, "_now_seconds", lambda: 100000)
-    monkeypatch.setattr(report_module.tornado.httpclient, "AsyncHTTPClient", FakeClient)
+    monkeypatch.setattr(report_module, "_fetch_watcher_text", fake_fetch_watcher_text)
 
     logs = asyncio.run(
         report_module._fetch_machine_logs(
@@ -135,7 +135,8 @@ def test_fetch_machine_logs_converts_range_to_watcher_hours(report_module, monke
 
     assert logs == "logs"
     assert captured["url"].endswith("&since=25&until=1")
-    assert captured["request_timeout"] == 600
+    assert captured["timeout_seconds"] == 600
+    assert captured["cancellation"] is None
 
 
 def test_fetch_machine_status_uses_emulated_response_without_watcher(
@@ -146,13 +147,191 @@ def test_fetch_machine_status_uses_emulated_response_without_watcher(
     def fail_fetch(*args, **kwargs):
         raise AssertionError("Emulated machine status should not call watcher")
 
-    monkeypatch.setattr(report_module.tornado.httpclient.AsyncHTTPClient, "fetch", fail_fetch)
+    monkeypatch.setattr(report_module, "_fetch_watcher_text", fail_fetch)
 
     status = json.loads(asyncio.run(report_module._fetch_machine_status()))
 
     assert status["emulated"] is True
     assert status["status"] == "ok"
     assert status["source"] == "meticulous-backend"
+
+
+def test_fetch_watcher_text_uses_aiohttp_and_preserves_timeout_and_decoding(
+    report_module, monkeypatch
+):
+    captured = {}
+
+    class FakeResponse:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc_info):
+            return None
+
+        async def read(self):
+            return "café".encode("utf-8") + b"\xff"
+
+    class FakeSession:
+        def __init__(self, timeout=None, raise_for_status=None):
+            captured["timeout"] = timeout
+            captured["raise_for_status"] = raise_for_status
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc_info):
+            return None
+
+        def get(self, url):
+            captured["url"] = url
+            return FakeResponse()
+
+    monkeypatch.setattr(report_module.aiohttp, "ClientSession", FakeSession)
+
+    text = asyncio.run(report_module._fetch_watcher_text("http://watcher/health/status", 120))
+
+    assert captured["url"] == "http://watcher/health/status"
+    assert captured["raise_for_status"] is True
+    assert captured["timeout"].total == 120
+    # Invalid utf-8 tail is replaced (U+FFFD), not raised, matching prior behavior.
+    assert text == "café" + chr(0xFFFD)
+
+
+def test_fetch_watcher_text_cancels_active_task_on_disconnect(report_module, monkeypatch):
+    started = asyncio.Event()
+
+    async def slow_get_watcher_body(url, timeout_seconds):
+        started.set()
+        await asyncio.sleep(10)
+        return b"too slow"
+
+    monkeypatch.setattr(report_module, "_get_watcher_body", slow_get_watcher_body)
+
+    async def run():
+        cancellation = report_module.CollectionCancellation()
+        fetch = asyncio.ensure_future(
+            report_module._fetch_watcher_text("http://watcher/health/logs", 600, cancellation)
+        )
+        await started.wait()
+        cancellation.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await fetch
+        assert cancellation.active_task is None
+
+    asyncio.run(run())
+
+
+def test_fetch_report_files_raises_cancelled_at_next_boundary_after_disconnect(
+    report_module, monkeypatch
+):
+    async def fail_machine_logs(start_time=None, end_time=None, cancellation=None):
+        raise AssertionError("Machine logs must not be fetched after disconnect")
+
+    monkeypatch.setattr(report_module, "_get_machine_info", lambda: {"machine": "info"})
+    monkeypatch.setattr(report_module, "_fetch_machine_logs", fail_machine_logs)
+
+    cancellation = report_module.CollectionCancellation()
+    cancellation.disconnected = True
+
+    draft_dir = report_module._draft_path("boundary-test-id")
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(report_module._fetch_report_files(draft_dir, cancellation=cancellation))
+
+
+def test_fetch_report_files_logs_stage_error_as_it_happens(report_module, monkeypatch):
+    warnings = []
+
+    async def failing_machine_logs(start_time=None, end_time=None, cancellation=None):
+        raise RuntimeError("watcher unreachable")
+
+    async def fake_machine_status(cancellation=None):
+        return '{"ok": true}'
+
+    async def no_incomplete_debug_shot(draft_dir):
+        return None
+
+    monkeypatch.setattr(report_module, "_get_machine_info", lambda: {"machine": "info"})
+    monkeypatch.setattr(report_module, "_fetch_machine_logs", failing_machine_logs)
+    monkeypatch.setattr(report_module, "_fetch_machine_status", fake_machine_status)
+    monkeypatch.setattr(
+        report_module, "_capture_incomplete_debug_shot", no_incomplete_debug_shot
+    )
+    monkeypatch.setattr(
+        report_module.logger, "warning", lambda message, *a, **kw: warnings.append(message)
+    )
+
+    draft_dir = report_module._draft_path("logged-error-id")
+    fetched = asyncio.run(report_module._fetch_report_files(draft_dir))
+
+    # Logged at the point of failure, tagged with the localID, and the journal
+    # copy says exactly what the bundle copy says.
+    assert warnings == ["[logged-error-id] Failed to fetch machine logs: watcher unreachable"]
+    assert fetched.errors[0] == "Failed to fetch machine logs: watcher unreachable"
+
+
+def test_cancelled_stage_is_never_logged_as_a_collection_error(report_module, monkeypatch):
+    """A disconnect must leave no trace, including in the journal.
+
+    `CancelledError` is a `BaseException`, so it sails past every stage
+    handler's `except Exception` without being recorded or logged. Widening
+    one of those handlers would silently break that.
+    """
+
+    def fail_if_called(*args, **kwargs):
+        raise AssertionError("A client disconnect must not be logged as a collection error")
+
+    async def cancelled_machine_logs(start_time=None, end_time=None, cancellation=None):
+        raise asyncio.CancelledError()
+
+    async def no_incomplete_debug_shot(draft_dir):
+        return None
+
+    monkeypatch.setattr(report_module, "_get_machine_info", lambda: {"machine": "info"})
+    monkeypatch.setattr(report_module, "_fetch_machine_logs", cancelled_machine_logs)
+    monkeypatch.setattr(
+        report_module, "_capture_incomplete_debug_shot", no_incomplete_debug_shot
+    )
+    monkeypatch.setattr(report_module.logger, "warning", fail_if_called)
+    monkeypatch.setattr(report_module.logger, "info", fail_if_called)
+
+    draft_dir = report_module._draft_path("cancelled-stage-id")
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(report_module._fetch_report_files(draft_dir))
+
+
+def test_short_debug_file_count_logs_at_info_not_warning(report_module, monkeypatch):
+    """Every machine that has not brewed 10 shots reports a short count on
+    every single report, so it must not reach the warning channel."""
+    infos = []
+
+    def fail_if_called(*args, **kwargs):
+        raise AssertionError("An expected short debug-file count must not warn")
+
+    async def fake_machine_logs(start_time=None, end_time=None, cancellation=None):
+        return "logs"
+
+    async def fake_machine_status(cancellation=None):
+        return '{"ok": true}'
+
+    async def no_incomplete_debug_shot(draft_dir):
+        return None
+
+    monkeypatch.setattr(report_module, "_get_machine_info", lambda: {"machine": "info"})
+    monkeypatch.setattr(report_module, "_fetch_machine_logs", fake_machine_logs)
+    monkeypatch.setattr(report_module, "_fetch_machine_status", fake_machine_status)
+    monkeypatch.setattr(
+        report_module, "_capture_incomplete_debug_shot", no_incomplete_debug_shot
+    )
+    monkeypatch.setattr(report_module.logger, "warning", fail_if_called)
+    monkeypatch.setattr(
+        report_module.logger, "info", lambda message, *a, **kw: infos.append(message)
+    )
+
+    draft_dir = report_module._draft_path("few-shots-id")
+    fetched = asyncio.run(report_module._fetch_report_files(draft_dir))
+
+    assert infos == ["[few-shots-id] Only found 0 debug files while reporting; requested 10."]
+    assert "Only found 0 debug files while reporting; requested 10." in fetched.errors
 
 
 def test_fetch_report_files_includes_active_incomplete_debug_shot_first(
@@ -167,10 +346,10 @@ def test_fetch_report_files_includes_active_incomplete_debug_shot_first(
 
     incomplete_name = "2026-05-18/11:00:00.shot_incomplete.json.zst"
 
-    async def fake_machine_logs(reference_time=None):
+    async def fake_machine_logs(start_time=None, end_time=None, cancellation=None):
         return "logs"
 
-    async def fake_machine_status():
+    async def fake_machine_status(cancellation=None):
         return '{"ok": true}'
 
     async def fake_capture_incomplete_debug_shot(draft_dir):
@@ -231,10 +410,10 @@ def test_fetch_report_files_skips_active_debug_shot_for_historical_range(
     async def fail_capture(_draft_dir):
         raise AssertionError("Historical reports must not capture the active debug shot")
 
-    async def fake_machine_logs(*_args):
+    async def fake_machine_logs(*_args, **_kwargs):
         return "logs"
 
-    async def fake_machine_status():
+    async def fake_machine_status(cancellation=None):
         return "status"
 
     monkeypatch.setattr(report_module, "_get_machine_info", lambda: {"machine": "info"})
@@ -424,6 +603,7 @@ def test_create_report_returns_machine_id_matching_report_info(report_module, mo
 
     class FakeHandler:
         request = SimpleNamespace(body=b"")
+        _cancellation = report_module.CollectionCancellation()
 
         def write(self, body):
             self.body = body
@@ -456,7 +636,11 @@ def test_create_report_returns_machine_id_matching_report_info(report_module, mo
     assert report_info["machineID"] == handler.body["machineID"]
     assert report_info["dateAndTime"] == 1
     assert report_info["issueTime"] == 1
-    assert calls == [((None, None), {"capture_active_debug_shot": True})]
+    assert len(calls) == 1
+    call_args, call_kwargs = calls[0]
+    assert call_args == (None, None)
+    assert call_kwargs["capture_active_debug_shot"] is True
+    assert call_kwargs["cancellation"] is handler._cancellation
     with ShotDataBase.engine.connect() as connection:
         row = connection.execute(select(bug_reports)).first()
     assert row.localID == "local-test-id"
@@ -480,6 +664,7 @@ def test_create_report_with_historical_issue_time_persists_metadata_and_range(
 
     class FakeHandler:
         request = SimpleNamespace(body=json.dumps({"issueTime": issue_time}).encode())
+        _cancellation = report_module.CollectionCancellation()
 
         def write(self, body):
             self.body = body
@@ -503,12 +688,11 @@ def test_create_report_with_historical_issue_time_persists_metadata_and_range(
     with ShotDataBase.engine.connect() as connection:
         row = connection.execute(select(bug_reports)).first()
 
-    assert calls == [
-        (
-            (issue_time - (12 * 60 * 60), issue_time + (12 * 60 * 60)),
-            {"capture_active_debug_shot": False},
-        )
-    ]
+    assert len(calls) == 1
+    call_args, call_kwargs = calls[0]
+    assert call_args == (issue_time - (12 * 60 * 60), issue_time + (12 * 60 * 60))
+    assert call_kwargs["capture_active_debug_shot"] is False
+    assert call_kwargs["cancellation"] is handler._cancellation
     assert report_info["dateAndTime"] == now
     assert report_info["issueTime"] == issue_time
     assert row.creationTime == now
@@ -548,6 +732,7 @@ def test_create_report_with_recent_issue_time_keeps_active_shot_eligible(
 
     class FakeHandler:
         request = SimpleNamespace(body=json.dumps({"issueTime": issue_time}).encode())
+        _cancellation = report_module.CollectionCancellation()
 
         def write(self, body):
             self.body = body
@@ -561,14 +746,158 @@ def test_create_report_with_recent_issue_time_keeps_active_shot_eligible(
         "machine-test-id",
     )
 
-    asyncio.run(report_module.ReportsCreateHandler.post(FakeHandler()))
+    handler = FakeHandler()
+    asyncio.run(report_module.ReportsCreateHandler.post(handler))
 
-    assert calls == [
-        (
-            (now - (24 * 60 * 60), now),
-            {"capture_active_debug_shot": True},
+    assert len(calls) == 1
+    call_args, call_kwargs = calls[0]
+    assert call_args == (now - (24 * 60 * 60), now)
+    assert call_kwargs["capture_active_debug_shot"] is True
+    assert call_kwargs["cancellation"] is handler._cancellation
+
+
+def test_create_report_cancelled_mid_collection_leaves_no_trace(report_module, monkeypatch):
+    async def cancelling_fetch_report_files(draft_dir, *args, cancellation=None, **kwargs):
+        draft_dir.mkdir(parents=True, exist_ok=True)
+        draft_dir.joinpath("partial.txt").write_text("partial", encoding="utf-8")
+        raise asyncio.CancelledError()
+
+    def fail_if_called(*args, **kwargs):
+        raise AssertionError("Cancellation must not be treated as an error")
+
+    class FakeHandler:
+        request = SimpleNamespace(body=b"")
+        _cancellation = report_module.CollectionCancellation()
+        wrote = False
+        status = None
+
+        def write(self, body):
+            self.wrote = True
+            self.body = body
+
+        def set_status(self, status):
+            self.status = status
+
+    monkeypatch.setattr(report_module, "_new_local_id", lambda: "cancelled-id")
+    monkeypatch.setattr(report_module, "_fetch_report_files", cancelling_fetch_report_files)
+    monkeypatch.setattr(report_module.logger, "exception", fail_if_called)
+    monkeypatch.setattr(report_module.logger, "error", fail_if_called)
+    monkeypatch.setattr(report_module, "_api_error", fail_if_called)
+    monkeypatch.setitem(
+        report_module.MeticulousConfig[report_module.CONFIG_SYSTEM],
+        report_module.MACHINE_SERIAL_NUMBER,
+        "machine-test-id",
+    )
+
+    handler = FakeHandler()
+    asyncio.run(report_module.ReportsCreateHandler.post(handler))
+
+    draft_dir = report_module._draft_path("cancelled-id")
+    assert not draft_dir.exists()
+    assert handler.wrote is False
+    assert handler.status is None
+    with ShotDataBase.engine.connect() as connection:
+        row = connection.execute(select(bug_reports)).first()
+    assert row is None
+
+
+def test_create_report_cancelled_during_debug_file_copy_never_inserts_row(
+    report_module, monkeypatch
+):
+    for index in range(3):
+        _debug_file(
+            report_module.DEBUG_HISTORY_ROOT, "2026-05-18", f"10:00:0{index}.shot.json.zst"
         )
-    ]
+
+    async def fake_machine_logs(start_time=None, end_time=None, cancellation=None):
+        return "logs"
+
+    async def fake_machine_status(cancellation=None):
+        return '{"ok": true}'
+
+    cancellation = report_module.CollectionCancellation()
+    real_copy_draft_file = report_module._copy_draft_file
+    copy_calls = []
+
+    def cancel_after_first_copy(draft_dir, archive_name, source_path):
+        copied = real_copy_draft_file(draft_dir, archive_name, source_path)
+        copy_calls.append(archive_name)
+        # Simulate the client disconnecting while the first file was copying:
+        # the collection must stop before the *next* copy, not this one.
+        cancellation.disconnected = True
+        return copied
+
+    class FakeHandler:
+        request = SimpleNamespace(body=b"")
+        _cancellation = cancellation
+        wrote = False
+
+        def write(self, body):
+            self.wrote = True
+            self.body = body
+
+    monkeypatch.setattr(report_module, "_get_machine_info", lambda: {"machine": "info"})
+    monkeypatch.setattr(report_module, "_fetch_machine_logs", fake_machine_logs)
+    monkeypatch.setattr(report_module, "_fetch_machine_status", fake_machine_status)
+    monkeypatch.setattr(report_module, "_copy_draft_file", cancel_after_first_copy)
+    monkeypatch.setattr(report_module, "_new_local_id", lambda: "mid-copy-cancel-id")
+    monkeypatch.setitem(
+        report_module.MeticulousConfig[report_module.CONFIG_SYSTEM],
+        report_module.MACHINE_SERIAL_NUMBER,
+        "machine-test-id",
+    )
+
+    handler = FakeHandler()
+    asyncio.run(report_module.ReportsCreateHandler.post(handler))
+
+    assert handler.wrote is False
+    draft_dir = report_module._draft_path("mid-copy-cancel-id")
+    assert not draft_dir.exists()
+    assert len(copy_calls) == 1
+    with ShotDataBase.engine.connect() as connection:
+        row = connection.execute(select(bug_reports)).first()
+    assert row is None
+
+
+def test_create_report_records_watcher_failure_but_still_returns_draft_info(
+    report_module, monkeypatch
+):
+    async def failing_machine_logs(start_time=None, end_time=None, cancellation=None):
+        raise RuntimeError("watcher unreachable")
+
+    async def fake_machine_status(cancellation=None):
+        return '{"ok": true}'
+
+    monkeypatch.setattr(report_module, "_get_machine_info", lambda: {"machine": "info"})
+    monkeypatch.setattr(report_module, "_fetch_machine_logs", failing_machine_logs)
+    monkeypatch.setattr(report_module, "_fetch_machine_status", fake_machine_status)
+    monkeypatch.setattr(report_module, "_new_local_id", lambda: "watcher-fail-id")
+    monkeypatch.setattr(report_module, "_now_seconds", lambda: 1)
+    monkeypatch.setitem(
+        report_module.MeticulousConfig[report_module.CONFIG_SYSTEM],
+        report_module.MACHINE_SERIAL_NUMBER,
+        "machine-test-id",
+    )
+
+    class FakeHandler:
+        request = SimpleNamespace(body=b"")
+        _cancellation = report_module.CollectionCancellation()
+
+        def write(self, body):
+            self.body = body
+
+    handler = FakeHandler()
+    asyncio.run(report_module.ReportsCreateHandler.post(handler))
+
+    assert handler.body == {"localID": "watcher-fail-id", "machineID": "machine-test-id"}
+    draft_dir = report_module._draft_path("watcher-fail-id")
+    report_log = draft_dir.joinpath(report_module.REPORT_LOG_NAME).read_text(encoding="utf-8")
+    assert "Failed to fetch machine logs: watcher unreachable" in report_log
+    with ShotDataBase.engine.connect() as connection:
+        row = connection.execute(select(bug_reports)).first()
+    assert row.localID == "watcher-fail-id"
+    assert row.machineLogs is False
+    assert row.machineStatus is True
 
 
 def test_create_report_request_requires_only_integer_issue_time(report_module):
