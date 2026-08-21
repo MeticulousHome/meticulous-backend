@@ -146,6 +146,9 @@ class Machine:
     testra_last_seq = None
     testra_diverged_counts = {}
 
+    # Throttle for the motor-stress override warning (see stopMotorIfHot).
+    motor_stress_last_log = 0.0
+
     esp_info = None
     reset_count = 0
     shot_start_time = 0
@@ -860,13 +863,31 @@ class Machine:
                     )
 
     def stopMotorIfHot(_shotData: ShotData, _sensorData: SensorData):
-        from monitoring.motor_power_monitoring import MAX_ENERGY_ALLOWED
+        from monitoring.motor_power_monitoring import (
+            MAX_ENERGY_ALLOWED,
+            MOTOR_STRESS_PROTECTION_ENABLED,
+        )
 
         energy_consumed_by_motor = motor_energy_calculator.calculate_motor_energy(
             _sensorData, _shotData
         )
 
         if energy_consumed_by_motor >= MAX_ENERGY_ALLOWED:
+            if not MOTOR_STRESS_PROTECTION_ENABLED:
+                # Bench override: keep integrating and keep saying so, but do not
+                # raise the alarm. Throttled because this is reached on every
+                # Sensors message once the threshold is crossed.
+                now = time.time()
+                if now - Machine.motor_stress_last_log >= 10.0:
+                    Machine.motor_stress_last_log = now
+                    logger.warning(
+                        "MOTOR STRESS THRESHOLD EXCEEDED "
+                        f"({energy_consumed_by_motor:.0f} >= {MAX_ENERGY_ALLOWED}) "
+                        "but protection is disabled by MOTOR_STRESS_PROTECTION. "
+                        "The motor is not being protected - attended bench use only."
+                    )
+                return
+
             if AlarmManager.is_alarm_set(AlarmType.MOTOR_STRESSED) is None:
                 AlarmManager.set_alarm(
                     AlarmType.MOTOR_STRESSED,

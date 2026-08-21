@@ -13,6 +13,21 @@ MOTOR_ENERGY_PATH = os.getenv("MOTOR_ENERGY_PATH", "/meticulous-user/syslog/ener
 
 MAX_ENERGY_ALLOWED = 25000
 
+# Bench override for the RunningAverage investigation. Defaults to enabled, so
+# nothing changes unless a machine explicitly opts out via the environment.
+#
+# When disabled, energy is still integrated and still logged - only the alarm is
+# suppressed. That matters because the MOTOR_STRESSED alarm does three things,
+# not one: it ends the running profile and homes, it refuses "purge", and it
+# refuses to load any profile for ten minutes. A single trip would otherwise
+# interrupt a supervised long-running test session.
+#
+# This removes the only motor protection this stack has on batches where the
+# firmware's motor-temperature limit is compiled out. Attended use only.
+MOTOR_STRESS_PROTECTION_ENABLED = os.getenv(
+    "MOTOR_STRESS_PROTECTION", "1"
+).strip().lower() not in ("0", "false", "no", "off")
+
 APPROX_SAMPLE_RATE = 10  # ESP updates per second  #! never set to 0
 
 # energy consumtion calculator
