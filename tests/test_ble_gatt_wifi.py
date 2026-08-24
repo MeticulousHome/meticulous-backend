@@ -53,9 +53,9 @@ _mocked_modules["config"].CONFIG_WIFI = "wifi"
 _mocked_modules["config"].CONFIG_USER = "user"
 _mocked_modules["config"].WIFI_MODE = "mode"
 _mocked_modules["config"].UPDATE_CHANNEL = "update_channel"
-_mocked_modules["config"].MeticulousConfig = copy.deepcopy(
-    config.DefaultConfiguration_V1
-).update({"wifi": {"mode": "sta"}})
+_mocked_meticulous_config = copy.deepcopy(config.DefaultConfiguration_V1)
+_mocked_meticulous_config.update({"wifi": {"mode": "sta"}})
+_mocked_modules["config"].MeticulousConfig = _mocked_meticulous_config
 _mocked_modules["config"].DefaultConfiguration_V1 = copy.deepcopy(
     config.DefaultConfiguration_V1
 )

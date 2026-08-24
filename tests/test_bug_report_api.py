@@ -24,6 +24,12 @@ def report_module(tmp_path, monkeypatch):
     engine = create_engine(f"sqlite:///{tmp_path.joinpath('history.sqlite')}")
     metadata.create_all(engine)
     monkeypatch.setattr(ShotDataBase, "engine", engine)
+    # ShotDataBase.session is only populated by ShotDataBase.init(), which
+    # this fixture deliberately avoids calling (it wires the engine directly
+    # instead). ReportsCreateHandler.post() calls ShotDataBase.statistics(),
+    # so every test that drives post() through this fixture needs it stubbed;
+    # doing it here once covers all of them instead of per test.
+    monkeypatch.setattr(ShotDataBase, "statistics", lambda: {})
     monkeypatch.setattr(bug_report, "DEBUG_HISTORY_ROOT", debug_root)
     monkeypatch.setattr(bug_report, "DRAFT_REPORTS_DIR", draft_root)
     return bug_report
@@ -611,7 +617,6 @@ def test_create_report_returns_machine_id_matching_report_info(report_module, mo
     monkeypatch.setattr(report_module, "_new_local_id", lambda: "local-test-id")
     monkeypatch.setattr(report_module, "_now_seconds", lambda: 1)
     monkeypatch.setattr(report_module, "_fetch_report_files", fake_fetch_report_files)
-    monkeypatch.setattr(ShotDataBase, "statistics", lambda: {})
     monkeypatch.setattr(
         report_module,
         "MeticulousConfig",
