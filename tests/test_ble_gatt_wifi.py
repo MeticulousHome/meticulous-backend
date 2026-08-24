@@ -10,6 +10,8 @@ from ipaddress import IPv4Address, IPv6Address
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import config  # noqa: E402
+import copy
 
 
 # ---------------------------------------------------------------------------
@@ -34,6 +36,10 @@ class FakeNetworkConfig:
 _mocked_modules = {
     "bless": MagicMock(),
     "bless.backends.bluezdbus.dbus.advertisement": MagicMock(),
+    "dbus_next": MagicMock(),
+    "dbus_next.errors": MagicMock(),
+    "dbus_next.aio": MagicMock(),
+    "dbus_next.service": MagicMock(),
     "psutil": MagicMock(),
     "config": MagicMock(),
     "hostname": MagicMock(),
@@ -44,8 +50,17 @@ _mocked_modules = {
 # Setup config mock values
 _mocked_modules["config"].WIFI_MODE_AP = "ap"
 _mocked_modules["config"].CONFIG_WIFI = "wifi"
+_mocked_modules["config"].CONFIG_USER = "user"
 _mocked_modules["config"].WIFI_MODE = "mode"
-_mocked_modules["config"].MeticulousConfig = {"wifi": {"mode": "sta"}}
+_mocked_modules["config"].UPDATE_CHANNEL = "update_channel"
+_mocked_modules["config"].MeticulousConfig = copy.deepcopy(
+    config.DefaultConfiguration_V1
+).update({"wifi": {"mode": "sta"}})
+_mocked_modules["config"].DefaultConfiguration_V1 = copy.deepcopy(
+    config.DefaultConfiguration_V1
+)
+_mocked_modules["config"].MeticulousConfigDict = config.MeticulousConfigDict
+
 
 # Setup log mock
 mock_logger = MagicMock()
