@@ -468,7 +468,7 @@ def validate_package(package_bytes: bytes) -> ValidatedPackage:
 
 
 def _safe_id_path_name(package_id: str) -> str:
-    return package_id.replace(":", "__")
+    return package_id
 
 
 def _lock_for(package_id: str) -> threading.Lock:
