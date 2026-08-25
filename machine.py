@@ -855,7 +855,11 @@ class Machine:
         alarm_set = AlarmManager.is_alarm_set(AlarmType.MOTOR_STRESSED)
         refuse_action = action_event == "purge" and alarm_set is not None
         if refuse_action:
-            logger.error(f"refusing action {action_event}, there is an alarm up")
+            warning_message = (
+                f"refusing action {action_event}, there is an alarm up (motor_stressed)"
+            )
+            logger.warning(warning_message)
+            sentry_sdk.capture_message(warning_message, "warning")
             AlarmManager._notify_user(
                 message=f"Brewing has been disabled because of a recent high strain on the motor, let it rest for {math.ceil((alarm_set - time.time())/60.0) if math.isfinite(alarm_set) else 10} more minutes",
                 image=WARNING_TRIANGLE_IMAGE,
