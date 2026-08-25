@@ -1,0 +1,315 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meticulous.local/schemas/idle-screen-v2.schema.json",
+  "title": "Meticulous Idle Screen Package Contract",
+  "description": "Authoritative schemas for manifest.json and screen.json inside a .metidle package.",
+  "oneOf": [
+    { "$ref": "#/$defs/manifest" },
+    { "$ref": "#/$defs/screen" }
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "packageId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^(custom:[a-z0-9][a-z0-9._-]{0,71}|default|digital|metCat|dvd|baristaBarista)$"
+    },
+    "semanticVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$"
+    },
+    "assetPath": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 180,
+      "pattern": "^assets/[A-Za-z0-9][A-Za-z0-9._/-]*$",
+      "not": { "pattern": "(^|/)\\.\\.?(/|$)" }
+    },
+    "manifestAsset": {
+      "type": "object",
+      "required": ["id", "path", "kind", "mimeType", "size", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
+        "path": { "$ref": "#/$defs/assetPath" },
+        "kind": { "enum": ["image", "font", "lottie"] },
+        "mimeType": {
+          "enum": ["image/png", "image/jpeg", "image/webp", "font/woff2", "application/vnd.meticulous.lottie+json"]
+        },
+        "size": { "type": "integer", "minimum": 1, "maximum": 8388608 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "required": ["documentType", "packageFormat", "id", "name", "version", "runtimeApi", "screen", "preview", "assets"],
+      "additionalProperties": false,
+      "properties": {
+        "documentType": { "const": "meticulous-idle-manifest" },
+        "packageFormat": { "const": 1 },
+        "id": { "$ref": "#/$defs/packageId" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "version": { "$ref": "#/$defs/semanticVersion" },
+        "runtimeApi": { "const": 1 },
+        "description": { "type": "string", "maxLength": 500 },
+        "author": { "type": "string", "maxLength": 80 },
+        "screen": { "const": "screen.json" },
+        "preview": { "const": "preview.png" },
+        "assets": { "type": "array", "maxItems": 125, "items": { "$ref": "#/$defs/manifestAsset" } }
+      }
+    },
+    "color": { "type": "string", "pattern": "^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$" },
+    "tokenRef": {
+      "type": "object",
+      "required": ["token"],
+      "additionalProperties": false,
+      "properties": { "token": { "type": "string", "pattern": "^(colors|fonts|numbers)\\.[A-Za-z][A-Za-z0-9_-]*$" } }
+    },
+    "formatter": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "enum": ["number", "unit", "date", "time", "duration", "boolean", "enum", "truncate"] },
+        "precision": { "type": "integer", "minimum": 0, "maximum": 4 },
+        "suffix": { "type": "string", "maxLength": 16 },
+        "locale": { "type": "string", "maxLength": 35 },
+        "options": { "type": "object", "additionalProperties": true },
+        "trueLabel": { "type": "string", "maxLength": 40 },
+        "falseLabel": { "type": "string", "maxLength": 40 },
+        "map": { "type": "object", "maxProperties": 40, "additionalProperties": { "type": "string", "maxLength": 80 } },
+        "maxLength": { "type": "integer", "minimum": 1, "maximum": 200 }
+      }
+    },
+    "source": {
+      "enum": ["time", "settings", "wifi", "machine", "sensors", "notifications", "osStatus", "deviceInfo", "profiles"]
+    },
+    "binding": {
+      "type": "object",
+      "required": ["binding"],
+      "additionalProperties": false,
+      "properties": {
+        "binding": {
+          "type": "object",
+          "required": ["source", "path"],
+          "additionalProperties": false,
+          "properties": {
+            "source": { "$ref": "#/$defs/source" },
+            "path": { "type": "string", "minLength": 1, "maxLength": 100, "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$" },
+            "formatter": { "$ref": "#/$defs/formatter" },
+            "fallback": { "type": ["string", "number", "boolean", "null"] }
+          }
+        }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "required": ["source", "path", "operator"],
+      "additionalProperties": false,
+      "properties": {
+        "source": { "$ref": "#/$defs/source" },
+        "path": { "type": "string", "minLength": 1, "maxLength": 100, "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$" },
+        "operator": { "enum": ["truthy", "falsy", "present", "eq", "neq", "gt", "gte", "lt", "lte"] },
+        "value": { "type": ["string", "number", "boolean", "null"] },
+        "fallback": { "type": "boolean", "default": false }
+      }
+    },
+    "dynamicNumber": { "oneOf": [{ "type": "number" }, { "$ref": "#/$defs/tokenRef" }, { "$ref": "#/$defs/binding" }] },
+    "dynamicString": { "oneOf": [{ "type": "string", "maxLength": 500 }, { "$ref": "#/$defs/tokenRef" }, { "$ref": "#/$defs/binding" }] },
+    "dynamicColor": { "oneOf": [{ "$ref": "#/$defs/color" }, { "$ref": "#/$defs/tokenRef" }, { "$ref": "#/$defs/binding" }] },
+    "dynamicBoolean": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/binding" }, { "$ref": "#/$defs/condition" }] },
+    "transform": {
+      "type": "object",
+      "required": ["x", "y", "width", "height"],
+      "additionalProperties": false,
+      "properties": {
+        "x": { "type": "number", "minimum": -960, "maximum": 1440 },
+        "y": { "type": "number", "minimum": -960, "maximum": 1440 },
+        "width": { "type": "number", "exclusiveMinimum": 0, "maximum": 1440 },
+        "height": { "type": "number", "exclusiveMinimum": 0, "maximum": 1440 },
+        "rotation": { "type": "number", "minimum": -3600, "maximum": 3600, "default": 0 },
+        "anchorX": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.5 },
+        "anchorY": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.5 },
+        "scaleX": { "type": "number", "minimum": -10, "maximum": 10, "default": 1 },
+        "scaleY": { "type": "number", "minimum": -10, "maximum": 10, "default": 1 }
+      }
+    },
+    "font": {
+      "type": "object",
+      "required": ["family", "size"],
+      "additionalProperties": false,
+      "properties": {
+        "family": { "$ref": "#/$defs/dynamicString" },
+        "asset": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
+        "size": { "$ref": "#/$defs/dynamicNumber" },
+        "weight": { "type": "integer", "minimum": 100, "maximum": 900, "multipleOf": 100 },
+        "style": { "enum": ["normal", "italic"] },
+        "align": { "enum": ["left", "center", "right"] },
+        "lineHeight": { "type": "number", "minimum": 0.5, "maximum": 3 },
+        "tabularNumbers": { "type": "boolean" }
+      }
+    },
+    "layerBase": {
+      "type": "object",
+      "required": ["id", "type", "transform"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
+        "type": { "type": "string" },
+        "name": { "type": "string", "maxLength": 80 },
+        "transform": { "$ref": "#/$defs/transform" },
+        "visible": { "$ref": "#/$defs/dynamicBoolean" },
+        "opacity": { "oneOf": [{ "type": "number", "minimum": 0, "maximum": 1 }, { "$ref": "#/$defs/binding" }] },
+        "locked": { "type": "boolean", "default": false },
+        "blendMode": { "enum": ["normal", "multiply", "screen", "overlay"] }
+      }
+    },
+    "groupLayer": {
+      "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["children"], "properties": {
+        "type": { "const": "group" }, "clip": { "enum": ["none", "bounds", "circle"] },
+        "children": { "type": "array", "maxItems": 128, "items": { "$ref": "#/$defs/layer" } }
+      }}], "unevaluatedProperties": false
+    },
+    "shapeLayer": {
+      "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["shape"], "properties": {
+        "type": { "const": "shape" }, "shape": { "enum": ["rectangle", "roundedRectangle", "circle", "line"] },
+        "fill": { "$ref": "#/$defs/dynamicColor" }, "stroke": { "$ref": "#/$defs/dynamicColor" },
+        "strokeWidth": { "$ref": "#/$defs/dynamicNumber" }, "cornerRadius": { "$ref": "#/$defs/dynamicNumber" }
+      }}], "unevaluatedProperties": false
+    },
+    "textLayer": {
+      "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["text", "font", "color"], "properties": {
+        "type": { "const": "text" }, "text": { "$ref": "#/$defs/dynamicString" }, "font": { "$ref": "#/$defs/font" },
+        "color": { "$ref": "#/$defs/dynamicColor" }, "verticalAlign": { "enum": ["top", "middle", "bottom"] },
+        "wrap": { "enum": ["none", "word", "character"] }, "maxLines": { "type": "integer", "minimum": 1, "maximum": 10 }
+      }}], "unevaluatedProperties": false
+    },
+    "imageVariant": {
+      "type": "object", "required": ["when", "asset"], "additionalProperties": false,
+      "properties": { "when": { "$ref": "#/$defs/condition" }, "asset": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" } }
+    },
+    "imageLayer": {
+      "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["asset"], "properties": {
+        "type": { "const": "image" }, "asset": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
+        "fit": { "enum": ["contain", "cover", "fill", "none"] },
+        "variants": { "type": "array", "maxItems": 16, "items": { "$ref": "#/$defs/imageVariant" } }
+      }}], "unevaluatedProperties": false
+    },
+    "tickStyle": {
+      "type": "object", "required": ["every", "width", "length", "color"], "additionalProperties": false,
+      "properties": {
+        "every": { "type": "integer", "minimum": 1, "maximum": 120 }, "offset": { "type": "integer", "minimum": 0, "maximum": 119, "default": 0 },
+        "width": { "$ref": "#/$defs/dynamicNumber" }, "length": { "$ref": "#/$defs/dynamicNumber" },
+        "color": { "$ref": "#/$defs/dynamicColor" }, "radiusOffset": { "type": "number", "minimum": -240, "maximum": 240, "default": 0 },
+        "rounded": { "type": "boolean", "default": false }
+      }
+    },
+    "tickRingLayer": {
+      "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["count", "radius", "styles"], "properties": {
+        "type": { "const": "tickRing" }, "count": { "type": "integer", "minimum": 1, "maximum": 120 },
+        "radius": { "$ref": "#/$defs/dynamicNumber" }, "startAngle": { "type": "number", "minimum": -360, "maximum": 360, "default": -90 },
+        "styles": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "$ref": "#/$defs/tickStyle" } }
+      }}], "unevaluatedProperties": false
+    },
+    "analogHandLayer": {
+      "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["timeUnit", "rotation", "length", "width", "shape"], "properties": {
+        "type": { "const": "analogHand" }, "timeUnit": { "enum": ["hour", "minute", "second", "custom"] },
+        "rotation": { "$ref": "#/$defs/dynamicNumber" }, "length": { "$ref": "#/$defs/dynamicNumber" },
+        "width": { "$ref": "#/$defs/dynamicNumber" }, "tailLength": { "$ref": "#/$defs/dynamicNumber" },
+        "shape": { "enum": ["rectangle", "rounded", "tapered", "needle", "image"] }, "color": { "$ref": "#/$defs/dynamicColor" },
+        "asset": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" }, "smooth": { "type": "boolean", "default": true }
+      }}], "unevaluatedProperties": false
+    },
+    "pivotCapLayer": {
+      "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["diameter", "color"], "properties": {
+        "type": { "const": "pivotCap" }, "diameter": { "$ref": "#/$defs/dynamicNumber" }, "color": { "$ref": "#/$defs/dynamicColor" },
+        "borderColor": { "$ref": "#/$defs/dynamicColor" }, "borderWidth": { "$ref": "#/$defs/dynamicNumber" }
+      }}], "unevaluatedProperties": false
+    },
+    "digitalTimeLayer": {
+      "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["template", "hourMode", "font", "color"], "properties": {
+        "type": { "const": "digitalTime" }, "template": { "enum": ["HH:mm", "HH:mm:ss", "hh:mm a", "hh:mm:ss a", "stackedHM"] },
+        "hourMode": { "enum": ["locale", "12", "24"] }, "font": { "$ref": "#/$defs/font" }, "color": { "$ref": "#/$defs/dynamicColor" },
+        "middayFont": { "$ref": "#/$defs/font" }, "middayColor": { "$ref": "#/$defs/dynamicColor" },
+        "separatorBlink": { "type": "boolean", "default": false }
+      }}], "unevaluatedProperties": false
+    },
+    "progressArcLayer": {
+      "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["value", "minimum", "maximum", "startAngle", "sweepAngle", "strokeWidth", "color"], "properties": {
+        "type": { "const": "progressArc" }, "value": { "$ref": "#/$defs/dynamicNumber" }, "minimum": { "type": "number" },
+        "maximum": { "type": "number" }, "startAngle": { "type": "number", "minimum": -720, "maximum": 720 },
+        "sweepAngle": { "type": "number", "minimum": -360, "maximum": 360 }, "strokeWidth": { "$ref": "#/$defs/dynamicNumber" },
+        "color": { "$ref": "#/$defs/dynamicColor" }, "trackColor": { "$ref": "#/$defs/dynamicColor" }, "rounded": { "type": "boolean", "default": true }
+      }}], "unevaluatedProperties": false
+    },
+    "lottieSegment": {
+      "type": "object", "required": ["name", "from", "to"], "additionalProperties": false,
+      "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 40 }, "from": { "type": "integer", "minimum": 0 },
+        "to": { "type": "integer", "minimum": 1 }, "loop": { "type": "boolean", "default": false }, "playOnce": { "type": "boolean", "default": false } }
+    },
+    "lottieLayer": {
+      "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["asset"], "properties": {
+        "type": { "const": "lottie" }, "asset": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
+        "autoplay": { "type": "boolean", "default": true }, "loop": { "type": "boolean", "default": true },
+        "speed": { "type": "number", "exclusiveMinimum": 0, "maximum": 4, "default": 1 },
+        "segments": { "type": "array", "maxItems": 16, "items": { "$ref": "#/$defs/lottieSegment" } }
+      }}], "unevaluatedProperties": false
+    },
+    "layer": {
+      "oneOf": [
+        { "$ref": "#/$defs/groupLayer" }, { "$ref": "#/$defs/shapeLayer" }, { "$ref": "#/$defs/textLayer" },
+        { "$ref": "#/$defs/imageLayer" }, { "$ref": "#/$defs/tickRingLayer" }, { "$ref": "#/$defs/analogHandLayer" },
+        { "$ref": "#/$defs/pivotCapLayer" }, { "$ref": "#/$defs/digitalTimeLayer" }, { "$ref": "#/$defs/progressArcLayer" },
+        { "$ref": "#/$defs/lottieLayer" }
+      ]
+    },
+    "viewport": {
+      "type": "object", "required": ["width", "height", "shape", "background", "overflow"], "additionalProperties": false,
+      "properties": { "width": { "const": 480 }, "height": { "const": 480 }, "shape": { "const": "circle" },
+        "background": { "$ref": "#/$defs/dynamicColor" }, "overflow": { "const": "hidden" } }
+    },
+    "runtime": {
+      "type": "object", "required": ["brightness", "burnInProtection"], "additionalProperties": false,
+      "properties": {
+        "brightness": {
+          "type": "object", "required": ["onEnter", "onExit"], "additionalProperties": false,
+          "properties": { "onEnter": { "type": "number", "minimum": 0.03, "maximum": 1 }, "onExit": { "const": 1 },
+            "cycleAfterMs": { "type": "integer", "minimum": 60000, "maximum": 86400000 },
+            "dimValue": { "type": "number", "minimum": 0.03, "maximum": 1 }, "brightValue": { "type": "number", "minimum": 0.03, "maximum": 1 },
+            "dimDurationMs": { "type": "integer", "minimum": 1000, "maximum": 3600000 },
+            "brightDurationMs": { "type": "integer", "minimum": 1000, "maximum": 3600000 } }
+        },
+        "burnInProtection": {
+          "type": "object", "required": ["enabled", "mode", "durationMs", "distance"], "additionalProperties": false,
+          "properties": { "enabled": { "type": "boolean" }, "mode": { "enum": ["rotate", "translate", "none"] },
+            "durationMs": { "type": "integer", "minimum": 60000, "maximum": 86400000 }, "distance": { "type": "number", "minimum": 0, "maximum": 4 } }
+        }
+      }
+    },
+    "tokens": {
+      "type": "object", "required": ["colors", "fonts", "numbers"], "additionalProperties": false,
+      "properties": {
+        "colors": { "type": "object", "maxProperties": 64, "propertyNames": { "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" }, "additionalProperties": { "$ref": "#/$defs/color" } },
+        "fonts": { "type": "object", "maxProperties": 32, "propertyNames": { "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" }, "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 80 } },
+        "numbers": { "type": "object", "maxProperties": 64, "propertyNames": { "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" }, "additionalProperties": { "type": "number" } }
+      }
+    },
+    "dataSource": {
+      "type": "object", "required": ["id", "source"], "additionalProperties": false,
+      "properties": { "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" }, "source": { "$ref": "#/$defs/source" },
+        "refreshMs": { "type": "integer", "minimum": 250, "maximum": 3600000 } }
+    },
+    "screen": {
+      "type": "object",
+      "required": ["documentType", "schemaVersion", "runtimeApi", "id", "name", "viewport", "runtime", "tokens", "dataSources", "layers"],
+      "additionalProperties": false,
+      "properties": {
+        "documentType": { "const": "meticulous-idle-screen" }, "schemaVersion": { "const": 2 }, "runtimeApi": { "const": 1 },
+        "id": { "$ref": "#/$defs/packageId" }, "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "viewport": { "$ref": "#/$defs/viewport" }, "runtime": { "$ref": "#/$defs/runtime" }, "tokens": { "$ref": "#/$defs/tokens" },
+        "dataSources": { "type": "array", "maxItems": 16, "items": { "$ref": "#/$defs/dataSource" } },
+        "layers": { "type": "array", "maxItems": 128, "items": { "$ref": "#/$defs/layer" } }
+      }
+    }
+  }
+}
