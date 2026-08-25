@@ -18,6 +18,7 @@ from ble_gatt import GATTServer
 from wifi import WifiManager
 from notifications import Notification, NotificationManager
 from profiles import ProfileManager
+from pour_over_profiles import PourOverProfileManager
 from hostname import HostnameManager
 from config import (
     MeticulousConfig,
@@ -310,6 +311,7 @@ def main():
 
     NotificationManager.init(sio)
     ProfileManager.init(sio)
+    PourOverProfileManager.init()
     SoundPlayer.init(emulation=Machine.emulated)
 
     # Check for mapped timezones json

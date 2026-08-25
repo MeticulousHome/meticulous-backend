@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://meticuloushome.com/schemas/pour-over-profile/v1.json",
+  "title": "Meticulous Pour Over Profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "brew_type",
+    "id",
+    "name",
+    "author",
+    "author_id",
+    "recipe",
+    "stages"
+  ],
+  "properties": {
+    "version": { "const": 1 },
+    "brew_type": { "const": "pour_over" },
+    "id": { "type": "string", "format": "uuid" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "author": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "author_id": { "type": "string", "format": "uuid" },
+    "previous_authors": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "author_id", "profile_id"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "author_id": { "type": "string", "format": "uuid" },
+          "profile_id": { "type": "string", "format": "uuid" }
+        }
+      }
+    },
+    "display": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "type": "string",
+          "maxLength": 410000,
+          "pattern": "^data:image/jpeg;base64,"
+        },
+        "accentColor": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "shortDescription": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 500 }
+      }
+    },
+    "recipe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "coffee_dose_g",
+        "total_water_g",
+        "water_temperature_c",
+        "target_total_time_s"
+      ],
+      "properties": {
+        "coffee_dose_g": { "type": "number", "minimum": 5, "maximum": 40 },
+        "total_water_g": { "type": "number", "exclusiveMinimum": 0, "maximum": 2000 },
+        "water_temperature_c": { "type": "number", "minimum": 70, "maximum": 100 },
+        "target_total_time_s": { "type": "number", "exclusiveMinimum": 0, "maximum": 600 },
+        "target_total_time_max_s": { "type": "number", "exclusiveMinimum": 0, "maximum": 600 },
+        "brewer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name"],
+          "properties": {
+            "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+            "size": { "type": "string", "maxLength": 80 },
+            "material": { "type": "string", "maxLength": 80 }
+          }
+        },
+        "filter": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name"],
+          "properties": {
+            "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+            "preparation": { "type": "string", "maxLength": 200 }
+          }
+        },
+        "grind": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["description"],
+          "properties": {
+            "description": { "type": "string", "minLength": 1, "maxLength": 200 },
+            "target_microns": { "type": "number", "exclusiveMinimum": 0, "maximum": 5000 },
+            "reference_grinder": { "type": "string", "maxLength": 120 },
+            "reference_setting": { "type": "string", "maxLength": 80 }
+          }
+        },
+        "water": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": { "type": "string", "maxLength": 120 },
+            "total_hardness_ppm": { "type": "number", "minimum": 0, "maximum": 1000 },
+            "alkalinity_ppm": { "type": "number", "minimum": 0, "maximum": 1000 }
+          }
+        },
+        "preparation": { "type": "string", "maxLength": 500 }
+      }
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "name", "starts_at_s", "pour"],
+        "properties": {
+          "key": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "starts_at_s": { "type": "number", "minimum": 0, "maximum": 600 },
+          "temperature_c": { "type": "number", "minimum": 70, "maximum": 100 },
+          "pour": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "water_g",
+              "duration_s",
+              "target_cumulative_water_g",
+              "flow_rate_g_s"
+            ],
+            "properties": {
+              "water_g": { "type": "number", "exclusiveMinimum": 0, "maximum": 2000 },
+              "duration_s": { "type": "number", "exclusiveMinimum": 0, "maximum": 600 },
+              "target_cumulative_water_g": { "type": "number", "exclusiveMinimum": 0, "maximum": 2000 },
+              "flow_rate_g_s": { "type": "number", "exclusiveMinimum": 0, "maximum": 100 },
+              "flow_range_g_s": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2,
+                "prefixItems": [
+                  { "type": "number", "minimum": 0, "maximum": 100 },
+                  { "type": "number", "exclusiveMinimum": 0, "maximum": 100 }
+                ],
+                "items": false
+              },
+              "pattern": {
+                "type": "string",
+                "enum": [
+                  "center",
+                  "spiral_out",
+                  "spiral_in",
+                  "spiral_in_out",
+                  "concentric_rings",
+                  "edge",
+                  "pulse",
+                  "custom"
+                ]
+              },
+              "direction": {
+                "type": "string",
+                "enum": ["clockwise", "counterclockwise", "alternating"]
+              },
+              "height_cm": { "type": "number", "minimum": 0, "maximum": 50 }
+            }
+          },
+          "note": { "type": "string", "maxLength": 300 }
+        }
+      }
+    }
+  }
+}
