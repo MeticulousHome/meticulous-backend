@@ -151,6 +151,7 @@ def test_list_first_install_replace_and_rollback_do_not_change_settings():
     assert replaced is False
     assert first["id"] == "custom:clock"
     assert first["rollbackAvailable"] is False
+    assert idle_screens.IDLE_SCREENS_ROOT.joinpath("custom:clock").is_dir()
     assert idle_screens.list_installed_screens() == [first]
 
     second, replaced = idle_screens.install_package(
@@ -169,13 +170,13 @@ def test_list_first_install_replace_and_rollback_do_not_change_settings():
 
 
 def test_invalid_directory_is_listed_with_safe_metadata(idle_screen_root):
-    idle_screen_root.joinpath("custom__broken").mkdir(parents=True)
+    idle_screen_root.joinpath("custom:broken").mkdir(parents=True)
     screens = idle_screens.list_installed_screens()
 
     assert screens == [
         {
-            "id": "custom__broken",
-            "name": "custom__broken",
+            "id": "custom:broken",
+            "name": "custom:broken",
             "version": "",
             "packageHash": "",
             "installedAt": screens[0]["installedAt"],
@@ -345,9 +346,9 @@ def test_failed_replacement_rename_restores_current(monkeypatch):
         nonlocal failed
         if (
             not failed
-            and src.name.startswith("custom__clock-")
+            and src.name.startswith("custom:clock-")
             and not src.name.endswith(".new-rollback")
-            and dst.name == "custom__clock"
+            and dst.name == "custom:clock"
         ):
             failed = True
             raise OSError("rename failed")
