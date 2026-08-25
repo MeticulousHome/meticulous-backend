@@ -157,8 +157,7 @@ def mock_wifi_manager():
 class TestWifiConnectUTF8:
     def test_ascii_ssid_and_password(self, mock_wifi_manager):
         result = GATTServer.wifi_connect(bytearray(b"MyNetwork"), bytearray(b"password"))
-        assert result is not None
-        assert any("192.168.1.100" in url for url in result)
+        assert result == ["http://192.168.1.100"]
         call_args = mock_wifi_manager.connectToWifi.call_args[0][0]
         assert call_args.ssid == "MyNetwork"
         assert call_args.password == "password"
@@ -291,9 +290,7 @@ class TestWifiConnectEdgeCases:
         )
         mock_wifi_manager.getCurrentConfig.return_value = config
         result = GATTServer.wifi_connect(bytearray(b"Net"), bytearray(b"pass"))
-        assert result is not None
-        assert any("192.168.1.100" in url for url in result)
-        assert any("fe80::1" in url for url in result)
+        assert result == ["http://192.168.1.100", "http://[fe80::1]"]
 
     def test_ssid_with_spaces(self, mock_wifi_manager):
         ssid = b"My Home Network"
