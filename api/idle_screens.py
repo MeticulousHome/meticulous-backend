@@ -29,7 +29,7 @@ IDLE_SCREENS_ROOT = Path(os.getenv("IDLE_SCREENS_PATH", "/meticulous-user/idle-s
 SCHEMA_PATH = (
     Path(__file__).resolve().parent.parent.joinpath("schemas", "idle-screen.schema.json")
 )
-SCHEMA_SHA256 = "a75e97d0cf1209fd4ea14bde0bf8cd3d650d412226d15631fe0f00bb392c3724"
+SCHEMA_SHA256 = "e11620a06f47c75665c9438ad7488ce3ae57acbb15359c61a0823352c700e3cf"
 
 PACKAGE_FORMAT = 1
 SCREEN_SCHEMA_VERSION = 2
@@ -738,6 +738,31 @@ def list_installed_screens() -> list[dict[str, Any]]:
     return screens
 
 
+def get_installed_bundle(package_id: str) -> bytes:
+    if package_id in RESERVED_IDS or not CUSTOM_ID_RE.fullmatch(package_id):
+        raise IdleScreenError("invalid_id", "Idle screen ID is invalid.", 400)
+    target, _ = _package_paths(package_id)
+    lock = _lock_for(package_id)
+    with lock:
+        if not target.is_dir():
+            raise IdleScreenError("bundle_not_found", "Idle screen bundle was not found.", 404)
+        files = _read_installed_files(target)
+        installed = installed_screen_from_dir(target, False)
+        if not installed["valid"]:
+            raise IdleScreenError(
+                "invalid_installed_bundle", "Installed idle screen bundle is invalid.", 500
+            )
+
+        output = BytesIO()
+        with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
+            for name in sorted(files):
+                info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+                info.compress_type = zipfile.ZIP_DEFLATED
+                info.external_attr = 0o100600 << 16
+                archive.writestr(info, files[name])
+        return output.getvalue()
+
+
 def install_package(package_bytes: bytes) -> tuple[dict[str, Any], bool]:
     package = validate_package(package_bytes)
     return _install_validated_package(package)
@@ -816,7 +841,23 @@ class IdleScreenRollbackHandler(BaseHandler):
         self.write({"screen": screen, "rolledBack": True})
 
 
+class IdleScreenBundleHandler(BaseHandler):
+    def get(self, package_id: str):
+        try:
+            bundle = get_installed_bundle(package_id)
+        except IdleScreenError as exc:
+            _error(self, exc)
+            return
+        safe_filename = _safe_id_path_name(package_id)
+        self.set_header("Content-Type", "application/vnd.meticulous.idle-screen")
+        self.set_header(
+            "Content-Disposition", f'attachment; filename="{safe_filename}.metidle"'
+        )
+        self.write(bundle)
+
+
 API.register_handler(APIVersion.V1, r"/idle-screens", IdleScreensHandler)
+API.register_handler(APIVersion.V1, r"/idle-screens/([^/]+)", IdleScreenBundleHandler)
 API.register_handler(
     APIVersion.V1, r"/idle-screens/([^/]+)/rollback", IdleScreenRollbackHandler
 )
