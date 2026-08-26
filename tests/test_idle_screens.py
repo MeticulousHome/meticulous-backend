@@ -460,6 +460,10 @@ class TestIdleScreensAPI(AsyncHTTPTestCase):
             [
                 (r"/api/v1/idle-screens", idle_screens.IdleScreensHandler),
                 (
+                    r"/api/v1/idle-screens/([^/]+)",
+                    idle_screens.IdleScreenBundleHandler,
+                ),
+                (
                     r"/api/v1/idle-screens/([^/]+)/rollback",
                     idle_screens.IdleScreenRollbackHandler,
                 ),
@@ -508,3 +512,28 @@ class TestIdleScreensAPI(AsyncHTTPTestCase):
         assert response.code == 400
         assert payload["error"] == "invalid_idle_screen"
         assert payload["code"] == "missing_file"
+
+    def test_fetches_installed_bundle_by_id(self):
+        package = _package(package_id="custom:download", version="2.3.4")
+        idle_screens.install_package(package)
+
+        response = self.fetch("/api/v1/idle-screens/custom:download")
+
+        assert response.code == 200
+        assert response.headers["Content-Type"] == "application/vnd.meticulous.idle-screen"
+        assert (
+            response.headers["Content-Disposition"]
+            == 'attachment; filename="custom:download.metidle"'
+        )
+        with zipfile.ZipFile(io.BytesIO(response.body)) as archive:
+            assert sorted(archive.namelist()) == ["manifest.json", "preview.png", "screen.json"]
+            assert json.loads(archive.read("manifest.json"))["id"] == "custom:download"
+
+    def test_fetch_bundle_rejects_invalid_and_missing_ids(self):
+        invalid = self.fetch("/api/v1/idle-screens/default")
+        missing = self.fetch("/api/v1/idle-screens/custom:missing")
+
+        assert invalid.code == 400
+        assert json.loads(invalid.body)["code"] == "invalid_id"
+        assert missing.code == 404
+        assert json.loads(missing.body)["code"] == "bundle_not_found"
