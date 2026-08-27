@@ -29,7 +29,7 @@ IDLE_SCREENS_ROOT = Path(os.getenv("IDLE_SCREENS_PATH", "/meticulous-user/idle-s
 SCHEMA_PATH = (
     Path(__file__).resolve().parent.parent.joinpath("schemas", "idle-screen.schema.json")
 )
-SCHEMA_SHA256 = "e11620a06f47c75665c9438ad7488ce3ae57acbb15359c61a0823352c700e3cf"
+SCHEMA_SHA256 = "db230f72228f08b50f873d79e6a65149d40744e88f51d8a7b6ff772384614d44"
 
 PACKAGE_FORMAT = 1
 SCREEN_SCHEMA_VERSION = 2

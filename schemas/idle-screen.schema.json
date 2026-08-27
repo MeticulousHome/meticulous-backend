@@ -64,7 +64,7 @@
       "type": "object",
       "required": ["token"],
       "additionalProperties": false,
-      "properties": { "token": { "type": "string", "pattern": "^(colors|fonts|numbers)\\.[A-Za-z][A-Za-z0-9_-]*$" } }
+      "properties": { "token": { "type": "string", "pattern": "^(colors|fonts|numbers|strings|booleans)\\.[A-Za-z][A-Za-z0-9_-]*$" } }
     },
     "formatter": {
       "type": "object",
@@ -118,21 +118,33 @@
     "dynamicNumber": { "oneOf": [{ "type": "number" }, { "$ref": "#/$defs/tokenRef" }, { "$ref": "#/$defs/binding" }] },
     "dynamicString": { "oneOf": [{ "type": "string", "maxLength": 500 }, { "$ref": "#/$defs/tokenRef" }, { "$ref": "#/$defs/binding" }] },
     "dynamicColor": { "oneOf": [{ "$ref": "#/$defs/color" }, { "$ref": "#/$defs/tokenRef" }, { "$ref": "#/$defs/binding" }] },
-    "dynamicBoolean": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/binding" }, { "$ref": "#/$defs/condition" }] },
+    "dynamicBoolean": { "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/tokenRef" }, { "$ref": "#/$defs/binding" }, { "$ref": "#/$defs/condition" }] },
+    "dynamicFontStyle": { "oneOf": [{ "enum": ["normal", "italic"] }, { "$ref": "#/$defs/tokenRef" }, { "$ref": "#/$defs/binding" }] },
+    "dynamicTextAlign": { "oneOf": [{ "enum": ["left", "center", "right"] }, { "$ref": "#/$defs/tokenRef" }, { "$ref": "#/$defs/binding" }] },
+    "dynamicShape": { "oneOf": [{ "enum": ["rectangle", "roundedRectangle", "circle", "line"] }, { "$ref": "#/$defs/tokenRef" }, { "$ref": "#/$defs/binding" }] },
+    "dynamicVerticalAlign": { "oneOf": [{ "enum": ["top", "middle", "bottom"] }, { "$ref": "#/$defs/tokenRef" }, { "$ref": "#/$defs/binding" }] },
+    "dynamicWrap": { "oneOf": [{ "enum": ["none", "word", "character"] }, { "$ref": "#/$defs/tokenRef" }, { "$ref": "#/$defs/binding" }] },
+    "dynamicHandUnit": { "oneOf": [{ "enum": ["hour", "minute", "second", "custom"] }, { "$ref": "#/$defs/tokenRef" }, { "$ref": "#/$defs/binding" }] },
+    "dynamicHandShape": { "oneOf": [{ "enum": ["rectangle", "rounded", "tapered", "needle", "image"] }, { "$ref": "#/$defs/tokenRef" }, { "$ref": "#/$defs/binding" }] },
+    "dynamicTimeTemplate": { "oneOf": [{ "enum": ["HH:mm", "HH:mm:ss", "mm:ss", "mm", "HH", "ss", "hh:mm a", "hh:mm:ss a", "stackedHM"] }, { "$ref": "#/$defs/tokenRef" }, { "$ref": "#/$defs/binding" }] },
+    "dynamicHourMode": { "oneOf": [{ "enum": ["locale", "12", "24"] }, { "$ref": "#/$defs/tokenRef" }, { "$ref": "#/$defs/binding" }] },
+    "dynamicBlendMode": { "oneOf": [{ "enum": ["normal", "multiply", "screen", "overlay"] }, { "$ref": "#/$defs/tokenRef" }, { "$ref": "#/$defs/binding" }] },
+    "dynamicGroupClip": { "oneOf": [{ "enum": ["none", "bounds", "circle"] }, { "$ref": "#/$defs/tokenRef" }, { "$ref": "#/$defs/binding" }] },
+    "dynamicImageFit": { "oneOf": [{ "enum": ["contain", "cover", "fill", "none"] }, { "$ref": "#/$defs/tokenRef" }, { "$ref": "#/$defs/binding" }] },
     "transform": {
       "type": "object",
       "required": ["x", "y", "width", "height"],
       "additionalProperties": false,
       "properties": {
-        "x": { "type": "number", "minimum": -960, "maximum": 1440 },
-        "y": { "type": "number", "minimum": -960, "maximum": 1440 },
-        "width": { "type": "number", "exclusiveMinimum": 0, "maximum": 1440 },
-        "height": { "type": "number", "exclusiveMinimum": 0, "maximum": 1440 },
-        "rotation": { "type": "number", "minimum": -3600, "maximum": 3600, "default": 0 },
-        "anchorX": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.5 },
-        "anchorY": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.5 },
-        "scaleX": { "type": "number", "minimum": -10, "maximum": 10, "default": 1 },
-        "scaleY": { "type": "number", "minimum": -10, "maximum": 10, "default": 1 }
+        "x": { "$ref": "#/$defs/dynamicNumber" },
+        "y": { "$ref": "#/$defs/dynamicNumber" },
+        "width": { "$ref": "#/$defs/dynamicNumber" },
+        "height": { "$ref": "#/$defs/dynamicNumber" },
+        "rotation": { "$ref": "#/$defs/dynamicNumber" },
+        "anchorX": { "$ref": "#/$defs/dynamicNumber" },
+        "anchorY": { "$ref": "#/$defs/dynamicNumber" },
+        "scaleX": { "$ref": "#/$defs/dynamicNumber" },
+        "scaleY": { "$ref": "#/$defs/dynamicNumber" }
       }
     },
     "font": {
@@ -143,11 +155,11 @@
         "family": { "$ref": "#/$defs/dynamicString" },
         "asset": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
         "size": { "$ref": "#/$defs/dynamicNumber" },
-        "weight": { "type": "integer", "minimum": 100, "maximum": 900, "multipleOf": 100 },
-        "style": { "enum": ["normal", "italic"] },
-        "align": { "enum": ["left", "center", "right"] },
-        "lineHeight": { "type": "number", "minimum": 0.5, "maximum": 3 },
-        "tabularNumbers": { "type": "boolean" }
+        "weight": { "$ref": "#/$defs/dynamicNumber" },
+        "style": { "$ref": "#/$defs/dynamicFontStyle" },
+        "align": { "$ref": "#/$defs/dynamicTextAlign" },
+        "lineHeight": { "$ref": "#/$defs/dynamicNumber" },
+        "tabularNumbers": { "$ref": "#/$defs/dynamicBoolean" }
       }
     },
     "layerBase": {
@@ -159,20 +171,20 @@
         "name": { "type": "string", "maxLength": 80 },
         "transform": { "$ref": "#/$defs/transform" },
         "visible": { "$ref": "#/$defs/dynamicBoolean" },
-        "opacity": { "oneOf": [{ "type": "number", "minimum": 0, "maximum": 1 }, { "$ref": "#/$defs/binding" }] },
+        "opacity": { "$ref": "#/$defs/dynamicNumber" },
         "locked": { "type": "boolean", "default": false },
-        "blendMode": { "enum": ["normal", "multiply", "screen", "overlay"] }
+        "blendMode": { "$ref": "#/$defs/dynamicBlendMode" }
       }
     },
     "groupLayer": {
       "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["children"], "properties": {
-        "type": { "const": "group" }, "clip": { "enum": ["none", "bounds", "circle"] },
+        "type": { "const": "group" }, "clip": { "$ref": "#/$defs/dynamicGroupClip" },
         "children": { "type": "array", "maxItems": 128, "items": { "$ref": "#/$defs/layer" } }
       }}], "unevaluatedProperties": false
     },
     "shapeLayer": {
       "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["shape"], "properties": {
-        "type": { "const": "shape" }, "shape": { "enum": ["rectangle", "roundedRectangle", "circle", "line"] },
+        "type": { "const": "shape" }, "shape": { "$ref": "#/$defs/dynamicShape" },
         "fill": { "$ref": "#/$defs/dynamicColor" }, "stroke": { "$ref": "#/$defs/dynamicColor" },
         "strokeWidth": { "$ref": "#/$defs/dynamicNumber" }, "cornerRadius": { "$ref": "#/$defs/dynamicNumber" }
       }}], "unevaluatedProperties": false
@@ -180,8 +192,8 @@
     "textLayer": {
       "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["text", "font", "color"], "properties": {
         "type": { "const": "text" }, "text": { "$ref": "#/$defs/dynamicString" }, "font": { "$ref": "#/$defs/font" },
-        "color": { "$ref": "#/$defs/dynamicColor" }, "verticalAlign": { "enum": ["top", "middle", "bottom"] },
-        "wrap": { "enum": ["none", "word", "character"] }, "maxLines": { "type": "integer", "minimum": 1, "maximum": 10 }
+        "color": { "$ref": "#/$defs/dynamicColor" }, "verticalAlign": { "$ref": "#/$defs/dynamicVerticalAlign" },
+        "wrap": { "$ref": "#/$defs/dynamicWrap" }, "maxLines": { "$ref": "#/$defs/dynamicNumber" }
       }}], "unevaluatedProperties": false
     },
     "imageVariant": {
@@ -191,35 +203,36 @@
     "imageLayer": {
       "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["asset"], "properties": {
         "type": { "const": "image" }, "asset": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
-        "fit": { "enum": ["contain", "cover", "fill", "none"] },
+        "fit": { "$ref": "#/$defs/dynamicImageFit" },
         "variants": { "type": "array", "maxItems": 16, "items": { "$ref": "#/$defs/imageVariant" } }
       }}], "unevaluatedProperties": false
     },
     "tickStyle": {
       "type": "object", "required": ["every", "width", "length", "color"], "additionalProperties": false,
       "properties": {
-        "every": { "type": "integer", "minimum": 1, "maximum": 120 }, "offset": { "type": "integer", "minimum": 0, "maximum": 119, "default": 0 },
+        "every": { "$ref": "#/$defs/dynamicNumber" }, "offset": { "$ref": "#/$defs/dynamicNumber" },
         "width": { "$ref": "#/$defs/dynamicNumber" }, "length": { "$ref": "#/$defs/dynamicNumber" },
-        "color": { "$ref": "#/$defs/dynamicColor" }, "radiusOffset": { "type": "number", "minimum": -240, "maximum": 240, "default": 0 },
-        "rounded": { "type": "boolean", "default": false }
+        "color": { "$ref": "#/$defs/dynamicColor" }, "radiusOffset": { "$ref": "#/$defs/dynamicNumber" },
+        "rounded": { "$ref": "#/$defs/dynamicBoolean" }
       }
     },
     "tickRingLayer": {
       "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["count", "radius", "styles"], "properties": {
-        "type": { "const": "tickRing" }, "count": { "type": "integer", "minimum": 1, "maximum": 120 },
-        "radius": { "$ref": "#/$defs/dynamicNumber" }, "startAngle": { "type": "number", "minimum": -360, "maximum": 360, "default": -90 },
-        "hourTicksOnly": { "type": "boolean", "default": false },
+        "type": { "const": "tickRing" }, "count": { "$ref": "#/$defs/dynamicNumber" },
+        "radius": { "$ref": "#/$defs/dynamicNumber" }, "startAngle": { "$ref": "#/$defs/dynamicNumber" },
+        "hourTicksOnly": { "$ref": "#/$defs/dynamicBoolean" },
         "styles": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "$ref": "#/$defs/tickStyle" } }
       }}], "unevaluatedProperties": false
     },
     "analogHandLayer": {
-      "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["timeUnit", "rotation", "length", "width", "shape"], "properties": {
-        "type": { "const": "analogHand" }, "timeUnit": { "enum": ["hour", "minute", "second", "custom"] },
-        "pivot": { "type": "object", "required": ["x", "y"], "properties": { "x": { "type": "number", "minimum": -480, "maximum": 960 }, "y": { "type": "number", "minimum": -480, "maximum": 960 } }, "additionalProperties": false },
+      "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["pivot", "distanceFromCenter", "timeUnit", "rotation", "length", "width", "shape"], "properties": {
+        "type": { "const": "analogHand" }, "timeUnit": { "$ref": "#/$defs/dynamicHandUnit" },
+        "pivot": { "type": "object", "required": ["x", "y"], "properties": { "x": { "$ref": "#/$defs/dynamicNumber" }, "y": { "$ref": "#/$defs/dynamicNumber" } }, "additionalProperties": false },
+        "distanceFromCenter": { "oneOf": [{ "type": "number", "minimum": 0, "maximum": 480 }, { "$ref": "#/$defs/tokenRef" }, { "$ref": "#/$defs/binding" }] },
         "rotation": { "$ref": "#/$defs/dynamicNumber" }, "length": { "$ref": "#/$defs/dynamicNumber" },
         "width": { "$ref": "#/$defs/dynamicNumber" }, "tailLength": { "$ref": "#/$defs/dynamicNumber" },
-        "shape": { "enum": ["rectangle", "rounded", "tapered", "needle", "image"] }, "color": { "$ref": "#/$defs/dynamicColor" },
-        "asset": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" }, "smooth": { "type": "boolean", "default": true }
+        "shape": { "$ref": "#/$defs/dynamicHandShape" }, "color": { "$ref": "#/$defs/dynamicColor" },
+        "asset": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" }, "smooth": { "$ref": "#/$defs/dynamicBoolean" }
       }}], "unevaluatedProperties": false
     },
     "pivotCapLayer": {
@@ -230,18 +243,18 @@
     },
     "digitalTimeLayer": {
       "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["template", "hourMode", "font", "color"], "properties": {
-        "type": { "const": "digitalTime" }, "template": { "enum": ["HH:mm", "HH:mm:ss", "mm:ss", "mm", "HH", "ss", "hh:mm a", "hh:mm:ss a", "stackedHM"] },
-        "hourMode": { "enum": ["locale", "12", "24"] }, "font": { "$ref": "#/$defs/font" }, "color": { "$ref": "#/$defs/dynamicColor" },
+        "type": { "const": "digitalTime" }, "template": { "$ref": "#/$defs/dynamicTimeTemplate" },
+        "hourMode": { "$ref": "#/$defs/dynamicHourMode" }, "font": { "$ref": "#/$defs/font" }, "color": { "$ref": "#/$defs/dynamicColor" },
         "middayFont": { "$ref": "#/$defs/font" }, "middayColor": { "$ref": "#/$defs/dynamicColor" },
         "separatorBlink": { "type": "boolean", "default": false }
       }}], "unevaluatedProperties": false
     },
     "progressArcLayer": {
       "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["value", "minimum", "maximum", "startAngle", "sweepAngle", "strokeWidth", "color"], "properties": {
-        "type": { "const": "progressArc" }, "value": { "$ref": "#/$defs/dynamicNumber" }, "minimum": { "type": "number" },
-        "maximum": { "type": "number" }, "startAngle": { "type": "number", "minimum": -720, "maximum": 720 },
-        "sweepAngle": { "type": "number", "minimum": -360, "maximum": 360 }, "strokeWidth": { "$ref": "#/$defs/dynamicNumber" },
-        "color": { "$ref": "#/$defs/dynamicColor" }, "trackColor": { "$ref": "#/$defs/dynamicColor" }, "rounded": { "type": "boolean", "default": true }
+        "type": { "const": "progressArc" }, "value": { "$ref": "#/$defs/dynamicNumber" }, "minimum": { "$ref": "#/$defs/dynamicNumber" },
+        "maximum": { "$ref": "#/$defs/dynamicNumber" }, "startAngle": { "$ref": "#/$defs/dynamicNumber" },
+        "sweepAngle": { "$ref": "#/$defs/dynamicNumber" }, "strokeWidth": { "$ref": "#/$defs/dynamicNumber" },
+        "color": { "$ref": "#/$defs/dynamicColor" }, "trackColor": { "$ref": "#/$defs/dynamicColor" }, "rounded": { "$ref": "#/$defs/dynamicBoolean" }
       }}], "unevaluatedProperties": false
     },
     "lottieSegment": {
@@ -252,8 +265,8 @@
     "lottieLayer": {
       "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["asset"], "properties": {
         "type": { "const": "lottie" }, "asset": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
-        "autoplay": { "type": "boolean", "default": true }, "loop": { "type": "boolean", "default": true },
-        "speed": { "type": "number", "exclusiveMinimum": 0, "maximum": 4, "default": 1 },
+        "autoplay": { "$ref": "#/$defs/dynamicBoolean" }, "loop": { "$ref": "#/$defs/dynamicBoolean" },
+        "speed": { "$ref": "#/$defs/dynamicNumber" },
         "segments": { "type": "array", "maxItems": 16, "items": { "$ref": "#/$defs/lottieSegment" } }
       }}], "unevaluatedProperties": false
     },
@@ -293,7 +306,9 @@
       "properties": {
         "colors": { "type": "object", "maxProperties": 64, "propertyNames": { "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" }, "additionalProperties": { "$ref": "#/$defs/color" } },
         "fonts": { "type": "object", "maxProperties": 32, "propertyNames": { "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" }, "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 80 } },
-        "numbers": { "type": "object", "maxProperties": 64, "propertyNames": { "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" }, "additionalProperties": { "type": "number" } }
+        "numbers": { "type": "object", "maxProperties": 64, "propertyNames": { "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" }, "additionalProperties": { "type": "number" } },
+        "strings": { "type": "object", "maxProperties": 64, "propertyNames": { "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" }, "additionalProperties": { "type": "string", "maxLength": 500 } },
+        "booleans": { "type": "object", "maxProperties": 64, "propertyNames": { "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" }, "additionalProperties": { "type": "boolean" } }
       }
     },
     "dataSource": {
