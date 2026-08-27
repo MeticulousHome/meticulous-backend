@@ -213,18 +213,13 @@
       }}], "unevaluatedProperties": false
     },
     "analogHandLayer": {
-      "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["pivot", "timeUnit", "rotation", "length", "width", "shape"], "properties": {
+      "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["timeUnit", "rotation", "length", "width", "shape"], "properties": {
         "type": { "const": "analogHand" }, "timeUnit": { "enum": ["hour", "minute", "second", "custom"] },
-        "pivot": { "oneOf": [{ "type": "object", "required": ["mode"], "properties": { "mode": { "const": "center" } }, "additionalProperties": false }, { "type": "object", "required": ["mode", "target"], "properties": { "mode": { "const": "custom" }, "target": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" } }, "additionalProperties": false }] },
+        "pivot": { "type": "object", "required": ["x", "y"], "properties": { "x": { "type": "number", "minimum": -480, "maximum": 960 }, "y": { "type": "number", "minimum": -480, "maximum": 960 } }, "additionalProperties": false },
         "rotation": { "$ref": "#/$defs/dynamicNumber" }, "length": { "$ref": "#/$defs/dynamicNumber" },
         "width": { "$ref": "#/$defs/dynamicNumber" }, "tailLength": { "$ref": "#/$defs/dynamicNumber" },
         "shape": { "enum": ["rectangle", "rounded", "tapered", "needle", "image"] }, "color": { "$ref": "#/$defs/dynamicColor" },
         "asset": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" }, "smooth": { "type": "boolean", "default": true }
-      }}], "unevaluatedProperties": false
-    },
-    "pivotLayer": {
-      "allOf": [{ "$ref": "#/$defs/layerBase" }, { "type": "object", "required": ["point"], "properties": {
-        "type": { "const": "pivot" }, "point": { "type": "object", "required": ["x", "y"], "properties": { "x": { "type": "number", "minimum": -480, "maximum": 960 }, "y": { "type": "number", "minimum": -480, "maximum": 960 } }, "additionalProperties": false }
       }}], "unevaluatedProperties": false
     },
     "pivotCapLayer": {
@@ -266,7 +261,7 @@
       "oneOf": [
         { "$ref": "#/$defs/groupLayer" }, { "$ref": "#/$defs/shapeLayer" }, { "$ref": "#/$defs/textLayer" },
         { "$ref": "#/$defs/imageLayer" }, { "$ref": "#/$defs/tickRingLayer" }, { "$ref": "#/$defs/analogHandLayer" },
-        { "$ref": "#/$defs/pivotLayer" }, { "$ref": "#/$defs/pivotCapLayer" }, { "$ref": "#/$defs/digitalTimeLayer" }, { "$ref": "#/$defs/progressArcLayer" },
+        { "$ref": "#/$defs/pivotCapLayer" }, { "$ref": "#/$defs/digitalTimeLayer" }, { "$ref": "#/$defs/progressArcLayer" },
         { "$ref": "#/$defs/lottieLayer" }
       ]
     },
