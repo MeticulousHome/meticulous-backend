@@ -20,6 +20,7 @@ from dbus_next.errors import DBusError
 from dbus_next.service import ServiceInterface, method
 from improv import ImprovProtocol, ImprovState, ImprovUUID
 
+from ble_auth import BleAuthorization
 from config import CONFIG_WIFI, WIFI_MODE, WIFI_MODE_AP, MeticulousConfig
 from hostname import HostnameManager
 from log import MeticulousLogger
@@ -137,6 +138,9 @@ class GATTServer:
         self.update_trigger = asyncio.Event()
         self.loop = asyncio.new_event_loop()
         self.auth_notification: Notification = None
+        # User-facing authorization window for provisioning (M4). Opened only by
+        # an explicit Yes on the Dial prompt; see ble_auth.py.
+        self.ble_auth = BleAuthorization()
 
         def _exception_handler(loop, context):
             print(context)
@@ -149,7 +153,12 @@ class GATTServer:
 
         self.loop.set_exception_handler(_exception_handler)
         self.improv_server = ImprovProtocol(
-            requires_authorization=False,
+            # Credential writes require an on-screen approval first (M4). With
+            # this flag the Improv library starts in AWAITING_AUTHORIZATION and
+            # rejects WIFI_SETTINGS RPCs with NOT_AUTHORIZED until we transition
+            # the state after the user's Yes (verified against pyimprov 0.2.0:
+            # handle_write checks `state < AUTHORIZED` before connecting).
+            requires_authorization=True,
             wifi_connect_callback=GATTServer.wifi_connect,
             wifi_networks_callback=GATTServer.get_wifi_networks,
             max_response_bytes=250,
@@ -561,38 +570,55 @@ class GATTServer:
         return ssids
 
     def send_authentication_notification(self):
-        notification = "Allow Wifi provisioning for 3 minutes?"
-
-        def response_callback():
-            logger.info("BLE GATT NOTIFICATION CALLBACK")
-
-        # Only create a new notification if we dont have one already. In that case: update it
-        if self.auth_notification is None or self.auth_notification.acknowledged:
-            self.auth_notification = Notification(
-                notification,
-                [NotificationResponse.YES, NotificationResponse.NO],
-                callback=response_callback,
-            )
-
-        NotificationManager.add_notification(self.auth_notification)
-
-    def updateAuthentication(self):
-        self.improv_server.state = ImprovState.AWAITING_AUTHORIZATION
-
-        # FIXME currently the dial notification flow does not call the backend so the notification is never returned
-        self.improv_server.state = ImprovState.AUTHORIZED
-        return
-
-        if not self.auth_notification:
-            self.send_authentication_notification()
+        """Push the Allow/Deny provisioning prompt to the Dial (throttled)."""
+        prompt_pending = (
+            self.auth_notification is not None and not self.auth_notification.acknowledged
+        )
+        if not self.ble_auth.should_prompt(prompt_pending):
             return
 
-        if self.auth_notification.acknowledged:
-            if time.time() - self.auth_notification.acknowledged_timestamp < 180:
-                self.improv_server.state = ImprovState.AUTHORIZED
-                logger.info("Notification acknowleded, allowing provisioning")
-                return
+        # Always a fresh Notification: re-adding an acknowledged object would
+        # reset its `acknowledged` flag inside add_notification() and erase the
+        # user's previous answer.
+        notification = Notification(
+            "Allow Wi-Fi setup via Bluetooth for 3 minutes?",
+            [NotificationResponse.YES, NotificationResponse.NO],
+        )
 
+        def response_callback():
+            # May run twice per acknowledgement (Notification.acknowledge and
+            # NotificationManager.acknowledge_notification both invoke it);
+            # grant()/revoke() are idempotent so that is harmless.
+            if notification.response == NotificationResponse.YES:
+                self.ble_auth.grant(notification.acknowledged_timestamp)
+                self.improv_server.state = ImprovState.AUTHORIZED
+                logger.info("BLE provisioning authorized from the Dial (180 s window)")
+            else:
+                self.ble_auth.revoke()
+                if self.improv_server.state == ImprovState.AUTHORIZED:
+                    self.improv_server.state = ImprovState.AWAITING_AUTHORIZATION
+                logger.info("BLE provisioning denied from the Dial")
+
+        notification.callback = response_callback
+        self.auth_notification = notification
+        self.ble_auth.note_prompt()
+        NotificationManager.add_notification(notification)
+
+    def updateAuthentication(self):
+        """Sync the Improv state with the user-authorization window.
+
+        Called before every Improv read/write. Never touches the transient
+        PROVISIONING/PROVISIONED states the library sets mid-connect.
+        """
+        if self.ble_auth.active():
+            if self.improv_server.state == ImprovState.AWAITING_AUTHORIZATION:
+                self.improv_server.state = ImprovState.AUTHORIZED
+            return
+
+        # Window expired or was never opened: drop a stale AUTHORIZED state so
+        # the library rejects credential writes, then (rate-limited) re-prompt.
+        if self.improv_server.state == ImprovState.AUTHORIZED:
+            self.improv_server.state = ImprovState.AWAITING_AUTHORIZATION
         self.send_authentication_notification()
 
     def machine_ident_read_request(
@@ -601,6 +627,21 @@ class GATTServer:
 
         config = WifiManager.getCurrentConfig()
         current_response = HostnameManager.generateDeviceName() + ","
+
+        if not GATTServer.getServer().ble_auth.active():
+            # Unauthorized peers only learn what the advertisement already
+            # broadcasts: the device name and whether the machine is online.
+            # Hostname (embeds the serial), current SSID and IP list are
+            # withheld until the user approves provisioning on the Dial.
+            # Same field count/order so any parser stays happy.
+            current_response += ","  # hostname
+            current_response += "black" + ","
+            current_response += "v10.1.0" + ","
+            current_response += "103" + ","
+            current_response += "1," if config.connected else "0,"
+            current_response += ","  # connection (SSID) name
+            return bytearray(current_response.encode())
+
         current_response += config.hostname + ","
         current_response += "black" + ","
         current_response += "v10.1.0" + ","
@@ -642,10 +683,27 @@ class GATTServer:
         logger.info(f"BLE WRITE {char_name} <- {payload_metadata(value)}")
 
         if characteristic.service_uuid == ImprovUUID.SERVICE_UUID.value:
+            server = GATTServer.getServer()
+            if characteristic.uuid == ImprovUUID.RPC_COMMAND_UUID.value:
+                # Explicit authorization gate for credential writes (M4). Sync
+                # the Improv state with the user-authorization window before
+                # delegating: without an active window the state is forced back
+                # to AWAITING_AUTHORIZATION, so the library refuses the
+                # WIFI_SETTINGS RPC with NOT_AUTHORIZED (spec-compliant client
+                # feedback) and the connect callback is never invoked. We do not
+                # rely on the library alone: this hook re-runs on every write,
+                # so a window expiring mid-session cannot leave a stale
+                # AUTHORIZED state behind.
+                server.updateAuthentication()
+                if not server.ble_auth.active():
+                    logger.warning(
+                        "BLE WRITE to RPC command while unauthorized - "
+                        "prompting on the Dial and rejecting"
+                    )
             (
                 target_uuid,
                 target_values,
-            ) = GATTServer.getServer().improv_server.handle_write(characteristic.uuid, value)
+            ) = server.improv_server.handle_write(characteristic.uuid, value)
             if target_uuid is not None and target_values is not None:
                 target_name = target_uuid
                 try:

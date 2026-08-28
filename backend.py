@@ -303,12 +303,15 @@ def main():
     send_data_thread = NamedThread("SendSocketIO", target=send_data_loop)
     send_data_thread.start()
 
-    GATTServer.getServer().start()
-
     if Machine.emulated:
         WifiManager.init()
 
     NotificationManager.init(sio)
+    # Started after the NotificationManager so an early BLE read cannot queue
+    # an authorization prompt before there is an emitter for it. Not a real
+    # window in practice (BLE only advertises after MIN_BOOT_TIME), but keeps
+    # the dependency order honest.
+    GATTServer.getServer().start()
     ProfileManager.init(sio)
     SoundPlayer.init(emulation=Machine.emulated)
 

@@ -40,10 +40,22 @@ _PUBLIC_EXACT = frozenset(
     }
 )
 _PUBLIC_PREFIXES = ("/api/v1/pair/status/",)
+# Read-only identity, public by design: the app's discovery flow (zeroconf/BLE)
+# calls GET /machine on every candidate to render the machine list *before* the
+# user can pick one and pair with it. Everything it returns (name, hostname,
+# serial, color) is already broadcast to the whole LAN via the mDNS
+# announcement, so this does not widen what an unpaired peer can learn.
+_PUBLIC_GET_EXACT = frozenset(
+    {
+        "/api/v1/machine",
+    }
+)
 
 
-def is_public_path(path: str) -> bool:
+def is_public_path(method: str, path: str) -> bool:
     if path in _PUBLIC_EXACT:
+        return True
+    if method == "GET" and path in _PUBLIC_GET_EXACT:
         return True
     return any(path.startswith(prefix) for prefix in _PUBLIC_PREFIXES)
 
@@ -84,7 +96,7 @@ def is_authorized(
     """The single authorization decision for an incoming request."""
     if method == "OPTIONS":
         return True
-    if is_public_path(path):
+    if is_public_path(method, path):
         return True
     if client_is_local(remote_ip, x_real_ip):
         return True

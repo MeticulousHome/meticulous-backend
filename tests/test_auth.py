@@ -18,13 +18,26 @@ def test_options_always_allowed():
 
 
 def test_public_pairing_paths_allowed_without_token():
-    assert auth.is_public_path("/api/v1/pair/request")
-    assert auth.is_public_path("/api/v1/pair/status/abc-123")
-    assert not auth.is_public_path("/api/v1/pair/devices")
-    assert not auth.is_public_path("/api/v1/settings")
+    assert auth.is_public_path("POST", "/api/v1/pair/request")
+    assert auth.is_public_path("GET", "/api/v1/pair/status/abc-123")
+    assert not auth.is_public_path("GET", "/api/v1/pair/devices")
+    assert not auth.is_public_path("GET", "/api/v1/settings")
     # Reachable from a remote client with no token:
     assert auth.is_authorized("POST", "/api/v1/pair/request", "127.0.0.1", "9.9.9.9", None)
     assert auth.is_authorized("GET", "/api/v1/pair/status/x", "127.0.0.1", "9.9.9.9", None)
+
+
+def test_machine_identity_public_for_discovery():
+    # The app lists machines (zeroconf/BLE discovery) before it can pair, so
+    # GET /machine is public by design; every other method stays gated.
+    assert auth.is_public_path("GET", "/api/v1/machine")
+    assert not auth.is_public_path("POST", "/api/v1/machine")
+    assert auth.is_authorized("GET", "/api/v1/machine", "127.0.0.1", "9.9.9.9", None)
+    # Sibling machine endpoints are NOT public.
+    assert not auth.is_public_path("GET", "/api/v1/machine/factory_reset")
+    assert not auth.is_authorized(
+        "GET", "/api/v1/machine/factory_reset", "127.0.0.1", "9.9.9.9", None
+    )
 
 
 def test_client_is_local():
