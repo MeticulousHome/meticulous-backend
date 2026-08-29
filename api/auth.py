@@ -117,6 +117,20 @@ def request_is_local(handler) -> bool:
     )
 
 
+def request_has_access(handler) -> bool:
+    """True if the request is loopback/Dial or carries a valid device token.
+
+    For endpoints that are public but must return LESS to an unpaired caller
+    (e.g. /machine returns only a minimal identity for discovery, full build and
+    repository detail only once authorized)."""
+    if client_is_local(
+        handler.request.remote_ip, handler.request.headers.get("X-Real-IP")
+    ):
+        return True
+    token = parse_bearer_token(handler.request.headers.get("Authorization"))
+    return PairingManagerInstance.verify_token(token) is not None
+
+
 def socket_token(auth, environ) -> Optional[str]:
     """Pull the bearer token from a Socket.IO handshake.
 

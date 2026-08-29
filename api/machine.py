@@ -9,6 +9,7 @@ from enum import Enum
 import asyncio
 
 from .api import API, APIVersion
+from .auth import request_has_access
 from .base_handler import BaseHandler, LocalAccessHandler
 from ota import UpdateManager
 from backlight_controller import BacklightController
@@ -26,6 +27,27 @@ from config import (
 )
 
 logger = MeticulousLogger.getLogger(__name__)
+
+
+def get_machine_identity():
+    """Minimal identity for pre-pairing discovery.
+
+    An unauthorized LAN caller (the app listing machines before the user can
+    pair) gets only this: name, serial and colour -- what discovery needs to
+    render the machine, and no more than the mDNS hostname already reveals. The
+    detailed build/channel/repository/version-history in get_machine_info() is
+    withheld until the caller is authorized, so committer names, the
+    manufacturing flag and the update history are not exposed to strangers on
+    the network.
+    """
+    response = {
+        "name": HostnameManager.generateDeviceName(),
+        "serial": MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER],
+        "color": MeticulousConfig[CONFIG_SYSTEM][MACHINE_COLOR] or "",
+    }
+    if Machine.esp_info is not None:
+        response["firmware"] = Machine.esp_info.firmwareV
+    return response
 
 
 def get_machine_info():
@@ -165,7 +187,13 @@ class UpdateOSStatus(BaseHandler):
 
 class MachineInfoHandler(BaseHandler):
     def get(self):
-        self.write(json.dumps(get_machine_info()))
+        # Public for discovery, but unpaired callers get only the minimal
+        # identity; the full build/repository/history detail requires a token
+        # (or loopback / the Dial).
+        if request_has_access(self):
+            self.write(json.dumps(get_machine_info()))
+        else:
+            self.write(json.dumps(get_machine_identity()))
 
 
 class MachineResetHandler(LocalAccessHandler):
