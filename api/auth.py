@@ -90,12 +90,37 @@ def parse_bearer_token(authorization: Optional[str]) -> Optional[str]:
     return None
 
 
+# Cookie fallback for browsers. The pairing pages store the token in a
+# SameSite=Strict cookie as well as localStorage, so a browser that authorized
+# once can hit any endpoint straight from the address bar (a plain navigation
+# carries no Authorization header). SameSite=Strict means other sites can never
+# make the browser attach it (CSRF), and CORS never allows credentials, so no
+# foreign origin can ride it.
+TOKEN_COOKIE_NAME = "met_device_token"
+
+
+def parse_cookie_token(cookie_header: Optional[str]) -> Optional[str]:
+    if not cookie_header:
+        return None
+    for part in cookie_header.split(";"):
+        name, _, value = part.strip().partition("=")
+        if name == TOKEN_COOKIE_NAME and value:
+            return value.strip()
+    return None
+
+
+def extract_token(authorization: Optional[str], cookie: Optional[str]) -> Optional[str]:
+    """Bearer header first (apps/libraries), cookie as the browser fallback."""
+    return parse_bearer_token(authorization) or parse_cookie_token(cookie)
+
+
 def is_authorized(
     method: str,
     path: str,
     remote_ip: Optional[str],
     x_real_ip: Optional[str],
     authorization: Optional[str],
+    cookie: Optional[str] = None,
 ) -> bool:
     """The single authorization decision for an incoming request."""
     if method == "OPTIONS":
@@ -104,7 +129,7 @@ def is_authorized(
         return True
     if client_is_local(remote_ip, x_real_ip):
         return True
-    token = parse_bearer_token(authorization)
+    token = extract_token(authorization, cookie)
     return PairingManagerInstance.verify_token(token) is not None
 
 
@@ -127,22 +152,28 @@ def request_has_access(handler) -> bool:
         handler.request.remote_ip, handler.request.headers.get("X-Real-IP")
     ):
         return True
-    token = parse_bearer_token(handler.request.headers.get("Authorization"))
+    token = extract_token(
+        handler.request.headers.get("Authorization"),
+        handler.request.headers.get("Cookie"),
+    )
     return PairingManagerInstance.verify_token(token) is not None
 
 
 def socket_token(auth, environ) -> Optional[str]:
-    """Pull the bearer token from a Socket.IO handshake.
+    """Pull the token from a Socket.IO handshake.
 
     Clients pass it in the connection `auth` payload (io(url, {auth:{token}}));
-    we also accept an Authorization header as a fallback for non-browser clients.
+    we also accept an Authorization header (non-browser clients) or the token
+    cookie (a browser page that authorized via the pairing flow).
     """
     if isinstance(auth, dict):
         token = auth.get("token")
         if token:
             return token
     if isinstance(environ, dict):
-        return parse_bearer_token(environ.get("HTTP_AUTHORIZATION"))
+        return extract_token(
+            environ.get("HTTP_AUTHORIZATION"), environ.get("HTTP_COOKIE")
+        )
     return None
 
 
@@ -180,6 +211,7 @@ class AuthMixin:
             self.request.remote_ip,
             self.request.headers.get("X-Real-IP"),
             self.request.headers.get("Authorization"),
+            self.request.headers.get("Cookie"),
         ):
             self.set_status(401)
             self.set_header("Content-type", "application/json")

@@ -105,3 +105,36 @@ def test_socket_lan_client_needs_valid_token():
     assert auth.is_socket_authorized(
         {**lan, "HTTP_AUTHORIZATION": "Bearer good-token"}, None
     )
+
+
+def test_cookie_token_extraction():
+    assert auth.parse_cookie_token("met_device_token=abc") == "abc"
+    assert auth.parse_cookie_token("foo=1; met_device_token=abc; bar=2") == "abc"
+    assert auth.parse_cookie_token("foo=1; bar=2") is None
+    assert auth.parse_cookie_token(None) is None
+    # Header wins over cookie when both are present.
+    assert auth.extract_token("Bearer fromheader", "met_device_token=fromcookie") == "fromheader"
+    assert auth.extract_token(None, "met_device_token=fromcookie") == "fromcookie"
+
+
+def test_lan_client_authorizes_via_cookie():
+    # A browser navigation (address bar) sends no Authorization header, only
+    # the SameSite=Strict cookie stored at pairing time.
+    assert auth.is_authorized(
+        "GET", "/api/v1/profile/list", "127.0.0.1", "192.168.1.50",
+        None, "met_device_token=good-token",
+    )
+    assert not auth.is_authorized(
+        "GET", "/api/v1/profile/list", "127.0.0.1", "192.168.1.50",
+        None, "met_device_token=bad-token",
+    )
+
+
+def test_socket_authorizes_via_cookie():
+    lan = {"REMOTE_ADDR": "127.0.0.1", "HTTP_X_REAL_IP": "192.168.1.50"}
+    assert auth.is_socket_authorized(
+        {**lan, "HTTP_COOKIE": "met_device_token=good-token"}, None
+    )
+    assert not auth.is_socket_authorized(
+        {**lan, "HTTP_COOKIE": "met_device_token=bad-token"}, None
+    )

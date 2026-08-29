@@ -319,6 +319,10 @@ _PAIR_PAGE_HTML = """<!doctype html>
     }).then(function (d) {
       if (expiryTimer) clearTimeout(expiryTimer);
       try { localStorage.setItem(TOKEN_KEY, d.token); } catch (e) {}
+      // SameSite=Strict cookie so this browser can hit any endpoint straight
+      // from the address bar; other sites can never make the browser send it.
+      document.cookie = "met_device_token=" + d.token +
+        "; Path=/; Max-Age=31536000; SameSite=Strict";
       codeStep.classList.add("hidden");
       done.classList.remove("hidden");
       say("This device is now authorized.", "ok");
