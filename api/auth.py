@@ -221,6 +221,14 @@ class AuthMixin:
         # StaticFileHandler); Tornado awaits whatever prepare returns.
         return super().prepare()
 
+    def options(self, *args, **kwargs):
+        # Answer CORS preflights uniformly. Handlers that do not derive from
+        # BaseHandler (e.g. the history StaticFileHandler) have no options()
+        # of their own and would answer 405, which makes browsers fail any
+        # cross-origin request that carries the Authorization header.
+        self.set_status(204)
+        self.finish()
+
 
 def with_auth(handler):
     """Return a subclass of `handler` with AuthMixin prepended."""
