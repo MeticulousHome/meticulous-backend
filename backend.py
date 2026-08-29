@@ -35,6 +35,7 @@ from esp_serial.connection.emulation_data import EmulationData
 from usb import USBManager
 
 from api.api import API
+from api.auth import is_socket_authorized
 from api.emulation import register_emulation_handlers
 from api.web_ui import WEB_UI_HANDLER
 
@@ -68,7 +69,14 @@ UpdateOSStatus.setSio(sio)
 
 
 @sio.event
-async def connect(sid, environ):
+async def connect(sid, environ, auth=None):
+    # Same authorization boundary as the HTTP API: the Dial connects over
+    # loopback and is exempt; a LAN client must present a valid device token in
+    # the handshake. Rejecting here closes the sensor/status stream, the action
+    # control channel, and the notification-ack path to unpaired peers.
+    if not is_socket_authorized(environ, auth):
+        logger.warning("Rejected unauthorized socket.io connection %s", sid)
+        raise socketio.exceptions.ConnectionRefusedError("unauthorized")
     logger.info("connect %s", sid)
     await ProfileManager._async_emit_profile_hover(to=sid)
 

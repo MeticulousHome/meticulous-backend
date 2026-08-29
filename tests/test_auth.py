@@ -77,3 +77,31 @@ def test_lan_client_requires_valid_token():
 def test_dial_loopback_allowed_without_token():
     assert auth.is_authorized("GET", "/api/v1/settings", "127.0.0.1", None, None)
     assert auth.is_authorized("POST", "/api/v1/machine/factory_reset", "127.0.0.1", None, None)
+
+
+def test_socket_token_extraction():
+    assert auth.socket_token({"token": "abc"}, {}) == "abc"
+    assert auth.socket_token(None, {"HTTP_AUTHORIZATION": "Bearer abc"}) == "abc"
+    assert auth.socket_token({}, {"HTTP_AUTHORIZATION": "Bearer xyz"}) == "xyz"
+    assert auth.socket_token(None, {}) is None
+    # auth payload wins over header
+    assert auth.socket_token({"token": "fromauth"}, {"HTTP_AUTHORIZATION": "Bearer fromheader"}) == "fromauth"
+
+
+def test_socket_dial_loopback_allowed_without_token():
+    # The Dial connects to the backend on loopback, no X-Real-IP.
+    assert auth.is_socket_authorized({"REMOTE_ADDR": "127.0.0.1"}, None)
+    assert auth.is_socket_authorized({"REMOTE_ADDR": "::1"}, {})
+
+
+def test_socket_lan_client_needs_valid_token():
+    lan = {"REMOTE_ADDR": "127.0.0.1", "HTTP_X_REAL_IP": "192.168.1.50"}
+    # No token -> refused.
+    assert not auth.is_socket_authorized(lan, None)
+    assert not auth.is_socket_authorized(lan, {"token": "bad-token"})
+    # Valid token in the handshake auth payload -> allowed.
+    assert auth.is_socket_authorized(lan, {"token": "good-token"})
+    # Valid token via Authorization header fallback -> allowed.
+    assert auth.is_socket_authorized(
+        {**lan, "HTTP_AUTHORIZATION": "Bearer good-token"}, None
+    )

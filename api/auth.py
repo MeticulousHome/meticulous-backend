@@ -113,6 +113,40 @@ def request_is_local(handler) -> bool:
     )
 
 
+def socket_token(auth, environ) -> Optional[str]:
+    """Pull the bearer token from a Socket.IO handshake.
+
+    Clients pass it in the connection `auth` payload (io(url, {auth:{token}}));
+    we also accept an Authorization header as a fallback for non-browser clients.
+    """
+    if isinstance(auth, dict):
+        token = auth.get("token")
+        if token:
+            return token
+    if isinstance(environ, dict):
+        return parse_bearer_token(environ.get("HTTP_AUTHORIZATION"))
+    return None
+
+
+def is_socket_authorized(environ, auth) -> bool:
+    """Authorization decision for a Socket.IO connection.
+
+    Mirrors the HTTP rule (api auth): the Dial connects over loopback and is
+    exempt; a LAN client must present a valid device token in the handshake.
+    This gates the sensor/status stream, the `action` control channel, and the
+    `notification` acknowledgement path (which is how pairing/BLE approvals come
+    back) -- all of which live on this one socket. Without it, an unpaired LAN
+    peer could read telemetry, drive the machine, and forge an on-screen
+    approval by replaying a broadcast notification id.
+    """
+    environ = environ or {}
+    remote_ip = environ.get("REMOTE_ADDR")
+    x_real_ip = environ.get("HTTP_X_REAL_IP")
+    if client_is_local(remote_ip, x_real_ip):
+        return True
+    return PairingManagerInstance.verify_token(socket_token(auth, environ)) is not None
+
+
 class AuthMixin:
     """Prepended to every registered handler in API.get_routes() so the
     authorization decision runs before any handler logic, including for handlers
