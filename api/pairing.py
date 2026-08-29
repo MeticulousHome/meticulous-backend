@@ -2,20 +2,19 @@
 
 Flow:
   GET  /pair                  -> the standalone pairing page (a browser fallback)
-  POST /pair/request          -> opens a session, shows the code + an Allow/Deny
-                                 prompt on the Dial, returns {pairing_id} (the
-                                 code is NOT returned; it is shown only on the Dial)
+  POST /pair/request          -> opens a session, shows the code on the Dial,
+                                 returns {pairing_id} (the code is NOT returned;
+                                 it is shown only on the Dial)
   POST /pair/verify           -> {pairing_id, code}; if the typed code matches
                                  the one on the Dial, returns {token}
-  GET  /pair/status/{id}      -> {status} while pending; {status, token} once the
-                                 owner approves with the knob on the Dial
+  GET  /pair/status/{id}      -> {status} for a session (polling)
   GET  /pair/devices          -> list of paired devices (management; auth/loopback)
   POST /pair/devices/{id}/revoke -> revoke a device (management; auth/loopback)
 
-There are two ways to approve, both proving physical access to the machine:
-  * type the code shown on the Dial (POST /pair/verify) -- the browser/app path;
-  * press Allow on the Dial's prompt (knob), then read the token via
-    /pair/status -- the on-machine path.
+There is exactly ONE way to approve a device: type the code shown on the Dial
+(POST /pair/verify). The Dial only displays the code (plus a Cancel that rejects
+the pending request); it does not offer a second "Allow" that would authorize by
+itself. A paired device is later managed from Settings -> Paired Devices.
 
 /pair (GET), /pair/request, /pair/verify and /pair/status are reachable without
 a token (an unpaired device has none yet); the request-layer enforcement
@@ -25,7 +24,7 @@ token or loopback (the Dial's "Paired devices" screen calls them over loopback).
 
 import json
 
-from notifications import Notification, NotificationManager, NotificationResponse
+from notifications import Notification, NotificationManager
 from pairing import PairingError, PairingManagerInstance
 from log import MeticulousLogger
 
@@ -40,26 +39,53 @@ def _format_code(code: str) -> str:
     return f"{code[:3]} {code[3:]}" if len(code) == 6 else code
 
 
-def _push_approval_prompt(pairing_id: str, device_name: str, code: str) -> None:
-    """Show the Allow/Deny prompt on the Dial and wire the answer to the session.
+# Open pairing prompts, keyed by pairing_id, so we can clear the Dial prompt
+# once the device is authorized (or denied) instead of leaving a stale code.
+_prompts: dict = {}
 
-    The callback fires on acknowledgement (and the notification manager may fire
-    it twice); approve()/deny() are idempotent, so a double invocation is safe.
+
+def _push_approval_prompt(pairing_id: str, device_name: str, code: str) -> None:
+    """Display the pairing code on the Dial.
+
+    There is exactly one way to approve a device: type this code on it
+    (POST /pair/verify). The Dial therefore does NOT offer an "Allow" that would
+    authorize by itself -- that would be a second, contradictory approval path.
+    It shows the code plus a single "Cancel" that rejects the pending request
+    (only meaningful before the code is typed; once typed, the device is paired
+    and is managed from Settings -> Paired Devices).
+
+    English only.
     """
-    message = f"Allow '{device_name}' to connect to this machine?\nCode: {_format_code(code)}"
-    notification = Notification(
-        message,
-        responses=[NotificationResponse.YES, NotificationResponse.NO],
+    message = (
+        f"A device wants to connect:\n{device_name}\n\n"
+        f"To allow it, type this code on the device:\n{_format_code(code)}"
     )
+    notification = Notification(message, responses=["Cancel"])
 
     def on_answer():
-        if notification.response == NotificationResponse.YES:
-            PairingManagerInstance.approve(pairing_id)
-        else:
-            PairingManagerInstance.deny(pairing_id)
+        # The only button cancels the pending request. Idempotent and a no-op
+        # once the session is no longer pending (already approved/expired).
+        PairingManagerInstance.deny(pairing_id)
+        _prompts.pop(pairing_id, None)
 
     notification.callback = on_answer
+    _prompts[pairing_id] = notification
     NotificationManager.add_notification(notification)
+
+
+def _dismiss_prompt(pairing_id: str) -> None:
+    """Clear the Dial pairing prompt for a session (after it is authorized).
+
+    Revokes the on-screen notification by re-emitting it with an empty body,
+    which the Dial treats as a dismissal; harmless if the Dial ignores it, as
+    the pairing session expires on its own shortly after.
+    """
+    notification = _prompts.pop(pairing_id, None)
+    if notification is None:
+        return
+    revoke = Notification("", responses=[])
+    revoke.id = notification.id
+    NotificationManager.add_notification(revoke)
 
 
 class PairRequestHandler(BaseHandler):
@@ -81,7 +107,7 @@ class PairRequestHandler(BaseHandler):
         _push_approval_prompt(session["pairing_id"], device_name, session["code"])
         # The code is deliberately NOT returned: it is shown only on the Dial, so
         # a client proves physical sight of the machine by typing it back to
-        # /pair/verify. (A person at the Dial can also approve with the knob.)
+        # /pair/verify. Typing the code is the ONLY way to approve.
         self.write(
             {
                 "pairing_id": session["pairing_id"],
@@ -107,6 +133,8 @@ class PairVerifyHandler(BaseHandler):
             # Unknown/expired session or wrong code.
             self.report_error(401, "Invalid or expired code")
             return
+        # Approved: clear the code prompt from the Dial so it does not linger.
+        _dismiss_prompt(pairing_id)
         self.write({"status": "approved", "token": token})
 
 
