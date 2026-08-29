@@ -115,3 +115,46 @@ def test_hash_token_is_stable_and_hex(manager):
     h = hash_token("abc")
     assert h == hash_token("abc")
     assert re.fullmatch(r"[0-9a-f]{64}", h)
+
+
+def test_verify_code_mints_token_and_authenticates(manager):
+    req = manager.request_pairing("Browser")
+    code = manager.get_pending_prompt(req["pairing_id"])["code"]
+    token = manager.verify_code(req["pairing_id"], code)
+    assert token
+    # The token authenticates like any other device token.
+    assert manager.verify_token(token) is not None
+    # The device is now listed.
+    assert len(manager.list_devices()) == 1
+
+
+def test_verify_code_rejects_wrong_code(manager):
+    req = manager.request_pairing("Browser")
+    good = manager.get_pending_prompt(req["pairing_id"])["code"]
+    wrong = "000000" if good != "000000" else "111111"
+    assert manager.verify_code(req["pairing_id"], wrong) is None
+    # No device was created.
+    assert manager.list_devices() == []
+    # The correct code still works afterwards (session stays pending).
+    assert manager.verify_code(req["pairing_id"], good)
+
+
+def test_verify_code_unknown_session(manager):
+    assert manager.verify_code("does-not-exist", "123456") is None
+
+
+def test_verify_code_expired(manager, monkeypatch):
+    req = manager.request_pairing("Browser")
+    code = manager.get_pending_prompt(req["pairing_id"])["code"]
+    now = pairing._now() + pairing.PAIRING_SESSION_TTL_SECONDS + 1
+    monkeypatch.setattr(pairing, "_now", lambda: now)
+    assert manager.verify_code(req["pairing_id"], code) is None
+
+
+def test_verify_code_wrong_guesses_trigger_backoff(manager):
+    req = manager.request_pairing("Browser")
+    for _ in range(pairing.REJECTION_BACKOFF_THRESHOLD):
+        manager.verify_code(req["pairing_id"], "999999")
+    # After enough wrong guesses, new pairing requests are refused.
+    with pytest.raises(PairingError):
+        manager.request_pairing("Another")

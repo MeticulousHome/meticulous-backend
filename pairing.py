@@ -172,6 +172,39 @@ class PairingManager:
             logger.info(f"Pairing approved for '{session.device_name}' (device_id={device_id})")
             return True
 
+    def verify_code(self, pairing_id: str, code: str) -> Optional[str]:
+        """Approve a session by typing back the code shown on the Dial.
+
+        This is the browser/standalone path: the code is displayed only on the
+        machine screen, and a client proves it can see the Dial by submitting it
+        here. On a correct code the token is minted and returned directly (no
+        polling needed). A wrong code counts as a rejection so repeated guesses
+        hit the backoff. Returns the token, or None on unknown/expired/mismatch.
+        """
+        code = (code or "").strip()
+        with self._lock:
+            session = self._sessions.get(pairing_id)
+            if not session or session.status != PairingStatus.PENDING:
+                return None
+            if session.is_expired(_now()):
+                session.status = PairingStatus.EXPIRED
+                self._record_rejection(_now())
+                return None
+            if not hmac.compare_digest(session.code, code):
+                self._record_rejection(_now())
+                logger.info(f"Pairing code mismatch for '{session.device_name}'")
+                return None
+
+            token = _generate_token()
+            device_id = self._persist_device(session.device_name, token)
+            session._token = token
+            session.device_id = device_id
+            session.status = PairingStatus.APPROVED
+            logger.info(
+                f"Pairing approved by code for '{session.device_name}' (device_id={device_id})"
+            )
+            return token
+
     def deny(self, pairing_id: str) -> bool:
         with self._lock:
             session = self._sessions.get(pairing_id)

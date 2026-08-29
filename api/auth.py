@@ -37,6 +37,7 @@ _LOOPBACK = ("127.0.0.1", "::1", "localhost")
 _PUBLIC_EXACT = frozenset(
     {
         "/api/v1/pair/request",
+        "/api/v1/pair/verify",
     }
 )
 _PUBLIC_PREFIXES = ("/api/v1/pair/status/",)
@@ -48,6 +49,9 @@ _PUBLIC_PREFIXES = ("/api/v1/pair/status/",)
 _PUBLIC_GET_EXACT = frozenset(
     {
         "/api/v1/machine",
+        # The standalone pairing page: an unpaired browser must be able to load
+        # it to start pairing. It only calls the public /pair/* endpoints.
+        "/api/v1/pair",
     }
 )
 
