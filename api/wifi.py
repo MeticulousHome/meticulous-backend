@@ -201,7 +201,14 @@ class WiFiListHandler(BaseHandler):
     async def get(self):
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(None, self.getWifiList)
-        self.write(json.dumps(response or []))
+        if not WifiManager._scan_in_progress:
+            self.write(json.dumps(response or []))
+        else:
+            self.set_status(204)
+            # set a header to indicate that the scan is in progress
+            # to let the client invalidate the cache and retry
+            self.set_header("X-Scan-In-Progress", "true")
+            self.finish()
 
 
 class WiFiConnectHandler(BaseHandler):
