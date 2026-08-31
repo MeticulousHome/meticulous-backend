@@ -202,6 +202,9 @@ class WifiHealthStatus:
     last_recovery_action: str
     last_recovery_result: str
     message: str = ""
+    # False when the reachability probes were skipped (deep=False). The
+    # gateway/dns/internet fields are then "unknown", not "unreachable".
+    verified: bool = True
 
     def to_json(self):
         return {
@@ -213,6 +216,7 @@ class WifiHealthStatus:
             "internet_reachable": self.internet_reachable,
             "ap_active": self.ap_active,
             "degraded": self.degraded,
+            "verified": self.verified,
             "last_error": self.last_error,
             "message": self.message or WifiManager.getHealthErrorMessage(self.last_error),
             "last_recovery_action": self.last_recovery_action,
@@ -236,10 +240,10 @@ class WifiManager:
     _last_health_check = 0
     _recovery_cooldown = 300
     _health_failure_threshold = 3
-    _cached_health = None
-    _health_cache_time = 0
+    # (health, cached_at, signature) written as one tuple so readers can never
+    # observe a half-updated cache entry.
+    _health_cache = None
     _health_cache_ttl = 10
-    _health_cache_signature = None
     _health_check_in_progress = False
     _last_connection_error_code = ""
     _last_connection_error_message = ""
@@ -352,9 +356,11 @@ class WifiManager:
         return ("connection_failed", f"Could not connect to Wi-Fi: {error_msg}")
 
     def invalidateHealthCache():
-        WifiManager._cached_health = None
-        WifiManager._health_cache_time = 0
-        WifiManager._health_cache_signature = None
+        WifiManager._health_cache = None
+
+    def storeHealthCache(health: "WifiHealthStatus", signature):
+        WifiManager._health_cache = (health, time.time(), signature)
+        return health
 
     def getHealthCacheSignature(config: WifiSystemConfig = None):
         if config is None:
@@ -368,15 +374,26 @@ class WifiManager:
             str(config.gateway) if config.gateway else "",
         )
 
-    def healthCacheIsValid(config: WifiSystemConfig = None):
-        if (
-            WifiManager._cached_health is None
-            or time.time() - WifiManager._health_cache_time >= WifiManager._health_cache_ttl
-        ):
-            return False
+    def getCachedHealth(config: WifiSystemConfig = None, deep: bool = True):
+        """Return a usable cache entry, or None. Reads the cache exactly once."""
+        entry = WifiManager._health_cache
+        if entry is None:
+            return None
+
+        health, cached_at, cached_signature = entry
+        if time.time() - cached_at >= WifiManager._health_cache_ttl:
+            return None
+
+        # A shallow entry never ran the reachability probes, so it cannot answer
+        # a deep caller no matter how fresh it is.
+        if deep and not health.verified:
+            return None
 
         signature = WifiManager.getHealthCacheSignature(config)
-        return signature is None or signature == WifiManager._health_cache_signature
+        if signature is not None and signature != cached_signature:
+            return None
+
+        return health
 
     def init():
         logger.info("Wifi initializing")
@@ -842,17 +859,24 @@ class WifiManager:
     def getHealthStatus(
         config: WifiSystemConfig = None, force: bool = False, deep: bool = True
     ) -> WifiHealthStatus:
-        if not force and WifiManager.healthCacheIsValid(config):
-            return WifiManager._cached_health
+        if not force:
+            cached = WifiManager.getCachedHealth(config, deep)
+            if cached is not None:
+                return cached
 
+        # The shallow path must never block on the reachability probes: it backs
+        # the settings screen and the post-join response. Answer from the config
+        # we already have and let a background thread do the real check.
         if not deep:
             health = WifiManager.buildHealthStatus(config, deep=False)
             WifiManager.refreshHealthInBackground(config)
             return health
 
         with WifiManager._health_check_lock:
-            if not force and WifiManager.healthCacheIsValid(config):
-                return WifiManager._cached_health
+            if not force:
+                cached = WifiManager.getCachedHealth(config, deep=True)
+                if cached is not None:
+                    return cached
 
             return WifiManager.buildHealthStatus(config, deep=True)
 
@@ -906,10 +930,7 @@ class WifiManager:
                     else ""
                 ),
             )
-            WifiManager._cached_health = health
-            WifiManager._health_cache_time = time.time()
-            WifiManager._health_cache_signature = signature
-            return health
+            return WifiManager.storeHealthCache(health, signature)
 
         if config.connected and has_ipv4 and not deep:
             health = WifiHealthStatus(
@@ -924,11 +945,9 @@ class WifiManager:
                 "",
                 WifiManager._last_recovery_action,
                 WifiManager._last_recovery_result,
+                verified=False,
             )
-            WifiManager._cached_health = health
-            WifiManager._health_cache_time = time.time()
-            WifiManager._health_cache_signature = signature
-            return health
+            return WifiManager.storeHealthCache(health, signature)
 
         if config.connected and has_ipv4:
             gateway_reachable = WifiManager.gatewayReachable(config.gateway)
@@ -969,10 +988,7 @@ class WifiManager:
             WifiManager._last_recovery_action,
             WifiManager._last_recovery_result,
         )
-        WifiManager._cached_health = health
-        WifiManager._health_cache_time = time.time()
-        WifiManager._health_cache_signature = signature
-        return health
+        return WifiManager.storeHealthCache(health, signature)
 
     def maybeRecoverCurrentConnection(config: WifiSystemConfig = None):
         if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP:
