@@ -1,5 +1,6 @@
 import asyncio
 import os
+import re
 import sys
 import time
 from threading import Thread
@@ -664,10 +665,15 @@ class GATTServer:
 
         token = PairingManagerInstance.mint_token("Meticulous App")
         self.improv_server.state = ImprovState.PROVISIONED
+        # wifi_connect returns the loopback-only :8080 URL; a LAN client must use
+        # the public port (nginx on :80). Return the public origin so the app can
+        # actually reach the machine over Wi-Fi and stores the token under the
+        # same origin it will use for HTTP/Socket.IO.
+        public_url = re.sub(r":%d$" % PORT, "", urls[0])
         # WIFI_SETTINGS response: [machine URL, device token]. Older apps read
         # only params[0]; the token is an extra param they ignore.
         response = self.improv_server.build_rpc_response(
-            ImprovCommand.WIFI_SETTINGS, [urls[0], token]
+            ImprovCommand.WIFI_SETTINGS, [public_url, token]
         )
         if isinstance(response, (bytes, bytearray)):
             response = [bytearray(response)]
