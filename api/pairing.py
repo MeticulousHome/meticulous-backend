@@ -24,6 +24,7 @@ token or loopback (the Dial's "Paired devices" screen calls them over loopback).
 
 import json
 
+import socket_registry
 from notifications import Notification, NotificationManager
 from pairing import PairingError, PairingManagerInstance
 from log import MeticulousLogger
@@ -166,9 +167,20 @@ class PairedDevicesHandler(BaseHandler):
 class PairedDeviceRevokeHandler(BaseHandler):
     def post(self, device_id):
         if PairingManagerInstance.revoke(device_id):
+            # End any live sockets that device authorized, so revoking actually
+            # stops the telemetry stream (Socket.IO only checks the token at the
+            # handshake).
+            socket_registry.disconnect_device(device_id)
             self.write({"status": "success"})
         else:
             self.report_error(404, "Device not found")
+
+
+class PairedDevicesRevokeAllHandler(BaseHandler):
+    def post(self):
+        count = PairingManagerInstance.revoke_all()
+        socket_registry.disconnect_all_devices()
+        self.write({"status": "success", "revoked": count})
 
 
 API.register_handler(APIVersion.V1, r"/pair", PairPageHandler)
@@ -176,6 +188,7 @@ API.register_handler(APIVersion.V1, r"/pair/request", PairRequestHandler)
 API.register_handler(APIVersion.V1, r"/pair/verify", PairVerifyHandler)
 API.register_handler(APIVersion.V1, r"/pair/status/([^/]+)", PairStatusHandler)
 API.register_handler(APIVersion.V1, r"/pair/devices", PairedDevicesHandler)
+API.register_handler(APIVersion.V1, r"/pair/devices/revoke-all", PairedDevicesRevokeAllHandler)
 API.register_handler(APIVersion.V1, r"/pair/devices/([^/]+)/revoke", PairedDeviceRevokeHandler)
 
 

@@ -158,3 +158,15 @@ def test_verify_code_wrong_guesses_trigger_backoff(manager):
     # After enough wrong guesses, new pairing requests are refused.
     with pytest.raises(PairingError):
         manager.request_pairing("Another")
+
+
+def test_revoke_all_clears_every_device(manager):
+    for i in range(3):
+        req = manager.request_pairing(f"Device {i}")
+        code = manager.get_pending_prompt(req["pairing_id"])["code"]
+        manager.verify_code(req["pairing_id"], code)
+    assert len(manager.list_devices()) == 3
+    assert manager.revoke_all() == 3
+    assert manager.list_devices() == []
+    # Revoking again reports zero, no error.
+    assert manager.revoke_all() == 0

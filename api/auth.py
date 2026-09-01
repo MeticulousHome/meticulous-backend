@@ -177,6 +177,18 @@ def socket_token(auth, environ) -> Optional[str]:
     return None
 
 
+def socket_device_id(environ, auth):
+    """The paired device_id that authorizes a Socket.IO connection, or None for
+    a loopback/Dial caller (which holds no token). Used to tie a live socket to
+    the device that authorized it, so revoking that device can drop the socket."""
+    environ = environ or {}
+    if client_is_local(
+        environ.get("REMOTE_ADDR"), environ.get("HTTP_X_REAL_IP")
+    ):
+        return None
+    return PairingManagerInstance.verify_token(socket_token(auth, environ))
+
+
 def is_socket_authorized(environ, auth) -> bool:
     """Authorization decision for a Socket.IO connection.
 

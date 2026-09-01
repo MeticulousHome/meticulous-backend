@@ -279,6 +279,17 @@ class PairingManager:
                 return True
         return False
 
+    def revoke_all(self) -> int:
+        """Revoke every paired device. Returns how many were removed."""
+        with self._lock:
+            devices = self._devices()
+            count = len(devices)
+            if count:
+                devices.clear()
+                MeticulousConfig.save()
+                logger.info(f"Revoked all paired devices ({count})")
+            return count
+
     # --- internals -----------------------------------------------------------
 
     def _devices(self) -> dict:

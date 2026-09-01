@@ -28,6 +28,7 @@ from config import (
 )
 
 from machine import Machine
+import socket_registry
 from sounds import SoundPlayer
 from imager import DiscImager
 from ota import UpdateManager
@@ -35,7 +36,7 @@ from esp_serial.connection.emulation_data import EmulationData
 from usb import USBManager
 
 from api.api import API
-from api.auth import is_socket_authorized
+from api.auth import is_socket_authorized, socket_device_id
 from api.emulation import register_emulation_handlers
 from api.web_ui import WEB_UI_HANDLER
 
@@ -77,12 +78,16 @@ async def connect(sid, environ, auth=None):
     if not is_socket_authorized(environ, auth):
         logger.warning("Rejected unauthorized socket.io connection %s", sid)
         raise socketio.exceptions.ConnectionRefusedError("unauthorized")
+    # Remember which paired device authorized this socket so a later revoke can
+    # drop it (None for the Dial/loopback, which is never dropped).
+    socket_registry.register(sid, socket_device_id(environ, auth))
     logger.info("connect %s", sid)
     await ProfileManager._async_emit_profile_hover(to=sid)
 
 
 @sio.event
 def disconnect(sid):
+    socket_registry.unregister(sid)
     logger.info("disconnect %s", sid)
 
 
@@ -327,6 +332,7 @@ def main():
     TimezoneManager.init()
 
     MeticulousConfig.setSIO(sio)
+    socket_registry.set_sio(sio)
 
     handlers = [
         (r"/socket.io/", socketio.get_tornado_handler(sio)),
