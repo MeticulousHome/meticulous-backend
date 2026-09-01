@@ -164,7 +164,7 @@ class WiFiListHandler(BaseHandler):
     def getWifiList(self):
         networks = dict()
         try:
-            for s in WifiManager.getAvailableNetworks(refresh=True):
+            for s in WifiManager.getAvailableNetworks(refresh=True, block_if_empty=True):
                 if s.ssid is not None and s.ssid != "":
                     wifi_type = WifiType.from_nmcli_security(s.security)
                     if wifi_type is None:

@@ -1288,8 +1288,32 @@ class WifiManager:
 
         NamedThread("WifiScanRefresh", target=refresh).start()
 
-    def getAvailableNetworks(refresh: bool = True):
+    def ensureScanCache(timeout: int = 8):
+        """Return the scan cache, blocking on a single shared scan if it is empty.
+
+        Used for the cold-start case where both _scan_cache and _known_wifis are
+        empty: the first caller runs a bounded synchronous scan so it returns a
+        real list instead of an empty one, while concurrent callers wait on
+        _scan_lock and pick up the freshly populated cache instead of each
+        kicking their own scan.
+        """
         cached = WifiManager._scan_cache or WifiManager._known_wifis
+        if cached:
+            return cached
+        with WifiManager._scan_lock:
+            cached = WifiManager._scan_cache or WifiManager._known_wifis
+            if cached:
+                return cached
+            WifiManager._scan_in_progress = True
+            try:
+                return WifiManager.scanForNetworks(timeout=timeout)
+            finally:
+                WifiManager._scan_in_progress = False
+
+    def getAvailableNetworks(refresh: bool = True, block_if_empty: bool = False):
+        cached = WifiManager._scan_cache or WifiManager._known_wifis
+        if not cached and refresh and block_if_empty:
+            return WifiManager.ensureScanCache()
         if refresh:
             WifiManager.refreshScanCacheInBackground()
         return cached
