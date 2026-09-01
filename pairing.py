@@ -40,7 +40,7 @@ logger = MeticulousLogger.getLogger(__name__)
 
 # A pairing session is short-lived: the user must approve on the Dial within
 # this window or the client must re-request.
-PAIRING_SESSION_TTL_SECONDS = 60
+PAIRING_SESSION_TTL_SECONDS = 180
 # Bytes of entropy for the opaque token (256 bits).
 TOKEN_ENTROPY_BYTES = 32
 # Cap concurrent pending sessions so a hostile LAN peer cannot spam the Dial.
