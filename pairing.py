@@ -268,6 +268,22 @@ class PairingManager:
                 if isinstance(record, dict)
             ]
 
+    def mint_token(self, device_name: str) -> str:
+        """Create a paired device directly and return its plaintext token.
+
+        Used by the BLE provisioning flow (M4): when the user approves
+        "Connect to '<SSID>'?" on the Dial, that on-screen approval both
+        provisions Wi-Fi and authorizes the app, so the token is delivered over
+        the BLE channel instead of the code-typing flow. Only the SHA-256 hash
+        is stored, like every other paired device.
+        """
+        device_name = (device_name or "Bluetooth device").strip()[:64]
+        token = _generate_token()
+        with self._lock:
+            device_id = self._persist_device(device_name, token)
+        logger.info(f"Minted token for '{device_name}' via BLE (device_id={device_id})")
+        return token
+
     def revoke(self, device_id: str) -> bool:
         with self._lock:
             devices = self._devices()
