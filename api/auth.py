@@ -38,6 +38,7 @@ _PUBLIC_EXACT = frozenset(
     {
         "/api/v1/pair/request",
         "/api/v1/pair/verify",
+        "/api/v1/identity/challenge",
     }
 )
 _PUBLIC_PREFIXES = ("/api/v1/pair/status/",)
@@ -96,22 +97,13 @@ def parse_bearer_token(authorization: Optional[str]) -> Optional[str]:
 # carries no Authorization header). SameSite=Strict means other sites can never
 # make the browser attach it (CSRF), and CORS never allows credentials, so no
 # foreign origin can ride it.
-TOKEN_COOKIE_NAME = "met_device_token"
-
-
-def parse_cookie_token(cookie_header: Optional[str]) -> Optional[str]:
-    if not cookie_header:
-        return None
-    for part in cookie_header.split(";"):
-        name, _, value = part.strip().partition("=")
-        if name == TOKEN_COOKIE_NAME and value:
-            return value.strip()
-    return None
-
-
-def extract_token(authorization: Optional[str], cookie: Optional[str]) -> Optional[str]:
-    """Bearer header first (apps/libraries), cookie as the browser fallback."""
-    return parse_bearer_token(authorization) or parse_cookie_token(cookie)
+def extract_token(authorization: Optional[str], cookie: Optional[str] = None) -> Optional[str]:
+    """Bearer header only. The met_device_token cookie was removed (ADV-020 /
+    identity D10): a cookie is attached by the browser on any plain top-level
+    navigation, which never passes the identity check, so after a DHCP-reused
+    address a browser would hand the token to an impostor. `cookie` is accepted
+    and ignored so existing call sites keep compiling."""
+    return parse_bearer_token(authorization)
 
 
 def is_authorized(
@@ -171,9 +163,7 @@ def socket_token(auth, environ) -> Optional[str]:
         if token:
             return token
     if isinstance(environ, dict):
-        return extract_token(
-            environ.get("HTTP_AUTHORIZATION"), environ.get("HTTP_COOKIE")
-        )
+        return parse_bearer_token(environ.get("HTTP_AUTHORIZATION"))
     return None
 
 

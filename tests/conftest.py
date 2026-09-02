@@ -11,6 +11,7 @@ os.environ.setdefault("DEBUG_HISTORY_PATH", "/tmp/meticulous-test/history/debug"
 # Without this every record would come out as the failure placeholder.
 os.makedirs("/tmp/meticulous-test", exist_ok=True)
 os.environ.setdefault("REDACTION_KEY_PATH", "/tmp/meticulous-test/.redaction_key")
+os.environ.setdefault("IDENTITY_PATH", "/tmp/meticulous-test/identity/")
 
 # Add the backend root to sys.path so imports like "from config import ..."
 # work without installing the package.
@@ -36,6 +37,25 @@ if "pyqrcode" not in sys.modules:
     _qr = types.ModuleType("pyqrcode")
     _qr.create = lambda *a, **k: types.SimpleNamespace(png=lambda *a, **k: None)
     sys.modules["pyqrcode"] = _qr
+
+# tornado is not installed in the CI/test venv; stub tornado.ioloop so modules
+# that import it (socket_registry) load. Unit tests never drive the loop.
+if "tornado" not in sys.modules:
+    _t = types.ModuleType("tornado")
+    _io = types.ModuleType("tornado.ioloop")
+
+    class _IOLoop:
+        @staticmethod
+        def current():
+            class _L:
+                def add_callback(self, *a, **k):
+                    pass
+            return _L()
+
+    _io.IOLoop = _IOLoop
+    _t.ioloop = _io
+    sys.modules["tornado"] = _t
+    sys.modules["tornado.ioloop"] = _io
 
 if "sounds" not in sys.modules:
     _sounds = types.ModuleType("sounds")

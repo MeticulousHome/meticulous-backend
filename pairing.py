@@ -165,7 +165,13 @@ class PairingManager:
                 return None
             return {"device_name": session.device_name, "code": session.code}
 
-    def verify_code(self, pairing_id: str, code: str) -> Optional[str]:
+    def verify_code(
+        self,
+        pairing_id: str,
+        code: str,
+        client_public_key: Optional[str] = None,
+        client_key_fingerprint: Optional[str] = None,
+    ) -> Optional[str]:
         """Approve a session by typing back the code shown on the Dial.
 
         This is the browser/standalone path: the code is displayed only on the
@@ -199,7 +205,12 @@ class PairingManager:
                 return None
 
             token = _generate_token()
-            device_id = self._persist_device(session.device_name, token)
+            device_id = self._persist_device(
+                session.device_name,
+                token,
+                client_public_key=client_public_key,
+                client_key_fingerprint=client_key_fingerprint,
+            )
             # Delivered exactly once, here. Deliberately NOT stored on the
             # session: /pair/status is public, so stashing it would expose the
             # same secret a second time to anyone holding the pairing id.
@@ -319,16 +330,36 @@ class PairingManager:
             MeticulousConfig[CONFIG_PAIRED_DEVICES] = devices
         return devices
 
-    def _persist_device(self, device_name: str, token: str) -> str:
+    def _persist_device(
+        self,
+        device_name: str,
+        token: str,
+        client_public_key: Optional[str] = None,
+        client_key_fingerprint: Optional[str] = None,
+    ) -> str:
         device_id = str(uuid.uuid4())
-        self._devices()[device_id] = {
+        record = {
             "device_name": device_name,
             "token_hash": hash_token(token),
             "created_at": _iso_now(),
             "last_seen_at": None,
         }
+        if client_public_key:
+            # Reserved for phase 2 (proof of possession). Stored, not checked.
+            record["client_public_key"] = client_public_key
+            record["client_key_fingerprint"] = client_key_fingerprint
+        self._devices()[device_id] = record
         MeticulousConfig.save()
         return device_id
+
+    def approved_device_id(self, pairing_id: str) -> Optional[str]:
+        """The device_id minted for a just-approved session, for the verify
+        response. Never returns the token."""
+        with self._lock:
+            session = self._sessions.get(pairing_id)
+            if session and session.status == PairingStatus.APPROVED:
+                return session.device_id
+        return None
 
     def _prune(self, now: float) -> None:
         stale = [

@@ -11,6 +11,7 @@ import asyncio
 from .api import API, APIVersion
 from .auth import request_has_access
 from .base_handler import BaseHandler, LocalAccessHandler
+from identity import IdentityManagerInstance
 from ota import UpdateManager
 from backlight_controller import BacklightController
 from datetime import datetime
@@ -47,6 +48,10 @@ def get_machine_identity():
     }
     if Machine.esp_info is not None:
         response["firmware"] = Machine.esp_info.firmwareV
+    # The pinned machine identity: public and needed by credential-less
+    # discovery, so it is in the minimal body too.
+    if IdentityManagerInstance.is_ready():
+        response["identity"] = IdentityManagerInstance.identity_dict()
     return response
 
 
@@ -61,6 +66,9 @@ def get_machine_info():
         response["mainVoltage"] = Machine.esp_info.mainVoltage
 
     response["serial"] = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
+
+    if IdentityManagerInstance.is_ready():
+        response["identity"] = IdentityManagerInstance.identity_dict()
 
     response["color"] = ""
     if MeticulousConfig[CONFIG_SYSTEM][MACHINE_COLOR] is not None:
@@ -190,6 +198,9 @@ class MachineInfoHandler(BaseHandler):
         # Public for discovery, but unpaired callers get only the minimal
         # identity; the full build/repository/history detail requires a token
         # (or loopback / the Dial).
+        # A stale cached identity would produce spurious "identity changed"
+        # states on the client, so never cache this body.
+        self.set_header("Cache-Control", "no-store")
         if request_has_access(self):
             self.write(json.dumps(get_machine_info()))
         else:

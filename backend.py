@@ -37,6 +37,7 @@ from usb import USBManager
 
 from api.api import API
 from api.auth import is_socket_authorized, socket_device_id, socket_is_local
+from identity import IdentityManagerInstance
 from api.emulation import register_emulation_handlers
 from api.web_ui import WEB_UI_HANDLER
 
@@ -317,6 +318,10 @@ def main():
 
     AlarmManager.init()
     Machine.init(sio)
+    # The machine identity must exist before the HTTP app serves /machine and
+    # before the BLE GATT server can return the fingerprint in a provisioning
+    # result, so load (or first-boot generate) it here.
+    IdentityManagerInstance.load_or_create()
     SSHManager.init()
     SystemServices.init()
 

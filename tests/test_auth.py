@@ -107,36 +107,30 @@ def test_socket_lan_client_needs_valid_token():
     )
 
 
-def test_cookie_token_extraction():
-    assert auth.parse_cookie_token("met_device_token=abc") == "abc"
-    assert auth.parse_cookie_token("foo=1; met_device_token=abc; bar=2") == "abc"
-    assert auth.parse_cookie_token("foo=1; bar=2") is None
-    assert auth.parse_cookie_token(None) is None
-    # Header wins over cookie when both are present.
-    assert auth.extract_token("Bearer fromheader", "met_device_token=fromcookie") == "fromheader"
-    assert auth.extract_token(None, "met_device_token=fromcookie") == "fromcookie"
+def test_cookie_is_no_longer_accepted():
+    # ADV-020 / identity D10: the met_device_token cookie is gone. A cookie is
+    # attached by the browser on any plain top-level navigation, which never
+    # passes the identity check, so accepting it would hand the token to an
+    # impostor at a DHCP-reused address.
+    assert auth.extract_token(None, "met_device_token=abc") is None
+    assert auth.socket_token({}, {"HTTP_COOKIE": "met_device_token=abc"}) is None
+    # The bearer header is still honored.
+    assert auth.extract_token("Bearer xyz", "met_device_token=abc") == "xyz"
 
 
-def test_lan_client_authorizes_via_cookie():
-    # A browser navigation (address bar) sends no Authorization header, only
-    # the SameSite=Strict cookie stored at pairing time.
-    assert auth.is_authorized(
+def test_lan_client_is_not_authorized_by_cookie_alone():
+    # A browser navigation with only the cookie (no Authorization header) is now
+    # unauthorized, because the cookie is ignored.
+    assert not auth.is_authorized(
         "GET", "/api/v1/profile/list", "127.0.0.1", "192.168.1.50",
         None, "met_device_token=good-token",
     )
-    assert not auth.is_authorized(
-        "GET", "/api/v1/profile/list", "127.0.0.1", "192.168.1.50",
-        None, "met_device_token=bad-token",
-    )
 
 
-def test_socket_authorizes_via_cookie():
+def test_socket_is_not_authorized_by_cookie_alone():
     lan = {"REMOTE_ADDR": "127.0.0.1", "HTTP_X_REAL_IP": "192.168.1.50"}
-    assert auth.is_socket_authorized(
-        {**lan, "HTTP_COOKIE": "met_device_token=good-token"}, None
-    )
     assert not auth.is_socket_authorized(
-        {**lan, "HTTP_COOKIE": "met_device_token=bad-token"}, None
+        {**lan, "HTTP_COOKIE": "met_device_token=good-token"}, None
     )
 
 

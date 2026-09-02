@@ -1,0 +1,198 @@
+"""Machine identity (phase 1): key lifecycle, canonicalization, signing.
+
+Handler-level behavior (challenge ownership check, no-store, rate limit) is
+verified live against the machine; these are the pure-logic units.
+"""
+
+import base64
+import hashlib
+import json
+import os
+import stat
+
+import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ec
+
+import identity
+from identity import IdentityManager, build_message, canonical_origin, OriginError
+
+
+@pytest.fixture
+def mgr(tmp_path, monkeypatch):
+    d = tmp_path / "identity"
+    monkeypatch.setattr(identity, "IDENTITY_PATH", str(d))
+    monkeypatch.setenv("IDENTITY_PATH", str(d))  # so _require_root() -> False
+    return IdentityManager()
+
+
+def _verify(spki_b64, message, sig_b64):
+    der = base64.b64decode(spki_b64)
+    pub = serialization.load_der_public_key(der)
+    r = int.from_bytes(base64.b64decode(sig_b64)[:32], "big")
+    s = int.from_bytes(base64.b64decode(sig_b64)[32:], "big")
+    from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
+    from cryptography.hazmat.primitives import hashes
+
+    pub.verify(encode_dss_signature(r, s), message, ec.ECDSA(hashes.SHA256()))
+
+
+# --- key lifecycle -----------------------------------------------------------
+
+def test_keygen_creates_file_outside_config_with_mirror(mgr):
+    mgr.load_or_create()
+    key_path, mirror_path = mgr._paths()
+    assert os.path.exists(key_path) and os.path.exists(mirror_path)
+    assert not os.path.basename(key_path).startswith(".")
+    assert mgr.is_ready() and len(mgr.fingerprint_hex()) == 64
+    if os.name != "nt":
+        assert stat.S_IMODE(os.stat(key_path).st_mode) == 0o600
+
+
+def test_load_is_idempotent_and_stable(mgr):
+    mgr.load_or_create()
+    fp1, gen1 = mgr.fingerprint_hex(), mgr.generation()
+    mgr2 = IdentityManager()
+    mgr2.load_or_create()
+    assert mgr2.fingerprint_hex() == fp1
+    assert mgr2.generation() == gen1
+
+
+def test_absent_key_generated_quietly_without_revoke(mgr, monkeypatch):
+    called = {"revoke": 0}
+    import pairing
+
+    monkeypatch.setattr(pairing.PairingManagerInstance, "revoke_all",
+                        lambda: called.__setitem__("revoke", called["revoke"] + 1))
+    mgr.load_or_create()
+    assert called["revoke"] == 0  # first boot must not revoke
+
+
+def test_corrupt_primary_recovers_from_mirror_without_revoke(mgr, monkeypatch):
+    mgr.load_or_create()
+    fp = mgr.fingerprint_hex()
+    key_path, _ = mgr._paths()
+    with open(key_path, "wb") as f:
+        f.write(b"garbage not a key")
+    called = {"revoke": 0}
+    import pairing
+
+    monkeypatch.setattr(pairing.PairingManagerInstance, "revoke_all",
+                        lambda: called.__setitem__("revoke", called["revoke"] + 1))
+    mgr2 = IdentityManager()
+    mgr2.load_or_create()
+    assert mgr2.fingerprint_hex() == fp     # recovered from mirror
+    assert called["revoke"] == 0            # recoverable -> no revoke
+
+
+def test_unrecoverable_corruption_regenerates_and_revokes(mgr, monkeypatch):
+    mgr.load_or_create()
+    old_fp = mgr.fingerprint_hex()
+    key_path, mirror_path = mgr._paths()
+    for p in (key_path, mirror_path):
+        with open(p, "wb") as f:
+            f.write(b"garbage")
+    called = {"revoke": 0, "disconnect": 0}
+    import pairing
+    import socket_registry
+
+    monkeypatch.setattr(pairing.PairingManagerInstance, "revoke_all",
+                        lambda: called.__setitem__("revoke", called["revoke"] + 1))
+    monkeypatch.setattr(socket_registry, "disconnect_all_devices",
+                        lambda: called.__setitem__("disconnect", called["disconnect"] + 1))
+    mgr2 = IdentityManager()
+    mgr2.load_or_create()
+    assert mgr2.fingerprint_hex() != old_fp
+    assert mgr2.generation() >= 2
+    assert called["revoke"] == 1 and called["disconnect"] == 1
+    # broken copies renamed, not deleted
+    broken = [f for f in os.listdir(os.path.dirname(key_path)) if ".broken-" in f]
+    assert broken
+
+
+def test_private_key_never_logged(mgr, caplog):
+    import logging
+
+    with caplog.at_level(logging.DEBUG):
+        mgr.load_or_create()
+        serial, origin = "SER123", "http://10.10.0.42"
+        for _ in range(20):
+            mgr.sign(serial, origin, os.urandom(32))
+    assert "BEGIN PRIVATE KEY" not in caplog.text
+    pem = mgr._private_key.private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption()).decode()
+    body = pem.splitlines()[1]
+    assert body not in caplog.text
+
+
+# --- signing -----------------------------------------------------------------
+
+def test_sign_roundtrips_and_binds_all_fields(mgr):
+    mgr.load_or_create()
+    serial, origin = "SERIAL-1", "http://10.10.0.42"
+    nonce = os.urandom(32)
+    sig = mgr.sign(serial, origin, nonce)
+    assert len(base64.b64decode(sig)) == 64  # P1363 r||s, not DER
+    _verify(mgr.public_key_spki_b64(), build_message(serial, origin, nonce), sig)
+    # Changing any field breaks verification.
+    for bad in (build_message("OTHER", origin, nonce),
+                build_message(serial, "http://10.10.0.99", nonce),
+                build_message(serial, origin, os.urandom(32))):
+        with pytest.raises(Exception):
+            _verify(mgr.public_key_spki_b64(), bad, sig)
+
+
+def test_fingerprint_is_sha256_of_spki(mgr):
+    mgr.load_or_create()
+    der = base64.b64decode(mgr.public_key_spki_b64())
+    assert mgr.fingerprint_hex() == hashlib.sha256(der).hexdigest()
+
+
+# --- length prefix -----------------------------------------------------------
+
+def test_lp_rejects_len_ge_65536():
+    identity._lp(b"x" * 65535)  # ok
+    with pytest.raises(ValueError):
+        identity._lp(b"x" * 65536)
+
+
+# --- canonical origin KATs (shared with the TS client) -----------------------
+
+def test_canonical_origin_kats():
+    cases = {
+        "http://10.10.0.42": "http://10.10.0.42",
+        "http://10.10.0.42:80": "http://10.10.0.42",
+        "http://10.10.0.42:8080": "http://10.10.0.42:8080",
+        "https://10.10.0.42:443": "https://10.10.0.42",
+        "HTTP://10.10.0.42": "http://10.10.0.42",
+        "http://Espresso.Local": "http://espresso.local",
+        "http://espresso.local.": "http://espresso.local",
+        "http://[2001:DB8::1]:8080": "http://[2001:db8::1]:8080",
+        "http://[2001:db8:0:0:0:0:0:1]": "http://[2001:db8::1]",
+    }
+    for raw, expect in cases.items():
+        assert canonical_origin(raw) == expect, raw
+
+
+def test_canonical_origin_rejects_bad():
+    for bad in ("ftp://10.10.0.42", "http://user:pw@10.10.0.42",
+                "http://10.10.0.42/path", "http://10.10.0.42?q=1",
+                "http://[fe80::1%eth0]", ""):
+        with pytest.raises(OriginError):
+            canonical_origin(bad)
+
+
+def test_own_addresses_override_via_env(mgr, monkeypatch):
+    monkeypatch.setenv("IDENTITY_OWN_ADDRESSES", "10.10.0.42, espresso.local")
+    assert mgr.own_addresses() == {"10.10.0.42", "espresso.local"}
+
+
+# --- cross-language vector ---------------------------------------------------
+
+def test_matches_committed_vector():
+    path = os.path.join(os.path.dirname(__file__), "vectors", "identity_v1.json")
+    v = json.load(open(path))
+    msg = build_message(v["serial"], v["origin"], base64.b64decode(v["nonce"]))
+    assert msg.hex() == v["message_hex"]
+    _verify(v["public_key"], msg, v["signature"])  # raises if invalid

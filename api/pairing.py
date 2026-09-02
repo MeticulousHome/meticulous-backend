@@ -32,6 +32,9 @@ from log import MeticulousLogger
 from .auth import extract_token
 from .base_handler import BaseHandler, LocalAccessHandler
 from .api import API, APIVersion
+import identity
+from identity import IdentityManagerInstance
+from config import MeticulousConfig, CONFIG_SYSTEM, MACHINE_SERIAL_NUMBER
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -150,9 +153,30 @@ class PairVerifyHandler(BaseHandler):
         if not pairing_id or not code:
             self.report_error(400, "pairing_id and code are required")
             return
-        # Never cache a response that may carry the token.
+        # Never cache a response that carries the token.
         self.set_header("Cache-Control", "no-store")
-        token = PairingManagerInstance.verify_code(pairing_id, code)
+
+        # Optional: reserve a client public key for phase 2 (no proof of
+        # possession is checked now). An invalid key is rejected BEFORE the code
+        # is verified, so it never burns the pairing session.
+        client_public_key = data.get("client_public_key")
+        client_key_fpr = None
+        if client_public_key is not None:
+            if data.get("client_key_alg") not in (None, "ES256"):
+                self.report_error(400, "invalid_client_public_key")
+                return
+            try:
+                client_key_fpr = identity.client_key_fingerprint(client_public_key)
+            except Exception:
+                self.report_error(400, "invalid_client_public_key")
+                return
+
+        token = PairingManagerInstance.verify_code(
+            pairing_id,
+            code,
+            client_public_key=client_public_key,
+            client_key_fingerprint=client_key_fpr,
+        )
         if token is None:
             # Unknown/expired session or wrong code. Deliberately NOT 401: for
             # clients 401 means "your credential was revoked", and a mistyped
@@ -162,7 +186,17 @@ class PairVerifyHandler(BaseHandler):
             return
         # Approved: clear the code prompt from the Dial so it does not linger.
         _dismiss_prompt(pairing_id)
-        self.write({"status": "approved", "token": token})
+        response = {
+            "status": "approved",
+            "token": token,
+            "device_id": PairingManagerInstance.approved_device_id(pairing_id),
+            "serial": MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER] or "",
+        }
+        if IdentityManagerInstance.is_ready():
+            # The client pins this fingerprint and, before ever sending the
+            # token, requires the origin to sign a fresh nonce under this key.
+            response["identity"] = IdentityManagerInstance.identity_dict()
+        self.write(response)
 
 
 class PairStatusHandler(BaseHandler):
@@ -313,7 +347,7 @@ _PAIR_PAGE_HTML = """<!doctype html>
 
 <script>
 (function () {
-  var TOKEN_KEY = "meticulous.deviceToken";
+  var CRED_KEY = "meticulous.machineCredential";
   var pairingId = null, expiryTimer = null;
   var intro = document.getElementById("intro");
   var codeStep = document.getElementById("codeStep");
@@ -327,7 +361,7 @@ _PAIR_PAGE_HTML = """<!doctype html>
 
   // Already authorized on this origin?
   try {
-    if (localStorage.getItem(TOKEN_KEY)) {
+    if (localStorage.getItem(CRED_KEY)) {
       intro.classList.add("hidden");
       done.classList.remove("hidden");
       say("This device was already authorized.", "ok");
@@ -374,16 +408,21 @@ _PAIR_PAGE_HTML = """<!doctype html>
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ pairing_id: pairingId, code: code })
     }).then(function (r) {
-      if (r.status === 401) throw new Error("That code is wrong or expired.");
+      if (r.status === 400 || r.status === 401) throw new Error("That code is wrong or expired.");
       if (!r.ok) throw new Error("Could not verify the code.");
       return r.json();
     }).then(function (d) {
       if (expiryTimer) clearTimeout(expiryTimer);
-      try { localStorage.setItem(TOKEN_KEY, d.token); } catch (e) {}
-      // SameSite=Strict cookie so this browser can hit any endpoint straight
-      // from the address bar; other sites can never make the browser send it.
-      document.cookie = "met_device_token=" + d.token +
-        "; Path=/; Max-Age=31536000; SameSite=Strict";
+      // Store the credential in the JSON shape the shared library reads. No
+      // cookie: a cookie rides plain navigations with no identity check.
+      try {
+        localStorage.setItem(CRED_KEY, JSON.stringify({
+          token: d.token,
+          serial: d.serial,
+          fingerprint: d.identity && d.identity.fingerprint,
+          public_key: d.identity && d.identity.public_key
+        }));
+      } catch (e) {}
       codeStep.classList.add("hidden");
       done.classList.remove("hidden");
       say("This device is now authorized.", "ok");

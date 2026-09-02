@@ -24,6 +24,7 @@ from improv import ImprovProtocol, ImprovState, ImprovUUID
 from ble_auth import BleAuthorization
 from improv import ImprovCommand, ImprovError
 from pairing import PairingManagerInstance
+from identity import IdentityManagerInstance
 from config import CONFIG_WIFI, WIFI_MODE, WIFI_MODE_AP, MeticulousConfig
 from hostname import HostnameManager
 from log import MeticulousLogger
@@ -674,10 +675,14 @@ class GATTServer:
         # actually reach the machine over Wi-Fi and stores the token under the
         # same origin it will use for HTTP/Socket.IO.
         public_url = re.sub(r":%d$" % PORT, "", urls[0])
-        # WIFI_SETTINGS response: [machine URL, device token]. Older apps read
-        # only params[0]; the token is an extra param they ignore.
+        # WIFI_SETTINGS response: [machine URL, device token, identity
+        # fingerprint]. Older apps read only params[0]/[1]; the fingerprint is
+        # an extra param they ignore. The app compares it against GET /machine
+        # at the URL before it trusts the token (it does NOT authenticate the
+        # BLE peer; see ADV-009).
+        fingerprint = IdentityManagerInstance.fingerprint_hex()
         response = self.improv_server.build_rpc_response(
-            ImprovCommand.WIFI_SETTINGS, [public_url, token]
+            ImprovCommand.WIFI_SETTINGS, [public_url, token, fingerprint]
         )
         if isinstance(response, (bytes, bytearray)):
             response = [bytearray(response)]
