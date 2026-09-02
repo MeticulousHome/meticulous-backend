@@ -16,7 +16,7 @@ from esp_serial.data import ButtonEventData
 
 from ble_gatt import GATTServer
 from wifi import WifiManager
-from notifications import Notification, NotificationManager
+from notifications import DIAL_ROOM, Notification, NotificationManager
 from profiles import ProfileManager
 from hostname import HostnameManager
 from config import (
@@ -80,7 +80,12 @@ async def connect(sid, environ, auth=None):
         raise socketio.exceptions.ConnectionRefusedError("unauthorized")
     # Remember which paired device authorized this socket so a later revoke can
     # drop it (None for the Dial/loopback, which is never dropped).
-    socket_registry.register(sid, socket_device_id(environ, auth))
+    device_id = socket_device_id(environ, auth)
+    socket_registry.register(sid, device_id)
+    # Only loopback (the Dial) joins the room that receives security prompts,
+    # so pairing codes and approval prompts never reach a LAN client.
+    if device_id is None:
+        await sio.enter_room(sid, DIAL_ROOM)
     logger.info("connect %s", sid)
     await ProfileManager._async_emit_profile_hover(to=sid)
 
@@ -109,8 +114,11 @@ def msg(sid, data):
 def notification(sid, noti_json):
     notification = json.loads(noti_json)
     if "id" in notification and "response" in notification:
+        # Only the Dial (the loopback socket in DIAL_ROOM) may answer a security
+        # prompt; a LAN client acknowledging one would approve its own access.
+        is_local = socket_registry.is_dial(sid)
         NotificationManager.acknowledge_notification(
-            notification["id"], notification["response"]
+            notification["id"], notification["response"], is_local=is_local
         )
 
 

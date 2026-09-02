@@ -63,17 +63,15 @@ class LocalAccessHandler(BaseHandler):
 
     def prepare(self):
         super().prepare()
-        remote_ip = self.request.headers.get("X-Real-IP")
-        request_host = self.request.host.split(":")[0]
-        if (
-            remote_ip
-            and remote_ip not in ("127.0.0.1", "::1", "localhost")
-            and request_host
-            not in (
-                "localhost",
-                "127.0.0.1",
-            )
-        ):
+        # Locality is decided ONLY from the proxy-set peer address, never from
+        # the caller-controlled Host header: nginx overwrites X-Real-IP, but a
+        # LAN client can send `Host: localhost` freely. Trusting Host here let a
+        # remote (or stolen-token) client read the root password and trigger a
+        # factory reset.
+        from .auth import request_is_local
+
+        if not request_is_local(self):
+            remote_ip = self.request.headers.get("X-Real-IP")
             logger.warning(
                 f"Unauthorized access to {self.request.uri} "
                 f"from remote IP: {redact_ip(remote_ip)}"

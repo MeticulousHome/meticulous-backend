@@ -3,16 +3,16 @@
 The machine's local HTTP API is authenticated with per-device bearer tokens.
 A new device (phone app, community web app, a developer's computer, an
 automated-test page, ...) cannot obtain a token on its own: it opens a pairing
-session, the machine shows a 6-digit code on the Dial with an Allow/Deny prompt,
-and only an explicit on-screen approval mints a token. Approval is per-device;
+session, the machine shows a 6-digit code on the Dial, and only typing that code
+back (proving the person can see the machine) mints a token. Approval is per-device;
 once authorized, the device reuses its token until the owner revokes it from the
 Dial ("Paired devices") or performs a factory reset.
 
 Design notes:
-- The plaintext token is returned to the client exactly once, when it polls the
-  pairing status after approval. Only its SHA-256 hash is persisted, in the
-  CONFIG_PAIRED_DEVICES section of config.yml. The machine never stores the
-  plaintext.
+- The plaintext token is returned exactly once, in the /pair/verify response.
+  It is never stored on the session and never served by the public status
+  endpoint. Only its SHA-256 hash is persisted, in the CONFIG_PAIRED_DEVICES
+  section of config.yml. The machine never stores the plaintext.
 - Verification is constant-time (hmac.compare_digest) against the stored hashes.
 - Loopback callers (the Dial itself) are handled by the request-layer exemption,
   not here -- this module only governs LAN devices.
@@ -26,7 +26,7 @@ import secrets
 import threading
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -49,6 +49,10 @@ MAX_PENDING_SESSIONS = 5
 # are refused for a cooldown to blunt brute-forcing the on-screen prompt.
 REJECTION_BACKOFF_THRESHOLD = 5
 REJECTION_BACKOFF_SECONDS = 60
+# Wrong-code guesses allowed per session before it is permanently burned. A
+# 6-digit code is only ~20 bits, so an unlimited-guess session is brute-forcible
+# well within its lifetime.
+MAX_VERIFY_ATTEMPTS = 5
 
 
 class PairingStatus:
@@ -88,9 +92,8 @@ class PairingSession:
     code: str
     created_at: float
     status: str = PairingStatus.PENDING
-    # Plaintext token, held only between approval and the client's first poll.
-    _token: Optional[str] = field(default=None, repr=False)
     device_id: Optional[str] = None
+    attempts: int = 0
 
     def is_expired(self, now: float) -> bool:
         return (now - self.created_at) > PAIRING_SESSION_TTL_SECONDS
@@ -128,9 +131,10 @@ class PairingManager:
                 created_at=now,
             )
             self._sessions[session.pairing_id] = session
+            # NEVER log the code: it is the enrollment secret, and logs reach
+            # bug reports, archives and Sentry.
             logger.info(
-                f"Pairing requested by '{session.device_name}' "
-                f"(id={session.pairing_id}, code={session.code})"
+                f"Pairing requested by '{session.device_name}' (id={session.pairing_id})"
             )
             return {
                 "pairing_id": session.pairing_id,
@@ -147,30 +151,6 @@ class PairingManager:
             if session.is_expired(_now()):
                 return None
             return {"device_name": session.device_name, "code": session.code}
-
-    def approve(self, pairing_id: str) -> bool:
-        """Approve a session (called from the Dial approval bridge).
-
-        Mints a token, persists its hash as a new paired device, and stashes the
-        plaintext on the session for the client's next poll. Returns False if the
-        session is unknown or no longer pending.
-        """
-        with self._lock:
-            session = self._sessions.get(pairing_id)
-            if not session or session.status != PairingStatus.PENDING:
-                return False
-            if session.is_expired(_now()):
-                session.status = PairingStatus.EXPIRED
-                self._record_rejection(_now())
-                return False
-
-            token = _generate_token()
-            device_id = self._persist_device(session.device_name, token)
-            session._token = token
-            session.device_id = device_id
-            session.status = PairingStatus.APPROVED
-            logger.info(f"Pairing approved for '{session.device_name}' (device_id={device_id})")
-            return True
 
     def verify_code(self, pairing_id: str, code: str) -> Optional[str]:
         """Approve a session by typing back the code shown on the Dial.
@@ -191,13 +171,26 @@ class PairingManager:
                 self._record_rejection(_now())
                 return None
             if not hmac.compare_digest(session.code, code):
+                session.attempts += 1
                 self._record_rejection(_now())
-                logger.info(f"Pairing code mismatch for '{session.device_name}'")
+                if session.attempts >= MAX_VERIFY_ATTEMPTS:
+                    # Burn the session: a correct code must NOT work afterwards,
+                    # otherwise the code can simply be brute-forced.
+                    session.status = PairingStatus.DENIED
+                    logger.warning(
+                        f"Pairing session burned after {session.attempts} wrong codes "
+                        f"('{session.device_name}')"
+                    )
+                else:
+                    logger.info(f"Pairing code mismatch for '{session.device_name}'")
                 return None
 
             token = _generate_token()
             device_id = self._persist_device(session.device_name, token)
-            session._token = token
+            # Delivered exactly once, here. Deliberately NOT stored on the
+            # session: /pair/status is public, so stashing it would expose the
+            # same secret a second time to anyone holding the pairing id.
+            # Token is returned to the caller; never retained on the session.
             session.device_id = device_id
             session.status = PairingStatus.APPROVED
             logger.info(
@@ -226,10 +219,8 @@ class PairingManager:
                 session.status = PairingStatus.EXPIRED
                 self._record_rejection(_now())
 
-            if session.status == PairingStatus.APPROVED and session._token is not None:
-                token = session._token
-                session._token = None  # deliver once
-                return {"status": PairingStatus.APPROVED, "token": token}
+            # Status only -- never the token. The secret is delivered exactly
+            # once, in the /pair/verify response; this endpoint is public.
             return {"status": session.status}
 
     # --- token verification & device management ------------------------------

@@ -34,6 +34,16 @@ def unregister(sid: str) -> None:
     _sid_to_device.pop(sid, None)
 
 
+def is_dial(sid: str) -> bool:
+    """True only for a loopback socket (the Dial), which holds no device token.
+
+    Used to gate security-prompt acknowledgements: answering a pairing or BLE
+    approval grants access, so only the Dial may do it. Unknown sids are not
+    trusted.
+    """
+    return sid in _sid_to_device and _sid_to_device[sid] is None
+
+
 def disconnect_device(device_id: str) -> None:
     """Disconnect every live socket that authorized as this device."""
     if not device_id or _sio is None:

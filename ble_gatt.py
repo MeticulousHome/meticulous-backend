@@ -613,7 +613,11 @@ class GATTServer:
             "Connect to this network and allow the device?"
         )
         notification = Notification(
-            message, [NotificationResponse.YES, NotificationResponse.NO]
+            message,
+            [NotificationResponse.YES, NotificationResponse.NO],
+            # Answering this grants Wi-Fi provisioning AND mints a token, so it
+            # must only ever be answerable at the Dial.
+            sensitive=True,
         )
 
         def on_answer():

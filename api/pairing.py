@@ -61,7 +61,9 @@ def _push_approval_prompt(pairing_id: str, device_name: str, code: str) -> None:
         f"A device wants to connect:\n{device_name}\n\n"
         f"To allow it, type this code on the device:\n{_format_code(code)}"
     )
-    notification = Notification(message, responses=["Cancel"])
+    # sensitive: the body carries the pairing code and answering it grants
+    # access, so it is Dial-only (never listed/broadcast/acknowledged remotely).
+    notification = Notification(message, responses=["Cancel"], sensitive=True)
 
     def on_answer():
         # The only button cancels the pending request. Idempotent and a no-op

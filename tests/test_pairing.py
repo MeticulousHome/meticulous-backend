@@ -17,11 +17,13 @@ def manager(monkeypatch):
 
 
 def _approve_and_get_token(manager, device_name="Alu's iPhone"):
+    # Typing the code shown on the Dial is the ONLY approval path.
     req = manager.request_pairing(device_name)
-    assert manager.approve(req["pairing_id"]) is True
-    result = manager.poll(req["pairing_id"])
-    assert result["status"] == PairingStatus.APPROVED
-    return req, result["token"]
+    code = manager.get_pending_prompt(req["pairing_id"])["code"]
+    token = manager.verify_code(req["pairing_id"], code)
+    assert token
+    assert manager.poll(req["pairing_id"])["status"] == PairingStatus.APPROVED
+    return req, token
 
 
 def test_request_pairing_returns_id_and_six_digit_code(manager):
@@ -62,12 +64,13 @@ def test_deny_yields_no_token(manager):
     assert MeticulousConfig[CONFIG_PAIRED_DEVICES] == {}
 
 
-def test_expired_session_cannot_be_approved(manager, monkeypatch):
+def test_expired_session_cannot_be_verified(manager, monkeypatch):
     req = manager.request_pairing("Slow Device")
     session = manager._sessions[req["pairing_id"]]
     # Move the session's creation past the TTL.
     session.created_at -= pairing.PAIRING_SESSION_TTL_SECONDS + 1
-    assert manager.approve(req["pairing_id"]) is False
+    code = session.code
+    assert manager.verify_code(req["pairing_id"], code) is None
     assert manager.poll(req["pairing_id"]) == {"status": PairingStatus.EXPIRED}
     assert manager.get_pending_prompt(req["pairing_id"]) is None
 
@@ -135,8 +138,45 @@ def test_verify_code_rejects_wrong_code(manager):
     assert manager.verify_code(req["pairing_id"], wrong) is None
     # No device was created.
     assert manager.list_devices() == []
-    # The correct code still works afterwards (session stays pending).
+    # A single mistype is forgiven: the correct code still works.
     assert manager.verify_code(req["pairing_id"], good)
+
+
+def test_verify_code_burns_session_after_repeated_wrong_codes(manager):
+    # ADV-004: a ~20-bit code is brute-forcible if a session accepts unlimited
+    # guesses within its lifetime. After the cap the session is dead even for
+    # the CORRECT code.
+    req = manager.request_pairing("Attacker")
+    good = manager.get_pending_prompt(req["pairing_id"])["code"]
+    wrong = "000000" if good != "000000" else "111111"
+    for _ in range(pairing.MAX_VERIFY_ATTEMPTS):
+        assert manager.verify_code(req["pairing_id"], wrong) is None
+    assert manager.verify_code(req["pairing_id"], good) is None
+    assert manager.list_devices() == []
+
+
+def test_status_never_returns_the_token(manager):
+    # ADV-011: /pair/status is public; the secret must be delivered exactly once
+    # by verify_code and never be retrievable again.
+    req = manager.request_pairing("Browser")
+    code = manager.get_pending_prompt(req["pairing_id"])["code"]
+    token = manager.verify_code(req["pairing_id"], code)
+    assert token
+    status = manager.poll(req["pairing_id"])
+    assert status == {"status": PairingStatus.APPROVED}
+    assert "token" not in status
+
+
+def test_pairing_code_is_never_logged(manager, caplog):
+    # ADV-012: logs reach bug reports/archives/Sentry, so the enrollment secret
+    # must never appear in them.
+    import logging
+
+    with caplog.at_level(logging.DEBUG):
+        req = manager.request_pairing("Browser")
+        code = manager.get_pending_prompt(req["pairing_id"])["code"]
+        manager.verify_code(req["pairing_id"], code)
+    assert code not in caplog.text
 
 
 def test_verify_code_unknown_session(manager):
