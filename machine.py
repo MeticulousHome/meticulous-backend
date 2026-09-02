@@ -107,6 +107,7 @@ class esp_nvs_keys(Enum):
     partial_retraction = "partial_retraction_key"
     auto_purge_after_shot = "auto_purge_after_shot_key"
     tare_behavior = "tare_behavior_key"
+    mileage = "mileage_key"
 
 
 class Machine:
@@ -133,6 +134,11 @@ class Machine:
     heater_timeout_info: HeaterTimeoutInfo = None
 
     infoReady = False
+    # Lifetime shot count held by the ESP. None until the ESP reports it.
+    mileage = None
+    # Seed we computed for this boot, cached so the ESP re-asking does not
+    # re-run the aggregate query.
+    _mileage_seed = None
     profileReady = False
     oldProfileReady = False
 
@@ -530,6 +536,12 @@ class Machine:
                             logger.error(
                                 f"Error processing ESP log ({type(e).__name__})",
                             )
+                    case ["MileageRequest"]:
+                        Machine._handleMileageRequest()
+                    case ["nvs_response", nvs_key, nvs_value]:
+                        Machine._handleNvsResponse(nvs_key, nvs_value)
+                    case ["nvs_response", *nvs_error]:
+                        logger.warning(f"ESP nvs_response error: {','.join(nvs_error)}")
                     case [*_]:
                         logger.info(data_str.strip("\r\n"))
                         is_valid_message = False
@@ -646,6 +658,7 @@ class Machine:
                 if info is not None:
                     Machine.esp_info = info
                     Machine.infoReady = True
+                    Machine.requestMileage()
                     info_requested = False
                     Machine.firmware_running = Machine._parseVersionString(info.firmwareV)
 
@@ -891,6 +904,75 @@ class Machine:
     def write(content):
         if not Machine._stopESPcomm:
             Machine._connection.port.write(content)
+
+    def _handleMileageRequest():
+        """Seed the ESP's mileage counter, once, on its own request.
+
+        The ESP only asks when its counter has never been seeded, and it refuses
+        a seed it did not ask for. We answer with the shot count the history
+        database currently holds; that number is not monotonic (shots can be
+        deleted) and it excludes brews that never reached the database, so it is
+        a starting point rather than a true lifetime total. From the seed
+        onwards the ESP counts for itself.
+        """
+        if Machine._mileage_seed is None:
+            try:
+                from shot_database import ShotDataBase
+
+                Machine._mileage_seed = int(ShotDataBase.statistics().get("totalSavedShots", 0))
+            except Exception as e:
+                logger.error(f"Could not compute mileage seed: {type(e).__name__}: {e}")
+                return
+
+        if (
+            Machine._connection is None
+            or Machine._connection.port is None
+            or Machine._stopESPcomm
+        ):
+            logger.warning("Cannot seed mileage because the serial connection is not ready")
+            return
+
+        payload = (
+            "nvs_request,write,"
+            + esp_nvs_keys.mileage.value
+            + ","
+            + str(Machine._mileage_seed)
+            + "\x03"
+        )
+        Machine.write(payload.encode("utf-8"))
+        logger.info(f"Seeding ESP mileage counter with {Machine._mileage_seed} shots")
+
+    def requestMileage():
+        """Ask the ESP for its current mileage. Read-only; always permitted."""
+        if (
+            Machine._connection is None
+            or Machine._connection.port is None
+            or Machine._stopESPcomm
+        ):
+            return
+
+        payload = "nvs_request,read," + esp_nvs_keys.mileage.value + "\x03"
+        Machine.write(payload.encode("utf-8"))
+
+    def _handleNvsResponse(nvs_key: str, nvs_value: str):
+        if nvs_key != esp_nvs_keys.mileage.value:
+            # Other keys are written blind today; nothing consumes their reply.
+            return
+
+        if nvs_value in ("SUCCESS", "ERROR") or nvs_value.startswith("ERROR"):
+            if nvs_value != "SUCCESS":
+                logger.warning(f"ESP rejected the mileage write: {nvs_value}")
+            else:
+                logger.info("ESP accepted the mileage seed")
+                # Read it back so what we expose is the ESP's value, not ours.
+                Machine.requestMileage()
+            return
+
+        try:
+            Machine.mileage = int(nvs_value)
+            logger.info(f"ESP reported mileage: {Machine.mileage}")
+        except ValueError:
+            logger.warning(f"Unparseable mileage from ESP: {nvs_value}")
 
     def reset():
         Machine.esp_restart_request = True
