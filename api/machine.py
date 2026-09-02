@@ -198,7 +198,20 @@ class MachineInfoHandler(BaseHandler):
 
 class MachineResetHandler(LocalAccessHandler):
     def get(self):
+        # Destructive and non-idempotent: never on GET (a link or a prefetch
+        # must not wipe the machine). Say why instead of failing silently.
+        self.set_status(405)
+        self.set_header("Allow", "POST")
+        self.write({"error": "Factory reset requires POST with confirm=true"})
+
+    def post(self):
         confirm = self.get_argument("confirm", None)
+        if confirm != "true":
+            try:
+                body = json.loads(self.request.body or "{}")
+                confirm = "true" if body.get("confirm") else None
+            except json.JSONDecodeError:
+                confirm = None
         if confirm != "true":
             self.set_status(400)
             self.write({"error": "Confirmation required. Add confirm=true"})

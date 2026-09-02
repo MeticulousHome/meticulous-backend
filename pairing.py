@@ -45,9 +45,12 @@ PAIRING_SESSION_TTL_SECONDS = 180
 TOKEN_ENTROPY_BYTES = 32
 # Cap concurrent pending sessions so a hostile LAN peer cannot spam the Dial.
 MAX_PENDING_SESSIONS = 5
-# After this many denied/expired sessions from the request path, new requests
-# are refused for a cooldown to blunt brute-forcing the on-screen prompt.
-REJECTION_BACKOFF_THRESHOLD = 5
+# Rate limiting is PER SOURCE first (a hostile LAN peer must not be able to
+# lock everyone else out of pairing), with a much higher global ceiling as the
+# last line of defence against many spoofed sources.
+MAX_PENDING_PER_SOURCE = 2
+SOURCE_REJECTION_BACKOFF_THRESHOLD = 5
+REJECTION_BACKOFF_THRESHOLD = 25  # global
 REJECTION_BACKOFF_SECONDS = 60
 # Wrong-code guesses allowed per session before it is permanently burned. A
 # 6-digit code is only ~20 bits, so an unlimited-guess session is brute-forcible
@@ -78,7 +81,8 @@ def _generate_code() -> str:
 
 
 def _now() -> float:
-    return time.time()
+    # Monotonic: expiry/backoff must not jump when NTP sets the wall clock.
+    return time.monotonic()
 
 
 def _iso_now() -> str:
@@ -94,6 +98,7 @@ class PairingSession:
     status: str = PairingStatus.PENDING
     device_id: Optional[str] = None
     attempts: int = 0
+    source: Optional[str] = None
 
     def is_expired(self, now: float) -> bool:
         return (now - self.created_at) > PAIRING_SESSION_TTL_SECONDS
@@ -105,22 +110,29 @@ class PairingManager:
     def __init__(self):
         self._sessions: dict[str, PairingSession] = {}
         self._lock = threading.RLock()
-        self._recent_rejections: list[float] = []
+        # (timestamp, source) of recent denied/expired/mistyped attempts.
+        self._recent_rejections: list = []
 
     # --- pairing session lifecycle -------------------------------------------
 
-    def request_pairing(self, device_name: str) -> dict:
+    def request_pairing(self, device_name: str, source=None) -> dict:
         """Open a pairing session. Returns {pairing_id, code, expires_in}.
 
-        Raises PairingError if the machine is rate-limiting new requests.
+        `source` identifies the requesting client (its address) for per-source
+        limits. Raises PairingError if that source, or the machine, is
+        rate-limiting new requests.
         """
         device_name = (device_name or "Unknown device").strip()[:64]
         now = _now()
         with self._lock:
             self._prune(now)
-            if self._in_backoff(now):
+            if self._in_backoff(now, source):
                 raise PairingError("Too many pairing attempts, try again shortly")
             pending = [s for s in self._sessions.values() if s.status == PairingStatus.PENDING]
+            if source is not None and sum(1 for s in pending if s.source == source) >= (
+                MAX_PENDING_PER_SOURCE
+            ):
+                raise PairingError("Too many pending pairing requests from this device")
             if len(pending) >= MAX_PENDING_SESSIONS:
                 raise PairingError("Too many pending pairing requests")
 
@@ -129,6 +141,7 @@ class PairingManager:
                 device_name=device_name,
                 code=_generate_code(),
                 created_at=now,
+                source=source,
             )
             self._sessions[session.pairing_id] = session
             # NEVER log the code: it is the enrollment secret, and logs reach
@@ -168,11 +181,11 @@ class PairingManager:
                 return None
             if session.is_expired(_now()):
                 session.status = PairingStatus.EXPIRED
-                self._record_rejection(_now())
+                self._record_rejection(_now(), session.source)
                 return None
             if not hmac.compare_digest(session.code, code):
                 session.attempts += 1
-                self._record_rejection(_now())
+                self._record_rejection(_now(), session.source)
                 if session.attempts >= MAX_VERIFY_ATTEMPTS:
                     # Burn the session: a correct code must NOT work afterwards,
                     # otherwise the code can simply be brute-forced.
@@ -204,7 +217,7 @@ class PairingManager:
             if not session or session.status != PairingStatus.PENDING:
                 return False
             session.status = PairingStatus.DENIED
-            self._record_rejection(_now())
+            self._record_rejection(_now(), session.source)
             logger.info(f"Pairing denied for '{session.device_name}'")
             return True
 
@@ -217,7 +230,7 @@ class PairingManager:
                 return {"status": PairingStatus.EXPIRED}
             if session.status == PairingStatus.PENDING and session.is_expired(_now()):
                 session.status = PairingStatus.EXPIRED
-                self._record_rejection(_now())
+                self._record_rejection(_now(), session.source)
 
             # Status only -- never the token. The secret is delivered exactly
             # once, in the /pair/verify response; this endpoint is public.
@@ -330,17 +343,22 @@ class PairingManager:
             if (now - s.created_at) > (PAIRING_SESSION_TTL_SECONDS * 2):
                 del self._sessions[pid]
 
-    def _record_rejection(self, now: float) -> None:
-        self._recent_rejections.append(now)
+    def _record_rejection(self, now: float, source=None) -> None:
+        self._recent_rejections.append((now, source))
         self._recent_rejections = [
-            t for t in self._recent_rejections if (now - t) < REJECTION_BACKOFF_SECONDS
+            (t, s) for (t, s) in self._recent_rejections if (now - t) < REJECTION_BACKOFF_SECONDS
         ]
 
-    def _in_backoff(self, now: float) -> bool:
+    def _in_backoff(self, now: float, source=None) -> bool:
         self._recent_rejections = [
-            t for t in self._recent_rejections if (now - t) < REJECTION_BACKOFF_SECONDS
+            (t, s) for (t, s) in self._recent_rejections if (now - t) < REJECTION_BACKOFF_SECONDS
         ]
-        return len(self._recent_rejections) >= REJECTION_BACKOFF_THRESHOLD
+        if len(self._recent_rejections) >= REJECTION_BACKOFF_THRESHOLD:
+            return True
+        if source is None:
+            return False
+        mine = sum(1 for (_t, s) in self._recent_rejections if s == source)
+        return mine >= SOURCE_REJECTION_BACKOFF_THRESHOLD
 
 
 class PairingError(Exception):

@@ -36,7 +36,7 @@ from esp_serial.connection.emulation_data import EmulationData
 from usb import USBManager
 
 from api.api import API
-from api.auth import is_socket_authorized, socket_device_id
+from api.auth import is_socket_authorized, socket_device_id, socket_is_local
 from api.emulation import register_emulation_handlers
 from api.web_ui import WEB_UI_HANDLER
 
@@ -81,10 +81,12 @@ async def connect(sid, environ, auth=None):
     # Remember which paired device authorized this socket so a later revoke can
     # drop it (None for the Dial/loopback, which is never dropped).
     device_id = socket_device_id(environ, auth)
-    socket_registry.register(sid, device_id)
-    # Only loopback (the Dial) joins the room that receives security prompts,
-    # so pairing codes and approval prompts never reach a LAN client.
-    if device_id is None:
+    # Locality is decided from the REAL peer (see socket_is_local) and stored
+    # explicitly; only such a socket (the Dial) joins the room that receives
+    # security prompts and may answer them.
+    is_local = socket_is_local(environ)
+    socket_registry.register(sid, device_id, is_local=is_local)
+    if is_local:
         await sio.enter_room(sid, DIAL_ROOM)
     logger.info("connect %s", sid)
     await ProfileManager._async_emit_profile_hover(to=sid)

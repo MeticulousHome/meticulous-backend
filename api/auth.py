@@ -177,16 +177,38 @@ def socket_token(auth, environ) -> Optional[str]:
     return None
 
 
+def socket_remote_ip(environ):
+    """The REAL TCP peer of a Socket.IO connection.
+
+    python-engineio's Tornado driver hardcodes environ['REMOTE_ADDR'] to
+    '127.0.0.1' for every connection, so trusting it would decide locality from
+    X-Real-IP alone. The Tornado handler it stashes in the environ knows the
+    genuine peer (the app runs without xheaders, so remote_ip is the socket
+    peer, never a header)."""
+    environ = environ or {}
+    handler = environ.get("tornado.handler")
+    if handler is not None:
+        try:
+            return handler.request.remote_ip
+        except AttributeError:
+            pass
+    return environ.get("REMOTE_ADDR")
+
+
+def socket_is_local(environ) -> bool:
+    """True only for a genuine loopback (Dial) socket: real peer loopback AND
+    no non-loopback X-Real-IP from nginx."""
+    environ = environ or {}
+    return client_is_local(socket_remote_ip(environ), environ.get("HTTP_X_REAL_IP"))
+
+
 def socket_device_id(environ, auth):
     """The paired device_id that authorizes a Socket.IO connection, or None for
     a loopback/Dial caller (which holds no token). Used to tie a live socket to
     the device that authorized it, so revoking that device can drop the socket."""
-    environ = environ or {}
-    if client_is_local(
-        environ.get("REMOTE_ADDR"), environ.get("HTTP_X_REAL_IP")
-    ):
+    if socket_is_local(environ):
         return None
-    return PairingManagerInstance.verify_token(socket_token(auth, environ))
+    return PairingManagerInstance.verify_token(socket_token(auth, environ or {}))
 
 
 def is_socket_authorized(environ, auth) -> bool:
@@ -201,9 +223,7 @@ def is_socket_authorized(environ, auth) -> bool:
     approval by replaying a broadcast notification id.
     """
     environ = environ or {}
-    remote_ip = environ.get("REMOTE_ADDR")
-    x_real_ip = environ.get("HTTP_X_REAL_IP")
-    if client_is_local(remote_ip, x_real_ip):
+    if socket_is_local(environ):
         return True
     return PairingManagerInstance.verify_token(socket_token(auth, environ)) is not None
 

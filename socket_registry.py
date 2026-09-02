@@ -19,6 +19,10 @@ _sio = None
 # sid -> device_id (None for loopback/Dial connections, which are exempt and
 # must never be dropped when a LAN device is revoked).
 _sid_to_device: dict = {}
+# sid -> True only for a socket whose REAL peer was verified loopback at the
+# handshake. Kept separate from "device_id is None" on purpose: the Dial
+# identity must be an explicit, fail-closed fact, not an inference.
+_sid_is_local: dict = {}
 
 
 def set_sio(sio) -> None:
@@ -26,12 +30,14 @@ def set_sio(sio) -> None:
     _sio = sio
 
 
-def register(sid: str, device_id) -> None:
+def register(sid: str, device_id, is_local: bool = False) -> None:
     _sid_to_device[sid] = device_id
+    _sid_is_local[sid] = bool(is_local)
 
 
 def unregister(sid: str) -> None:
     _sid_to_device.pop(sid, None)
+    _sid_is_local.pop(sid, None)
 
 
 def is_dial(sid: str) -> bool:
@@ -41,7 +47,7 @@ def is_dial(sid: str) -> bool:
     approval grants access, so only the Dial may do it. Unknown sids are not
     trusted.
     """
-    return sid in _sid_to_device and _sid_to_device[sid] is None
+    return _sid_is_local.get(sid, False)
 
 
 def disconnect_device(device_id: str) -> None:

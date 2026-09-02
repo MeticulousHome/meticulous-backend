@@ -91,6 +91,9 @@ class Notification:
                 "image": self.image,
                 "responses": [x for x in self.respone_options],
                 "timestamp": self.timestamp.isoformat(),
+                # Lets the Dial (and any consumer) know this body must never be
+                # logged or forwarded: it may carry an enrollment secret.
+                "sensitive": self.sensitive,
             }
         )
 
@@ -123,25 +126,26 @@ class NotificationManager:
                     # If the queue is empty, wait for a short period before trying again
                     await asyncio.sleep(0.1)
                 else:
-                    # Security prompts go ONLY to the Dial (loopback sockets in
-                    # DIAL_ROOM); broadcasting them would hand the pairing code
-                    # -- and the ability to answer the prompt -- to every
-                    # authorized LAN client, defeating physical approval.
-                    if notification.sensitive:
-                        await NotificationManager._sio.emit(
-                            "notification", notification.to_json(), room=DIAL_ROOM
-                        )
-                        logger.info(f"send security notification to Dial: id={notification.id}")
-                    else:
-                        await NotificationManager._sio.emit(
-                            "notification", notification.to_json()
-                        )
-                        logger.info(f"send notification: {notification.to_json()}")
+                    await NotificationManager._emit(notification)
 
         # Create and run the asyncio event loop
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(process_queue())
+
+    async def _emit(notification):
+        """Security prompts go ONLY to the Dial (loopback sockets in DIAL_ROOM)
+        and are logged by id only; broadcasting them would hand the pairing
+        code -- and the ability to answer the prompt -- to every authorized LAN
+        client, defeating physical approval."""
+        if notification.sensitive:
+            await NotificationManager._sio.emit(
+                "notification", notification.to_json(), room=DIAL_ROOM
+            )
+            logger.info(f"send security notification to Dial: id={notification.id}")
+        else:
+            await NotificationManager._sio.emit("notification", notification.to_json())
+            logger.info(f"send notification: {notification.to_json()}")
 
     def acknowledge_notification(notification_id, response, is_local: bool = False):
         """Acknowledge a notification.
@@ -159,9 +163,8 @@ class NotificationManager:
                         f"(id={notification_id})"
                     )
                     return False
+                # acknowledge() already runs the callback; do not run it twice.
                 notification.acknowledge(response)
-                if notification.callback:
-                    notification.callback()
                 return True
         return False
 
@@ -172,6 +175,13 @@ class NotificationManager:
             if notification.id == old_notfication.id and not old_notfication.acknowledged:
                 del NotificationManager._notifications[idx]
                 updating = True
+
+        # An empty body is a dismissal (e.g. a pairing prompt cleared after
+        # approval): tell the Dial to remove it, but do not keep it around --
+        # otherwise it lingers, unacknowledged, in every client's listing.
+        if not notification.message and not notification.image:
+            NotificationManager._queue.put(notification)
+            return
 
         notification.acknowledged = False
         NotificationManager._notifications.append(notification)

@@ -17,3 +17,41 @@ os.environ.setdefault("REDACTION_KEY_PATH", "/tmp/meticulous-test/.redaction_key
 backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if backend_root not in sys.path:
     sys.path.insert(0, backend_root)
+
+# notifications.py pulls in SoundPlayer, which imports hardware/optional deps
+# (playsound3, gpiod, ...) absent from the CI/test environment. Stub the
+# `sounds` module with just what notifications.py uses so importing it during
+# collection does not fail.
+import types  # noqa: E402
+
+# Leaf system/optional deps absent from the CI/test environment. Stub them so
+# importing notifications.py (via named_thread / pyqrcode) does not fail.
+for _name in ("pyprctl",):
+    if _name not in sys.modules:
+        _m = types.ModuleType(_name)
+        _m.set_name = lambda *a, **k: None
+        sys.modules[_name] = _m
+
+if "pyqrcode" not in sys.modules:
+    _qr = types.ModuleType("pyqrcode")
+    _qr.create = lambda *a, **k: types.SimpleNamespace(png=lambda *a, **k: None)
+    sys.modules["pyqrcode"] = _qr
+
+if "sounds" not in sys.modules:
+    _sounds = types.ModuleType("sounds")
+
+    class _SoundPlayer:
+        @staticmethod
+        def play_event_sound(*a, **k):
+            pass
+
+        @staticmethod
+        def init(*a, **k):
+            pass
+
+    class _Sounds:
+        NOTIFICATION = "notification"
+
+    _sounds.SoundPlayer = _SoundPlayer
+    _sounds.Sounds = _Sounds
+    sys.modules["sounds"] = _sounds

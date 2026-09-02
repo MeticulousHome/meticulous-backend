@@ -191,13 +191,30 @@ def test_verify_code_expired(manager, monkeypatch):
     assert manager.verify_code(req["pairing_id"], code) is None
 
 
-def test_verify_code_wrong_guesses_trigger_backoff(manager):
-    req = manager.request_pairing("Browser")
-    for _ in range(pairing.REJECTION_BACKOFF_THRESHOLD):
-        manager.verify_code(req["pairing_id"], "999999")
-    # After enough wrong guesses, new pairing requests are refused.
+def test_source_backoff_does_not_lock_out_other_sources(manager):
+    # ADV-021: a hostile LAN peer must not be able to deny pairing to everyone
+    # else. Enough denials from one source back that source off...
+    attacker = "10.10.0.66"
+    for _ in range(pairing.SOURCE_REJECTION_BACKOFF_THRESHOLD):
+        req = manager.request_pairing("Attacker", source=attacker)
+        manager.deny(req["pairing_id"])
     with pytest.raises(PairingError):
-        manager.request_pairing("Another")
+        manager.request_pairing("Attacker again", source=attacker)
+    # ...but a different source (the legitimate owner) can still pair.
+    ok = manager.request_pairing("Owner phone", source="10.10.0.20")
+    assert ok["pairing_id"]
+
+
+def test_source_cannot_hoard_pending_sessions(manager):
+    # One source is capped well below the global pending cap, so it cannot fill
+    # every slot and starve other devices.
+    src = "10.10.0.66"
+    for _ in range(pairing.MAX_PENDING_PER_SOURCE):
+        manager.request_pairing("Greedy", source=src)
+    with pytest.raises(PairingError):
+        manager.request_pairing("Greedy again", source=src)
+    # A different source is unaffected.
+    assert manager.request_pairing("Other", source="10.10.0.20")["pairing_id"]
 
 
 def test_revoke_all_clears_every_device(manager):

@@ -29,10 +29,26 @@ from notifications import Notification, NotificationManager
 from pairing import PairingError, PairingManagerInstance
 from log import MeticulousLogger
 
-from .base_handler import BaseHandler
+from .auth import extract_token
+from .base_handler import BaseHandler, LocalAccessHandler
 from .api import API, APIVersion
 
 logger = MeticulousLogger.getLogger(__name__)
+
+
+def _clean_device_name(raw) -> str:
+    """One printable line, bounded. The name is interpolated into the Dial
+    prompt, so newlines/control characters would let a requester forge extra
+    prompt text (e.g. a fake instruction line)."""
+    name = "".join(ch for ch in str(raw or "") if ch.isprintable())
+    name = " ".join(name.split())[:64]
+    return name or "Unknown device"
+
+
+def _client_source(handler) -> str:
+    """Where a pairing request came from, for per-source rate limiting: the
+    proxy-set client address, else the socket peer."""
+    return handler.request.headers.get("X-Real-IP") or handler.request.remote_ip or "?"
 
 
 def _format_code(code: str) -> str:
@@ -86,7 +102,8 @@ def _dismiss_prompt(pairing_id: str) -> None:
     notification = _prompts.pop(pairing_id, None)
     if notification is None:
         return
-    revoke = Notification("", responses=[])
+    # Dial-only like the prompt it clears; the empty body is a removal.
+    revoke = Notification("", responses=[], sensitive=True)
     revoke.id = notification.id
     NotificationManager.add_notification(revoke)
 
@@ -99,9 +116,11 @@ class PairRequestHandler(BaseHandler):
             self.report_error(400, "Invalid JSON body")
             return
 
-        device_name = data.get("device_name") or "Unknown device"
+        device_name = _clean_device_name(data.get("device_name"))
         try:
-            session = PairingManagerInstance.request_pairing(device_name)
+            session = PairingManagerInstance.request_pairing(
+                device_name, source=_client_source(self)
+            )
         except PairingError as e:
             # Too many attempts / pending sessions -> rate limited.
             self.report_error(429, str(e))
@@ -131,10 +150,15 @@ class PairVerifyHandler(BaseHandler):
         if not pairing_id or not code:
             self.report_error(400, "pairing_id and code are required")
             return
+        # Never cache a response that may carry the token.
+        self.set_header("Cache-Control", "no-store")
         token = PairingManagerInstance.verify_code(pairing_id, code)
         if token is None:
-            # Unknown/expired session or wrong code.
-            self.report_error(401, "Invalid or expired code")
+            # Unknown/expired session or wrong code. Deliberately NOT 401: for
+            # clients 401 means "your credential was revoked", and a mistyped
+            # code must not make them discard a valid token.
+            self.set_status(400)
+            self.write({"error": "invalid_code", "message": "Invalid or expired code"})
             return
         # Approved: clear the code prompt from the Dial so it does not linger.
         _dismiss_prompt(pairing_id)
@@ -161,12 +185,33 @@ class PairPageHandler(BaseHandler):
         self.write(_PAIR_PAGE_HTML)
 
 
-class PairedDevicesHandler(BaseHandler):
+# Credential administration (list / revoke others / revoke all) is a
+# machine-owner power, exercised at the Dial over loopback. An ordinary paired
+# client must not be able to inventory or disconnect other devices, so these
+# are loopback-only (LocalAccessHandler decides from the real peer).
+class PairedDevicesHandler(LocalAccessHandler):
     def get(self):
         self.write({"devices": PairingManagerInstance.list_devices()})
 
 
-class PairedDeviceRevokeHandler(BaseHandler):
+class PairedDeviceSelfRevokeHandler(BaseHandler):
+    """Let a paired client revoke ITS OWN token ("forget this machine").
+    Ordinary token holders may do this and nothing else administrative."""
+
+    def post(self):
+        token = extract_token(
+            self.request.headers.get("Authorization"), self.request.headers.get("Cookie")
+        )
+        device_id = PairingManagerInstance.verify_token(token)
+        if device_id is None:
+            self.report_error(401, "No paired device for this credential")
+            return
+        PairingManagerInstance.revoke(device_id)
+        socket_registry.disconnect_device(device_id)
+        self.write({"status": "success", "device_id": device_id})
+
+
+class PairedDeviceRevokeHandler(LocalAccessHandler):
     def post(self, device_id):
         if PairingManagerInstance.revoke(device_id):
             # End any live sockets that device authorized, so revoking actually
@@ -178,7 +223,7 @@ class PairedDeviceRevokeHandler(BaseHandler):
             self.report_error(404, "Device not found")
 
 
-class PairedDevicesRevokeAllHandler(BaseHandler):
+class PairedDevicesRevokeAllHandler(LocalAccessHandler):
     def post(self):
         count = PairingManagerInstance.revoke_all()
         socket_registry.disconnect_all_devices()
@@ -191,6 +236,7 @@ API.register_handler(APIVersion.V1, r"/pair/verify", PairVerifyHandler)
 API.register_handler(APIVersion.V1, r"/pair/status/([^/]+)", PairStatusHandler)
 API.register_handler(APIVersion.V1, r"/pair/devices", PairedDevicesHandler)
 API.register_handler(APIVersion.V1, r"/pair/devices/revoke-all", PairedDevicesRevokeAllHandler)
+API.register_handler(APIVersion.V1, r"/pair/devices/self/revoke", PairedDeviceSelfRevokeHandler)
 API.register_handler(APIVersion.V1, r"/pair/devices/([^/]+)/revoke", PairedDeviceRevokeHandler)
 
 

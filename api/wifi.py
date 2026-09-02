@@ -14,7 +14,7 @@ from config import (
 from wifi import WifiManager, WifiType, redact_ssid
 from ble_gatt import PORT
 
-from .base_handler import BaseHandler
+from .base_handler import BaseHandler, LocalAccessHandler
 from .auth import request_is_local
 from .api import API, APIVersion
 
@@ -48,7 +48,8 @@ class WiFiConfig:
         }
 
 
-class WiFiQRHandler(BaseHandler):
+# The QR embeds the AP password: a reusable network secret, so Dial-only.
+class WiFiQRHandler(LocalAccessHandler):
     def escape_wifi_qr_value(self, value: str):
         return (
             value.replace("\\", "\\\\")
