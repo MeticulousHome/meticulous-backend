@@ -138,3 +138,34 @@ def test_socket_authorizes_via_cookie():
     assert not auth.is_socket_authorized(
         {**lan, "HTTP_COOKIE": "met_device_token=bad-token"}, None
     )
+
+
+# --- locality invariant (guards the ADV-001 fix) -----------------------------
+#
+# The Dial exemption -- and therefore who receives pairing codes and who may
+# answer a security prompt -- rests on client_is_local(). It must require the
+# REAL socket peer to be loopback, not merely the absence of an X-Real-IP
+# header: services are not all bound to loopback (the watcher listens on
+# 0.0.0.0:3000), so a LAN client can reach a listener directly, with no nginx in
+# the path to overwrite the header it sends. If this property is ever weakened,
+# a LAN peer forging `X-Real-IP: 127.0.0.1` becomes the Dial and can read
+# pairing codes and approve its own enrollment.
+
+
+def test_forged_loopback_header_from_a_lan_peer_is_not_local():
+    for forged in ("127.0.0.1", "::1", "localhost", "127.9.9.9"):
+        assert auth.client_is_local("10.10.0.55", forged) is False
+
+
+def test_locality_requires_a_loopback_socket_peer():
+    # No header at all is still not enough: the peer decides.
+    assert auth.client_is_local("10.10.0.55", None) is False
+    assert auth.client_is_local("192.168.1.20", "") is False
+    # A genuine loopback peer with no proxy header is the Dial.
+    assert auth.client_is_local("127.0.0.1", None) is True
+    assert auth.client_is_local("::1", None) is True
+
+
+def test_loopback_peer_relaying_a_lan_client_is_not_local():
+    # nginx (loopback peer) stamps the real client's address: not the Dial.
+    assert auth.client_is_local("127.0.0.1", "10.10.0.55") is False
