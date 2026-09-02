@@ -41,6 +41,16 @@ logger = MeticulousLogger.getLogger(__name__)
 DOMAIN = b"meticulous-machine-identity/v1"
 ALG = "ES256"
 
+# secp256r1 group order, for low-S normalization (see sign()).
+_P256_ORDER = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
+
+
+class IdentityIOError(Exception):
+    """A transient failure reading a key file that DOES exist (EIO, EBUSY,
+    permission). Distinct from corruption: we must fail closed and let startup
+    retry, never regenerate the key and revoke every device over a flaky read."""
+
+
 # Where the key lives. Must NOT start with a dot: factory reset is
 # `rm -rf /meticulous-user/*`, which skips dotfiles, and we WANT the key wiped
 # on factory reset (together with paired devices).
@@ -183,35 +193,40 @@ class IdentityManager:
         return True
 
     def load_or_create(self) -> None:
-        """Startup entry point. Absence is first boot (generate quietly);
-        corruption is a fault (recover from the mirror, alert, and only
-        regenerate+revoke on confirmed unrecoverable corruption)."""
+        """Startup entry point. Three distinct outcomes per file, never conflated:
+        'ok' (a valid P-256 key), 'absent' (no such file), 'corrupt' (a file that
+        reads but is not a valid key). A transient read error on a file that
+        exists raises IdentityIOError and fails startup closed -- it must never
+        be mistaken for corruption and trigger a regenerate+revoke."""
         key_path, mirror_path = self._paths()
-        primary = self._try_load(key_path)
-        if primary is not None:
+        pstate, pkey = self._load_key(key_path)
+        if pstate == "ok":
             self._generation = self._read_generation()
-            self._adopt(primary)
+            self._adopt(pkey)
+            if not os.path.exists(os.path.join(IDENTITY_PATH, "identity.json")):
+                self._write_sidecars()  # do not lose the generation counter
             return
 
-        if not os.path.exists(key_path) and not os.path.exists(mirror_path):
+        mstate, mkey = self._load_key(mirror_path)
+
+        if pstate == "absent" and mstate == "absent":
             # True first boot: no key anywhere. Generate quietly, no revoke.
             logger.info("No machine identity yet; generating one (first boot).")
             self._generate_and_persist(revoke_devices=False)
             return
 
-        # The primary is present-but-unreadable, or absent while a mirror
-        # exists. Try to recover from the mirror before doing anything drastic.
-        mirror = self._try_load(mirror_path)
-        if mirror is not None:
+        if mstate == "ok":
             logger.warning(
                 "Primary machine identity unreadable; recovered from mirror copy."
             )
             self._generation = self._read_generation()
-            self._adopt(mirror)
+            self._adopt(mkey)
             self._restore_primary_from_current()
+            self._write_sidecars()  # rewrite so the counter is not lost
             return
 
-        # Both copies are unreadable: confirmed corruption. This is the only
+        # Neither copy is a valid key and at least one is corrupt (a transient
+        # IO error would already have raised). Confirmed corruption: the only
         # path that regenerates and revokes, because a token must never outlive
         # the identity it was pinned to.
         logger.error(
@@ -232,21 +247,33 @@ class IdentityManager:
             self._quarantine(mirror_path)
         self._generate_and_persist(revoke_devices=True)
 
-    def _try_load(self, path: str):
+    def _load_key(self, path: str):
+        """Return (state, key): ('ok', key) | ('absent', None) | ('corrupt', None).
+        Raises IdentityIOError on a transient read failure of a file that exists."""
         try:
             with open(path, "rb") as f:
-                key = serialization.load_pem_private_key(f.read(), password=None)
+                data = f.read()
         except FileNotFoundError:
-            return None
-        except Exception as e:
-            logger.warning(f"Machine identity at {os.path.basename(path)} unreadable: {type(e).__name__}")
-            return None
+            return ("absent", None)
+        except OSError as e:
+            # The file exists but could not be read: a transient fault, not
+            # corruption. Fail closed rather than regenerate + revoke.
+            raise IdentityIOError(
+                f"transient read failure on {os.path.basename(path)}: {type(e).__name__}"
+            ) from e
+        try:
+            key = serialization.load_pem_private_key(data, password=None)
+        except Exception:
+            logger.warning(
+                f"Machine identity at {os.path.basename(path)} is not a valid key."
+            )
+            return ("corrupt", None)
         if not isinstance(key, ec.EllipticCurvePrivateKey) or not isinstance(
             key.curve, ec.SECP256R1
         ):
             logger.warning("Machine identity is not a P-256 key; treating as corrupt.")
-            return None
-        return key
+            return ("corrupt", None)
+        return ("ok", key)
 
     def _adopt(self, key) -> None:
         # Does NOT set self._generation: the caller owns it (load reads it from
@@ -411,6 +438,12 @@ class IdentityManager:
         message = build_message(serial or "", origin, nonce_bytes)
         der = self._private_key.sign(message, ec.ECDSA(hashes.SHA256()))
         r, s = decode_dss_signature(der)
+        # Low-S normalization. OpenSSL emits a high-S signature ~50% of the time;
+        # @noble/curves p256.verify (the verifier the insecure-context browser and
+        # mobile/Hermes clients use) REJECTS high-S by default, so an
+        # un-normalized signature would fail on half of all genuine challenges.
+        if s > _P256_ORDER // 2:
+            s = _P256_ORDER - s
         p1363 = r.to_bytes(32, "big") + s.to_bytes(32, "big")
         return base64.b64encode(p1363).decode("ascii")
 

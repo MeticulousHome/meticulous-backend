@@ -227,3 +227,16 @@ def test_revoke_all_clears_every_device(manager):
     assert manager.list_devices() == []
     # Revoking again reports zero, no error.
     assert manager.revoke_all() == 0
+
+
+def test_expired_pending_sessions_do_not_block_new_requests(manager, monkeypatch):
+    # An abandoned (never polled) session is expired but still PENDING until 2x
+    # TTL; it must not count against the per-source cap.
+    src = "10.10.0.20"
+    for _ in range(pairing.MAX_PENDING_PER_SOURCE):
+        manager.request_pairing("Phone", source=src)
+    # Age every session past the TTL without touching poll/verify.
+    for sess in manager._sessions.values():
+        sess.created_at -= pairing.PAIRING_SESSION_TTL_SECONDS + 1
+    # A new request from the same source now succeeds (old ones are dead).
+    assert manager.request_pairing("Phone again", source=src)["pairing_id"]

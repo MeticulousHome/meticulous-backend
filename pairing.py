@@ -128,7 +128,15 @@ class PairingManager:
             self._prune(now)
             if self._in_backoff(now, source):
                 raise PairingError("Too many pairing attempts, try again shortly")
-            pending = [s for s in self._sessions.values() if s.status == PairingStatus.PENDING]
+            # Only LIVE pending sessions count against the caps. An abandoned
+            # (never polled/verified) session is expired but keeps status
+            # PENDING until _prune removes it at 2x TTL; without this filter it
+            # would block new pairing requests for that window.
+            pending = [
+                s
+                for s in self._sessions.values()
+                if s.status == PairingStatus.PENDING and not s.is_expired(now)
+            ]
             if source is not None and sum(1 for s in pending if s.source == source) >= (
                 MAX_PENDING_PER_SOURCE
             ):
@@ -362,6 +370,11 @@ class PairingManager:
         return None
 
     def _prune(self, now: float) -> None:
+        # Flip abandoned (expired but never polled/verified) PENDING sessions to
+        # EXPIRED so poll()/verify() and the pending-cap count all agree.
+        for s in self._sessions.values():
+            if s.status == PairingStatus.PENDING and s.is_expired(now):
+                s.status = PairingStatus.EXPIRED
         stale = [
             pid
             for pid, s in self._sessions.items()

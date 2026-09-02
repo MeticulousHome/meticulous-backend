@@ -196,3 +196,57 @@ def test_matches_committed_vector():
     msg = build_message(v["serial"], v["origin"], base64.b64decode(v["nonce"]))
     assert msg.hex() == v["message_hex"]
     _verify(v["public_key"], msg, v["signature"])  # raises if invalid
+
+
+# --- low-S normalization (audit blocker regression) --------------------------
+
+def _is_low_s(sig_b64):
+    from identity import _P256_ORDER
+    s = int.from_bytes(base64.b64decode(sig_b64)[32:], "big")
+    return s <= _P256_ORDER // 2
+
+
+def test_signatures_are_always_low_s(mgr):
+    # @noble/curves p256.verify rejects high-S by default (the insecure-context
+    # browser and mobile clients). Every signature we emit MUST be low-S, or ~50%
+    # of genuine verifications would fail.
+    mgr.load_or_create()
+    for i in range(200):
+        sig = mgr.sign("SER", "http://10.10.0.42", os.urandom(32))
+        assert _is_low_s(sig), f"high-S signature at iteration {i}"
+
+
+def test_committed_vector_is_low_s():
+    v = json.load(open(os.path.join(os.path.dirname(__file__), "vectors", "identity_v1.json")))
+    assert _is_low_s(v["signature"])
+
+
+def test_transient_read_error_fails_closed_not_regenerate(mgr, monkeypatch):
+    # A transient IO error on an existing key must raise, NOT be treated as
+    # corruption (which would regenerate and revoke every device).
+    import identity as idmod
+    mgr.load_or_create()
+    fp = mgr.fingerprint_hex()
+
+    real_open = open
+
+    def flaky_open(path, *a, **k):
+        if str(path).endswith(".pem"):
+            raise OSError(5, "EIO simulated")
+        return real_open(path, *a, **k)
+
+    monkeypatch.setattr("builtins.open", flaky_open)
+    called = {"revoke": 0}
+    import pairing
+    monkeypatch.setattr(pairing.PairingManagerInstance, "revoke_all",
+                        lambda: called.__setitem__("revoke", called["revoke"] + 1))
+    mgr2 = idmod.IdentityManager()
+    with pytest.raises(idmod.IdentityIOError):
+        mgr2.load_or_create()
+    assert called["revoke"] == 0  # never revoked over a transient read error
+    # Restore ONLY open (not the fixture's IDENTITY_PATH patch): the good key on
+    # disk is untouched and loads cleanly once the transient fault clears.
+    monkeypatch.setattr("builtins.open", real_open)
+    mgr3 = idmod.IdentityManager()
+    mgr3.load_or_create()
+    assert mgr3.fingerprint_hex() == fp

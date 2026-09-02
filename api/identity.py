@@ -31,30 +31,42 @@ logger = MeticulousLogger.getLogger(__name__)
 # nginx port (scheme default).
 BACKEND_PORT = int(os.getenv("PORT", "8080"))
 
-# Simple in-memory rate limiting. Signing costs ~1 ms; the cap only stops the
-# endpoint being used as a CPU sink.
+# Token-bucket rate limiting. Signing costs ~1 ms; the cap only stops the
+# endpoint being used as a CPU sink. Each bucket refills at `rate` tokens/second
+# up to `burst`, so a source may burst to _PER_SOURCE_BURST but sustains only
+# _PER_SOURCE_RPS. (The backend event loop is single-threaded, so the plain
+# dicts need no lock.)
 _PER_SOURCE_RPS = 10
 _PER_SOURCE_BURST = 30
 _GLOBAL_RPS = 50
-_WINDOW = 1.0
-_hits: dict = {}
-_global_hits: list = []
+_GLOBAL_BURST = 50
+# bucket key -> (tokens, last_monotonic)
+_source_buckets: dict = {}
+_global_bucket: dict = {}
+_IDLE_EVICT_S = 30.0
+
+
+def _refill(buckets: dict, key: str, rate: float, burst: float, now: float) -> float:
+    tokens, last = buckets.get(key, (burst, now))
+    return min(burst, tokens + (now - last) * rate)
 
 
 def _rate_limited(source: str) -> bool:
     now = time.monotonic()
-    bucket = [t for t in _hits.get(source, []) if now - t < _WINDOW]
-    gbucket = [t for t in _global_hits if now - t < _WINDOW]
-    if len(gbucket) >= _GLOBAL_RPS:
-        _global_hits[:] = gbucket
+    # Evict idle sources so the per-source dict cannot grow without bound.
+    if len(_source_buckets) > 2048:
+        for k, (_tok, last) in list(_source_buckets.items()):
+            if now - last > _IDLE_EVICT_S:
+                _source_buckets.pop(k, None)
+    g = _refill(_global_bucket, "g", _GLOBAL_RPS, _GLOBAL_BURST, now)
+    s = _refill(_source_buckets, source, _PER_SOURCE_RPS, _PER_SOURCE_BURST, now)
+    if g < 1 or s < 1:
+        # Record the refilled level even on denial so `last` advances.
+        _global_bucket["g"] = (g, now)
+        _source_buckets[source] = (s, now)
         return True
-    if len(bucket) >= max(_PER_SOURCE_RPS, _PER_SOURCE_BURST):
-        _hits[source] = bucket
-        return True
-    bucket.append(now)
-    gbucket.append(now)
-    _hits[source] = bucket
-    _global_hits[:] = gbucket
+    _global_bucket["g"] = (g - 1, now)
+    _source_buckets[source] = (s - 1, now)
     return False
 
 

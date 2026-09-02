@@ -155,8 +155,9 @@ def socket_token(auth, environ) -> Optional[str]:
     """Pull the token from a Socket.IO handshake.
 
     Clients pass it in the connection `auth` payload (io(url, {auth:{token}}));
-    we also accept an Authorization header (non-browser clients) or the token
-    cookie (a browser page that authorized via the pairing flow).
+    we also accept an Authorization header (non-browser clients). The cookie
+    fallback was removed (ADV-020 / identity D10): a cookie rides plain
+    navigations with no identity check.
     """
     if isinstance(auth, dict):
         token = auth.get("token")
