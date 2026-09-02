@@ -272,7 +272,13 @@ class HistoryHandler(BaseHandler):
 
 class StatisticsHandler(BaseHandler):
     def get(self):
+        from machine import Machine
+
         results = ShotDataBase.statistics()
+        # Lifetime shot count held by the ESP, independent of the history
+        # database: it is not reduced when shots are deleted. None until the ESP
+        # has reported it.
+        results["mileage"] = Machine.mileage
         self.write(results)
 
 
