@@ -98,6 +98,10 @@ logger = MeticulousLogger.getLogger(__name__)
 # can be from [FIKA, USB, EMULATOR / EMULATION]
 BACKEND = os.getenv("BACKEND", "FIKA").upper()
 
+# The ESP does not always answer the mileage read we issue when it first reports
+# its info. Repeat the read at this interval until it does.
+MILEAGE_RETRY_INTERVAL_SECONDS = 5
+
 
 class esp_nvs_keys(Enum):
     color = "color_key"
@@ -139,6 +143,9 @@ class Machine:
     # Seed we computed for this boot, cached so the ESP re-asking does not
     # re-run the aggregate query.
     _mileage_seed = None
+    # When we last asked the ESP for its mileage, set by every request so a
+    # retry never races one already in flight.
+    _mileage_last_request = 0.0
     profileReady = False
     oldProfileReady = False
 
@@ -545,6 +552,17 @@ class Machine:
                     case [*_]:
                         logger.info(data_str.strip("\r\n"))
                         is_valid_message = False
+
+                # The read issued alongside the ESP's first info report is not
+                # always answered, which would leave the counter unknown for the
+                # rest of the session. Keep asking until it replies.
+                if (
+                    Machine.infoReady
+                    and Machine.mileage is None
+                    and time.time() - Machine._mileage_last_request
+                    >= MILEAGE_RETRY_INTERVAL_SECONDS
+                ):
+                    Machine.requestMileage()
 
                 old_ready = Machine.infoReady
 
@@ -957,6 +975,7 @@ class Machine:
 
         payload = "nvs_request,read," + esp_nvs_keys.mileage.value + "\x03"
         Machine.write(payload.encode("utf-8"))
+        Machine._mileage_last_request = time.time()
 
     def _handleNvsResponse(nvs_key: str, nvs_value: str):
         if nvs_key != esp_nvs_keys.mileage.value:
