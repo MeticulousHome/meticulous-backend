@@ -312,6 +312,9 @@ _PAIR_PAGE_HTML = """<!doctype html>
     cursor: pointer;
   }
   button:disabled { opacity: .5; cursor: default; }
+  button.secondary {
+    margin-top: 10px; background: transparent; color: inherit; border: 1px solid #a7a69f;
+  }
   input {
     width: 100%; padding: 13px 16px; border: 1px solid #d8d7d0; border-radius: 10px;
     font-size: 1.5rem; letter-spacing: .35em; text-align: center; margin-bottom: 14px;
@@ -342,6 +345,7 @@ _PAIR_PAGE_HTML = """<!doctype html>
 
   <div id="done" class="hidden">
     <p class="ok">This device is now authorized. You can use the Meticulous web tools.</p>
+    <button id="restartBtn" class="secondary">Authorize again</button>
   </div>
 
   <div id="status" class="status" role="status"></div>
@@ -350,85 +354,186 @@ _PAIR_PAGE_HTML = """<!doctype html>
 <script>
 (function () {
   var CRED_KEY = "meticulous.machineCredential";
-  var pairingId = null, expiryTimer = null;
+  var STORAGE_TEST_KEY = CRED_KEY + ".storage-test";
+  var pairingId = null, expiryTimer = null, pairingRevision = 0, verifying = false;
+  var invalidStoredCredential = false;
   var intro = document.getElementById("intro");
   var codeStep = document.getElementById("codeStep");
   var done = document.getElementById("done");
   var status = document.getElementById("status");
   var startBtn = document.getElementById("startBtn");
+  var restartBtn = document.getElementById("restartBtn");
   var verifyBtn = document.getElementById("verifyBtn");
   var codeInput = document.getElementById("codeInput");
 
   function say(msg, cls) { status.textContent = msg || ""; status.className = "status " + (cls || ""); }
 
-  // Already authorized on this origin?
-  try {
-    if (localStorage.getItem(CRED_KEY)) {
-      intro.classList.add("hidden");
-      done.classList.remove("hidden");
-      say("This device was already authorized.", "ok");
-    }
-  } catch (e) {}
+  function validCredential(value) {
+    return value && typeof value === "object" &&
+      typeof value.token === "string" && value.token.length > 0 &&
+      typeof value.serial === "string" && value.serial.length > 0 &&
+      typeof value.fingerprint === "string" && /^[0-9a-f]{64}$/i.test(value.fingerprint) &&
+      typeof (value.public_key || value.publicKey) === "string" &&
+      (value.public_key || value.publicKey).length > 0;
+  }
 
-  startBtn.addEventListener("click", function () {
+  function storageIsWritable() {
+    try {
+      localStorage.setItem(STORAGE_TEST_KEY, "1");
+      localStorage.removeItem(STORAGE_TEST_KEY);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function readCredential() {
+    try {
+      var raw = localStorage.getItem(CRED_KEY);
+      if (!raw) return null;
+      var credential = JSON.parse(raw);
+      if (!validCredential(credential)) {
+        invalidStoredCredential = true;
+        localStorage.removeItem(CRED_KEY);
+        return null;
+      }
+      return credential;
+    } catch (e) {
+      invalidStoredCredential = true;
+      try { localStorage.removeItem(CRED_KEY); } catch (ignored) {}
+      return null;
+    }
+  }
+
+  function saveCredential(data) {
+    var credential = {
+      token: data && data.token,
+      serial: data && data.serial,
+      fingerprint: data && data.identity && data.identity.fingerprint,
+      public_key: data && data.identity && data.identity.public_key
+    };
+    if (!validCredential(credential)) {
+      throw new Error("The machine returned incomplete authorization. Please start again.");
+    }
+    try {
+      // No cookie: a cookie rides plain navigations with no identity check.
+      localStorage.setItem(CRED_KEY, JSON.stringify(credential));
+    } catch (e) {
+      throw new Error("This browser could not save authorization. Enable site storage and try again.");
+    }
+  }
+
+  function showIntro(message, cls) {
+    if (expiryTimer) clearTimeout(expiryTimer);
+    expiryTimer = null;
+    pairingId = null;
+    verifying = false;
+    codeInput.value = "";
+    verifyBtn.disabled = false;
+    startBtn.disabled = false;
+    restartBtn.disabled = false;
+    codeStep.classList.add("hidden");
+    done.classList.add("hidden");
+    intro.classList.remove("hidden");
+    say(message, cls);
+  }
+
+  // Already authorized on this origin?
+  if (!storageIsWritable()) {
     startBtn.disabled = true;
+    say("This browser cannot save authorization. Enable site storage and reload this page.", "err");
+  } else if (readCredential()) {
+    intro.classList.add("hidden");
+    done.classList.remove("hidden");
+    say("This device was already authorized.", "ok");
+  } else if (invalidStoredCredential) {
+    say("The saved authorization was invalid. Authorize this device again.", "err");
+  }
+
+  function startPairing() {
+    if (!storageIsWritable()) {
+      showIntro("This browser cannot save authorization. Enable site storage and reload this page.", "err");
+      startBtn.disabled = true;
+      return;
+    }
+    pairingRevision += 1;
+    var revision = pairingRevision;
+    startBtn.disabled = true;
+    restartBtn.disabled = true;
+    done.classList.add("hidden");
+    intro.classList.remove("hidden");
     say("Asking the machine...");
     fetch("/api/v1/pair/request", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ device_name: navigator.userAgent.slice(0, 60) || "Web browser" })
+      body: JSON.stringify({ device_name: "Web browser" })
     }).then(function (r) {
       if (r.status === 429) throw new Error("Too many attempts. Wait a moment and try again.");
       if (!r.ok) throw new Error("Could not reach the machine.");
       return r.json();
     }).then(function (d) {
+      if (revision !== pairingRevision) return;
+      if (!d || typeof d.pairing_id !== "string" || !d.pairing_id) {
+        throw new Error("The machine returned an invalid pairing session. Please try again.");
+      }
       pairingId = d.pairing_id;
       intro.classList.add("hidden");
+      done.classList.add("hidden");
       codeStep.classList.remove("hidden");
       codeInput.focus();
       say("Enter the code shown on your machine's screen.");
       var secs = d.expires_in || 60;
       expiryTimer = setTimeout(function () {
-        codeStep.classList.add("hidden");
-        intro.classList.remove("hidden");
-        startBtn.disabled = false;
-        say("That code expired. Please start again.", "err");
+        if (revision !== pairingRevision) return;
+        pairingRevision += 1;
+        showIntro("That code expired. Please start again.", "err");
       }, secs * 1000);
     }).catch(function (e) {
-      startBtn.disabled = false;
-      say(e.message, "err");
+      if (revision === pairingRevision) showIntro(e.message, "err");
     });
-  });
+  }
+
+  startBtn.addEventListener("click", startPairing);
+  restartBtn.addEventListener("click", startPairing);
 
   function verify() {
+    if (verifying || !pairingId) return;
     var code = (codeInput.value || "").replace(/[^0-9]/g, "");
     if (code.length !== 6) { say("Enter the 6-digit code.", "err"); return; }
+    var revision = pairingRevision;
+    var approved = false;
+    var verifyingPairingId = pairingId;
+    verifying = true;
     verifyBtn.disabled = true;
     say("Checking...");
     fetch("/api/v1/pair/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pairing_id: pairingId, code: code })
+      body: JSON.stringify({ pairing_id: verifyingPairingId, code: code })
     }).then(function (r) {
       if (r.status === 400 || r.status === 401) throw new Error("That code is wrong or expired.");
       if (!r.ok) throw new Error("Could not verify the code.");
       return r.json();
     }).then(function (d) {
+      if (revision !== pairingRevision) return;
+      approved = true;
+      saveCredential(d);
       if (expiryTimer) clearTimeout(expiryTimer);
-      // Store the credential in the JSON shape the shared library reads. No
-      // cookie: a cookie rides plain navigations with no identity check.
-      try {
-        localStorage.setItem(CRED_KEY, JSON.stringify({
-          token: d.token,
-          serial: d.serial,
-          fingerprint: d.identity && d.identity.fingerprint,
-          public_key: d.identity && d.identity.public_key
-        }));
-      } catch (e) {}
+      expiryTimer = null;
+      verifying = false;
+      restartBtn.disabled = false;
       codeStep.classList.add("hidden");
+      intro.classList.add("hidden");
       done.classList.remove("hidden");
       say("This device is now authorized.", "ok");
     }).catch(function (e) {
+      if (revision !== pairingRevision) return;
+      if (approved) {
+        pairingRevision += 1;
+        showIntro(e.message, "err");
+        return;
+      }
+      verifying = false;
       verifyBtn.disabled = false;
       say(e.message, "err");
     });
