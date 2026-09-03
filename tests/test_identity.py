@@ -1,7 +1,7 @@
 """Machine identity (phase 1): key lifecycle, canonicalization, signing.
 
-Handler-level behavior (challenge ownership check, no-store, rate limit) is
-verified live against the machine; these are the pure-logic units.
+The pure-logic units are complemented by direct handler tests for origin
+ownership and served-origin enforcement. Rate limiting is also verified live.
 """
 
 import base64
@@ -9,6 +9,8 @@ import hashlib
 import json
 import os
 import stat
+import sys
+from types import ModuleType, SimpleNamespace
 
 import pytest
 from cryptography.hazmat.primitives import serialization
@@ -211,6 +213,109 @@ def test_canonical_origin_rejects_bad():
 def test_own_addresses_override_via_env(mgr, monkeypatch):
     monkeypatch.setenv("IDENTITY_OWN_ADDRESSES", "10.10.0.42, espresso.local")
     assert mgr.own_addresses() == {"10.10.0.42", "espresso.local"}
+
+
+# --- challenge handler origin boundary ---------------------------------------
+
+
+class _ChallengeRecorder:
+    def __init__(self, origin):
+        self.request = SimpleNamespace(
+            headers={},
+            remote_ip="192.0.2.55",
+            body=json.dumps(
+                {
+                    "nonce": base64.b64encode(bytes(range(32))).decode(),
+                    "origin": origin,
+                }
+            ).encode(),
+        )
+        self.status = 200
+        self.headers = {}
+        self.body = None
+
+    def set_status(self, status):
+        self.status = status
+
+    def set_header(self, name, value):
+        self.headers[name] = value
+
+    def write(self, body):
+        self.body = body
+
+
+@pytest.fixture
+def challenge_endpoint(monkeypatch):
+    # The endpoint only reads Machine.emulated in the unrelated rotate handler.
+    # Avoid importing the hardware-heavy machine module in this handler unit.
+    machine_stub = ModuleType("machine")
+    machine_stub.Machine = SimpleNamespace(emulated=False)
+    monkeypatch.setitem(sys.modules, "machine", machine_stub)
+    import api.identity as endpoint
+
+    signed = []
+    monkeypatch.setattr(endpoint.IdentityManagerInstance, "is_ready", lambda: True)
+    monkeypatch.setattr(
+        endpoint.IdentityManagerInstance,
+        "own_addresses",
+        lambda: {"10.10.0.42", "espresso.local"},
+    )
+    monkeypatch.setattr(
+        endpoint.IdentityManagerInstance,
+        "sign",
+        lambda serial, origin, nonce: signed.append((serial, origin, nonce)) or "sig",
+    )
+    monkeypatch.setattr(endpoint.IdentityManagerInstance, "public_key_spki_b64", lambda: "spki")
+    monkeypatch.setattr(endpoint.IdentityManagerInstance, "fingerprint_hex", lambda: "fp")
+    monkeypatch.setattr(endpoint, "_rate_limited", lambda _source: False)
+    monkeypatch.setattr(endpoint.identity, "allow_any_origin", lambda: False)
+    monkeypatch.setattr(
+        endpoint,
+        "MeticulousConfig",
+        {endpoint.CONFIG_SYSTEM: {endpoint.MACHINE_SERIAL_NUMBER: "MET-HANDLER-1"}},
+    )
+    return endpoint, signed
+
+
+def _post_challenge(endpoint, origin):
+    recorder = _ChallengeRecorder(origin)
+    endpoint.IdentityChallengeHandler.post(recorder)
+    return recorder
+
+
+def test_challenge_refuses_foreign_origin_without_signing(challenge_endpoint):
+    endpoint, signed = challenge_endpoint
+    response = _post_challenge(endpoint, "http://evil.example")
+
+    assert response.status == 400
+    assert response.body == {"error": "origin_not_mine"}
+    assert response.headers["Cache-Control"] == "no-store"
+    assert signed == []
+
+
+@pytest.mark.parametrize(
+    "origin",
+    ["https://10.10.0.42", "http://10.10.0.42:8081"],
+)
+def test_challenge_refuses_unserved_scheme_or_port_without_signing(challenge_endpoint, origin):
+    endpoint, signed = challenge_endpoint
+    response = _post_challenge(endpoint, origin)
+
+    assert response.status == 400
+    assert response.body == {"error": "origin_not_served"}
+    assert signed == []
+
+
+def test_challenge_signs_canonical_origin_owned_by_machine(challenge_endpoint):
+    endpoint, signed = challenge_endpoint
+    response = _post_challenge(endpoint, "HTTP://10.10.0.42:80")
+
+    assert response.status == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.body["origin"] == "http://10.10.0.42"
+    assert response.body["serial"] == "MET-HANDLER-1"
+    assert response.body["signature"] == "sig"
+    assert signed == [("MET-HANDLER-1", "http://10.10.0.42", bytes(range(32)))]
 
 
 # --- cross-language vector ---------------------------------------------------
