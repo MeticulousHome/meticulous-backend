@@ -1,7 +1,12 @@
+from dataclasses import FrozenInstanceError
+
+import pytest
+
 from ble_auth import (
     AUTH_WINDOW_SECONDS,
     PROMPT_COOLDOWN_SECONDS,
     BleAuthorization,
+    ProvisioningSession,
 )
 
 T0 = 1_000_000.0
@@ -86,3 +91,24 @@ def test_reprompt_after_window_expires():
     auth.grant(T0 + 5)
     expired = T0 + 5 + AUTH_WINDOW_SECONDS + 1
     assert auth.should_prompt(prompt_pending=False, now=expired)
+
+
+def test_provisioning_session_copies_and_hashes_payload():
+    source = bytearray(b"wifi-settings-a")
+    session = ProvisioningSession.create("peer-a", source, now=T0)
+    source[:] = b"wifi-settings-b"
+
+    assert session.payload == b"wifi-settings-a"
+    assert session.matches_payload(b"wifi-settings-a")
+    assert not session.matches_payload(source)
+    assert session.matches_digest(session.payload_digest)
+    assert not session.matches_digest(b"different digest")
+    assert session.peer_id == "peer-a"
+    assert session.created_at == T0
+
+
+def test_provisioning_session_is_immutable():
+    session = ProvisioningSession.create("peer-a", b"wifi-settings", now=T0)
+
+    with pytest.raises(FrozenInstanceError):
+        session.peer_id = "peer-b"

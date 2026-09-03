@@ -114,7 +114,10 @@ try:
     import ble_gatt as ble_gatt_under_test  # noqa: E402
 
     GATTServer = ble_gatt_under_test.GATTServer
+    ImprovCommand = ble_gatt_under_test.ImprovCommand
+    ImprovError = ble_gatt_under_test.ImprovError
     ImprovUUID = ble_gatt_under_test.ImprovUUID
+    ProvisioningSession = ble_gatt_under_test.ProvisioningSession
 finally:
     sys.platform = original_platform
     _restore_modules()
@@ -442,3 +445,199 @@ class TestCredentialLogRedaction:
         assert payload.decode() not in logged
         assert payload.hex() not in logged
         assert f"{len(payload)} bytes" in logged
+
+
+class TestProvisioningPeerIsolation:
+    @staticmethod
+    def setup_server():
+        server = GATTServer.getServer()
+        server.connected_peers = {"/org/bluez/hci0/dev_PEER_A"}
+        server.improv_server = MagicMock()
+        server.improv_server.parse_improv_data.return_value = [
+            ImprovCommand.WIFI_SETTINGS,
+            bytearray(b"NetworkA"),
+            bytearray(b"PasswordA"),
+        ]
+        server._push_state = MagicMock()
+        server._push_error = MagicMock()
+        server.send_provision_prompt = MagicMock()
+        return server
+
+    @staticmethod
+    def command_characteristic():
+        characteristic = MagicMock()
+        characteristic.service_uuid = ImprovUUID.SERVICE_UUID.value
+        characteristic.uuid = ImprovUUID.RPC_COMMAND_UUID.value
+        return characteristic
+
+    def test_second_wifi_settings_cannot_replace_pending_payload(self):
+        server = self.setup_server()
+        characteristic = self.command_characteristic()
+        first_payload = bytearray(b"first immutable payload")
+        second_payload = bytearray(b"second attacker payload")
+
+        GATTServer.write_request(characteristic, first_payload)
+        first_session = server.pending_provision_session
+        GATTServer.write_request(characteristic, second_payload)
+
+        assert first_session is not None
+        assert first_session.payload == bytes(first_payload)
+        assert server.pending_provision_session is first_session
+        server._push_error.assert_called_once_with(ImprovError.NOT_AUTHORIZED)
+        server.send_provision_prompt.assert_called_once()
+
+    def test_wifi_settings_write_does_not_log_credentials(self):
+        self.setup_server()
+        characteristic = self.command_characteristic()
+
+        GATTServer.write_request(characteristic, bytearray(b"encoded credentials"))
+
+        logged = repr(mock_logger.method_calls)
+        assert "NetworkA" not in logged
+        assert "PasswordA" not in logged
+
+    def test_stale_approval_cannot_approve_or_cancel_later_session(self):
+        server = self.setup_server()
+        old_session = ProvisioningSession.create("/org/bluez/hci0/dev_PEER_A", b"old payload")
+        new_session = ProvisioningSession.create("/org/bluez/hci0/dev_PEER_A", b"new payload")
+        server.pending_provision_session = new_session
+        server._run_provision = MagicMock()
+
+        server._complete_provision(old_session.session_id, old_session.payload_digest)
+
+        assert server.pending_provision_session is new_session
+        server._run_provision.assert_not_called()
+
+    def test_approval_requires_the_captured_payload_digest(self):
+        server = self.setup_server()
+        session = ProvisioningSession.create("/org/bluez/hci0/dev_PEER_A", b"wifi payload")
+        server.pending_provision_session = session
+        server._run_provision = MagicMock()
+
+        server._complete_provision(session.session_id, b"wrong digest")
+
+        assert server.pending_provision_session is session
+        server._run_provision.assert_not_called()
+
+    def test_matching_approval_runs_exact_immutable_session(self):
+        server = self.setup_server()
+        session = ProvisioningSession.create("/org/bluez/hci0/dev_PEER_A", b"wifi payload")
+        server.pending_provision_session = session
+        server._run_provision = MagicMock()
+        server.loop.call_soon_threadsafe = lambda callback: callback()
+
+        server._complete_provision(session.session_id, session.payload_digest)
+
+        assert server.pending_provision_session is None
+        assert server.authorized_provision_peer == session.peer_id
+        assert server.ble_auth.active()
+        server._run_provision.assert_called_once_with(session)
+
+    def test_dial_callback_does_not_retain_wifi_payload(self):
+        server = self.setup_server()
+        server.send_provision_prompt = GATTServer.send_provision_prompt.__get__(
+            server, GATTServer
+        )
+        session = ProvisioningSession.create(
+            "/org/bluez/hci0/dev_PEER_A", b"wifi password payload"
+        )
+        server.pending_provision_session = session
+
+        server.send_provision_prompt(session, "NetworkA")
+
+        captured = [
+            cell.cell_contents for cell in server.provision_notification.callback.__closure__
+        ]
+        assert all(not isinstance(value, ProvisioningSession) for value in captured)
+        assert session.payload not in captured
+
+    def test_second_connected_peer_cancels_pending_approval(self):
+        server = self.setup_server()
+        session = ProvisioningSession.create("/org/bluez/hci0/dev_PEER_A", b"wifi payload")
+        server.pending_provision_session = session
+        server.loop.call_soon_threadsafe = MagicMock()
+
+        server._peer_topology_changed("/org/bluez/hci0/dev_PEER_B", True)
+
+        assert server.pending_provision_session is None
+        assert not server.ble_auth.active()
+        server.loop.call_soon_threadsafe.assert_called_once()
+
+    def test_prompt_cooldown_is_enforced_after_cancellation(self):
+        server = self.setup_server()
+        characteristic = self.command_characteristic()
+
+        GATTServer.write_request(characteristic, bytearray(b"first payload"))
+        session = server.pending_provision_session
+        server.loop.call_soon_threadsafe = MagicMock()
+        server._cancel_provision(
+            session.session_id, session.payload_digest, "test cancellation"
+        )
+        server._push_error.reset_mock()
+        GATTServer.write_request(characteristic, bytearray(b"second payload"))
+
+        assert server.pending_provision_session is None
+        server._push_error.assert_called_once_with(ImprovError.NOT_AUTHORIZED)
+
+    def test_secret_result_is_returned_once_and_erased(self):
+        server = self.setup_server()
+        server.bless_gatt_server = MagicMock()
+        secret = bytearray(b"url token fingerprint")
+
+        server._publish_provision_result("/org/bluez/hci0/dev_PEER_A", [secret])
+        stored = server.provision_result[0]
+        first = server._consume_provision_result()
+        second = server._consume_provision_result()
+
+        assert first == [secret]
+        assert second is None
+        assert stored == bytearray()
+        assert server.improv_server.rpc_response == b""
+
+    def test_secret_result_read_is_not_logged(self):
+        server = self.setup_server()
+        server.bless_gatt_server = MagicMock()
+        secret = bytearray(b"SENTINEL-BEARER-TOKEN")
+        server._publish_provision_result("/org/bluez/hci0/dev_PEER_A", [secret])
+        characteristic = MagicMock()
+        characteristic.service_uuid = ImprovUUID.SERVICE_UUID.value
+        characteristic.uuid = ImprovUUID.RPC_RESULT_UUID.value
+
+        value = GATTServer.read_request(characteristic)
+
+        assert value == secret
+        logged = repr(mock_logger.method_calls)
+        assert secret.decode() not in logged
+        assert secret.hex() not in logged
+
+    def test_secret_result_is_destroyed_if_peer_is_not_unique_owner(self):
+        server = self.setup_server()
+        server.bless_gatt_server = MagicMock()
+        server._publish_provision_result(
+            "/org/bluez/hci0/dev_PEER_A", [bytearray(b"secret result")]
+        )
+        server.connected_peers.add("/org/bluez/hci0/dev_PEER_B")
+
+        value = server._consume_provision_result()
+
+        assert value == bytearray()
+        assert server.provision_result is None
+        assert server.improv_server.rpc_response == b""
+
+    def test_secret_result_expires_and_old_timer_cannot_clear_new_result(self):
+        server = self.setup_server()
+        server.bless_gatt_server = MagicMock()
+        server._publish_provision_result(
+            "/org/bluez/hci0/dev_PEER_A", [bytearray(b"old result")]
+        )
+        old_result_id = server.provision_result_id
+        server._publish_provision_result(
+            "/org/bluez/hci0/dev_PEER_A", [bytearray(b"new result")]
+        )
+
+        server._expire_provision_result(old_result_id)
+        assert server.provision_result is not None
+
+        server._expire_provision_result(server.provision_result_id)
+        assert server.provision_result is None
+        assert server.improv_server.rpc_response == b""
