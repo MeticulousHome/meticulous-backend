@@ -596,6 +596,10 @@ class Machine:
                                 logger.info("shot ended with weight unstable")
                             SoundPlayer.play_event_sound(Sounds.BREWING_END)
                             ShotManager.stop()
+                            # The ESP counted this shot when heating handed over
+                            # to the first stage. Re-read so what we expose is
+                            # the counter's current value, not a boot snapshot.
+                            Machine.requestMileage()
 
                     if Machine.is_idle and old_status != MachineStatus.IDLE:
                         Machine.profileReady = False
