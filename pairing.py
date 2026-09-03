@@ -390,12 +390,16 @@ class PairingManager:
     def _record_rejection(self, now: float, source=None) -> None:
         self._recent_rejections.append((now, source))
         self._recent_rejections = [
-            (t, s) for (t, s) in self._recent_rejections if (now - t) < REJECTION_BACKOFF_SECONDS
+            (t, s)
+            for (t, s) in self._recent_rejections
+            if (now - t) < REJECTION_BACKOFF_SECONDS
         ]
 
     def _in_backoff(self, now: float, source=None) -> bool:
         self._recent_rejections = [
-            (t, s) for (t, s) in self._recent_rejections if (now - t) < REJECTION_BACKOFF_SECONDS
+            (t, s)
+            for (t, s) in self._recent_rejections
+            if (now - t) < REJECTION_BACKOFF_SECONDS
         ]
         if len(self._recent_rejections) >= REJECTION_BACKOFF_THRESHOLD:
             return True

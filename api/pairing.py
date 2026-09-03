@@ -271,7 +271,9 @@ API.register_handler(APIVersion.V1, r"/pair/status/([^/]+)", PairStatusHandler)
 API.register_handler(APIVersion.V1, r"/pair/devices", PairedDevicesHandler)
 API.register_handler(APIVersion.V1, r"/pair/devices/revoke-all", PairedDevicesRevokeAllHandler)
 API.register_handler(APIVersion.V1, r"/pair/devices/self/revoke", PairedDeviceSelfRevokeHandler)
-API.register_handler(APIVersion.V1, r"/pair/devices/(?!self/)([^/]+)/revoke", PairedDeviceRevokeHandler)
+API.register_handler(
+    APIVersion.V1, r"/pair/devices/(?!self/)([^/]+)/revoke", PairedDeviceRevokeHandler
+)
 
 
 # Self-contained standalone pairing page (served by PairPageHandler). Kept as a

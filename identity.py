@@ -216,9 +216,7 @@ class IdentityManager:
             return
 
         if mstate == "ok":
-            logger.warning(
-                "Primary machine identity unreadable; recovered from mirror copy."
-            )
+            logger.warning("Primary machine identity unreadable; recovered from mirror copy.")
             self._generation = self._read_generation()
             self._adopt(mkey)
             self._restore_primary_from_current()
@@ -264,9 +262,7 @@ class IdentityManager:
         try:
             key = serialization.load_pem_private_key(data, password=None)
         except Exception:
-            logger.warning(
-                f"Machine identity at {os.path.basename(path)} is not a valid key."
-            )
+            logger.warning(f"Machine identity at {os.path.basename(path)} is not a valid key.")
             return ("corrupt", None)
         if not isinstance(key, ec.EllipticCurvePrivateKey) or not isinstance(
             key.curve, ec.SECP256R1
@@ -332,13 +328,17 @@ class IdentityManager:
 
                 PairingManagerInstance.revoke_all()
             except Exception as e:
-                logger.error(f"Failed to revoke devices after identity change: {type(e).__name__}")
+                logger.error(
+                    f"Failed to revoke devices after identity change: {type(e).__name__}"
+                )
             try:
                 import socket_registry
 
                 socket_registry.disconnect_all_devices()
             except Exception as e:
-                logger.error(f"Failed to disconnect sockets after identity change: {type(e).__name__}")
+                logger.error(
+                    f"Failed to disconnect sockets after identity change: {type(e).__name__}"
+                )
 
     def _restore_primary_from_current(self) -> None:
         key_path, _ = self._paths()

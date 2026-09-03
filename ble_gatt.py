@@ -774,7 +774,9 @@ class GATTServer:
                     server.improv_server.last_error = ImprovError.NONE
                     server._push_state()
                     server.send_provision_prompt(ssid)
-                    logger.info(f"BLE provisioning requested for '{ssid}'; awaiting Dial approval")
+                    logger.info(
+                        f"BLE provisioning requested for '{ssid}'; awaiting Dial approval"
+                    )
                     return
             (
                 target_uuid,

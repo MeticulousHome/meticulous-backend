@@ -140,9 +140,7 @@ def request_has_access(handler) -> bool:
     For endpoints that are public but must return LESS to an unpaired caller
     (e.g. /machine returns only a minimal identity for discovery, full build and
     repository detail only once authorized)."""
-    if client_is_local(
-        handler.request.remote_ip, handler.request.headers.get("X-Real-IP")
-    ):
+    if client_is_local(handler.request.remote_ip, handler.request.headers.get("X-Real-IP")):
         return True
     token = extract_token(
         handler.request.headers.get("Authorization"),

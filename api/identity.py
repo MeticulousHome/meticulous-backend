@@ -177,7 +177,9 @@ class IdentityRotateHandler(LocalAccessHandler):
         confirm = self.get_argument("confirm", None)
         if confirm != "true":
             try:
-                confirm = "true" if json.loads(self.request.body or "{}").get("confirm") else None
+                confirm = (
+                    "true" if json.loads(self.request.body or "{}").get("confirm") else None
+                )
             except json.JSONDecodeError:
                 confirm = None
         if confirm != "true":

@@ -85,7 +85,10 @@ def test_socket_token_extraction():
     assert auth.socket_token({}, {"HTTP_AUTHORIZATION": "Bearer xyz"}) == "xyz"
     assert auth.socket_token(None, {}) is None
     # auth payload wins over header
-    assert auth.socket_token({"token": "fromauth"}, {"HTTP_AUTHORIZATION": "Bearer fromheader"}) == "fromauth"
+    assert (
+        auth.socket_token({"token": "fromauth"}, {"HTTP_AUTHORIZATION": "Bearer fromheader"})
+        == "fromauth"
+    )
 
 
 def test_socket_dial_loopback_allowed_without_token():
@@ -102,9 +105,7 @@ def test_socket_lan_client_needs_valid_token():
     # Valid token in the handshake auth payload -> allowed.
     assert auth.is_socket_authorized(lan, {"token": "good-token"})
     # Valid token via Authorization header fallback -> allowed.
-    assert auth.is_socket_authorized(
-        {**lan, "HTTP_AUTHORIZATION": "Bearer good-token"}, None
-    )
+    assert auth.is_socket_authorized({**lan, "HTTP_AUTHORIZATION": "Bearer good-token"}, None)
 
 
 def test_cookie_is_no_longer_accepted():
@@ -122,8 +123,12 @@ def test_lan_client_is_not_authorized_by_cookie_alone():
     # A browser navigation with only the cookie (no Authorization header) is now
     # unauthorized, because the cookie is ignored.
     assert not auth.is_authorized(
-        "GET", "/api/v1/profile/list", "127.0.0.1", "192.168.1.50",
-        None, "met_device_token=good-token",
+        "GET",
+        "/api/v1/profile/list",
+        "127.0.0.1",
+        "192.168.1.50",
+        None,
+        "met_device_token=good-token",
     )
 
 

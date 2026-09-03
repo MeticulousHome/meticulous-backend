@@ -39,6 +39,7 @@ def _verify(spki_b64, message, sig_b64):
 
 # --- key lifecycle -----------------------------------------------------------
 
+
 def test_keygen_creates_file_outside_config_with_mirror(mgr):
     mgr.load_or_create()
     key_path, mirror_path = mgr._paths()
@@ -62,8 +63,11 @@ def test_absent_key_generated_quietly_without_revoke(mgr, monkeypatch):
     called = {"revoke": 0}
     import pairing
 
-    monkeypatch.setattr(pairing.PairingManagerInstance, "revoke_all",
-                        lambda: called.__setitem__("revoke", called["revoke"] + 1))
+    monkeypatch.setattr(
+        pairing.PairingManagerInstance,
+        "revoke_all",
+        lambda: called.__setitem__("revoke", called["revoke"] + 1),
+    )
     mgr.load_or_create()
     assert called["revoke"] == 0  # first boot must not revoke
 
@@ -77,12 +81,15 @@ def test_corrupt_primary_recovers_from_mirror_without_revoke(mgr, monkeypatch):
     called = {"revoke": 0}
     import pairing
 
-    monkeypatch.setattr(pairing.PairingManagerInstance, "revoke_all",
-                        lambda: called.__setitem__("revoke", called["revoke"] + 1))
+    monkeypatch.setattr(
+        pairing.PairingManagerInstance,
+        "revoke_all",
+        lambda: called.__setitem__("revoke", called["revoke"] + 1),
+    )
     mgr2 = IdentityManager()
     mgr2.load_or_create()
-    assert mgr2.fingerprint_hex() == fp     # recovered from mirror
-    assert called["revoke"] == 0            # recoverable -> no revoke
+    assert mgr2.fingerprint_hex() == fp  # recovered from mirror
+    assert called["revoke"] == 0  # recoverable -> no revoke
 
 
 def test_unrecoverable_corruption_regenerates_and_revokes(mgr, monkeypatch):
@@ -96,10 +103,16 @@ def test_unrecoverable_corruption_regenerates_and_revokes(mgr, monkeypatch):
     import pairing
     import socket_registry
 
-    monkeypatch.setattr(pairing.PairingManagerInstance, "revoke_all",
-                        lambda: called.__setitem__("revoke", called["revoke"] + 1))
-    monkeypatch.setattr(socket_registry, "disconnect_all_devices",
-                        lambda: called.__setitem__("disconnect", called["disconnect"] + 1))
+    monkeypatch.setattr(
+        pairing.PairingManagerInstance,
+        "revoke_all",
+        lambda: called.__setitem__("revoke", called["revoke"] + 1),
+    )
+    monkeypatch.setattr(
+        socket_registry,
+        "disconnect_all_devices",
+        lambda: called.__setitem__("disconnect", called["disconnect"] + 1),
+    )
     mgr2 = IdentityManager()
     mgr2.load_or_create()
     assert mgr2.fingerprint_hex() != old_fp
@@ -120,13 +133,16 @@ def test_private_key_never_logged(mgr, caplog):
             mgr.sign(serial, origin, os.urandom(32))
     assert "BEGIN PRIVATE KEY" not in caplog.text
     pem = mgr._private_key.private_bytes(
-        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
-        serialization.NoEncryption()).decode()
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption(),
+    ).decode()
     body = pem.splitlines()[1]
     assert body not in caplog.text
 
 
 # --- signing -----------------------------------------------------------------
+
 
 def test_sign_roundtrips_and_binds_all_fields(mgr):
     mgr.load_or_create()
@@ -136,9 +152,11 @@ def test_sign_roundtrips_and_binds_all_fields(mgr):
     assert len(base64.b64decode(sig)) == 64  # P1363 r||s, not DER
     _verify(mgr.public_key_spki_b64(), build_message(serial, origin, nonce), sig)
     # Changing any field breaks verification.
-    for bad in (build_message("OTHER", origin, nonce),
-                build_message(serial, "http://10.10.0.99", nonce),
-                build_message(serial, origin, os.urandom(32))):
+    for bad in (
+        build_message("OTHER", origin, nonce),
+        build_message(serial, "http://10.10.0.99", nonce),
+        build_message(serial, origin, os.urandom(32)),
+    ):
         with pytest.raises(Exception):
             _verify(mgr.public_key_spki_b64(), bad, sig)
 
@@ -151,6 +169,7 @@ def test_fingerprint_is_sha256_of_spki(mgr):
 
 # --- length prefix -----------------------------------------------------------
 
+
 def test_lp_rejects_len_ge_65536():
     identity._lp(b"x" * 65535)  # ok
     with pytest.raises(ValueError):
@@ -158,6 +177,7 @@ def test_lp_rejects_len_ge_65536():
 
 
 # --- canonical origin KATs (shared with the TS client) -----------------------
+
 
 def test_canonical_origin_kats():
     cases = {
@@ -176,9 +196,14 @@ def test_canonical_origin_kats():
 
 
 def test_canonical_origin_rejects_bad():
-    for bad in ("ftp://10.10.0.42", "http://user:pw@10.10.0.42",
-                "http://10.10.0.42/path", "http://10.10.0.42?q=1",
-                "http://[fe80::1%eth0]", ""):
+    for bad in (
+        "ftp://10.10.0.42",
+        "http://user:pw@10.10.0.42",
+        "http://10.10.0.42/path",
+        "http://10.10.0.42?q=1",
+        "http://[fe80::1%eth0]",
+        "",
+    ):
         with pytest.raises(OriginError):
             canonical_origin(bad)
 
@@ -190,6 +215,7 @@ def test_own_addresses_override_via_env(mgr, monkeypatch):
 
 # --- cross-language vector ---------------------------------------------------
 
+
 def test_matches_committed_vector():
     path = os.path.join(os.path.dirname(__file__), "vectors", "identity_v1.json")
     v = json.load(open(path))
@@ -200,8 +226,10 @@ def test_matches_committed_vector():
 
 # --- low-S normalization (audit blocker regression) --------------------------
 
+
 def _is_low_s(sig_b64):
     from identity import _P256_ORDER
+
     s = int.from_bytes(base64.b64decode(sig_b64)[32:], "big")
     return s <= _P256_ORDER // 2
 
@@ -225,6 +253,7 @@ def test_transient_read_error_fails_closed_not_regenerate(mgr, monkeypatch):
     # A transient IO error on an existing key must raise, NOT be treated as
     # corruption (which would regenerate and revoke every device).
     import identity as idmod
+
     mgr.load_or_create()
     fp = mgr.fingerprint_hex()
 
@@ -238,8 +267,12 @@ def test_transient_read_error_fails_closed_not_regenerate(mgr, monkeypatch):
     monkeypatch.setattr("builtins.open", flaky_open)
     called = {"revoke": 0}
     import pairing
-    monkeypatch.setattr(pairing.PairingManagerInstance, "revoke_all",
-                        lambda: called.__setitem__("revoke", called["revoke"] + 1))
+
+    monkeypatch.setattr(
+        pairing.PairingManagerInstance,
+        "revoke_all",
+        lambda: called.__setitem__("revoke", called["revoke"] + 1),
+    )
     mgr2 = idmod.IdentityManager()
     with pytest.raises(idmod.IdentityIOError):
         mgr2.load_or_create()
