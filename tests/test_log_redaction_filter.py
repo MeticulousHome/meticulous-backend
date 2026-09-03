@@ -342,7 +342,11 @@ class ThroughputTests(FilterTestCase):
         # Warm the sweep so compilation is not counted.
         self.logger.info(message)
 
-        iterations = 4000
+        # A 4,000-record window is only about 0.2 seconds on CI, so one normal
+        # scheduler interruption can move an otherwise >20k records/s run below
+        # the threshold. Keep the same throughput requirement, but measure it
+        # over a sustained interval that is long enough to absorb runner noise.
+        iterations = 20000
         started = time.perf_counter()
         for _ in range(iterations):
             self.logger.info(message)
