@@ -9,7 +9,9 @@ from enum import Enum
 import asyncio
 
 from .api import API, APIVersion
+from .auth import request_has_access
 from .base_handler import BaseHandler, LocalAccessHandler
+from identity import IdentityManagerInstance
 from ota import UpdateManager
 from backlight_controller import BacklightController
 from datetime import datetime
@@ -27,6 +29,31 @@ from config import (
 )
 
 logger = MeticulousLogger.getLogger(__name__)
+
+
+def get_machine_identity():
+    """Minimal identity for pre-pairing discovery.
+
+    An unauthorized LAN caller (the app listing machines before the user can
+    pair) gets only this: name, serial and colour -- what discovery needs to
+    render the machine, and no more than the mDNS hostname already reveals. The
+    detailed build/channel/repository/version-history in get_machine_info() is
+    withheld until the caller is authorized, so committer names, the
+    manufacturing flag and the update history are not exposed to strangers on
+    the network.
+    """
+    response = {
+        "name": HostnameManager.generateDeviceName(),
+        "serial": MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER],
+        "color": MeticulousConfig[CONFIG_SYSTEM][MACHINE_COLOR] or "",
+    }
+    if Machine.esp_info is not None:
+        response["firmware"] = Machine.esp_info.firmwareV
+    # The pinned machine identity: public and needed by credential-less
+    # discovery, so it is in the minimal body too.
+    if IdentityManagerInstance.is_ready():
+        response["identity"] = IdentityManagerInstance.identity_dict()
+    return response
 
 
 def get_machine_info():
@@ -48,6 +75,9 @@ def get_machine_info():
     )
 
     response["serial"] = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
+
+    if IdentityManagerInstance.is_ready():
+        response["identity"] = IdentityManagerInstance.identity_dict()
 
     response["color"] = ""
     if MeticulousConfig[CONFIG_SYSTEM][MACHINE_COLOR] is not None:
@@ -174,12 +204,34 @@ class UpdateOSStatus(BaseHandler):
 
 class MachineInfoHandler(BaseHandler):
     def get(self):
-        self.write(json.dumps(get_machine_info()))
+        # Public for discovery, but unpaired callers get only the minimal
+        # identity; the full build/repository/history detail requires a token
+        # (or loopback / the Dial).
+        # A stale cached identity would produce spurious "identity changed"
+        # states on the client, so never cache this body.
+        self.set_header("Cache-Control", "no-store")
+        if request_has_access(self):
+            self.write(json.dumps(get_machine_info()))
+        else:
+            self.write(json.dumps(get_machine_identity()))
 
 
 class MachineResetHandler(LocalAccessHandler):
     def get(self):
+        # Destructive and non-idempotent: never on GET (a link or a prefetch
+        # must not wipe the machine). Say why instead of failing silently.
+        self.set_status(405)
+        self.set_header("Allow", "POST")
+        self.write({"error": "Factory reset requires POST with confirm=true"})
+
+    def post(self):
         confirm = self.get_argument("confirm", None)
+        if confirm != "true":
+            try:
+                body = json.loads(self.request.body or "{}")
+                confirm = "true" if body.get("confirm") else None
+            except json.JSONDecodeError:
+                confirm = None
         if confirm != "true":
             self.set_status(400)
             self.write({"error": "Confirmation required. Add confirm=true"})

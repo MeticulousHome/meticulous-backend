@@ -1,5 +1,6 @@
 import json
 from notifications import NotificationManager
+from .auth import request_is_local
 from .base_handler import BaseHandler
 from .api import API, APIVersion
 
@@ -19,6 +20,14 @@ class GetNotificationsHandler(BaseHandler):
             # Return only unacknowledged notifications
             notifications = NotificationManager.get_unacknowledged_notifications()
 
+        # Security prompts (pairing codes, BLE approval) are Dial-only: their
+        # body carries an enrollment secret, so they are never listed to a LAN
+        # client, however well authorized it is.
+        is_local = request_is_local(self)
+        if not is_local:
+            notifications = [n for n in notifications if not n.sensitive]
+
+        self.set_header("Cache-Control", "no-store")
         self.write(
             json.dumps(
                 [
@@ -39,7 +48,9 @@ class GetNotificationsHandler(BaseHandler):
         notification_id = data.get("id")
         logger.info(f"acknowledge {notification_id}")
         response = data.get("response")
-        if NotificationManager.acknowledge_notification(notification_id, response):
+        if NotificationManager.acknowledge_notification(
+            notification_id, response, is_local=request_is_local(self)
+        ):
             self.write({"status": "success"})
         else:
             self.set_status(404)
