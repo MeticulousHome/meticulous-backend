@@ -240,6 +240,26 @@ class TestESPInfo:
         assert info.batchNumber == "B456"
         assert info.buildDate == "2024-01-01"
         assert info.scaleModule == "scale1"
+        assert info.tareBehavior is None
+
+    def test_parse_tare_behavior_from_new_firmware(self):
+        args = [
+            "1.2.3",
+            "2",
+            "24.5",
+            "black",
+            "SN123",
+            "B456",
+            "2024-01-01",
+            "scale1",
+            "45.33",
+            "false",
+            "before_retraction",
+        ]
+        info = ESPInfo.from_args(args)
+
+        assert info.tareBehavior == "before_retraction"
+        assert info.to_sio()["tare_behavior_supported"] is True
 
     def test_parse_minimal(self):
         args = ["0.9.1", "1", "23.0"]
@@ -273,6 +293,13 @@ class TestESPInfo:
         assert reparsed.firmwareV == info.firmwareV
         assert reparsed.mainVoltage == info.mainVoltage
         assert reparsed.color == info.color
+
+    def test_roundtrip_to_args_with_tare_behavior(self):
+        info = ESPInfo(tareBehavior="after_retraction")
+
+        reparsed = ESPInfo.from_args(info.to_args())
+
+        assert reparsed.tareBehavior == "after_retraction"
 
 
 class TestButtonEventData:

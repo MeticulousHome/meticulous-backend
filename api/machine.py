@@ -16,6 +16,7 @@ from ota import UpdateManager
 from backlight_controller import BacklightController
 from datetime import datetime
 from timezone_manager import TimezoneManager
+from pour_over_profiles import PourOverProfileManager
 
 from config import (
     MeticulousConfig,
@@ -64,6 +65,14 @@ def get_machine_info():
     if Machine.esp_info is not None:
         response["firmware"] = Machine.esp_info.firmwareV
         response["mainVoltage"] = Machine.esp_info.mainVoltage
+
+    response["tare_behavior_supported"] = bool(
+        Machine.esp_info is not None and Machine.esp_info.tareBehavior is not None
+    )
+    response["pour_over_profiles_supported"] = PourOverProfileManager.is_available()
+    response["pour_over_profile_schema_version"] = (
+        1 if PourOverProfileManager.is_available() else None
+    )
 
     response["serial"] = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
 

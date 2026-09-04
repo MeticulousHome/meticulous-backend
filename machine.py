@@ -26,6 +26,7 @@ from config import (
     MACHINE_BATCH_NUMBER,
     MACHINE_HEAT_ON_BOOT,
     PROFILE_AUTO_PURGE,
+    PROFILE_TARE_BEHAVIOR,
     PROFILE_PARTIAL_RETRACTION,
     MeticulousConfig,
 )
@@ -105,6 +106,7 @@ class esp_nvs_keys(Enum):
     build_date = "build_date_key"
     partial_retraction = "partial_retraction_key"
     auto_purge_after_shot = "auto_purge_after_shot_key"
+    tare_behavior = "tare_behavior_key"
 
 
 class Machine:
@@ -159,6 +161,7 @@ class Machine:
     aborted_by_motor_consumtion = False
 
     esp_restart_request = False
+    _pending_tare_behavior_writes = []
 
     @staticmethod
     def get_somrev():
@@ -382,6 +385,7 @@ class Machine:
                     Machine.reset_count += 1
                     Machine.startTime = time.time()
                     Machine.esp_info = None
+                    Machine._pending_tare_behavior_writes = []
                     info_requested = False
                     Machine.infoReady = False
                     Machine.profileReady = False
@@ -430,6 +434,8 @@ class Machine:
                         sensor = SensorData.from_args(sensorArgs)
                     case ["ESPInfo", *infoArgs]:
                         info = ESPInfo.from_args(infoArgs)
+                    case ["nvs_response", "tare_behavior_key", status]:
+                        Machine.handleTareBehaviorNVSResponse(status)
                     case ["Notify", *notifyArgs]:
                         notify = MachineNotify(
                             notifyArgs[0], ",".join(notifyArgs[1:]).replace(";", "\n")
@@ -649,6 +655,10 @@ class Machine:
                     Machine.setPartialRetraction(backend_partial_retraction)
                     backend_auto_purge = bool(MeticulousConfig[CONFIG_USER][PROFILE_AUTO_PURGE])
                     Machine.setAutoPurgeAfterShot(backend_auto_purge)
+                    backend_tare_behavior = str(
+                        MeticulousConfig[CONFIG_USER][PROFILE_TARE_BEHAVIOR]
+                    )
+                    Machine.setTareBehavior(backend_tare_behavior)
 
                     if (
                         info.serialNumber != ""
@@ -845,7 +855,11 @@ class Machine:
         alarm_set = AlarmManager.is_alarm_set(AlarmType.MOTOR_STRESSED)
         refuse_action = action_event == "purge" and alarm_set is not None
         if refuse_action:
-            logger.error(f"refusing action {action_event}, there is an alarm up")
+            warning_message = (
+                f"refusing action {action_event}, there is an alarm up (motor_stressed)"
+            )
+            logger.warning(warning_message)
+            sentry_sdk.capture_message(warning_message, "warning")
             AlarmManager._notify_user(
                 message=f"Brewing has been disabled because of a recent high strain on the motor, let it rest for {math.ceil((alarm_set - time.time())/60.0) if math.isfinite(alarm_set) else 10} more minutes",
                 image=WARNING_TRIANGLE_IMAGE,
@@ -1021,6 +1035,61 @@ Build Date: {build_date}
 
         if Machine.esp_info is not None:
             Machine.esp_info.autoPurgeAfterShot = desired_value
+
+    def setTareBehavior(tare_behavior: str):
+        desired_value = str(tare_behavior)
+
+        if Machine.esp_info is None or Machine.esp_info.tareBehavior is None:
+            logger.info("Deferring tare_behavior sync until supported firmware is connected")
+            return
+
+        if (
+            Machine.esp_info.tareBehavior == desired_value
+            and not Machine._pending_tare_behavior_writes
+        ):
+            return
+
+        if (
+            Machine._pending_tare_behavior_writes
+            and Machine._pending_tare_behavior_writes[-1] == desired_value
+        ):
+            return
+
+        if (
+            Machine._connection is None
+            or Machine._connection.port is None
+            or Machine._stopESPcomm
+        ):
+            logger.warning(
+                "Cannot sync tare_behavior to ESP32 because serial connection is not ready"
+            )
+            return
+
+        write_request = "nvs_request,write,"
+        payload = (
+            write_request + esp_nvs_keys.tare_behavior.value + "," + desired_value + "\x03"
+        )
+        Machine.write(payload.encode("utf-8"))
+        logger.info("Synced tare_behavior to ESP32: " + f"requested={desired_value}")
+        Machine._pending_tare_behavior_writes.append(desired_value)
+
+    def handleTareBehaviorNVSResponse(status: str):
+        if not Machine._pending_tare_behavior_writes:
+            logger.warning("Received tare_behavior NVS response without a pending write")
+            return
+
+        pending_value = Machine._pending_tare_behavior_writes.pop(0)
+
+        if status.upper() != "SUCCESS":
+            logger.error(
+                "ESP32 rejected tare_behavior NVS write: "
+                + f"requested={pending_value}, status={status}"
+            )
+            return
+
+        if Machine.esp_info is not None:
+            Machine.esp_info.tareBehavior = pending_value
+        logger.info("ESP32 confirmed tare_behavior NVS write: " + pending_value)
 
     def _parseVersionString(version_str: str):
         release = None
