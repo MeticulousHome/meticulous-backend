@@ -94,13 +94,11 @@ class SimplifiedJson:
         return current_reference_id - 1
 
     def set_comparison_type(self, comparison_value=None):
-        default_comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
-
-        if comparison_value is None:
-            comparison_value = default_comparison
-            print(f"Comparison value is None. Using default value: {default_comparison}.")
-
-        if comparison_value == ">=":
+        if comparison_value == ">":
+            comparison = TriggerOperatorType.GREATER_THAN
+        elif comparison_value == "<":
+            comparison = TriggerOperatorType.LESS_THAN
+        elif comparison_value == ">=" or comparison_value is None:
             comparison = TriggerOperatorType.GREATER_THAN_OR_EQUAL
         elif comparison_value == "<=":
             comparison = TriggerOperatorType.LESS_THAN_OR_EQUAL
