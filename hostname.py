@@ -1,13 +1,54 @@
 import subprocess
 import random
+import socket
 
-from config import CONFIG_SYSTEM, MeticulousConfig, DEVICE_IDENTIFIER, MACHINE_SERIAL_NUMBER
+from config import (
+    CONFIG_SYSTEM,
+    CONFIG_USER,
+    DEVICE_IDENTIFIER,
+    HOSTNAME_OVERRIDE,
+    MACHINE_SERIAL_NUMBER,
+    MeticulousConfig,
+)
 from log import MeticulousLogger
 
 logger = MeticulousLogger.getLogger(__name__)
 
 
 class HostnameManager:
+
+    @staticmethod
+    def _configuredIdentifierIsValid() -> bool:
+        identifier = MeticulousConfig[CONFIG_SYSTEM][DEVICE_IDENTIFIER]
+        return (
+            isinstance(identifier, list)
+            and len(identifier) == 2
+            and all(isinstance(component, str) and component for component in identifier)
+        )
+
+    @staticmethod
+    def identifierFromHostname(hostname: str) -> tuple[str, str] | None:
+        """Recover a generated machine identifier from an established hostname."""
+        serial = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
+        if not isinstance(hostname, str) or not hostname or serial is None:
+            return None
+
+        short_hostname = hostname.split(".", 1)[0]
+        prefix = "meticulous"
+        suffix = f"-{serial}"
+        if not short_hostname.startswith(prefix) or not short_hostname.endswith(suffix):
+            return None
+
+        encoded_identifier = short_hostname[len(prefix) : -len(suffix)]
+        for adjective in HostnameManager.ADJECTIVES:
+            adjective_component = adjective.capitalize()
+            if not encoded_identifier.casefold().startswith(adjective_component.casefold()):
+                continue
+            noun_component = encoded_identifier[len(adjective_component) :]
+            for noun in HostnameManager.NOUNS:
+                if noun_component.casefold() == noun.casefold():
+                    return (adjective, noun)
+        return None
 
     # We are using random identifier here instead of deriving it from something
     def _generateRandomIdentifierComponents() -> tuple[str, str]:
@@ -20,11 +61,32 @@ class HostnameManager:
         return (adjective, noun)
 
     def init():
-        if len(MeticulousConfig[CONFIG_SYSTEM][DEVICE_IDENTIFIER]) == 2:
+        recovered_identifier = HostnameManager.identifierFromHostname(socket.gethostname())
+        hostname_override = MeticulousConfig[CONFIG_USER][HOSTNAME_OVERRIDE]
+        configured_identifier = MeticulousConfig[CONFIG_SYSTEM][DEVICE_IDENTIFIER]
+
+        # A recognizable deployed hostname is the safest canonical source when no
+        # explicit override exists. This repairs both missing and conflicting config
+        # without changing the customer-visible OS hostname.
+        if hostname_override is None and recovered_identifier is not None:
+            recovered_list = list(recovered_identifier)
+            if configured_identifier != recovered_list:
+                logger.warning("Recovered device identifier from established hostname")
+                MeticulousConfig[CONFIG_SYSTEM][DEVICE_IDENTIFIER] = recovered_list
+                MeticulousConfig.save()
+            return
+
+        if HostnameManager._configuredIdentifierIsValid():
+            return
+
+        if recovered_identifier is not None:
+            logger.warning("Recovered missing device identifier from established hostname")
+            MeticulousConfig[CONFIG_SYSTEM][DEVICE_IDENTIFIER] = list(recovered_identifier)
+            MeticulousConfig.save()
             return
 
         adjective, noun = HostnameManager._generateRandomIdentifierComponents()
-        logger.info("Created new device identifier pair:")
+        logger.info("Created new device identifier pair")
         MeticulousConfig[CONFIG_SYSTEM][DEVICE_IDENTIFIER] = [adjective, noun]
         MeticulousConfig.save()
 
