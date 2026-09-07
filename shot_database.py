@@ -463,6 +463,18 @@ class ShotDataBase:
             return parsed_results
 
     @staticmethod
+    def list_history_files(after: str | None = None, max_results: int = 200):
+        """Return a bounded, cursor-ordered index for the on-machine uploader."""
+        statement = select(history_table.c.file)
+        if after:
+            statement = statement.where(history_table.c.file > after)
+        statement = statement.order_by(asc(history_table.c.file)).limit(
+            min(max(max_results, 1), 200)
+        )
+        with ShotDataBase.engine.connect() as connection:
+            return [{"file": row.file} for row in connection.execute(statement).fetchall()]
+
+    @staticmethod
     def autocomplete_profile_name(prefix):
         with ShotDataBase.session() as session:
             if not prefix:
