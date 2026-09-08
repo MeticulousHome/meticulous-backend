@@ -5,6 +5,8 @@ import uuid
 
 import jsonschema
 import pytest
+from tornado.testing import AsyncHTTPTestCase
+from tornado.web import Application
 
 os.environ.setdefault("MOTOR_ENERGY_PATH", "/tmp/meticulous-test/motor-energy")
 
@@ -37,7 +39,10 @@ sys.modules.setdefault(
     ),
 )
 
+import json  # noqa: E402
+import manual_mode  # noqa: E402
 import profiles  # noqa: E402
+from api.profiles import CreateProfileFromManualHandler  # noqa: E402
 from profiles import (  # noqa: E402
     MANUAL_MODE_AUTHOR,
     MANUAL_MODE_AUTHOR_ID,
@@ -53,8 +58,6 @@ from profiles import (  # noqa: E402
 
 @pytest.fixture
 def profile_schema():
-    import json
-
     schema_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         "profile_schema",
@@ -480,3 +483,179 @@ def test_find_manual_shot_rejects_a_shot_from_another_profile(monkeypatch):
     # the same entry is accepted when the caller did not name a shot, because
     # the query itself filtered on the Manual mode profile id
     assert manual_mode.find_manual_shot(None) is other
+
+
+# --- POST /api/v1/profile/from_manual ---------------------------------------
+
+
+class TestCreateProfileFromManualHandler(AsyncHTTPTestCase):
+    def setUp(self):
+        self.saved = []
+        self.found = []
+        self.shot = _manual_shot([_pressure_sample(1000, 6.0)])
+        self.built = {"id": "built-profile", "name": "Manual 2026-09-07 00:00"}
+
+        def fake_find(shot_id):
+            self.found.append(shot_id)
+            return self.shot
+
+        def fake_build(shot, name):
+            self.built["name"] = name or self.built["name"]
+            return self.built
+
+        def fake_save(data, set_last_changed=False, change_id=None, skip_validation=False):
+            self.saved.append((data, change_id))
+            return {"profile": data, "change_id": change_id or "generated"}
+
+        self.find_manual_shot = fake_find
+        self.build_profile_from_manual_shot = fake_build
+        self.save_profile = fake_save
+
+        self.previous = (
+            manual_mode.find_manual_shot,
+            manual_mode.build_profile_from_manual_shot,
+            ProfileManager.save_profile,
+        )
+        manual_mode.find_manual_shot = lambda shot_id: self.find_manual_shot(shot_id)
+        manual_mode.build_profile_from_manual_shot = (
+            lambda shot, name: self.build_profile_from_manual_shot(shot, name)
+        )
+        ProfileManager.save_profile = lambda data, **kwargs: self.save_profile(data, **kwargs)
+        super().setUp()
+
+    def tearDown(self):
+        super().tearDown()
+        (
+            manual_mode.find_manual_shot,
+            manual_mode.build_profile_from_manual_shot,
+            ProfileManager.save_profile,
+        ) = self.previous
+
+    def get_app(self):
+        return Application([(r"/api/v1/profile/from_manual", CreateProfileFromManualHandler)])
+
+    def post(self, body="", headers=None):
+        return self.fetch(
+            "/api/v1/profile/from_manual",
+            method="POST",
+            body=body,
+            headers=headers,
+        )
+
+    def test_an_empty_body_saves_the_latest_manual_brew(self):
+        response = self.post()
+
+        assert response.code == 200
+        assert json.loads(response.body) == {
+            "profile": self.built,
+            "change_id": "generated",
+        }
+        assert self.found == [None]
+        assert self.saved == [(self.built, None)]
+
+    def test_the_change_id_header_is_forwarded_to_save_profile(self):
+        response = self.post(headers={"X-Change-Id": "change-42"})
+
+        assert response.code == 200
+        assert json.loads(response.body)["change_id"] == "change-42"
+        assert self.saved == [(self.built, "change-42")]
+
+    def test_the_requested_shot_id_is_forwarded(self):
+        response = self.post(body=json.dumps({"shot_id": "shot-7", "name": "Morning"}))
+
+        assert response.code == 200
+        assert self.found == ["shot-7"]
+        assert self.built["name"] == "Morning"
+
+    def test_a_non_object_body_is_rejected(self):
+        response = self.post(body=json.dumps(["not", "an", "object"]))
+
+        assert response.code == 400
+        assert json.loads(response.body) == {
+            "status": "error",
+            "error": "body must be a JSON object",
+        }
+        assert self.found == []
+
+    def test_a_non_string_name_is_rejected(self):
+        response = self.post(body=json.dumps({"name": 7}))
+
+        assert response.code == 400
+        assert json.loads(response.body) == {
+            "status": "error",
+            "error": "name must be a string",
+        }
+        assert self.found == []
+
+    def test_a_non_string_shot_id_is_rejected(self):
+        response = self.post(body=json.dumps({"shot_id": 7}))
+
+        assert response.code == 400
+        assert json.loads(response.body) == {
+            "status": "error",
+            "error": "shot_id must be a string",
+        }
+        assert self.found == []
+
+    def test_a_missing_manual_brew_is_reported_as_not_found(self):
+        def missing(shot_id):
+            raise manual_mode.ManualShotNotFound("no manual brew in history")
+
+        self.find_manual_shot = missing
+
+        response = self.post()
+
+        assert response.code == 404
+        assert json.loads(response.body) == {
+            "status": "error",
+            "error": "no manual brew found",
+        }
+
+    def test_a_brew_without_targets_is_reported_as_a_conflict(self):
+        def without_targets(shot, name):
+            raise manual_mode.ManualShotHasNoTargets("no pressure targets")
+
+        self.build_profile_from_manual_shot = without_targets
+
+        response = self.post()
+
+        assert response.code == 409
+        assert json.loads(response.body) == {
+            "status": "error",
+            "error": "manual brew has no pressure targets",
+        }
+
+    def test_a_schema_violation_is_reported_like_profile_save(self):
+        def invalid(data, **kwargs):
+            raise jsonschema.exceptions.ValidationError("'stages' is a required property")
+
+        self.save_profile = invalid
+
+        response = self.post()
+
+        assert response.code == 400
+        assert json.loads(response.body) == {
+            "status": "error",
+            "error": "JSON validation error: 'stages' is a required property",
+        }
+
+    def test_an_unexpected_failure_is_reported_with_its_cause(self):
+        def broken(data, **kwargs):
+            raise OSError("read-only filesystem")
+
+        self.save_profile = broken
+
+        response = self.post()
+
+        assert response.code == 400
+        body = json.loads(response.body)
+        assert body["status"] == "error"
+        assert body["error"] == "failed to create profile from manual brew"
+        assert body["cause"] == "read-only filesystem"
+
+    def test_a_malformed_body_is_rejected(self):
+        response = self.post(body="{not json")
+
+        assert response.code == 400
+        assert json.loads(response.body)["status"] == "error"
+        assert self.found == []
