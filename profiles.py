@@ -60,6 +60,19 @@ DEFAULT_PROFILES_PATH = os.getenv(
     "DEFAULT_PROFILES", "/opt/meticulous-backend/default_profiles"
 )
 
+# Manual mode profile (cross-repo contract "Manual mode" v1, section 2). The id
+# is stable across boots and machines so the dial and the firmware can rely on
+# it; clients still detect a manual profile by `manual is True`, never by id or
+# name, because the user may rename it.
+MANUAL_MODE_PROFILE_ID = "4d616e75-616c-4d6f-8465-000000000001"
+MANUAL_MODE_PROFILE_NAME = "Manual mode"
+MANUAL_MODE_STAGE_NAME = "Manual"
+MANUAL_MODE_STAGE_KEY = "manual_pressure"
+MANUAL_MODE_TEMPERATURE = 90.0
+MANUAL_MODE_FINAL_WEIGHT_SENTINEL = 1000.0
+MANUAL_MODE_AUTHOR = "Meticulous"
+MANUAL_MODE_AUTHOR_ID = "00000000-0000-0000-0000-000000000000"
+
 
 class PROFILE_EVENT(Enum):
     CREATE = "create"
@@ -108,6 +121,7 @@ class ProfileManager:
         ProfileManager.refresh_image_list()
         ProfileManager.refresh_default_profile_list()
         ProfileManager.refresh_profile_list()
+        ProfileManager.ensure_manual_mode_profile()
         ProfileManager._delete_unused_images()
 
         # Seed hover state from last loaded profile
@@ -253,6 +267,57 @@ class ProfileManager:
             logger.info("No accent color found, generating random one")
             random_color = ProfileManager.generate_ramdom_accent_color()
             data["display"]["accentColor"] = random_color
+
+    def build_manual_mode_profile() -> dict:
+        """A fresh copy of the seeded Manual mode document (contract section 2).
+
+        The runtime only reads `stages[0].dynamics.points[0][1]` as the initial
+        pressure target; the encoder drives the target from there.
+        """
+        return {
+            "id": MANUAL_MODE_PROFILE_ID,
+            "name": MANUAL_MODE_PROFILE_NAME,
+            "author": MANUAL_MODE_AUTHOR,
+            "author_id": MANUAL_MODE_AUTHOR_ID,
+            "previous_authors": [],
+            "temperature": MANUAL_MODE_TEMPERATURE,
+            "final_weight": MANUAL_MODE_FINAL_WEIGHT_SENTINEL,
+            "variables": [],
+            "display": {},
+            "manual": True,
+            "stages": [
+                {
+                    "name": MANUAL_MODE_STAGE_NAME,
+                    "key": MANUAL_MODE_STAGE_KEY,
+                    "type": "pressure",
+                    "dynamics": {
+                        "points": [[0, 0]],
+                        "over": "time",
+                        "interpolation": "none",
+                    },
+                    "exit_triggers": [{"type": "user_interaction", "value": 1}],
+                    "limits": [],
+                }
+            ],
+        }
+
+    def ensure_manual_mode_profile() -> bool:
+        """Seed the Manual mode profile when it is absent. Returns True if written."""
+        if MANUAL_MODE_PROFILE_ID in ProfileManager._known_profiles:
+            return False
+
+        try:
+            ProfileManager.save_profile(
+                ProfileManager.build_manual_mode_profile(), set_last_changed=True
+            )
+        except Exception:
+            # Seeding is best effort: a machine that cannot write this profile
+            # must still finish starting up.
+            logger.error("Failed to seed the Manual mode profile", exc_info=True)
+            return False
+
+        logger.info("Seeded Manual mode profile")
+        return True
 
     def save_profile(
         data,
