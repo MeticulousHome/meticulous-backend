@@ -1,3 +1,4 @@
+import copy
 import hashlib
 import json
 import os
@@ -60,16 +61,24 @@ DEFAULT_PROFILES_PATH = os.getenv(
     "DEFAULT_PROFILES", "/opt/meticulous-backend/default_profiles"
 )
 
-# Manual mode profile (cross-repo contract "Manual mode" v1, section 2). The id
+# Manual mode profile (cross-repo contract "Manual mode" v5, section 2). The id
 # is stable across boots and machines so the dial and the firmware can rely on
 # it; clients still detect a manual profile by `manual is True`, never by id or
 # name, because the user may rename it.
 MANUAL_MODE_PROFILE_ID = "4d616e75-616c-4d6f-8465-000000000001"
 MANUAL_MODE_PROFILE_NAME = "Manual mode"
-MANUAL_MODE_STAGE_NAME = "Manual"
-MANUAL_MODE_STAGE_KEY = "manual_pressure"
+MANUAL_MODE_PRESSURE_STAGE_NAME = "Manual pressure"
+MANUAL_MODE_PRESSURE_STAGE_KEY = "manual_pressure"
+MANUAL_MODE_FLOW_STAGE_NAME = "Manual flow"
+MANUAL_MODE_FLOW_STAGE_KEY = "manual_flow"
 MANUAL_MODE_TEMPERATURE = 90.0
-MANUAL_MODE_FINAL_WEIGHT_SENTINEL = 1000.0
+# "No weight stop": a target the brew cannot reach, so the shot ends on the
+# click instead. v1 shipped 1000.0, which a large enough carafe could hit.
+# 2000.0 is the schema's own maximum for `final_weight`, so it is both the
+# largest value a profile may carry and the ceiling the dial's weight setting
+# offers -- `final_weight >= 2000` is the "no weight stop" convention.
+MANUAL_MODE_FINAL_WEIGHT_SENTINEL = 2000.0
+MANUAL_MODE_LEGACY_FINAL_WEIGHT_SENTINEL = 1000.0
 MANUAL_MODE_AUTHOR = "Meticulous"
 MANUAL_MODE_AUTHOR_ID = "00000000-0000-0000-0000-000000000000"
 
@@ -268,12 +277,44 @@ class ProfileManager:
             random_color = ProfileManager.generate_ramdom_accent_color()
             data["display"]["accentColor"] = random_color
 
-    def build_manual_mode_profile() -> dict:
-        """A fresh copy of the seeded Manual mode document (contract section 2).
+    def manual_mode_stages() -> list:
+        """The seeded manual stage pair, pressure first (contract section 2).
 
-        The runtime only reads `stages[0].dynamics.points[0][1]` as the initial
-        pressure target; the encoder drives the target from there.
+        Only `stages[0].dynamics.points[0][1]` is read at load time, as the
+        initial target of the stage the shot starts in; the encoder drives the
+        target from there. The `user_interaction` exit triggers document the
+        click that hands over to the other stage -- the node program of
+        section 8 implements it as a button trigger.
         """
+        return [
+            {
+                "name": MANUAL_MODE_PRESSURE_STAGE_NAME,
+                "key": MANUAL_MODE_PRESSURE_STAGE_KEY,
+                "type": "pressure",
+                "dynamics": {
+                    "points": [[0, 0]],
+                    "over": "time",
+                    "interpolation": "none",
+                },
+                "exit_triggers": [{"type": "user_interaction", "value": 1}],
+                "limits": [],
+            },
+            {
+                "name": MANUAL_MODE_FLOW_STAGE_NAME,
+                "key": MANUAL_MODE_FLOW_STAGE_KEY,
+                "type": "flow",
+                "dynamics": {
+                    "points": [[0, 0]],
+                    "over": "time",
+                    "interpolation": "none",
+                },
+                "exit_triggers": [{"type": "user_interaction", "value": 1}],
+                "limits": [],
+            },
+        ]
+
+    def build_manual_mode_profile() -> dict:
+        """A fresh copy of the seeded Manual mode document (contract section 2)."""
         return {
             "id": MANUAL_MODE_PROFILE_ID,
             "name": MANUAL_MODE_PROFILE_NAME,
@@ -285,38 +326,64 @@ class ProfileManager:
             "variables": [],
             "display": {},
             "manual": True,
-            "stages": [
-                {
-                    "name": MANUAL_MODE_STAGE_NAME,
-                    "key": MANUAL_MODE_STAGE_KEY,
-                    "type": "pressure",
-                    "dynamics": {
-                        "points": [[0, 0]],
-                        "over": "time",
-                        "interpolation": "none",
-                    },
-                    "exit_triggers": [{"type": "user_interaction", "value": 1}],
-                    "limits": [],
-                }
-            ],
+            "stages": ProfileManager.manual_mode_stages(),
         }
 
-    def ensure_manual_mode_profile() -> bool:
-        """Seed the Manual mode profile when it is absent. Returns True if written."""
-        if MANUAL_MODE_PROFILE_ID in ProfileManager._known_profiles:
+    def manual_profile_has_seeded_stages(profile: dict) -> bool:
+        """True when `profile` already carries the section 2 stage pair.
+
+        Order is deliberately not checked: the dial reorders the pair to record
+        which stage the shot starts in, and that choice is the user's setup.
+        """
+        stages = profile.get("stages")
+        if not isinstance(stages, list) or len(stages) != 2:
             return False
 
+        expected = {
+            (MANUAL_MODE_PRESSURE_STAGE_KEY, "pressure"),
+            (MANUAL_MODE_FLOW_STAGE_KEY, "flow"),
+        }
+        found = set()
+        for stage in stages:
+            if not isinstance(stage, dict):
+                return False
+            found.add((stage.get("key"), stage.get("type")))
+
+        return found == expected
+
+    def ensure_manual_mode_profile() -> bool:
+        """Seed or migrate the Manual mode profile on boot. True if written.
+
+        A profile that already has the seeded stage pair is left alone whatever
+        its stage order and values -- that is the user's saved setup. One that
+        does not (a v1 single-stage profile, or one a client has damaged) keeps
+        its name, temperature, display, authorship and final weight and has its
+        stages replaced.
+        """
+        existing = ProfileManager._known_profiles.get(MANUAL_MODE_PROFILE_ID)
+
+        if existing is None:
+            profile = ProfileManager.build_manual_mode_profile()
+            action = "Seeded"
+        elif ProfileManager.manual_profile_has_seeded_stages(existing):
+            return False
+        else:
+            profile = copy.deepcopy(existing)
+            profile["manual"] = True
+            profile["stages"] = ProfileManager.manual_mode_stages()
+            if profile.get("final_weight") == MANUAL_MODE_LEGACY_FINAL_WEIGHT_SENTINEL:
+                profile["final_weight"] = MANUAL_MODE_FINAL_WEIGHT_SENTINEL
+            action = "Migrated"
+
         try:
-            ProfileManager.save_profile(
-                ProfileManager.build_manual_mode_profile(), set_last_changed=True
-            )
+            ProfileManager.save_profile(profile, set_last_changed=True)
         except Exception:
             # Seeding is best effort: a machine that cannot write this profile
             # must still finish starting up.
-            logger.error("Failed to seed the Manual mode profile", exc_info=True)
+            logger.error("Failed to write the Manual mode profile", exc_info=True)
             return False
 
-        logger.info("Seeded Manual mode profile")
+        logger.info(f"{action} Manual mode profile")
         return True
 
     def save_profile(
