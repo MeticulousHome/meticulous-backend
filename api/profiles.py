@@ -40,6 +40,11 @@ class ListHandler(BaseHandler):
         profiles = ProfileManager.list_profiles()
         response = []
         for profile in profiles:
+            # Manual profiles are reached from the manual-mode setup flow, not
+            # from the profile list (contract "Manual mode" v5, section 2).
+            # `get`, `load`, `save` and `last` still serve them.
+            if profile.get("manual") is True:
+                continue
             p = profile.copy()
             if not full_profiles:
                 if "stages" in p:
