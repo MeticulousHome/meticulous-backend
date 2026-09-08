@@ -1,9 +1,14 @@
 """Turn a recorded manual brew into a saveable espresso profile.
 
-During a manual brew the encoder drives the pressure target and the backend
-records it like any other setpoint. Replaying those recorded targets as the
-points of a single pressure stage reproduces what the user actually did, so no
-separate recorder is needed: the shot history already holds everything.
+During a manual brew the encoder drives the pressure or flow target and the
+backend records it like any other setpoint. Replaying those recorded targets as
+the points of a curve reproduces what the user actually did, so no separate
+recorder is needed: the shot history already holds everything.
+
+The user can hop between the pressure and the flow stage as often as they like,
+so the samples are cut into runs of consecutive samples under the same control
+and each run becomes one stage. Replaying the whole shot as a single stage would
+lose the switches; replaying each sample as its own stage would lose the curve.
 
 Implements section 5 ("Profile construction") of the Manual mode cross-repo
 contract.
@@ -34,7 +39,7 @@ class ManualShotNotFound(Exception):
 
 
 class ManualShotHasNoTargets(Exception):
-    """The manual brew recorded no pressure targets to build a stage from."""
+    """The manual brew recorded no pressure or flow targets to build a stage from."""
 
 
 def _is_number(value) -> bool:
@@ -63,12 +68,14 @@ def find_manual_shot(shot_id: str | None = None) -> dict:
     return shot
 
 
-def build_profile_from_manual_shot(shot: dict, name: str | None = None) -> dict:
-    """Pure: a history entry (search_history shape, dump_data=True) -> profile dict."""
-    points: list[list[float]] = []
-    start_time = None
-    last_x = None
-    last_kept = None
+def _target_runs(shot: dict) -> list:
+    """The shot's target samples, cut into runs of consecutive samples per control.
+
+    Each run is `{"type": "pressure" | "flow", "points": [[x, y], ...],
+    "last_sample": <the shot dict of the newest sample kept>}`, with `x` in
+    seconds from the run's own first sample.
+    """
+    runs: list[dict] = []
 
     for sample in shot.get("data") or []:
         if not isinstance(sample, dict):
@@ -79,41 +86,75 @@ def build_profile_from_manual_shot(shot: dict, name: str | None = None) -> dict:
         setpoints = recorded.get("setpoints")
         if not isinstance(setpoints, dict):
             continue
-        if setpoints.get("active") != "pressure":
+        active = setpoints.get("active")
+        if active not in ("pressure", "flow"):
             continue
-        pressure = setpoints.get("pressure")
-        if not _is_number(pressure):
+        target = setpoints.get(active)
+        if not _is_number(target):
             continue
         timestamp = sample.get("profile_time", sample.get("time"))
         if not _is_number(timestamp):
             continue
 
+        if not runs or runs[-1]["type"] != active:
+            runs.append(
+                {
+                    "type": active,
+                    "points": [],
+                    "start_time": timestamp,
+                    "last_x": None,
+                    "last_sample": None,
+                }
+            )
+        run = runs[-1]
+
         # The sample carries a usable target, so it is the newest one seen even
         # if its timestamp does not advance the curve.
-        last_kept = recorded
+        run["last_sample"] = recorded
 
-        if start_time is None:
-            start_time = timestamp
-
-        x = round((timestamp - start_time) / 1000.0, 2)
-        if last_x is not None and x <= last_x:
+        x = round((timestamp - run["start_time"]) / 1000.0, 2)
+        if run["last_x"] is not None and x <= run["last_x"]:
             continue
 
-        points.append([x, round(pressure, 2)])
-        last_x = x
+        run["points"].append([x, round(target, 2)])
+        run["last_x"] = x
 
-    if not points:
-        raise ManualShotHasNoTargets("the manual brew recorded no pressure targets")
+    return runs
 
-    duration = points[-1][0]
-    exit_trigger = {
-        "type": "time",
-        "value": max(duration, MIN_STAGE_DURATION),
-        "relative": True,
-        "comparison": ">=",
+
+def _stage_from_run(run: dict, index: int) -> dict:
+    """One stage replaying `run`, numbered `index` (1-based) among all runs."""
+    duration = run["points"][-1][0]
+    return {
+        "name": f"{run['type'].capitalize()} {index}",
+        "key": str(uuid.uuid4()),
+        "type": run["type"],
+        "dynamics": {
+            "points": run["points"],
+            "over": "time",
+            "interpolation": "none",
+        },
+        "exit_triggers": [
+            {
+                "type": "time",
+                "value": max(duration, MIN_STAGE_DURATION),
+                "relative": True,
+                "comparison": ">=",
+            }
+        ],
+        "limits": [],
     }
 
-    weight = last_kept.get("weight")
+
+def build_profile_from_manual_shot(shot: dict, name: str | None = None) -> dict:
+    """Pure: a history entry (search_history shape, dump_data=True) -> profile dict."""
+    runs = _target_runs(shot)
+    if not runs:
+        raise ManualShotHasNoTargets("the manual brew recorded no pressure or flow targets")
+
+    stages = [_stage_from_run(run, index) for index, run in enumerate(runs, start=1)]
+
+    weight = runs[-1]["last_sample"].get("weight")
     if _is_number(weight) and weight >= MIN_MEANINGFUL_WEIGHT:
         final_weight = round(weight, 1)
     else:
@@ -129,7 +170,10 @@ def build_profile_from_manual_shot(shot: dict, name: str | None = None) -> dict:
     else:
         profile_name = datetime.fromtimestamp(shot["time"]).strftime("Manual %Y-%m-%d %H:%M")
 
-    logger.info(f"Built a profile from a manual brew with {len(points)} pressure targets")
+    points_kept = sum(len(run["points"]) for run in runs)
+    logger.info(
+        f"Built a profile from a manual brew: {len(stages)} stages, {points_kept} targets"
+    )
 
     return {
         "id": str(uuid.uuid4()),
@@ -141,18 +185,5 @@ def build_profile_from_manual_shot(shot: dict, name: str | None = None) -> dict:
         "final_weight": final_weight,
         "variables": [],
         "display": {},
-        "stages": [
-            {
-                "name": "Pressure",
-                "key": str(uuid.uuid4()),
-                "type": "pressure",
-                "dynamics": {
-                    "points": points,
-                    "over": "time",
-                    "interpolation": "none",
-                },
-                "exit_triggers": [exit_trigger],
-                "limits": [],
-            }
-        ],
+        "stages": stages,
     }
