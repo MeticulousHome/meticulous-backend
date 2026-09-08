@@ -361,6 +361,15 @@ def _pressure_sample(profile_time, pressure, weight=0.0, use_profile_time=True):
     )
 
 
+def _flow_sample(profile_time, flow, weight=0.0, use_profile_time=True):
+    return _sample(
+        profile_time,
+        {"active": "flow", "flow": flow},
+        weight=weight,
+        use_profile_time=use_profile_time,
+    )
+
+
 def _manual_shot(data, shot_time=SHOT_TIME, profile=None):
     if profile is None:
         profile = {
@@ -416,7 +425,7 @@ def test_build_profile_from_manual_shot_replays_the_pressure_targets(profile_sch
 
     assert len(profile["stages"]) == 1
     stage = profile["stages"][0]
-    assert stage["name"] == "Pressure"
+    assert stage["name"] == "Pressure 1"
     assert stage["type"] == "pressure"
     assert stage["limits"] == []
     assert stage["dynamics"]["over"] == "time"
@@ -577,6 +586,642 @@ def test_build_profile_from_manual_shot_without_targets(data):
 
     with pytest.raises(ManualShotHasNoTargets):
         build_profile_from_manual_shot(_manual_shot(data), None)
+
+
+# --- multi-stage construction (contract section 5) --------------------------
+
+
+def _switching_shot():
+    """A brew that starts in pressure, moves to flow, and comes back."""
+    return _manual_shot(
+        [
+            _pressure_sample(0, 6.0, weight=0.0),
+            _pressure_sample(1000, 7.0, weight=2.0),
+            _flow_sample(2000, 2.5, weight=8.0),
+            _flow_sample(3000, 2.0, weight=14.0),
+            _pressure_sample(4000, 4.0, weight=20.0),
+        ]
+    )
+
+
+def test_each_run_of_a_control_becomes_its_own_stage(profile_schema):
+    from manual_mode import build_profile_from_manual_shot
+
+    profile = build_profile_from_manual_shot(_switching_shot(), None)
+
+    jsonschema.validate(instance=profile, schema=profile_schema)
+
+    assert [stage["name"] for stage in profile["stages"]] == [
+        "Pressure 1",
+        "Flow 2",
+        "Pressure 3",
+    ]
+    assert [stage["type"] for stage in profile["stages"]] == ["pressure", "flow", "pressure"]
+    assert len({stage["key"] for stage in profile["stages"]}) == 3
+    for stage in profile["stages"]:
+        assert uuid.UUID(stage["key"])
+        assert stage["limits"] == []
+        assert stage["dynamics"]["over"] == "time"
+        assert stage["dynamics"]["interpolation"] == "none"
+
+
+def test_each_stage_restarts_its_own_clock():
+    from manual_mode import build_profile_from_manual_shot
+
+    profile = build_profile_from_manual_shot(_switching_shot(), None)
+
+    assert profile["stages"][0]["dynamics"]["points"] == [[0.0, 6.0], [1.0, 7.0]]
+    assert profile["stages"][1]["dynamics"]["points"] == [[0.0, 2.5], [1.0, 2.0]]
+    assert profile["stages"][2]["dynamics"]["points"] == [[0.0, 4.0]]
+
+
+def test_each_stage_exits_on_its_own_duration():
+    from manual_mode import build_profile_from_manual_shot
+
+    profile = build_profile_from_manual_shot(_switching_shot(), None)
+
+    assert [stage["exit_triggers"] for stage in profile["stages"]] == [
+        [{"type": "time", "value": 1.0, "relative": True, "comparison": ">="}],
+        [{"type": "time", "value": 1.0, "relative": True, "comparison": ">="}],
+        # a one-sample run still needs a duration the ESP can leave on
+        [{"type": "time", "value": 0.1, "relative": True, "comparison": ">="}],
+    ]
+
+
+def test_a_flow_only_brew_builds_a_flow_stage(profile_schema):
+    from manual_mode import build_profile_from_manual_shot
+
+    profile = build_profile_from_manual_shot(
+        _manual_shot([_flow_sample(0, 2.0), _flow_sample(1000, 2.4, weight=18.0)]), None
+    )
+
+    jsonschema.validate(instance=profile, schema=profile_schema)
+
+    assert [stage["name"] for stage in profile["stages"]] == ["Flow 1"]
+    assert profile["stages"][0]["type"] == "flow"
+    assert profile["stages"][0]["dynamics"]["points"] == [[0.0, 2.0], [1.0, 2.4]]
+    assert profile["final_weight"] == 18.0
+
+
+def test_samples_without_a_target_do_not_split_a_run():
+    from manual_mode import build_profile_from_manual_shot
+
+    profile = build_profile_from_manual_shot(
+        _manual_shot(
+            [
+                _pressure_sample(0, 6.0),
+                # retracting and a malformed sample sit inside one pressure run
+                _sample(1000, {"active": None}),
+                _sample(1500, {"active": "pressure"}),
+                _pressure_sample(2000, 7.0),
+            ]
+        ),
+        None,
+    )
+
+    assert [stage["name"] for stage in profile["stages"]] == ["Pressure 1"]
+    assert profile["stages"][0]["dynamics"]["points"] == [[0.0, 6.0], [2.0, 7.0]]
+
+
+def test_the_final_weight_comes_from_the_last_target_of_the_last_run():
+    from manual_mode import build_profile_from_manual_shot
+
+    profile = build_profile_from_manual_shot(_switching_shot(), None)
+
+    assert profile["final_weight"] == 20.0
+
+
+def test_a_brew_that_never_reached_a_meaningful_weight_uses_the_sentinel():
+    from manual_mode import build_profile_from_manual_shot
+
+    profile = build_profile_from_manual_shot(
+        _manual_shot([_pressure_sample(0, 6.0), _flow_sample(1000, 2.0, weight=0.2)]), None
+    )
+
+    assert profile["final_weight"] == MANUAL_MODE_FINAL_WEIGHT_SENTINEL == 2000.0
+
+
+def test_the_sentinel_is_the_schema_maximum(profile_schema):
+    """The sentinel has to be a value the schema accepts, or nothing can save it."""
+    bounds = profile_schema["properties"]["final_weight"]
+
+    assert MANUAL_MODE_FINAL_WEIGHT_SENTINEL == bounds["maximum"]
+    assert MANUAL_MODE_LEGACY_FINAL_WEIGHT_SENTINEL < MANUAL_MODE_FINAL_WEIGHT_SENTINEL
+
+
+def test_alternating_single_sample_runs_each_get_a_stage():
+    from manual_mode import build_profile_from_manual_shot
+
+    profile = build_profile_from_manual_shot(
+        _manual_shot(
+            [
+                _pressure_sample(0, 6.0),
+                _flow_sample(500, 2.0),
+                _pressure_sample(1000, 7.0),
+                _flow_sample(1500, 2.4),
+            ]
+        ),
+        None,
+    )
+
+    assert [stage["name"] for stage in profile["stages"]] == [
+        "Pressure 1",
+        "Flow 2",
+        "Pressure 3",
+        "Flow 4",
+    ]
+    assert all(
+        stage["dynamics"]["points"] == [[0.0, point]]
+        for stage, point in zip(profile["stages"], [6.0, 2.0, 7.0, 2.4])
+    )
+
+
+# --- node program (contract section 8) --------------------------------------
+
+
+HEAD_STAGE_NAMES = [
+    "prepare",
+    "purge",
+    "water detection",
+    "heating",
+    "heating",
+    "click to start",
+    "retracting",
+    "closing valve",
+]
+TAIL_STAGE_NAMES = ["retracting", "click to purge", "remove cup", "purge", "END_STAGE"]
+
+
+@pytest.fixture
+def manual_document():
+    return ProfileManager.build_manual_mode_profile()
+
+
+@pytest.fixture
+def flow_first_document():
+    profile = ProfileManager.build_manual_mode_profile()
+    profile["stages"] = list(reversed(profile["stages"]))
+    return profile
+
+
+def _program_nodes(program):
+    return [node for stage in program["stages"] for node in stage["nodes"]]
+
+
+def _manual_program_stages(program):
+    from manual_program import _is_manual_stage
+
+    return [stage for stage in program["stages"] if _is_manual_stage(stage)]
+
+
+def _main_nodes(stage):
+    """The start/resume nodes of a manual stage -- everything but its init node."""
+    from manual_program import MANUAL_CONTROLLER_KINDS
+
+    return [
+        node
+        for node in stage["nodes"]
+        if any(c["kind"] in MANUAL_CONTROLLER_KINDS for c in node["controllers"])
+    ]
+
+
+def test_build_manual_program_keeps_the_head_and_tail_around_the_manual_stages(
+    manual_document,
+):
+    from manual_program import build_manual_program
+
+    program = build_manual_program(manual_document)
+
+    assert [stage["name"] for stage in program["stages"]] == (
+        HEAD_STAGE_NAMES + ["Manual pressure", "Manual flow"] + TAIL_STAGE_NAMES
+    )
+    assert program["id"] == MANUAL_MODE_PROFILE_ID
+    assert program["name"] == MANUAL_MODE_PROFILE_NAME
+
+
+def test_a_flow_first_document_renders_its_stages_in_document_order(flow_first_document):
+    from manual_program import build_manual_program
+
+    program = build_manual_program(flow_first_document)
+
+    manual = _manual_program_stages(program)
+    assert [stage["name"] for stage in manual] == ["Manual flow", "Manual pressure"]
+
+    # the start node -- the one entered from the head -- is the flow one
+    start = [
+        controller
+        for controller in _main_nodes(manual[0])[0]["controllers"]
+        if controller["initial"]["kind"] == "value"
+    ]
+    assert start[0]["kind"] == "manual_flow_controller"
+
+
+def test_the_head_exits_onto_the_first_manual_stages_init_node(manual_document):
+    from manual_program import END_NODE_HEAD, build_manual_program
+
+    program = build_manual_program(manual_document)
+
+    closing_valve = [s for s in program["stages"] if s["name"] == "closing valve"][0]
+    exits = {t["next_node_id"] for n in closing_valve["nodes"] for t in n["triggers"]}
+    assert exits == {END_NODE_HEAD}
+
+    first_manual = _manual_program_stages(program)[0]
+    assert first_manual["nodes"][0]["id"] == END_NODE_HEAD
+
+
+def test_node_ids_are_unique_across_the_whole_program(manual_document):
+    from manual_program import build_manual_program
+
+    ids = [node["id"] for node in _program_nodes(build_manual_program(manual_document))]
+
+    assert len(ids) == len(set(ids))
+
+
+def test_every_next_node_id_resolves_to_a_node(manual_document):
+    from manual_program import build_manual_program
+
+    program = build_manual_program(manual_document)
+    known = {node["id"] for node in _program_nodes(program)}
+
+    targets = {
+        trigger["next_node_id"]
+        for node in _program_nodes(program)
+        for trigger in node["triggers"]
+    }
+    assert targets <= known
+
+
+def test_every_manual_main_node_carries_the_four_contract_triggers(manual_document):
+    from manual_program import INIT_NODE_TAIL, build_manual_program
+
+    program = build_manual_program(manual_document)
+    manual = _manual_program_stages(program)
+    resume_ids = [_main_nodes(stage)[-1]["id"] for stage in manual]
+
+    for index, stage in enumerate(manual):
+        other_resume = resume_ids[(index + 1) % len(manual)]
+        for node in _main_nodes(stage):
+            assert node["triggers"] == [
+                {
+                    "kind": "button_trigger",
+                    "source": "Encoder Button",
+                    "gesture": "Single Tap",
+                    "next_node_id": other_resume,
+                },
+                {
+                    "kind": "button_trigger",
+                    "source": "Encoder Button",
+                    "gesture": "Long Press",
+                    "next_node_id": INIT_NODE_TAIL,
+                },
+                {
+                    "kind": "weight_value_trigger",
+                    "operator": ">=",
+                    "value": MANUAL_MODE_FINAL_WEIGHT_SENTINEL,
+                    "source": "Weight Predictive",
+                    "weight_reference_id": 1,
+                    "next_node_id": INIT_NODE_TAIL,
+                },
+                {
+                    "kind": "piston_position_trigger",
+                    "operator": ">=",
+                    "value": 73,
+                    "source": "Piston Position Raw",
+                    "position_reference_id": 0,
+                    "next_node_id": INIT_NODE_TAIL,
+                },
+            ]
+
+
+def test_a_tap_hands_the_shot_to_the_other_stage(manual_document):
+    from manual_program import build_manual_program
+
+    manual = _manual_program_stages(build_manual_program(manual_document))
+    pressure, flow = manual
+
+    flow_resume = _main_nodes(flow)[-1]["id"]
+    pressure_resume = _main_nodes(pressure)[-1]["id"]
+
+    for node in _main_nodes(pressure):
+        assert node["triggers"][0]["next_node_id"] == flow_resume
+    for node in _main_nodes(flow):
+        assert node["triggers"][0]["next_node_id"] == pressure_resume
+
+
+def test_the_manual_controllers_match_the_contract(manual_document):
+    from manual_program import build_manual_program
+
+    manual = _manual_program_stages(build_manual_program(manual_document))
+    pressure_nodes = _main_nodes(manual[0])
+    flow_nodes = _main_nodes(manual[1])
+
+    # first stage: a start node entered from the head, then the resume node
+    assert len(pressure_nodes) == 2
+    assert pressure_nodes[0]["controllers"] == [
+        {
+            "kind": "manual_pressure_controller",
+            "algorithm": "Pressure PID v1.0",
+            "step": 0.1,
+            "min": 0.0,
+            "max": 12.0,
+            "initial": {"kind": "value", "value": 0.0},
+        }
+    ]
+    assert pressure_nodes[1]["controllers"] == [
+        {
+            "kind": "manual_pressure_controller",
+            "algorithm": "Pressure PID v1.0",
+            "step": 0.1,
+            "min": 0.0,
+            "max": 12.0,
+            "initial": {"kind": "sensor", "source": "Pressure Raw", "gain": 1.1},
+        }
+    ]
+
+    # the second stage is only ever re-entered, so it has no start node
+    assert len(flow_nodes) == 1
+    assert flow_nodes[0]["controllers"] == [
+        {
+            "kind": "manual_flow_controller",
+            "algorithm": "Flow PID v1.0",
+            "step": 0.1,
+            "min": 0.0,
+            "max": 12.0,
+            "initial": {"kind": "sensor", "source": "Flow Raw", "gain": 1.1},
+        }
+    ]
+
+
+def test_the_start_node_begins_at_the_documents_first_point(manual_document):
+    from manual_program import build_manual_program
+
+    manual_document["stages"][0]["dynamics"]["points"] = [[0, 6.5]]
+
+    manual = _manual_program_stages(build_manual_program(manual_document))
+    start = _main_nodes(manual[0])[0]
+
+    assert start["controllers"][0]["initial"] == {"kind": "value", "value": 6.5}
+
+
+def test_each_manual_stage_opens_with_its_own_references(manual_document):
+    from manual_program import build_manual_program
+
+    manual = _manual_program_stages(build_manual_program(manual_document))
+
+    reference_ids = []
+    for stage in manual:
+        init = stage["nodes"][0]
+        assert [c["kind"] for c in init["controllers"]] == [
+            "time_reference",
+            "weight_reference",
+            "position_reference",
+        ]
+        assert [t["kind"] for t in init["triggers"]] == ["exit"]
+        reference_ids += [c["id"] for c in init["controllers"]]
+
+    assert len(reference_ids) == len(set(reference_ids))
+
+
+def test_the_documents_temperature_reaches_the_heating_curve(manual_document):
+    from manual_program import build_manual_program
+
+    manual_document["temperature"] = 94.0
+
+    program = build_manual_program(manual_document)
+    curves = [
+        controller["curve"]["points"]
+        for stage in program["stages"]
+        if stage["name"] == "heating"
+        for node in stage["nodes"]
+        for controller in node["controllers"]
+        if controller["kind"] == "temperature_controller"
+    ]
+
+    assert [[0, 94.0]] in curves
+
+
+def test_the_documents_final_weight_is_the_weight_stop(manual_document):
+    from manual_program import build_manual_program
+
+    manual_document["final_weight"] = 42.0
+
+    program = build_manual_program(manual_document)
+    values = {
+        trigger["value"]
+        for stage in _manual_program_stages(program)
+        for node in _main_nodes(stage)
+        for trigger in node["triggers"]
+        if trigger["kind"] == "weight_value_trigger"
+    }
+
+    assert values == {42.0}
+
+
+@pytest.mark.parametrize(
+    "auto_purge, retracting_exit",
+    [(False, 30), (True, 48)],
+)
+def test_the_auto_purge_setting_picks_the_tail_route(
+    monkeypatch, manual_document, auto_purge, retracting_exit
+):
+    from config import CONFIG_USER, MeticulousConfig, PROFILE_AUTO_PURGE
+    from manual_program import build_manual_program
+
+    monkeypatch.setitem(MeticulousConfig[CONFIG_USER], PROFILE_AUTO_PURGE, auto_purge)
+
+    program = build_manual_program(manual_document)
+
+    # the tail's "retracting" stage is the one after the manual stages
+    manual_names = {stage["name"] for stage in _manual_program_stages(program)}
+    names = [stage["name"] for stage in program["stages"]]
+    tail_start = max(names.index(name) for name in manual_names) + 1
+    tail_retracting = program["stages"][tail_start]
+
+    assert tail_retracting["name"] == "retracting"
+    exits = [t["next_node_id"] for n in tail_retracting["nodes"] for t in n["triggers"]]
+    assert retracting_exit in exits
+
+
+@pytest.mark.parametrize("allow_skipping", [False, True])
+def test_stage_skipping_never_adds_a_trigger_to_a_manual_node(
+    monkeypatch, manual_document, allow_skipping
+):
+    from config import CONFIG_USER, MACHINE_ALLOW_STAGE_SKIPPING, MeticulousConfig
+    from manual_program import build_manual_program
+
+    monkeypatch.setitem(
+        MeticulousConfig[CONFIG_USER], MACHINE_ALLOW_STAGE_SKIPPING, allow_skipping
+    )
+
+    program = build_manual_program(manual_document)
+
+    for stage in _manual_program_stages(program):
+        for node in _main_nodes(stage):
+            assert len(node["triggers"]) == 4
+
+
+def test_repeated_builds_do_not_drift_the_node_ids(manual_document):
+    from manual_program import build_manual_program
+
+    first = build_manual_program(manual_document)
+    second = build_manual_program(manual_document)
+
+    assert [node["id"] for node in _program_nodes(first)] == [
+        node["id"] for node in _program_nodes(second)
+    ]
+
+
+def test_a_document_with_an_unsupported_stage_type_is_rejected(manual_document):
+    from manual_program import build_manual_program
+
+    manual_document["stages"][0]["type"] = "temperature"
+
+    with pytest.raises(ValueError, match="unsupported manual stage type"):
+        build_manual_program(manual_document)
+
+
+def test_a_document_without_stages_is_rejected(manual_document):
+    from manual_program import build_manual_program
+
+    manual_document["stages"] = []
+
+    with pytest.raises(ValueError, match="at least one stage"):
+        build_manual_program(manual_document)
+
+
+def test_validate_program_rejects_a_duplicate_node_id(manual_document):
+    from manual_program import build_manual_program, validate_program
+
+    program = build_manual_program(manual_document)
+    manual = _manual_program_stages(program)
+    manual[1]["nodes"][0]["id"] = manual[0]["nodes"][0]["id"]
+
+    with pytest.raises(ValueError, match="duplicate node ids"):
+        validate_program(program)
+
+
+def test_validate_program_rejects_a_manual_id_that_collides_with_the_head(manual_document):
+    from manual_program import build_manual_program, validate_program
+
+    program = build_manual_program(manual_document)
+    _manual_program_stages(program)[0]["nodes"][0]["id"] = 23  # the head's closing valve
+
+    with pytest.raises(ValueError, match="collide with the head or tail"):
+        validate_program(program)
+
+
+def test_validate_program_rejects_a_dangling_next_node_id(manual_document):
+    from manual_program import build_manual_program, validate_program
+
+    program = build_manual_program(manual_document)
+    _manual_program_stages(program)[0]["nodes"][0]["triggers"][0]["next_node_id"] = 99999
+
+    with pytest.raises(ValueError, match="unknown node 99999"):
+        validate_program(program)
+
+
+def test_validate_program_rejects_a_moved_tail_entry(manual_document):
+    from manual_program import INIT_NODE_TAIL, build_manual_program, validate_program
+
+    program = build_manual_program(manual_document)
+    names = [stage["name"] for stage in program["stages"]]
+    tail_start = names.index("closing valve") + 3
+    tail_entry_node = program["stages"][tail_start]["nodes"][0]
+    assert tail_entry_node["id"] == INIT_NODE_TAIL
+    tail_entry_node["id"] = 6999
+
+    with pytest.raises(ValueError, match="the tail is entered at 6999"):
+        validate_program(program)
+
+
+def test_validate_program_rejects_an_unreachable_start_node(manual_document):
+    from manual_program import build_manual_program, validate_program
+
+    program = build_manual_program(manual_document)
+    init = _manual_program_stages(program)[0]["nodes"][0]
+    # send the first init node straight to the tail instead of to the start node
+    init["triggers"][0]["next_node_id"] = 7000
+
+    with pytest.raises(ValueError, match="unreachable from the head exit"):
+        validate_program(program)
+
+
+# --- loading a manual profile sends the program ------------------------------
+
+
+@pytest.fixture
+def sent_to_esp32(monkeypatch):
+    """Capture what send_profile_to_esp32 hands to the machine and to the store."""
+    from api.alarms import AlarmManager
+
+    sent = []
+    last = []
+
+    monkeypatch.setattr(AlarmManager, "is_alarm_set", staticmethod(lambda _type: None))
+    monkeypatch.setattr(profiles.Machine, "send_json_with_hash", staticmethod(sent.append))
+    monkeypatch.setattr(ProfileManager, "_set_last_profile", staticmethod(last.append))
+    monkeypatch.setattr(
+        ProfileManager, "_emit_profile_event", staticmethod(lambda *a, **k: None)
+    )
+    # the hover coroutine is created before the scheduler below ever sees it
+    monkeypatch.setattr(
+        ProfileManager, "_async_emit_profile_hover", staticmethod(lambda *a, **k: None)
+    )
+    monkeypatch.setattr(profiles.asyncio, "run_coroutine_threadsafe", lambda *a, **k: None)
+    return sent, last
+
+
+def _loadable_manual_document():
+    profile = ProfileManager.build_manual_mode_profile()
+    # keep handle_image off the filesystem
+    profile["display"] = {"image": "/api/v1/profile/image/manual.png"}
+    return profile
+
+
+def test_loading_a_manual_profile_sends_the_node_program(sent_to_esp32):
+    sent, last = sent_to_esp32
+    document = _loadable_manual_document()
+
+    result = ProfileManager.send_profile_to_esp32(document)
+
+    assert len(sent) == 1
+    program = sent[0]
+    assert [stage["name"] for stage in program["stages"]] == (
+        HEAD_STAGE_NAMES + ["Manual pressure", "Manual flow"] + TAIL_STAGE_NAMES
+    )
+    assert result is document
+
+
+def test_loading_a_manual_profile_still_records_the_simplified_document(sent_to_esp32):
+    sent, last = sent_to_esp32
+    document = _loadable_manual_document()
+
+    ProfileManager.send_profile_to_esp32(document)
+
+    assert last == [document]
+    assert last[0]["stages"][0]["key"] == MANUAL_MODE_PRESSURE_STAGE_KEY
+    assert "nodes" not in json.dumps(last[0])
+
+
+def test_loading_an_ordinary_profile_still_sends_the_document(sent_to_esp32):
+    sent, last = sent_to_esp32
+    document = _loadable_manual_document()
+    del document["manual"]
+    document["id"] = "22222222-3333-4444-8555-666666666666"
+
+    ProfileManager.send_profile_to_esp32(document)
+
+    assert sent == [document]
+
+
+def test_a_profile_marked_manual_with_a_string_is_not_converted(sent_to_esp32):
+    sent, last = sent_to_esp32
+    document = _loadable_manual_document()
+    document["manual"] = "true"
+
+    ProfileManager.send_profile_to_esp32(document)
+
+    assert sent == [document]
 
 
 # --- locating the manual shot ----------------------------------------------
@@ -836,7 +1481,7 @@ class TestCreateProfileFromManualHandler(AsyncHTTPTestCase):
         assert response.code == 409
         assert json.loads(response.body) == {
             "status": "error",
-            "error": "manual brew has no pressure targets",
+            "error": "shot has no target samples",
         }
 
     def test_a_schema_violation_is_reported_like_profile_save(self):
