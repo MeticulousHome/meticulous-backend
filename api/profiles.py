@@ -13,6 +13,7 @@ from profile_preprocessor import (
     UndefinedVariableException,
     VariableTypeException,
 )
+import manual_mode
 from profiles import IMAGES_PATH, ProfileManager
 from pour_over_profiles import (
     MAX_POUR_OVER_PROFILE_BYTES,
@@ -111,6 +112,61 @@ class SaveProfileHandler(BaseHandler):
             self.set_status(400)
             self.write({"status": "error", "error": "failed to save profile", "cause": f"{e}"})
             logger.warning("Failed to save profile:", exc_info=e, stack_info=True)
+
+
+class CreateProfileFromManualHandler(BaseHandler):
+    """Save a regular profile built from the targets of a recorded manual brew."""
+
+    async def post(self):
+        try:
+            body = self.request.body
+            data = json.loads(body) if body else {}
+            if not isinstance(data, dict):
+                self.set_status(400)
+                self.write({"status": "error", "error": "body must be a JSON object"})
+                return
+
+            name = data.get("name")
+            if "name" in data and not isinstance(name, str):
+                self.set_status(400)
+                self.write({"status": "error", "error": "name must be a string"})
+                return
+
+            shot_id = data.get("shot_id")
+            if "shot_id" in data and not isinstance(shot_id, str):
+                self.set_status(400)
+                self.write({"status": "error", "error": "shot_id must be a string"})
+                return
+
+            change_id = self.request.headers.get("X-Change-Id", None)
+
+            # Reading the shot decompresses its file, so keep it off the loop.
+            loop = asyncio.get_event_loop()
+            shot = await loop.run_in_executor(None, manual_mode.find_manual_shot, shot_id)
+            profile = await loop.run_in_executor(
+                None, manual_mode.build_profile_from_manual_shot, shot, name
+            )
+
+            self.write(ProfileManager.save_profile(profile, change_id=change_id))
+        except manual_mode.ManualShotNotFound:
+            self.set_status(404)
+            self.write({"status": "error", "error": "no manual brew found"})
+        except manual_mode.ManualShotHasNoTargets:
+            self.set_status(409)
+            self.write({"status": "error", "error": "manual brew has no pressure targets"})
+        except jsonschema.exceptions.ValidationError as err:
+            self.set_status(400)
+            self.write({"status": "error", "error": f"JSON validation error: {err.message}"})
+        except Exception as e:
+            self.set_status(400)
+            self.write(
+                {
+                    "status": "error",
+                    "error": "failed to create profile from manual brew",
+                    "cause": f"{e}",
+                }
+            )
+            logger.warning("Failed to create profile from manual brew:", exc_info=e)
 
 
 class LoadProfileHandler(BaseHandler):
@@ -307,6 +363,7 @@ class ListImagesHandler(BaseHandler):
 
 API.register_handler(APIVersion.V1, r"/profile/list", ListHandler),
 API.register_handler(APIVersion.V1, r"/profile/save", SaveProfileHandler),
+API.register_handler(APIVersion.V1, r"/profile/from_manual", CreateProfileFromManualHandler),
 API.register_handler(APIVersion.V1, r"/profile/load", LoadProfileHandler),
 API.register_handler(APIVersion.V1, r"/profile/defaults", ListDefaultsHandler),
 API.register_handler(APIVersion.V1, r"/profile/image([/]*)", ListImagesHandler),
