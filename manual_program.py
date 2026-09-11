@@ -3,9 +3,11 @@
 An ordinary profile describes a curve the machine follows, so the converter can
 turn its stages into nodes that drive a controller along that curve. A manual
 profile has no curve: the encoder sets the target live, and the shot ends on a
-long press. The document therefore only carries the *shape* of the session --
-which control the shot starts in, and the temperature and weight that bound it
--- and the nodes below implement the interaction itself.
+long press, or on the backend's `finish` -- the dial sends it on a double click
+inside a manual stage (contract sections 3 and 8). The document therefore only
+carries the *shape* of the session -- which control the shot starts in, and the
+temperature and weight that bound it -- and the nodes below implement the
+interaction itself.
 
 The head (prepare, purge, water detection, heating, click to start, retracting,
 closing valve) and the tail (retracting, purge or remove cup, END_STAGE) come
@@ -38,6 +40,7 @@ from profile_converter.simplified_json import InitNode
 from profile_converter.triggers import (
     ButtonTrigger,
     PistonPositionTrigger,
+    UserFinishTrigger,
     WeightTrigger,
 )
 
@@ -123,7 +126,7 @@ def _manual_controller(stage_type: str, initial: dict) -> _RawController:
 
 
 def _manual_triggers(final_weight: float, other_resume_node_id: int) -> list:
-    """The four exits every manual node carries, in first-match-wins order.
+    """The five exits every manual node carries, in first-match-wins order.
 
     A fresh set per node: the converter's trigger objects hand out the dict they
     hold, so sharing one would let a later edit reach into an earlier node.
@@ -139,6 +142,7 @@ def _manual_triggers(final_weight: float, other_resume_node_id: int) -> list:
             ButtonGestureSourceType.LONG,
             INIT_NODE_TAIL,
         ),
+        UserFinishTrigger(INIT_NODE_TAIL),
         WeightTrigger(
             SourceType.PREDICTIVE,
             TriggerOperatorType.GREATER_THAN_OR_EQUAL,

@@ -342,6 +342,22 @@ class ExitTrigger(Triggers):
         self.data["next_node_id"] = next_node_id
 
 
+class UserFinishTrigger(Triggers):
+    """The exit the ESP fires on `action,finish`, the backend's "end this now".
+
+    A node carrying it leaves for `next_node_id` the way a long press does; the
+    firmware also drains a `finish` that was already pending when the node was
+    entered. The trigger has no fields beyond these two, and `TriggerType` has
+    no member for it -- like `user_message_trigger`, the node runtime's own
+    kinds are spelled out where they are built.
+    """
+
+    def __init__(self, next_node_id: int = 0):
+        super().__init__()
+        self.data["kind"] = "user_finish_trigger"
+        self.data["next_node_id"] = next_node_id
+
+
 class WaterDetectionTrigger(Triggers):
     def __init__(self, value: bool = False, next_node_id: int = 0):
         super().__init__()

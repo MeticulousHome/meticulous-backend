@@ -851,7 +851,7 @@ def test_every_next_node_id_resolves_to_a_node(manual_document):
     assert targets <= known
 
 
-def test_every_manual_main_node_carries_the_four_contract_triggers(manual_document):
+def test_every_manual_main_node_carries_the_five_contract_triggers(manual_document):
     from manual_program import INIT_NODE_TAIL, build_manual_program
 
     program = build_manual_program(manual_document)
@@ -875,6 +875,10 @@ def test_every_manual_main_node_carries_the_four_contract_triggers(manual_docume
                     "next_node_id": INIT_NODE_TAIL,
                 },
                 {
+                    "kind": "user_finish_trigger",
+                    "next_node_id": INIT_NODE_TAIL,
+                },
+                {
                     "kind": "weight_value_trigger",
                     "operator": ">=",
                     "value": MANUAL_MODE_FINAL_WEIGHT_SENTINEL,
@@ -891,6 +895,47 @@ def test_every_manual_main_node_carries_the_four_contract_triggers(manual_docume
                     "next_node_id": INIT_NODE_TAIL,
                 },
             ]
+
+
+def test_no_head_or_tail_node_carries_a_user_finish_trigger(manual_document):
+    """`finish` ends a *manual* stage. The templates keep their own exits."""
+    from manual_program import _is_manual_stage, build_manual_program
+
+    program = build_manual_program(manual_document)
+    template = [stage for stage in program["stages"] if not _is_manual_stage(stage)]
+    assert [stage["name"] for stage in template] == HEAD_STAGE_NAMES + TAIL_STAGE_NAMES
+
+    kinds = {
+        trigger["kind"]
+        for stage in template
+        for node in stage["nodes"]
+        for trigger in node["triggers"]
+    }
+    assert kinds
+    assert "user_finish_trigger" not in kinds
+
+
+def test_the_user_finish_trigger_is_the_contract_dict():
+    from manual_program import INIT_NODE_TAIL
+    from profile_converter.triggers import UserFinishTrigger
+
+    assert UserFinishTrigger(INIT_NODE_TAIL).get_trigger() == {
+        "kind": "user_finish_trigger",
+        "next_node_id": INIT_NODE_TAIL,
+    }
+    assert UserFinishTrigger().get_trigger()["next_node_id"] == 0
+
+
+def test_two_user_finish_triggers_do_not_share_a_dict():
+    from manual_program import INIT_NODE_TAIL
+    from profile_converter.triggers import UserFinishTrigger
+
+    first = UserFinishTrigger(INIT_NODE_TAIL)
+    second = UserFinishTrigger(INIT_NODE_TAIL)
+    second.set_next_node_id(42)
+
+    assert first.get_trigger() is not second.get_trigger()
+    assert first.get_trigger()["next_node_id"] == INIT_NODE_TAIL
 
 
 def test_a_tap_hands_the_shot_to_the_other_stage(manual_document):
@@ -1057,7 +1102,7 @@ def test_stage_skipping_never_adds_a_trigger_to_a_manual_node(
 
     for stage in _manual_program_stages(program):
         for node in _main_nodes(stage):
-            assert len(node["triggers"]) == 4
+            assert len(node["triggers"]) == 5
 
 
 def test_repeated_builds_do_not_drift_the_node_ids(manual_document):
