@@ -45,6 +45,7 @@ RUN mkdir -p opt/meticulous-venv \
     opt/meticulous-backend/alembic/versions \
     opt/meticulous-backend/db-migrations \
     opt/meticulous-backend/profile_schema \
+    opt/meticulous-backend/pour_over_profile_schema \
     opt/meticulous-backend/default_profiles/community \
     opt/meticulous-backend/log_redactor \
     opt/meticulous-backend/sounds/default
@@ -76,6 +77,7 @@ COPY log_redactor/*.py /pkg/opt/meticulous-backend/log_redactor/
 
 # Data files (submodules - must be checked out before building)
 COPY profile_schema/ /pkg/opt/meticulous-backend/profile_schema/
+COPY pour_over_profile_schema/ /pkg/opt/meticulous-backend/pour_over_profile_schema/
 COPY default_profiles/ /pkg/opt/meticulous-backend/default_profiles/
 COPY sounds/ /pkg/opt/meticulous-backend/sounds/
 COPY images/default/ /pkg/opt/meticulous-backend/images/default/

@@ -27,6 +27,7 @@ from config import (
     MACHINE_BATCH_NUMBER,
     MACHINE_HEAT_ON_BOOT,
     PROFILE_AUTO_PURGE,
+    PROFILE_TARE_BEHAVIOR,
     PROFILE_PARTIAL_RETRACTION,
     MeticulousConfig,
 )
@@ -103,6 +104,10 @@ logger = MeticulousLogger.getLogger(__name__)
 # can be from [FIKA, USB, EMULATOR / EMULATION]
 BACKEND = os.getenv("BACKEND", "FIKA").upper()
 
+# The ESP does not always answer the mileage read we issue when it first reports
+# its info. Repeat the read at this interval until it does.
+MILEAGE_RETRY_INTERVAL_SECONDS = 5
+
 
 class esp_nvs_keys(Enum):
     color = "color_key"
@@ -111,6 +116,8 @@ class esp_nvs_keys(Enum):
     build_date = "build_date_key"
     partial_retraction = "partial_retraction_key"
     auto_purge_after_shot = "auto_purge_after_shot_key"
+    tare_behavior = "tare_behavior_key"
+    mileage = "mileage_key"
 
 
 class Machine:
@@ -137,6 +144,14 @@ class Machine:
     heater_timeout_info: HeaterTimeoutInfo = None
 
     infoReady = False
+    # Lifetime shot count held by the ESP. None until the ESP reports it.
+    mileage = None
+    # Seed we computed for this boot, cached so the ESP re-asking does not
+    # re-run the aggregate query.
+    _mileage_seed = None
+    # When we last asked the ESP for its mileage, set by every request so a
+    # retry never races one already in flight.
+    _mileage_last_request = 0.0
     profileReady = False
     oldProfileReady = False
 
@@ -172,6 +187,7 @@ class Machine:
     DEVICE_UUID_MAX_ASSIGNMENT_ATTEMPTS = 3
     DEVICE_UUID_RETRY_DELAY_SECONDS = 2.0
     HAWKBIT_UPDATER_RESTART_TIMEOUT_SECONDS = 5
+    _pending_tare_behavior_writes = []
 
     @staticmethod
     def get_somrev():
@@ -395,6 +411,7 @@ class Machine:
                     Machine.reset_count += 1
                     Machine.startTime = time.time()
                     Machine.esp_info = None
+                    Machine._pending_tare_behavior_writes = []
                     info_requested = False
                     Machine.infoReady = False
                     Machine.profileReady = False
@@ -446,6 +463,8 @@ class Machine:
                         info = ESPInfo.from_args(infoArgs)
                     case ["device_uuid_response", response]:
                         Machine.handleDeviceUUIDResponse(response)
+                    case ["nvs_response", "tare_behavior_key", status]:
+                        Machine.handleTareBehaviorNVSResponse(status)
                     case ["Notify", *notifyArgs]:
                         notify = MachineNotify(
                             notifyArgs[0], ",".join(notifyArgs[1:]).replace(";", "\n")
@@ -540,9 +559,26 @@ class Machine:
                             logger.error(
                                 f"Error processing ESP log ({type(e).__name__})",
                             )
+                    case ["MileageRequest"]:
+                        Machine._handleMileageRequest()
+                    case ["nvs_response", nvs_key, nvs_value]:
+                        Machine._handleNvsResponse(nvs_key, nvs_value)
+                    case ["nvs_response", *nvs_error]:
+                        logger.warning(f"ESP nvs_response error: {','.join(nvs_error)}")
                     case [*_]:
                         logger.info(data_str.strip("\r\n"))
                         is_valid_message = False
+
+                # The read issued alongside the ESP's first info report is not
+                # always answered, which would leave the counter unknown for the
+                # rest of the session. Keep asking until it replies.
+                if (
+                    Machine.infoReady
+                    and Machine.mileage is None
+                    and time.time() - Machine._mileage_last_request
+                    >= MILEAGE_RETRY_INTERVAL_SECONDS
+                ):
+                    Machine.requestMileage()
 
                 old_ready = Machine.infoReady
 
@@ -594,6 +630,10 @@ class Machine:
                                 logger.info("shot ended with weight unstable")
                             SoundPlayer.play_event_sound(Sounds.BREWING_END)
                             ShotManager.stop()
+                            # The ESP counted this shot when heating handed over
+                            # to the first stage. Re-read so what we expose is
+                            # the counter's current value, not a boot snapshot.
+                            Machine.requestMileage()
 
                     if Machine.is_idle and old_status != MachineStatus.IDLE:
                         Machine.profileReady = False
@@ -656,6 +696,7 @@ class Machine:
                 if info is not None:
                     Machine.esp_info = info
                     Machine.infoReady = True
+                    Machine.requestMileage()
                     info_requested = False
                     Machine.firmware_running = Machine._parseVersionString(info.firmwareV)
 
@@ -665,6 +706,10 @@ class Machine:
                     Machine.setPartialRetraction(backend_partial_retraction)
                     backend_auto_purge = bool(MeticulousConfig[CONFIG_USER][PROFILE_AUTO_PURGE])
                     Machine.setAutoPurgeAfterShot(backend_auto_purge)
+                    backend_tare_behavior = str(
+                        MeticulousConfig[CONFIG_USER][PROFILE_TARE_BEHAVIOR]
+                    )
+                    Machine.setTareBehavior(backend_tare_behavior)
                     Machine.syncDeviceUUID(info.deviceUUID, info.deviceUUIDSupported)
 
                     if (
@@ -862,7 +907,11 @@ class Machine:
         alarm_set = AlarmManager.is_alarm_set(AlarmType.MOTOR_STRESSED)
         refuse_action = action_event == "purge" and alarm_set is not None
         if refuse_action:
-            logger.error(f"refusing action {action_event}, there is an alarm up")
+            warning_message = (
+                f"refusing action {action_event}, there is an alarm up (motor_stressed)"
+            )
+            logger.warning(warning_message)
+            sentry_sdk.capture_message(warning_message, "warning")
             AlarmManager._notify_user(
                 message=f"Brewing has been disabled because of a recent high strain on the motor, let it rest for {math.ceil((alarm_set - time.time())/60.0) if math.isfinite(alarm_set) else 10} more minutes",
                 image=WARNING_TRIANGLE_IMAGE,
@@ -894,6 +943,76 @@ class Machine:
     def write(content):
         if not Machine._stopESPcomm:
             Machine._connection.port.write(content)
+
+    def _handleMileageRequest():
+        """Seed the ESP's mileage counter, once, on its own request.
+
+        The ESP only asks when its counter has never been seeded, and it refuses
+        a seed it did not ask for. We answer with the shot count the history
+        database currently holds; that number is not monotonic (shots can be
+        deleted) and it excludes brews that never reached the database, so it is
+        a starting point rather than a true lifetime total. From the seed
+        onwards the ESP counts for itself.
+        """
+        if Machine._mileage_seed is None:
+            try:
+                from shot_database import ShotDataBase
+
+                Machine._mileage_seed = int(ShotDataBase.statistics().get("totalSavedShots", 0))
+            except Exception as e:
+                logger.error(f"Could not compute mileage seed: {type(e).__name__}: {e}")
+                return
+
+        if (
+            Machine._connection is None
+            or Machine._connection.port is None
+            or Machine._stopESPcomm
+        ):
+            logger.warning("Cannot seed mileage because the serial connection is not ready")
+            return
+
+        payload = (
+            "nvs_request,write,"
+            + esp_nvs_keys.mileage.value
+            + ","
+            + str(Machine._mileage_seed)
+            + "\x03"
+        )
+        Machine.write(payload.encode("utf-8"))
+        logger.info(f"Seeding ESP mileage counter with {Machine._mileage_seed} shots")
+
+    def requestMileage():
+        """Ask the ESP for its current mileage. Read-only; always permitted."""
+        if (
+            Machine._connection is None
+            or Machine._connection.port is None
+            or Machine._stopESPcomm
+        ):
+            return
+
+        payload = "nvs_request,read," + esp_nvs_keys.mileage.value + "\x03"
+        Machine.write(payload.encode("utf-8"))
+        Machine._mileage_last_request = time.time()
+
+    def _handleNvsResponse(nvs_key: str, nvs_value: str):
+        if nvs_key != esp_nvs_keys.mileage.value:
+            # Other keys are written blind today; nothing consumes their reply.
+            return
+
+        if nvs_value in ("SUCCESS", "ERROR") or nvs_value.startswith("ERROR"):
+            if nvs_value != "SUCCESS":
+                logger.warning(f"ESP rejected the mileage write: {nvs_value}")
+            else:
+                logger.info("ESP accepted the mileage seed")
+                # Read it back so what we expose is the ESP's value, not ours.
+                Machine.requestMileage()
+            return
+
+        try:
+            Machine.mileage = int(nvs_value)
+            logger.info(f"ESP reported mileage: {Machine.mileage}")
+        except ValueError:
+            logger.warning(f"Unparseable mileage from ESP: {nvs_value}")
 
     def reset():
         Machine.esp_restart_request = True
@@ -1211,6 +1330,61 @@ Build Date: {build_date}
 
         if Machine.esp_info is not None:
             Machine.esp_info.autoPurgeAfterShot = desired_value
+
+    def setTareBehavior(tare_behavior: str):
+        desired_value = str(tare_behavior)
+
+        if Machine.esp_info is None or Machine.esp_info.tareBehavior is None:
+            logger.info("Deferring tare_behavior sync until supported firmware is connected")
+            return
+
+        if (
+            Machine.esp_info.tareBehavior == desired_value
+            and not Machine._pending_tare_behavior_writes
+        ):
+            return
+
+        if (
+            Machine._pending_tare_behavior_writes
+            and Machine._pending_tare_behavior_writes[-1] == desired_value
+        ):
+            return
+
+        if (
+            Machine._connection is None
+            or Machine._connection.port is None
+            or Machine._stopESPcomm
+        ):
+            logger.warning(
+                "Cannot sync tare_behavior to ESP32 because serial connection is not ready"
+            )
+            return
+
+        write_request = "nvs_request,write,"
+        payload = (
+            write_request + esp_nvs_keys.tare_behavior.value + "," + desired_value + "\x03"
+        )
+        Machine.write(payload.encode("utf-8"))
+        logger.info("Synced tare_behavior to ESP32: " + f"requested={desired_value}")
+        Machine._pending_tare_behavior_writes.append(desired_value)
+
+    def handleTareBehaviorNVSResponse(status: str):
+        if not Machine._pending_tare_behavior_writes:
+            logger.warning("Received tare_behavior NVS response without a pending write")
+            return
+
+        pending_value = Machine._pending_tare_behavior_writes.pop(0)
+
+        if status.upper() != "SUCCESS":
+            logger.error(
+                "ESP32 rejected tare_behavior NVS write: "
+                + f"requested={pending_value}, status={status}"
+            )
+            return
+
+        if Machine.esp_info is not None:
+            Machine.esp_info.tareBehavior = pending_value
+        logger.info("ESP32 confirmed tare_behavior NVS write: " + pending_value)
 
     def _parseVersionString(version_str: str):
         release = None

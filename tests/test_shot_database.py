@@ -153,6 +153,24 @@ class TestSearchHistory:
         results = ShotDataBase.search_history(params)
         assert len(results) == 3
 
+    def test_upload_index_is_cursor_ordered_and_bounded(self):
+        for index in range(5):
+            ShotDataBase.insert_history(
+                make_history_entry(
+                    id=f"upload-{index}",
+                    file=f"2026-08-16/shot_{index}.shot.json.zst",
+                    time=time.time() + index,
+                )
+            )
+
+        results = ShotDataBase.list_history_files(
+            after="2026-08-16/shot_1.shot.json.zst", max_results=2
+        )
+        assert results == [
+            {"file": "2026-08-16/shot_2.shot.json.zst"},
+            {"file": "2026-08-16/shot_3.shot.json.zst"},
+        ]
+
     def test_search_by_profile_id(self):
         p1 = make_profile(id="p-aaa", name="Ristretto")
         p2 = make_profile(id="p-bbb", name="Lungo")
