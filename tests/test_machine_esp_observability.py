@@ -192,6 +192,7 @@ def test_machine_routes_one_bounded_panic_with_firmware_context(run_machine_uart
             "Register dump:\n",
             "Backtrace: 0x42000000:0x3fc00000\n",
             "rst:0x3 (SW_RESET),boot:0x8 (SPI_FAST_FLASH_BOOT)\n",
+            "Log,info,no loadcell found\n",
             "ESPBoot,PANIC,4\n",
         ],
         monitor,
@@ -215,6 +216,30 @@ def test_machine_routes_one_bounded_panic_with_firmware_context(run_machine_uart
     assert context["panic_location"] == "Read ADC"
     assert context["backtrace"] == "Backtrace: 0x42000000:0x3fc00000"
     assert len(context["panic_output"].encode()) <= monitor.MAX_PANIC_BYTES
+
+
+def test_machine_routes_unexpected_reset_reason_after_startup_log(run_machine_uart):
+    monitor = ESPObservability(now=0)
+    monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
+
+    sentry_events, update_calls = run_machine_uart(
+        [
+            "rst:0x9 (BROWNOUT_RESET),boot:0x8 (SPI_FAST_FLASH_BOOT)\n",
+            "Log,info,no loadcell found\n",
+            "ESPBoot,BROWNOUT,9\n",
+        ],
+        monitor,
+        available_firmware="1.2.3",
+    )
+
+    assert update_calls == []
+    assert len(sentry_events) == 1
+    captured = sentry_events[0]
+    assert captured["event"]["message"] == "ESP32 unexpected reset detected"
+    assert captured["event"]["fingerprint"] == ["esp32-unexpected-reset-brownout"]
+    assert captured["tags"]["reset_reason"] == "BROWNOUT"
+    assert captured["tags"]["reset_reason_code"] == "9"
+    assert monitor.phase == ESPCommunicationPhase.NORMAL
 
 
 def test_machine_routes_one_bounded_abort_with_firmware_context(run_machine_uart):

@@ -36,7 +36,8 @@ def should_start_firmware_update(
 
 
 class ESPObservability:
-    VALID_MESSAGE_TIMEOUT_SECONDS = 2.0
+    NORMAL_VALID_MESSAGE_TIMEOUT_SECONDS = 0.5
+    PANIC_COLLECTION_TIMEOUT_SECONDS = 2.0
     UPDATE_RECOVERY_TIMEOUT_SECONDS = 30.0
     RESET_RECOVERY_TIMEOUT_SECONDS = 15.0
     BOOT_LOOP_WINDOW_SECONDS = 60.0
@@ -170,7 +171,7 @@ class ESPObservability:
                 self._resolved_panic_incident = False
                 self.panic_reported = False
                 self._clear_panic()
-                self._panic_deadline = now + self.VALID_MESSAGE_TIMEOUT_SECONDS
+                self._panic_deadline = now + self.PANIC_COLLECTION_TIMEOUT_SECONDS
             self._collecting_panic = True
             guru_match = self.GURU_MEDITATION_PATTERN.search(normalized)
             if guru_match:
@@ -201,7 +202,7 @@ class ESPObservability:
 
         if self._collecting_panic and not is_boot_banner:
             self._append_panic_line(normalized)
-            self._panic_deadline = now + self.VALID_MESSAGE_TIMEOUT_SECONDS
+            self._panic_deadline = now + self.PANIC_COLLECTION_TIMEOUT_SECONDS
 
         if not is_boot_banner:
             return events
@@ -277,6 +278,13 @@ class ESPObservability:
     ) -> list[ESPDiagnostic]:
         self.last_valid_message = now
         self.timeout_reported = False
+
+        if (
+            message_type == "Log"
+            and self.phase == ESPCommunicationPhase.WAITING_FOR_PROTOCOL
+            and self.boot_seen
+        ):
+            return []
 
         if self._panic_lines and not self.panic_reported:
             events = self._pending_panic_diagnostics()
@@ -396,7 +404,7 @@ class ESPObservability:
             return []
 
         elapsed = now - self.last_valid_message
-        if elapsed > self.VALID_MESSAGE_TIMEOUT_SECONDS and not self.timeout_reported:
+        if elapsed > self.NORMAL_VALID_MESSAGE_TIMEOUT_SECONDS and not self.timeout_reported:
             self.timeout_reported = True
             return [
                 ESPDiagnostic(
@@ -405,7 +413,7 @@ class ESPObservability:
                     fingerprint="esp32-valid-message-timeout",
                     context={
                         "elapsed_seconds": round(elapsed, 3),
-                        "threshold_seconds": self.VALID_MESSAGE_TIMEOUT_SECONDS,
+                        "threshold_seconds": self.NORMAL_VALID_MESSAGE_TIMEOUT_SECONDS,
                         "last_known_firmware": self.previous_firmware,
                     },
                 )

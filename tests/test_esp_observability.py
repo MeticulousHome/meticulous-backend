@@ -336,8 +336,11 @@ def test_normal_valid_message_timeout_is_deduplicated():
     monitor = ESPObservability(now=0)
     monitor.observe_valid_message("ESPInfo", 0.1, "1.2.3")
 
-    assert monitor.check_timeouts(2) == []
-    assert titles(monitor.check_timeouts(2.2)) == ["ESP32 valid-message timeout"]
+    assert monitor.check_timeouts(0.6) == []
+    events = monitor.check_timeouts(0.61)
+
+    assert titles(events) == ["ESP32 valid-message timeout"]
+    assert events[0].context["threshold_seconds"] == 0.5
     assert monitor.check_timeouts(5) == []
 
 
@@ -450,8 +453,8 @@ def test_unexpected_boot_protocol_message_clears_recovery_timeout():
     assert titles(events) == ["ESP32 unexpected reset detected"]
     assert monitor.phase == ESPCommunicationPhase.NORMAL
     assert monitor.recovery_deadline is None
-    assert monitor.check_timeouts(4) == []
-    assert titles(monitor.check_timeouts(4.1)) == ["ESP32 valid-message timeout"]
+    assert monitor.check_timeouts(2.5) == []
+    assert titles(monitor.check_timeouts(2.51)) == ["ESP32 valid-message timeout"]
 
 
 def test_unexpected_boot_loop_is_detected_without_protocol_follow_up():
