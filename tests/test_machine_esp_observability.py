@@ -131,9 +131,7 @@ def test_beta_mileage_messages_are_valid_observability_traffic(
     monkeypatch.setattr(Machine, "_handleNvsResponse", lambda _key, _value: None)
     monitor = ESPObservability(now=0)
 
-    sentry_events, update_calls = run_machine_uart(
-        [line], monitor, available_firmware="1.2.3"
-    )
+    sentry_events, update_calls = run_machine_uart([line], monitor, available_firmware="1.2.3")
 
     assert sentry_events == []
     assert update_calls == []
