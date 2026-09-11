@@ -853,14 +853,6 @@ class Machine:
 
                     await Machine._sio.emit("button", button_event.to_sio())
 
-                # FIXME this should be a callback to the frontends in the future
-                if (
-                    button_event is not None
-                    and button_event.event is ButtonEventEnum.ENCODER_DOUBLE
-                ):
-                    logger.info("DOUBLE ENCODER, Returning to idle")
-                    Machine.end_profile()
-
                 if (
                     not old_ready
                     and Machine.infoReady
