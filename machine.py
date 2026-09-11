@@ -135,6 +135,8 @@ class Machine:
         "scale_master_calibration",
         "preheat",
         "continue",
+        # ends the user stages of a running shot through the normal retract; the dial sends it on a double click inside a user stage
+        "finish",
         "home",
         "purge",
         "continue",
