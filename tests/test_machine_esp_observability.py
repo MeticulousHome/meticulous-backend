@@ -192,7 +192,7 @@ def test_machine_routes_one_bounded_panic_with_firmware_context(run_machine_uart
             "Register dump:\n",
             "Backtrace: 0x42000000:0x3fc00000\n",
             "rst:0x3 (SW_RESET),boot:0x8 (SPI_FAST_FLASH_BOOT)\n",
-            "Log,info,no loadcell found\n",
+            "Log,INFO,no loadcell found\n",
             "ESPBoot,PANIC,4\n",
         ],
         monitor,
@@ -225,7 +225,7 @@ def test_machine_routes_unexpected_reset_reason_after_startup_log(run_machine_ua
     sentry_events, update_calls = run_machine_uart(
         [
             "rst:0x9 (BROWNOUT_RESET),boot:0x8 (SPI_FAST_FLASH_BOOT)\n",
-            "Log,info,no loadcell found\n",
+            "Log,INFO,no loadcell found\n",
             "ESPBoot,BROWNOUT,9\n",
         ],
         monitor,
