@@ -11,6 +11,9 @@ from urllib.parse import unquote as urlDecode
 logger = MeticulousLogger.getLogger(__name__)
 
 colorSensorRegex = None
+deviceUUIDRegex = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+)
 
 
 def safeFloat(val):
@@ -176,6 +179,8 @@ class ESPInfo:
     partialRetraction: float = 45.33
     autoPurgeAfterShot: bool = False
     tareBehavior: Optional[str] = None
+    deviceUUID: str = ""
+    deviceUUIDSupported: bool = False
 
     def from_args(args):
         espPinout = 0
@@ -185,7 +190,7 @@ class ESPInfo:
         except Exception:
             pass
         try:
-            if len(args) >= 11:
+            if len(args) >= 12:
                 info = ESPInfo(
                     args[0],
                     espPinout,
@@ -197,8 +202,41 @@ class ESPInfo:
                     args[7],
                     float(args[8]),
                     args[9].lower() == "true",
-                    args[10],
+                    args[10] or None,
+                    args[11],
+                    True,
                 )
+            elif len(args) >= 11:
+                if deviceUUIDRegex.fullmatch(args[10]):
+                    info = ESPInfo(
+                        args[0],
+                        espPinout,
+                        float(args[2]),
+                        args[3],
+                        args[4],
+                        args[5],
+                        args[6],
+                        args[7],
+                        float(args[8]),
+                        args[9].lower() == "true",
+                        None,
+                        args[10],
+                        True,
+                    )
+                else:
+                    info = ESPInfo(
+                        args[0],
+                        espPinout,
+                        float(args[2]),
+                        args[3],
+                        args[4],
+                        args[5],
+                        args[6],
+                        args[7],
+                        float(args[8]),
+                        args[9].lower() == "true",
+                        args[10],
+                    )
             elif len(args) >= 10:
                 info = ESPInfo(
                     args[0],
@@ -258,6 +296,10 @@ class ESPInfo:
         ]
         if self.tareBehavior is not None:
             args.append(self.tareBehavior)
+        if self.deviceUUIDSupported:
+            if self.tareBehavior is None:
+                args.append("")
+            args.append(self.deviceUUID)
         return args
 
     def to_sio(self):
