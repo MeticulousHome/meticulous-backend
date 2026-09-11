@@ -116,6 +116,30 @@ def run_machine_uart(monkeypatch):
     return run
 
 
+@pytest.mark.parametrize(
+    "line",
+    [
+        "MileageRequest\n",
+        "nvs_response,mileage_key,123\n",
+        "nvs_response,ERROR: key not found\n",
+    ],
+)
+def test_beta_mileage_messages_are_valid_observability_traffic(
+    monkeypatch, run_machine_uart, line
+):
+    monkeypatch.setattr(Machine, "_handleMileageRequest", lambda: None)
+    monkeypatch.setattr(Machine, "_handleNvsResponse", lambda _key, _value: None)
+    monitor = ESPObservability(now=0)
+
+    sentry_events, update_calls = run_machine_uart(
+        [line], monitor, available_firmware="1.2.3"
+    )
+
+    assert sentry_events == []
+    assert update_calls == []
+    assert monitor.phase == ESPCommunicationPhase.NORMAL
+
+
 def test_stale_esp_info_during_update_recovery_does_not_start_another_update():
     monitor = ESPObservability(now=0)
     monitor.observe_valid_message("ESPInfo", 0.1, "1.0.0")

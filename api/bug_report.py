@@ -402,6 +402,22 @@ def _machine_is_emulated() -> bool:
     return bool(Machine.emulated)
 
 
+def _machine_mileage() -> int | None:
+    """Lifetime shot count reported by the ESP, or None if it is not known.
+
+    A bug report must still be produced when the ESP link is unavailable, so an
+    unreachable machine module degrades to an unknown mileage rather than
+    failing the report.
+    """
+    try:
+        from machine import Machine
+
+        return Machine.mileage
+    except Exception as e:
+        logger.warning(f"Could not read machine mileage: {type(e).__name__}")
+        return None
+
+
 def _emulated_machine_logs(start_time: int | None = None, end_time: int | None = None) -> str:
     timestamp = datetime.now(timezone.utc).isoformat()
     reference_text = (
@@ -985,6 +1001,7 @@ class ReportsCreateHandler(BaseHandler):
                 cancellation=self._cancellation,
             )
             db_statistics = ShotDataBase.statistics()
+            db_statistics["mileage"] = _machine_mileage()
             attachments = {
                 "debugFiles": {"automatic": fetched.automatic_debug_files},
                 "machineInfo": fetched.machine_info,
