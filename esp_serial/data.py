@@ -2,6 +2,7 @@ from dataclasses import dataclass, replace
 from enum import Enum, auto, unique
 import re
 import math
+from typing import Optional
 
 from log import MeticulousLogger
 
@@ -172,8 +173,9 @@ class ESPInfo:
     batchNumber: str = ""
     buildDate: str = ""
     scaleModule: str = ""
-    partialRetraction: float = 45.0
+    partialRetraction: float = 45.33
     autoPurgeAfterShot: bool = False
+    tareBehavior: Optional[str] = None
 
     def from_args(args):
         espPinout = 0
@@ -183,7 +185,21 @@ class ESPInfo:
         except Exception:
             pass
         try:
-            if len(args) >= 10:
+            if len(args) >= 11:
+                info = ESPInfo(
+                    args[0],
+                    espPinout,
+                    float(args[2]),
+                    args[3],
+                    args[4],
+                    args[5],
+                    args[6],
+                    args[7],
+                    float(args[8]),
+                    args[9].lower() == "true",
+                    args[10],
+                )
+            elif len(args) >= 10:
                 info = ESPInfo(
                     args[0],
                     espPinout,
@@ -240,6 +256,8 @@ class ESPInfo:
             str(self.partialRetraction),
             "true" if self.autoPurgeAfterShot else "false",
         ]
+        if self.tareBehavior is not None:
+            args.append(self.tareBehavior)
         return args
 
     def to_sio(self):
@@ -255,6 +273,8 @@ class ESPInfo:
             "scale_module": self.scaleModule,
             "partial_retraction": self.partialRetraction,
             "auto_purge_after_shot": self.autoPurgeAfterShot,
+            "tare_behavior": self.tareBehavior,
+            "tare_behavior_supported": self.tareBehavior is not None,
         }
 
 

@@ -2,6 +2,7 @@ from sqlalchemy import (
     MetaData,
     Table,
     Column,
+    Index,
     Integer,
     Text,
     DateTime,
@@ -51,6 +52,24 @@ history = Table(
     Column("profile_id", Text, nullable=False),
     Column("profile_key", Integer, ForeignKey("profile.key"), nullable=False),
     Column("debug_file", Text, nullable=True),
+)
+
+brew_history = Table(
+    "brew_history",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("uuid", Text, nullable=False, unique=True),
+    Column("brew_type", Text, nullable=False),
+    Column("mode", Text, nullable=False),
+    Column("file", Text, nullable=False, unique=True),
+    Column("time", DateTime, nullable=False),
+    Column("completed_time", DateTime, nullable=False),
+    Column("name", Text, nullable=False),
+    Column("schema_version", Integer, nullable=False),
+    # Keep in sync with the b71d84a4c2ef migration so metadata.create_all
+    # produces the same schema as the alembic upgrade path.
+    Index("ix_brew_history_completed_time", "completed_time"),
+    Index("ix_brew_history_brew_type", "brew_type"),
 )
 
 shot_annotation = Table(

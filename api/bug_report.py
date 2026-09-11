@@ -14,8 +14,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote_plus
 
-import tornado.httpclient
-from sqlalchemy import and_, desc, func, insert, or_, select, update
+import aiohttp
+from sqlalchemy import and_, delete, desc, func, insert, or_, select, update
 
 from config import (
     DATABASE_URL,
@@ -49,7 +49,6 @@ DEBUG_ARCHIVE_DIR = "debug"
 MAX_DEBUG_SHOTS = 10
 ALLOWED_DRAFT_UPDATE_KEYS = {
     "description",
-    "dateAndTime",
     "baseEventID",
     "ticket",
     "multimedia",
@@ -65,6 +64,31 @@ class FetchResult:
     machine_info: bool = False
     machine_logs: bool = False
     machine_status: bool = False
+
+
+@dataclass
+class CollectionCancellation:
+    """Per-request cancellation signal for `ReportsCreateHandler`.
+
+    `on_connection_close` sets `disconnected` and cancels whichever watcher
+    HTTP call is currently registered as `active_task`, so its socket closes
+    instead of the collection running to completion for a client that left.
+    `_fetch_report_files` also checks `disconnected` at each stage boundary,
+    which is what stops a stage that isn't an in-flight watcher call.
+    """
+
+    disconnected: bool = False
+    active_task: asyncio.Task[Any] | None = None
+
+    def cancel(self) -> None:
+        self.disconnected = True
+        task = self.active_task
+        if task is not None and not task.done():
+            task.cancel()
+
+    def raise_if_disconnected(self) -> None:
+        if self.disconnected:
+            raise asyncio.CancelledError("client disconnected during report collection")
 
 
 def _ensure_database_initialized():
@@ -161,7 +185,8 @@ def _row_to_report_info(row) -> dict[str, Any]:
     log_files = [name for name in (row.logFiles or "").split(",") if name]
     return {
         "description": row.description,
-        "dateAndTime": row.issueTime,
+        "dateAndTime": row.creationTime,
+        "issueTime": row.issueTime,
         "attachments": {
             "debugFiles": {"automatic": log_files},
             "machineInfo": bool(row.machineInfo),
@@ -301,8 +326,19 @@ def _find_debug_file(file_name: str) -> Path | None:
     return matches[0] if matches else None
 
 
+def _debug_file_timestamp(path: Path) -> int | None:
+    try:
+        day = path.parent.name
+        clock = path.name.split(".", 1)[0]
+        return int(datetime.strptime(f"{day} {clock}", "%Y-%m-%d %H:%M:%S").timestamp())
+    except ValueError:
+        return None
+
+
 def _select_debug_files(
-    limit: int = MAX_DEBUG_SHOTS, reference_time: int | None = None
+    limit: int = MAX_DEBUG_SHOTS,
+    start_time: int | None = None,
+    end_time: int | None = None,
 ) -> tuple[list[Path], list[str]]:
     debug_root = DEBUG_HISTORY_ROOT
     if not debug_root.exists():
@@ -310,7 +346,7 @@ def _select_debug_files(
 
     selected = []
     errors = []
-    if reference_time is None:
+    if start_time is None or end_time is None:
         directories = sorted(
             [path for path in debug_root.iterdir() if path.is_dir()],
             key=lambda path: path.name,
@@ -323,37 +359,20 @@ def _select_debug_files(
                     if len(selected) >= limit:
                         return selected, errors
     else:
-        ref_dt = datetime.fromtimestamp(reference_time)
-        if (
-            ref_dt.hour == 0
-            and ref_dt.minute == 0
-            and ref_dt.second == 0
-            and ref_dt.microsecond == 0
-        ):
-            date_dir = debug_root.joinpath(ref_dt.strftime("%Y-%m-%d"))
-            candidates = (
-                sorted(date_dir.iterdir(), key=lambda item: item.name, reverse=True)
-                if date_dir.exists()
-                else []
+        timestamped_files = [
+            (timestamp, path)
+            for path in debug_root.rglob("*")
+            if path.is_file() and (timestamp := _debug_file_timestamp(path)) is not None
+        ]
+        timestamped_files.sort(key=lambda item: (item[0], str(item[1])), reverse=True)
+        selected.extend(
+            path for timestamp, path in timestamped_files if start_time <= timestamp <= end_time
+        )
+        if len(selected) < limit:
+            selected.extend(
+                path for timestamp, path in timestamped_files if timestamp < start_time
             )
-            selected.extend([path for path in candidates if path.is_file()][:limit])
-        else:
-            end_ts = min(_now_seconds(), reference_time + (3 * 60 * 60))
-            start_ts = end_ts - (24 * 60 * 60)
-            for path in debug_root.rglob("*"):
-                if not path.is_file():
-                    continue
-                try:
-                    day = path.parent.name
-                    clock = path.name.split(".", 1)[0]
-                    file_dt = datetime.strptime(f"{day} {clock}", "%Y-%m-%d %H:%M:%S")
-                    file_ts = int(file_dt.timestamp())
-                except ValueError:
-                    continue
-                if start_ts <= file_ts <= end_ts:
-                    selected.append(path)
-            selected.sort(key=lambda item: (item.parent.name, item.name), reverse=True)
-            selected = selected[:limit]
+        selected = selected[:limit]
 
     if len(selected) < limit:
         errors.append(
@@ -383,10 +402,12 @@ def _machine_is_emulated() -> bool:
     return bool(Machine.emulated)
 
 
-def _emulated_machine_logs(reference_time: int | None = None) -> str:
+def _emulated_machine_logs(start_time: int | None = None, end_time: int | None = None) -> str:
     timestamp = datetime.now(timezone.utc).isoformat()
     reference_text = (
-        f"reference_time={reference_time}" if reference_time is not None else "latest"
+        f"start_time={start_time}, end_time={end_time}"
+        if start_time is not None and end_time is not None
+        else "latest"
     )
     return (
         f"{timestamp} INFO meticulous-backend Emulated machine logs generated "
@@ -406,37 +427,72 @@ def _emulated_machine_status() -> str:
     )
 
 
-async def _fetch_machine_logs(reference_time: int | None = None) -> str:
-    if _machine_is_emulated():
-        return _emulated_machine_logs(reference_time)
+async def _get_watcher_body(url: str, timeout_seconds: int) -> bytes:
+    """Issue the actual watcher HTTP GET.
 
-    TIMEOUT_SECONDS = 180
+    Runs inside its own task (see `_fetch_watcher_text`) so a disconnect can
+    cancel exactly this call. Cancelling a task awaiting inside aiohttp
+    closes the transport; `tornado.httpclient.AsyncHTTPClient` cannot do
+    this, since its fetch() resolves through
+    `future_set_result_unless_cancelled`, which discards the result without
+    ever closing the socket.
+
+    `raise_for_status=True` matches `tornado.httpclient`'s default of
+    raising on a non-2xx response.
+    """
+    timeout = aiohttp.ClientTimeout(total=timeout_seconds)
+    async with aiohttp.ClientSession(timeout=timeout, raise_for_status=True) as session:
+        async with session.get(url) as response:
+            return await response.read()
+
+
+async def _fetch_watcher_text(
+    url: str,
+    timeout_seconds: int,
+    cancellation: CollectionCancellation | None = None,
+) -> str:
+    if cancellation is not None:
+        cancellation.raise_if_disconnected()
+
+    task: asyncio.Task[bytes] = asyncio.ensure_future(_get_watcher_body(url, timeout_seconds))
+    if cancellation is not None:
+        cancellation.active_task = task
+    try:
+        body = await task
+    finally:
+        if cancellation is not None and cancellation.active_task is task:
+            cancellation.active_task = None
+    return body.decode("utf-8", errors="replace")
+
+
+async def _fetch_machine_logs(
+    start_time: int | None = None,
+    end_time: int | None = None,
+    cancellation: CollectionCancellation | None = None,
+) -> str:
+    if _machine_is_emulated():
+        return _emulated_machine_logs(start_time, end_time)
+
     url = WATCHER_LOGS_URL
-    if reference_time is not None:
-        ceiling = min(_now_seconds(), reference_time + (3 * 60 * 60))
-        start_hours = max(0, int((time.time() - (ceiling - 24 * 60 * 60) + 3599) // 3600))
-        end_hours = max(0, int((time.time() - ceiling) // 3600))
+    if start_time is not None and end_time is not None:
+        collection_time = _now_seconds()
+        start_hours = max(0, (collection_time - start_time + 3599) // 3600)
+        end_hours = max(0, (collection_time - end_time) // 3600)
         separator = "&" if "?" in url else "?"
         url = f"{url}{separator}since={start_hours}&until={end_hours}"
-    url = f"{url}&timeout={TIMEOUT_SECONDS-10}"
-    client = tornado.httpclient.AsyncHTTPClient()
-    response = await client.fetch(url, request_timeout=TIMEOUT_SECONDS)
-    return response.body.decode("utf-8", errors="replace")
+    return await _fetch_watcher_text(url, 600, cancellation)
 
 
-async def _fetch_machine_status() -> str:
+async def _fetch_machine_status(
+    cancellation: CollectionCancellation | None = None,
+) -> str:
     if _machine_is_emulated():
         return _emulated_machine_status()
 
-    client = tornado.httpclient.AsyncHTTPClient()
-    response = await client.fetch(WATCHER_STATUS_URL, request_timeout=120)
-    return response.body.decode("utf-8", errors="replace")
+    return await _fetch_watcher_text(WATCHER_STATUS_URL, 120, cancellation)
 
 
-async def _fetch_report_files(draft_dir: Path) -> FetchResult:
-    result = FetchResult()
-    draft_dir.mkdir(parents=True, exist_ok=True)
-
+def _record_machine_info(result: FetchResult, draft_dir: Path) -> None:
     try:
         machine_info_path = draft_dir.joinpath(MACHINE_INFO_NAME)
         machine_info_path.write_text(
@@ -445,44 +501,128 @@ async def _fetch_report_files(draft_dir: Path) -> FetchResult:
         result.files[MACHINE_INFO_NAME] = machine_info_path
         result.machine_info = True
     except Exception as exc:
-        result.errors.append(f"Failed to fetch machine info: {exc}")
+        message = f"Failed to fetch machine info: {exc}"
+        result.errors.append(message)
+        logger.warning(f"[{draft_dir.name}] {message}", exc_info=True)
 
+
+async def _record_machine_logs(
+    result: FetchResult,
+    draft_dir: Path,
+    start_time: int | None,
+    end_time: int | None,
+    cancellation: CollectionCancellation | None,
+) -> None:
     try:
         machine_logs_path = draft_dir.joinpath(MACHINE_LOGS_NAME)
-        machine_logs_path.write_text(await _fetch_machine_logs(), encoding="utf-8")
+        machine_logs_path.write_text(
+            await _fetch_machine_logs(start_time, end_time, cancellation), encoding="utf-8"
+        )
         result.files[MACHINE_LOGS_NAME] = machine_logs_path
         result.machine_logs = True
     except Exception as exc:
-        result.errors.append(f"Failed to fetch machine logs: {exc}")
+        message = f"Failed to fetch machine logs: {exc}"
+        result.errors.append(message)
+        logger.warning(f"[{draft_dir.name}] {message}", exc_info=True)
 
+
+async def _record_machine_status(
+    result: FetchResult, draft_dir: Path, cancellation: CollectionCancellation | None
+) -> None:
     try:
         machine_status_path = draft_dir.joinpath(MACHINE_STATUS_NAME)
-        machine_status_path.write_text(await _fetch_machine_status(), encoding="utf-8")
+        machine_status_path.write_text(
+            await _fetch_machine_status(cancellation), encoding="utf-8"
+        )
         result.files[MACHINE_STATUS_NAME] = machine_status_path
         result.machine_status = True
     except Exception as exc:
-        result.errors.append(f"Failed to fetch machine status: {exc}")
+        message = f"Failed to fetch machine status: {exc}"
+        result.errors.append(message)
+        logger.warning(f"[{draft_dir.name}] {message}", exc_info=True)
 
-    debug_limit = MAX_DEBUG_SHOTS
+
+async def _record_active_debug_shot(result: FetchResult, draft_dir: Path) -> int:
+    """Capture the in-progress shot's debug file, if any.
+
+    Returns how much the remaining debug-file limit should shrink by: 1 if a
+    file was captured, 0 otherwise (including on failure).
+    """
     try:
         incomplete_debug_file = await _capture_incomplete_debug_shot(draft_dir)
-        if incomplete_debug_file is not None:
-            archive_name = _debug_archive_name(incomplete_debug_file)
-            result.files[archive_name] = draft_dir.joinpath(archive_name)
-            result.automatic_debug_files.append(incomplete_debug_file)
-            debug_limit -= 1
     except Exception as exc:
-        result.errors.append(f"Failed to capture active debug shot: {exc}")
+        message = f"Failed to capture active debug shot: {exc}"
+        result.errors.append(message)
+        logger.warning(f"[{draft_dir.name}] {message}", exc_info=True)
+        return 0
 
-    debug_files, debug_errors = _select_debug_files(limit=debug_limit)
-    result.errors.extend(debug_errors)
+    if incomplete_debug_file is None:
+        return 0
+    archive_name = _debug_archive_name(incomplete_debug_file)
+    result.files[archive_name] = draft_dir.joinpath(archive_name)
+    result.automatic_debug_files.append(incomplete_debug_file)
+    return 1
+
+
+def _copy_selected_debug_files(
+    result: FetchResult,
+    draft_dir: Path,
+    debug_files: list[Path],
+    cancellation: CollectionCancellation | None,
+) -> None:
     for path in debug_files:
+        if cancellation is not None:
+            cancellation.raise_if_disconnected()
         archive_name = _debug_archive_name(_safe_archive_name(path))
         try:
             result.files[archive_name] = _copy_draft_file(draft_dir, archive_name, path)
             result.automatic_debug_files.append(_safe_archive_name(path))
         except Exception as exc:
-            result.errors.append(f"Failed to copy debug file {path}: {exc}")
+            # No exc_info here: this loop runs once per debug file, and a
+            # traceback per file buries the one line that names which file.
+            message = f"Failed to copy debug file {path}: {exc}"
+            result.errors.append(message)
+            logger.warning(f"[{draft_dir.name}] {message}")
+
+
+async def _fetch_report_files(
+    draft_dir: Path,
+    start_time: int | None = None,
+    end_time: int | None = None,
+    capture_active_debug_shot: bool = True,
+    cancellation: CollectionCancellation | None = None,
+) -> FetchResult:
+    result = FetchResult()
+    draft_dir.mkdir(parents=True, exist_ok=True)
+
+    _record_machine_info(result, draft_dir)
+
+    if cancellation is not None:
+        cancellation.raise_if_disconnected()
+    await _record_machine_logs(result, draft_dir, start_time, end_time, cancellation)
+
+    if cancellation is not None:
+        cancellation.raise_if_disconnected()
+    await _record_machine_status(result, draft_dir, cancellation)
+
+    if cancellation is not None:
+        cancellation.raise_if_disconnected()
+    debug_limit = MAX_DEBUG_SHOTS
+    if capture_active_debug_shot:
+        debug_limit -= await _record_active_debug_shot(result, draft_dir)
+
+    if cancellation is not None:
+        cancellation.raise_if_disconnected()
+    debug_files, debug_errors = _select_debug_files(
+        limit=debug_limit, start_time=start_time, end_time=end_time
+    )
+    result.errors.extend(debug_errors)
+    for message in debug_errors:
+        # info, not warning: a machine that has not brewed 10 shots yet reports
+        # a short debug-file count on every single report. That is expected, and
+        # warning-level would train everyone to ignore the channel.
+        logger.info(f"[{draft_dir.name}] {message}")
+    _copy_selected_debug_files(result, draft_dir, debug_files, cancellation)
 
     _append_reporting_log_to_dir(draft_dir, result.errors)
     if draft_dir.joinpath(REPORT_LOG_NAME).exists():
@@ -500,7 +640,7 @@ def _insert_report(report_info: dict[str, Any]):
                     localID=report_info["localID"],
                     eventID=None,
                     baseEventID=None,
-                    issueTime=report_info["dateAndTime"],
+                    issueTime=report_info["issueTime"],
                     creationTime=report_info["dateAndTime"],
                     submissionTime=None,
                     description=None,
@@ -532,6 +672,35 @@ def _get_report_row(local_id: str):
         return connection.execute(
             select(bug_reports).where(bug_reports.c.localID == local_id)
         ).first()
+
+
+def _remove_report_representation(path: Path):
+    if path.is_dir():
+        shutil.rmtree(path)
+    elif path.exists() or path.is_symlink():
+        path.unlink()
+
+
+def _delete_report(local_id: str) -> bool:
+    """Remove all stored report files, then delete the matching database row."""
+    if local_id in {"", ".", ".."} or Path(local_id).name != local_id:
+        return False
+    if _get_report_row(local_id) is None:
+        return False
+
+    _remove_report_representation(_draft_path(local_id))
+    _remove_report_representation(_finalized_draft_path(local_id))
+
+    _ensure_database_initialized()
+    with ShotDataBase.engine.connect() as connection:
+        with connection.begin():
+            result = connection.execute(
+                delete(bug_reports).where(bug_reports.c.localID == local_id)
+            )
+            logger.info(
+                f"Deleted bug report draft with localID: {local_id}, affected rows: {result.rowcount}"
+            )
+            return result.rowcount > 0
 
 
 def _list_report_page(page: int, size: int, condition=None) -> dict[str, Any]:
@@ -593,62 +762,6 @@ def _apply_scalar_draft_patch(
         db_values["multimedia"] = patch["multimedia"]
 
 
-async def _apply_draft_time_patch(
-    report_info: dict[str, Any],
-    files: dict[str, Path],
-    draft_dir: Path,
-    attachments: dict[str, Any],
-    debug_files: dict[str, Any],
-    user_files: list[str],
-    db_values: dict[str, Any],
-    patch: dict[str, Any],
-) -> list[str]:
-    if "dateAndTime" not in patch:
-        return []
-    if patch["dateAndTime"] is None:
-        raise ValueError("dateAndTime cannot be null")
-
-    issue_time = int(patch["dateAndTime"])
-    report_info["dateAndTime"] = issue_time
-    db_values["issueTime"] = issue_time
-
-    preserve_user_names = set(user_files)
-    for name in list(debug_files.setdefault("automatic", [])):
-        if name not in preserve_user_names:
-            archive_name = _debug_archive_name(name)
-            files.pop(archive_name, None)
-            _remove_draft_file(draft_dir, archive_name)
-
-    errors = []
-    try:
-        machine_logs_path = draft_dir.joinpath(MACHINE_LOGS_NAME)
-        machine_logs_path.write_text(
-            await _fetch_machine_logs(reference_time=issue_time), encoding="utf-8"
-        )
-        files[MACHINE_LOGS_NAME] = machine_logs_path
-        attachments["machineLogs"] = True
-    except Exception as exc:
-        _remove_draft_file(draft_dir, MACHINE_LOGS_NAME)
-        files.pop(MACHINE_LOGS_NAME, None)
-        attachments["machineLogs"] = False
-        errors.append(f"Failed to fetch machine logs: {exc}")
-
-    selected_debug_files, debug_errors = _select_debug_files(reference_time=issue_time)
-    errors.extend(debug_errors)
-    copied_debug_files = []
-    for path in selected_debug_files:
-        name = _safe_archive_name(path)
-        archive_name = _debug_archive_name(name)
-        try:
-            files[archive_name] = _copy_draft_file(draft_dir, archive_name, path)
-            copied_debug_files.append(name)
-        except Exception as exc:
-            errors.append(f"Failed to copy debug file {path}: {exc}")
-
-    debug_files["automatic"] = copied_debug_files
-    return errors
-
-
 def _apply_user_debug_file_patch(
     files: dict[str, Path],
     draft_dir: Path,
@@ -667,7 +780,9 @@ def _apply_user_debug_file_patch(
             continue
         source_path = _find_debug_file(name)
         if source_path is None:
-            log_errors.append(f"User selected debug file not found: {name}")
+            message = f"User selected debug file not found: {name}"
+            log_errors.append(message)
+            logger.warning(f"[{draft_dir.name}] {message}")
             continue
         archive_name = _debug_archive_name(name)
         try:
@@ -675,7 +790,9 @@ def _apply_user_debug_file_patch(
                 archive_name, _copy_draft_file(draft_dir, archive_name, source_path)
             )
         except Exception as exc:
-            log_errors.append(f"Failed to copy user selected debug file {name}: {exc}")
+            message = f"Failed to copy user selected debug file {name}: {exc}"
+            log_errors.append(message)
+            logger.warning(f"[{draft_dir.name}] {message}")
             continue
         user_files.append(name)
 
@@ -707,18 +824,6 @@ async def _apply_draft_patch(local_id: str, patch: dict[str, Any]) -> dict[str, 
     log_errors = []
 
     _apply_scalar_draft_patch(report_info, db_values, patch)
-    log_errors.extend(
-        await _apply_draft_time_patch(
-            report_info,
-            files,
-            draft_dir,
-            attachments,
-            debug_files,
-            user_files,
-            db_values,
-            patch,
-        )
-    )
     log_errors.extend(
         _apply_user_debug_file_patch(files, draft_dir, debug_files, user_files, patch)
     )
@@ -823,16 +928,62 @@ def _parse_fiql(filter_text: str):
     return or_(*valid_parts), False
 
 
+def _create_report_issue_time(body: bytes) -> int | None:
+    if not body:
+        return None
+    data = _json_loads_body(body)
+    if set(data) != {"issueTime"}:
+        raise ValueError("Create report body must contain only issueTime")
+    issue_time = data["issueTime"]
+    if isinstance(issue_time, bool) or not isinstance(issue_time, int):
+        raise ValueError("issueTime must be an integer epoch timestamp")
+    return issue_time
+
+
+def _collection_range(issue_time: int, now: int) -> tuple[int, int]:
+    if now >= issue_time + (12 * 60 * 60):
+        return issue_time - (12 * 60 * 60), issue_time + (12 * 60 * 60)
+    return now - (24 * 60 * 60), now
+
+
 class ReportsCreateHandler(BaseHandler):
+    def initialize(self) -> None:
+        self._cancellation = CollectionCancellation()
+
+    def on_connection_close(self) -> None:
+        # Tornado delivers this on the IOLoop while collection is still
+        # awaiting, so this arrives in time to stop the collection instead
+        # of letting it run to completion for a client that already left.
+        self._cancellation.cancel()
+
     async def post(self):
-        if self.request.body:
-            _api_error(self, 400, "Request body must be empty")
-            return
-        local_id = _new_local_id()
         now = _now_seconds()
+        try:
+            requested_issue_time = _create_report_issue_time(self.request.body)
+        except ValueError as exc:
+            _api_error(self, 400, str(exc))
+            return
+
+        local_id = _new_local_id()
+        issue_time = requested_issue_time if requested_issue_time is not None else now
+        collection_range = (
+            _collection_range(issue_time, now) if requested_issue_time is not None else None
+        )
+        if collection_range is not None:
+            start, end = collection_range
+            logger.debug(f"information requested from {start} to {end}")
+        else:
+            logger.debug("information requested from the last day")
         draft_dir = _draft_path(local_id)
         try:
-            fetched = await _fetch_report_files(draft_dir)
+            fetched = await _fetch_report_files(
+                draft_dir,
+                *(collection_range or (None, None)),
+                capture_active_debug_shot=(
+                    collection_range is None or collection_range[1] == now
+                ),
+                cancellation=self._cancellation,
+            )
             db_statistics = ShotDataBase.statistics()
             attachments = {
                 "debugFiles": {"automatic": fetched.automatic_debug_files},
@@ -844,6 +995,7 @@ class ReportsCreateHandler(BaseHandler):
             report_info = {
                 "description": None,
                 "dateAndTime": now,
+                "issueTime": issue_time,
                 "attachments": attachments,
                 "multimedia": None,
                 "machineID": MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER],
@@ -856,6 +1008,11 @@ class ReportsCreateHandler(BaseHandler):
             _write_draft_machine_stats(draft_dir, db_statistics)
             _insert_report(report_info)
             self.write({"localID": local_id, "machineID": report_info["machineID"]})
+        except asyncio.CancelledError:
+            # The client disconnected. This is not an error: no Sentry
+            # report, no error-level log, no response. Leave the system
+            # exactly as if this create had never run.
+            shutil.rmtree(draft_dir, ignore_errors=True)
         except Exception as exc:
             shutil.rmtree(draft_dir, ignore_errors=True)
             logger.exception("Failed to create bug report draft")
@@ -915,6 +1072,25 @@ class ReportDraftHandler(BaseHandler):
         except Exception as exc:
             logger.exception("Failed to update bug report draft")
             _api_error(self, 500, "Failed to update report draft", {"message": str(exc)})
+
+    async def delete(self, local_id: str):
+        if self.request.body:
+            _api_error(self, 400, "Delete report draft request must not contain a body")
+            return
+
+        try:
+            deleted = _delete_report(local_id)
+            logger.info(f"Deleted bug report draft with localID: {local_id}")
+        except Exception as exc:
+            logger.exception("Failed to delete bug report draft")
+            _api_error(self, 500, "Failed to delete report draft", {"message": str(exc)})
+            return
+
+        if not deleted:
+            _api_error(self, 404, "Unknown localID")
+            return
+        self.set_status(204)
+        self.finish()
 
 
 class ReportsListHandler(BaseHandler):

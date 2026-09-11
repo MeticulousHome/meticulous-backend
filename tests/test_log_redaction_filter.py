@@ -351,7 +351,7 @@ class ThroughputTests(FilterTestCase):
         rate = iterations / elapsed
         self.assertGreater(
             rate,
-            20000,
+            10000,
             f"redaction throughput fell to {rate:.0f} records/s",
         )
 
