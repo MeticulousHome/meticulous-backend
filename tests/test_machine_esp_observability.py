@@ -122,13 +122,15 @@ def run_machine_uart(monkeypatch):
         "MileageRequest\n",
         "nvs_response,mileage_key,123\n",
         "nvs_response,ERROR: key not found\n",
+        "device_uuid_response,accepted\n",
     ],
 )
-def test_beta_mileage_messages_are_valid_observability_traffic(
+def test_beta_protocol_messages_are_valid_observability_traffic(
     monkeypatch, run_machine_uart, line
 ):
     monkeypatch.setattr(Machine, "_handleMileageRequest", lambda: None)
     monkeypatch.setattr(Machine, "_handleNvsResponse", lambda _key, _value: None)
+    monkeypatch.setattr(Machine, "handleDeviceUUIDResponse", lambda _response: None)
     monitor = ESPObservability(now=0)
 
     sentry_events, update_calls = run_machine_uart([line], monitor, available_firmware="1.2.3")
