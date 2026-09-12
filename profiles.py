@@ -25,6 +25,7 @@ import asyncio
 from log import MeticulousLogger
 from machine import Machine
 from profile_preprocessor import ProfilePreprocessor
+from profile_types import is_cleaning_profile
 from api.alarms import AlarmManager, AlarmType
 from images.notificationImages.base64 import WARNING_TRIANGLE_IMAGE
 import math
@@ -406,20 +407,24 @@ class ProfileManager:
 
         Machine.send_json_with_hash(preprocessed_profile)
 
-        ProfileManager._set_last_profile(data)
+        # Maintenance profiles are temporary machine operations, not coffee
+        # selections. Keeping them out of last-profile state prevents a later
+        # generic start command from unexpectedly restarting maintenance.
+        if not is_cleaning_profile(data):
+            ProfileManager._set_last_profile(data)
 
-        ProfileManager._emit_profile_event(PROFILE_EVENT.LOAD, data["id"])
+            ProfileManager._emit_profile_event(PROFILE_EVENT.LOAD, data["id"])
 
-        # Loading auto-selects the profile — emit profileHover so clients update
-        ProfileManager._profile_hover = ProfileHover(
-            id=data["id"],
-            type="focus",
-            from_="dial",
-        )
-        asyncio.run_coroutine_threadsafe(
-            ProfileManager._async_emit_profile_hover(),
-            ProfileManager._loop,
-        )
+            # Loading auto-selects the profile — emit profileHover so clients update
+            ProfileManager._profile_hover = ProfileHover(
+                id=data["id"],
+                type="focus",
+                from_="dial",
+            )
+            asyncio.run_coroutine_threadsafe(
+                ProfileManager._async_emit_profile_hover(),
+                ProfileManager._loop,
+            )
 
         return data
 
