@@ -7,7 +7,6 @@ import pytest
 
 from profile_types import is_cleaning_profile
 
-
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -47,9 +46,7 @@ def test_cleaning_profile_is_valid(profile_schema, cleaning_profile):
         ("stages", []),
     ],
 )
-def test_cleaning_profile_rejects_unsafe_shape(
-    profile_schema, cleaning_profile, field, value
-):
+def test_cleaning_profile_rejects_unsafe_shape(profile_schema, cleaning_profile, field, value):
     invalid_profile = copy.deepcopy(cleaning_profile)
     invalid_profile[field] = value
 
