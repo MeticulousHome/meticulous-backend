@@ -60,6 +60,18 @@ DEFAULT_PROFILES_PATH = os.getenv(
     "DEFAULT_PROFILES", "/opt/meticulous-backend/default_profiles"
 )
 
+# Only recipe/runtime data belongs on the constrained UART link. These fields cover
+# both firmware profile runtimes: the node engine consumes name/stages, while the
+# simplified espresso engine additionally consumes temperature, final_weight, and
+# variables. Profile identity remains in backend state and load events.
+ESP32_PROFILE_FIELDS = (
+    "name",
+    "temperature",
+    "final_weight",
+    "variables",
+    "stages",
+)
+
 
 class PROFILE_EVENT(Enum):
     CREATE = "create"
@@ -359,6 +371,10 @@ class ProfileManager:
             ProfileManager.send_profile_to_esp32(profile)
         return profile
 
+    @staticmethod
+    def _profile_for_esp32(profile):
+        return {field: profile[field] for field in ESP32_PROFILE_FIELDS if field in profile}
+
     def send_profile_to_esp32(data):
         if (end_time := AlarmManager.is_alarm_set(AlarmType.MOTOR_STRESSED)) is not None:
             AlarmManager._notify_user(
@@ -400,11 +416,12 @@ class ProfileManager:
                 f"Preprocessing and variable expansion took {int(preprocessing_time_ms*1000)} ns"
             )
 
+        esp32_profile = ProfileManager._profile_for_esp32(preprocessed_profile)
         logger.info(
-            f"simplified profile streamed to ESP32: data MD5={ProfileManager._get_payload_md5(preprocessed_profile)}"
+            f"simplified profile streamed to ESP32: data MD5={ProfileManager._get_payload_md5(esp32_profile)}"
         )
 
-        Machine.send_json_with_hash(preprocessed_profile)
+        Machine.send_json_with_hash(esp32_profile)
 
         ProfileManager._set_last_profile(data)
 
