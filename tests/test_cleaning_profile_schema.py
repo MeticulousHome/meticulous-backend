@@ -5,7 +5,7 @@ from pathlib import Path
 import jsonschema
 import pytest
 
-from profile_types import is_cleaning_profile
+from profile_types import is_cleaning_profile, is_node_profile
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
@@ -18,15 +18,8 @@ def profile_schema():
 
 @pytest.fixture
 def cleaning_profile():
-    return {
-        "profile_type": "cleaning",
-        "name": "Group Flush",
-        "id": "fc14d89e-2b10-47b5-9ea0-a2735c7ee777",
-        "author": "Meticulous",
-        "author_id": "d9123a0a-d3d7-40fd-a548-b81376e43f23",
-        "temperature": 65,
-        "workflow": ["heat", "wait_for_dial", "raise", "purge"],
-    }
+    with (BACKEND_ROOT / "profile_schema" / "cleaning_profile.json").open() as profile_file:
+        return json.load(profile_file)
 
 
 def test_cleaning_profile_is_valid(profile_schema, cleaning_profile):
@@ -39,9 +32,6 @@ def test_cleaning_profile_is_valid(profile_schema, cleaning_profile):
         ("temperature", 65.1),
         ("temperature", 0),
         ("temperature", "65"),
-        ("workflow", ["heat", "raise", "purge"]),
-        ("workflow", ["heat", "wait_for_dial", "raise", "purge", "wipe"]),
-        ("workflow", ["heat", "wait_for_dial", "purge", "raise"]),
         ("final_weight", 0),
         ("stages", []),
     ],
@@ -49,6 +39,27 @@ def test_cleaning_profile_is_valid(profile_schema, cleaning_profile):
 def test_cleaning_profile_rejects_unsafe_shape(profile_schema, cleaning_profile, field, value):
     invalid_profile = copy.deepcopy(cleaning_profile)
     invalid_profile[field] = value
+
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(invalid_profile, profile_schema)
+
+
+def test_cleaning_profile_rejects_reordered_node_stages(profile_schema, cleaning_profile):
+    invalid_profile = copy.deepcopy(cleaning_profile)
+    invalid_profile["stages"][2], invalid_profile["stages"][3] = (
+        invalid_profile["stages"][3],
+        invalid_profile["stages"][2],
+    )
+
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(invalid_profile, profile_schema)
+
+
+def test_cleaning_profile_rejects_unknown_node_operations(profile_schema, cleaning_profile):
+    invalid_profile = copy.deepcopy(cleaning_profile)
+    invalid_profile["stages"][2]["nodes"][1]["controllers"][0][
+        "kind"
+    ] = "raw_motor_power_controller"
 
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate(invalid_profile, profile_schema)
@@ -71,9 +82,10 @@ def test_unknown_profile_type_is_rejected(profile_schema, cleaning_profile):
         jsonschema.validate(cleaning_profile, profile_schema)
 
 
-def test_older_firmware_cannot_parse_cleaning_as_espresso(cleaning_profile):
+def test_cleaning_uses_the_existing_node_profile_path(cleaning_profile):
     assert "final_weight" not in cleaning_profile
-    assert "stages" not in cleaning_profile
+    assert "workflow" not in cleaning_profile
+    assert is_node_profile(cleaning_profile)
 
 
 def test_cleaning_is_not_treated_as_a_last_coffee_profile(cleaning_profile):

@@ -25,7 +25,7 @@ import asyncio
 from log import MeticulousLogger
 from machine import Machine
 from profile_preprocessor import ProfilePreprocessor
-from profile_types import is_cleaning_profile
+from profile_types import is_cleaning_profile, is_node_profile
 from api.alarms import AlarmManager, AlarmType
 from images.notificationImages.base64 import WARNING_TRIANGLE_IMAGE
 import math
@@ -372,14 +372,19 @@ class ProfileManager:
         data_md5 = ProfileManager._get_payload_md5(data)
         logger.info(f"Recieved {type(data)} data with MD5: {data_md5}")
 
-        logger.info("processing simplified profile")
+        node_profile = is_node_profile(data)
+        logger.info(
+            "processing node profile" if node_profile else "processing simplified profile"
+        )
         errors = ProfileManager.validate_profile(data)
         if errors is not None:
             raise errors
 
         start = time.time()
         try:
-            preprocessed_profile = ProfilePreprocessor.processVariables(data)
+            preprocessed_profile = (
+                data if node_profile else ProfilePreprocessor.processVariables(data)
+            )
         except Exception as err:
             logger.info(
                 f"Profile variables could not be processed: {err.__class__.__name__}: {err}"
@@ -399,7 +404,7 @@ class ProfileManager:
             )
 
         logger.info(
-            f"simplified profile streamed to ESP32: data MD5={ProfileManager._get_payload_md5(preprocessed_profile)}"
+            f"{'node' if node_profile else 'simplified'} profile streamed to ESP32: data MD5={ProfileManager._get_payload_md5(preprocessed_profile)}"
         )
 
         Machine.send_json_with_hash(preprocessed_profile)
@@ -690,13 +695,14 @@ class ProfileManager:
 
     def validate_profile(data):
 
-        try:
-            ProfilePreprocessor.processVariables(data)
-        except Exception as err:
-            logger.info(
-                f"Profile variables could not be processed: {err.__class__.__name__}: {err}"
-            )
-            return err
+        if not is_node_profile(data):
+            try:
+                ProfilePreprocessor.processVariables(data)
+            except Exception as err:
+                logger.info(
+                    f"Profile variables could not be processed: {err.__class__.__name__}: {err}"
+                )
+                return err
 
         if not ProfileManager._schema:
             logger.warning("No schema available, not validating")
