@@ -1,5 +1,6 @@
 import asyncio
 import os
+import re
 import sys
 import time
 from threading import Thread
@@ -20,6 +21,10 @@ from dbus_next.errors import DBusError
 from dbus_next.service import ServiceInterface, method
 from improv import ImprovProtocol, ImprovState, ImprovUUID
 
+from ble_auth import BleAuthorization, ProvisioningSession
+from improv import ImprovCommand, ImprovError
+from pairing import PairingManagerInstance
+from identity import IdentityManagerInstance
 from config import CONFIG_WIFI, WIFI_MODE, WIFI_MODE_AP, MeticulousConfig
 from hostname import HostnameManager
 from log import MeticulousLogger
@@ -129,6 +134,7 @@ class GATTServer:
     MIN_BOOT_TIME = 60
     MACHINE_IDENT_UUID = "7f01d7b8-121e-11ef-a097-b3b1396fea81"
     ADVERTISEMENT_UPDATE_RETRY_DELAYS = (1, 3, 8)
+    PROVISION_RESULT_TTL_SECONDS = 15
 
     _singletonServer = None
 
@@ -137,6 +143,20 @@ class GATTServer:
         self.update_trigger = asyncio.Event()
         self.loop = asyncio.new_event_loop()
         self.auth_notification: Notification = None
+        # Immutable WIFI_SETTINGS request bound to the only connected BlueZ
+        # peer. Bless drops the D-Bus `device` option from read/write callbacks,
+        # so provisioning fails closed unless exactly one Device1 is connected.
+        self.pending_provision_session: Optional[ProvisioningSession] = None
+        self.provision_notification: Notification = None
+        self.connected_peers = set()
+        self.authorized_provision_peer: Optional[str] = None
+        self.provision_result = None
+        self.provision_result_owner: Optional[str] = None
+        self.provision_result_id: Optional[str] = None
+        self.provision_result_expiry_handle = None
+        # User-facing authorization window for provisioning (M4). Opened only by
+        # an explicit Yes on the Dial prompt; see ble_auth.py.
+        self.ble_auth = BleAuthorization()
 
         def _exception_handler(loop, context):
             print(context)
@@ -149,6 +169,11 @@ class GATTServer:
 
         self.loop.set_exception_handler(_exception_handler)
         self.improv_server = ImprovProtocol(
+            # Start AUTHORIZED so the app can send the network + password freely
+            # (no pre-emptive prompt). Security is NOT the library's state here:
+            # write_request intercepts WIFI_SETTINGS and never connects until the
+            # user approves "Connect to '<SSID>'?" on the Dial (M4 redesign,
+            # DISENO-FASE2 §9). Machine identifiers stay gated behind ble_auth.
             requires_authorization=False,
             wifi_connect_callback=GATTServer.wifi_connect,
             wifi_networks_callback=GATTServer.get_wifi_networks,
@@ -429,6 +454,9 @@ class GATTServer:
                 name = name.value if name else "unknown"
                 if "Connected" in changed_props:
                     connected = changed_props["Connected"].value
+                    peer_id = msg.path
+                    if peer_id:
+                        self._peer_topology_changed(peer_id, connected)
                     if connected:
                         logger.info(f"BLE client connected (name={name})")
                     else:
@@ -560,40 +588,268 @@ class GATTServer:
             ssids.append(s.ssid)
         return ssids
 
-    def send_authentication_notification(self):
-        notification = "Allow Wifi provisioning for 3 minutes?"
+    # --- provisioning approval (M4 redesign, DISENO-FASE2 §9) -----------------
+    #
+    # The app fills the network + password at leisure and sends WIFI_SETTINGS.
+    # We buffer those credentials, ask on the Dial "Connect to '<SSID>'?" naming
+    # the network, and only connect on approval -- no pre-emptive prompt, no
+    # countdown. The same on-screen approval also mints a device token, returned
+    # to the app over BLE in the WIFI_SETTINGS RPC response, so the person who
+    # provisions Wi-Fi does not also have to type a pairing code.
 
-        def response_callback():
-            logger.info("BLE GATT NOTIFICATION CALLBACK")
+    def _update_improv_char(self, uuid, value: bytearray) -> None:
+        """Write and notify an Improv characteristic (runs on the BLE loop)."""
+        try:
+            self.bless_gatt_server.get_characteristic(uuid).value = value
+            self.bless_gatt_server.update_value(ImprovUUID.SERVICE_UUID.value, uuid)
+        except Exception as e:
+            logger.warning(f"Failed to push Improv char {uuid}: {exception_metadata(e)}")
 
-        # Only create a new notification if we dont have one already. In that case: update it
-        if self.auth_notification is None or self.auth_notification.acknowledged:
-            self.auth_notification = Notification(
-                notification,
-                [NotificationResponse.YES, NotificationResponse.NO],
-                callback=response_callback,
+    def _push_state(self) -> None:
+        self._update_improv_char(
+            ImprovUUID.STATUS_UUID.value,
+            bytearray(self.improv_server.state.value.to_bytes(1, "little")),
+        )
+
+    def _push_error(self, error: ImprovError) -> None:
+        self.improv_server.last_error = error
+        self._update_improv_char(
+            ImprovUUID.ERROR_UUID.value,
+            bytearray(error.value.to_bytes(1, "little")),
+        )
+
+    def _sole_connected_peer(self) -> Optional[str]:
+        if len(self.connected_peers) != 1:
+            return None
+        return next(iter(self.connected_peers))
+
+    def _dismiss_provision_prompt(self) -> None:
+        notification = self.provision_notification
+        self.provision_notification = None
+        if notification is None:
+            return
+        revoke = Notification("", responses=[], sensitive=True)
+        revoke.id = notification.id
+        NotificationManager.add_notification(revoke)
+
+    def _reject_provision_request(self, reason: str) -> None:
+        logger.warning(f"BLE provisioning request rejected ({reason})")
+        self.improv_server.state = ImprovState.AWAITING_AUTHORIZATION
+        self._push_state()
+        self._push_error(ImprovError.NOT_AUTHORIZED)
+
+    def _peer_topology_changed(self, peer_id: str, connected: bool) -> None:
+        if connected:
+            self.connected_peers.add(peer_id)
+        else:
+            self.connected_peers.discard(peer_id)
+
+        sole_peer = self._sole_connected_peer()
+        pending = self.pending_provision_session
+        if pending is not None and sole_peer != pending.peer_id:
+            self._cancel_provision(
+                pending.session_id,
+                pending.payload_digest,
+                "BLE peer changed while approval was pending",
             )
 
-        NotificationManager.add_notification(self.auth_notification)
+        if self.authorized_provision_peer is not None and (
+            sole_peer != self.authorized_provision_peer
+        ):
+            self.ble_auth.revoke()
+            self.authorized_provision_peer = None
+            self._clear_provision_result()
 
-    def updateAuthentication(self):
+    def send_provision_prompt(self, session: ProvisioningSession, ssid: str) -> None:
+        """Ask on the Dial to connect to the named network (and allow the app)."""
+        session_id = session.session_id
+        expected_digest = session.payload_digest
+        message = (
+            f"A device wants to connect this machine to Wi-Fi:\n'{ssid}'\n\n"
+            "Connect to this network and allow the device?"
+        )
+        notification = Notification(
+            message,
+            [NotificationResponse.YES, NotificationResponse.NO],
+            # Answering this grants Wi-Fi provisioning AND mints a token, so it
+            # must only ever be answerable at the Dial.
+            sensitive=True,
+        )
+
+        def on_answer():
+            # May fire twice. The immutable session id + digest prevent a stale
+            # Dial callback from approving a later peer's payload. Do not capture
+            # the session itself here: it contains the Wi-Fi password.
+            current = self.pending_provision_session
+            if (
+                current is None
+                or current.session_id != session_id
+                or not current.matches_digest(expected_digest)
+            ):
+                return
+            if notification.response == NotificationResponse.YES:
+                self._complete_provision(session_id, expected_digest)
+            else:
+                self._cancel_provision(session_id, expected_digest, "declined on the Dial")
+
+        notification.callback = on_answer
+        self.provision_notification = notification
+        NotificationManager.add_notification(notification)
+
+    def _cancel_provision(self, session_id: str, expected_digest: bytes, reason: str) -> None:
+        current = self.pending_provision_session
+        if (
+            current is None
+            or current.session_id != session_id
+            or not current.matches_digest(expected_digest)
+        ):
+            return
+        logger.info(f"BLE provisioning cancelled ({reason})")
+        self.pending_provision_session = None
+        self._dismiss_provision_prompt()
+        self.ble_auth.revoke()
+        self.authorized_provision_peer = None
         self.improv_server.state = ImprovState.AWAITING_AUTHORIZATION
+        self.loop.call_soon_threadsafe(lambda: self._push_error(ImprovError.NOT_AUTHORIZED))
 
-        # FIXME currently the dial notification flow does not call the backend so the notification is never returned
-        self.improv_server.state = ImprovState.AUTHORIZED
-        return
+    def _complete_provision(self, session_id: str, expected_digest: bytes) -> None:
+        """User approved on the Dial: connect, mint a token, push the result."""
+        session = self.pending_provision_session
+        if (
+            session is None
+            or session.session_id != session_id
+            or not session.matches_digest(expected_digest)
+        ):
+            return
+        if (
+            not session.matches_payload(session.payload)
+            or self._sole_connected_peer() != session.peer_id
+        ):
+            self._cancel_provision(
+                session_id,
+                expected_digest,
+                "approval did not match the pending session",
+            )
+            return
+        self.pending_provision_session = None
+        self._dismiss_provision_prompt()
+        # Reading identifiers (MACHINE_IDENT) is unlocked for this approved
+        # peer only. Any connection topology change revokes it.
+        self.ble_auth.grant()
+        self.authorized_provision_peer = session.peer_id
+        # Do the (blocking) connect and characteristic updates on the BLE loop,
+        # matching how the library ran wifi_connect synchronously before.
+        self.loop.call_soon_threadsafe(lambda: self._run_provision(session))
 
-        if not self.auth_notification:
-            self.send_authentication_notification()
+    def _run_provision(self, session: ProvisioningSession) -> None:
+        if (
+            self._sole_connected_peer() != session.peer_id
+            or self.authorized_provision_peer != session.peer_id
+            or not session.matches_payload(session.payload)
+        ):
+            self._reject_provision_request("approved peer is no longer the sole connection")
+            self.ble_auth.revoke()
+            self.authorized_provision_peer = None
             return
 
-        if self.auth_notification.acknowledged:
-            if time.time() - self.auth_notification.acknowledged_timestamp < 180:
-                self.improv_server.state = ImprovState.AUTHORIZED
-                logger.info("Notification acknowleded, allowing provisioning")
-                return
+        parsed = self.improv_server.parse_improv_data(bytearray(session.payload))
+        if parsed[0] != ImprovCommand.WIFI_SETTINGS or len(parsed) < 3:
+            self._push_error(ImprovError.INVALID_RPC)
+            self.ble_auth.revoke()
+            self.authorized_provision_peer = None
+            return
+        ssid, password = parsed[1], parsed[2]
 
-        self.send_authentication_notification()
+        self.improv_server.state = ImprovState.PROVISIONING
+        self._push_state()
+
+        urls = GATTServer.wifi_connect(ssid, password)
+        if not urls:
+            logger.warning("BLE provisioning: Wi-Fi connect failed")
+            self.improv_server.state = ImprovState.AWAITING_AUTHORIZATION
+            self._push_error(ImprovError.UNABLE_TO_CONNECT)
+            self.ble_auth.revoke()
+            self.authorized_provision_peer = None
+            return
+
+        token = PairingManagerInstance.mint_token("Meticulous App")
+        self.improv_server.state = ImprovState.PROVISIONED
+        # wifi_connect returns the loopback-only :8080 URL; a LAN client must use
+        # the public port (nginx on :80). Return the public origin so the app can
+        # actually reach the machine over Wi-Fi and stores the token under the
+        # same origin it will use for HTTP/Socket.IO.
+        public_url = re.sub(r":%d$" % PORT, "", urls[0])
+        # WIFI_SETTINGS response: [machine URL, device token, identity
+        # fingerprint]. Older apps read only params[0]/[1]; the fingerprint is
+        # an extra param they ignore. The app compares it against GET /machine
+        # at the URL before it trusts the token (it does NOT authenticate the
+        # BLE peer; see ADV-009).
+        fingerprint = IdentityManagerInstance.fingerprint_hex()
+        response = self.improv_server.build_rpc_response(
+            ImprovCommand.WIFI_SETTINGS, [public_url, token, fingerprint]
+        )
+        self._publish_provision_result(session.peer_id, response)
+        self._push_state()
+        logger.info("BLE provisioning approved: connected and token delivered over BLE")
+
+    def _publish_provision_result(self, peer_id: str, response) -> None:
+        """Expose a secret result once, then erase it after a short timeout."""
+        self._clear_provision_result()
+        values = response
+        if isinstance(values, (bytes, bytearray)):
+            values = [values]
+        self.provision_result = [bytearray(value) for value in values]
+        self.provision_result_owner = peer_id
+        self.provision_result_id = os.urandom(16).hex()
+        result_id = self.provision_result_id
+        self.improv_server.rpc_response = self.provision_result
+
+        for value in self.provision_result:
+            self._update_improv_char(ImprovUUID.RPC_RESULT_UUID.value, value)
+
+        self.provision_result_expiry_handle = self.loop.call_later(
+            self.PROVISION_RESULT_TTL_SECONDS,
+            lambda: self._expire_provision_result(result_id),
+        )
+
+    def _expire_provision_result(self, result_id: str) -> None:
+        if self.provision_result_id == result_id:
+            self._clear_provision_result()
+
+    def _clear_provision_result(self) -> None:
+        handle = self.provision_result_expiry_handle
+        self.provision_result_expiry_handle = None
+        if handle is not None:
+            handle.cancel()
+
+        if self.provision_result is not None:
+            for value in self.provision_result:
+                value[:] = b"\x00" * len(value)
+                value.clear()
+        self.provision_result = None
+        self.provision_result_owner = None
+        self.provision_result_id = None
+        if hasattr(self, "improv_server"):
+            self.improv_server.rpc_response = b""
+        if self.bless_gatt_server is not None:
+            try:
+                characteristic = self.bless_gatt_server.get_characteristic(
+                    ImprovUUID.RPC_RESULT_UUID.value
+                )
+                characteristic.value = bytearray()
+            except Exception:
+                pass
+
+    def _consume_provision_result(self):
+        if self.provision_result is None:
+            return None
+        if self._sole_connected_peer() != self.provision_result_owner:
+            self._clear_provision_result()
+            return bytearray()
+
+        response = [bytearray(value) for value in self.provision_result]
+        self._clear_provision_result()
+        return response
 
     def machine_ident_read_request(
         characteristic: BlessGATTCharacteristic,
@@ -601,6 +857,25 @@ class GATTServer:
 
         config = WifiManager.getCurrentConfig()
         current_response = HostnameManager.generateDeviceName() + ","
+
+        server = GATTServer.getServer()
+        if (
+            not server.ble_auth.active()
+            or server._sole_connected_peer() != server.authorized_provision_peer
+        ):
+            # Unauthorized peers only learn what the advertisement already
+            # broadcasts: the device name and whether the machine is online.
+            # Hostname (embeds the serial), current SSID and IP list are
+            # withheld until the user approves provisioning on the Dial.
+            # Same field count/order so any parser stays happy.
+            current_response += ","  # hostname
+            current_response += "black" + ","
+            current_response += "v10.1.0" + ","
+            current_response += "103" + ","
+            current_response += "1," if config.connected else "0,"
+            current_response += ","  # connection (SSID) name
+            return bytearray(current_response.encode())
+
         current_response += config.hostname + ","
         current_response += "black" + ","
         current_response += "v10.1.0" + ","
@@ -621,12 +896,20 @@ class GATTServer:
         if characteristic.service_uuid == ImprovUUID.SERVICE_UUID.value:
             if characteristic.uuid == GATTServer.MACHINE_IDENT_UUID:
                 value = GATTServer.machine_ident_read_request(characteristic)
+            elif characteristic.uuid == ImprovUUID.RPC_RESULT_UUID.value:
+                value = GATTServer.getServer()._consume_provision_result()
+                if value is None:
+                    value = GATTServer.getServer().improv_server.handle_read(
+                        characteristic.uuid
+                    )
             else:
-                GATTServer.getServer().updateAuthentication()
+                # Improv reads (STATUS/ERROR/RESULT/CAPABILITIES) need no
+                # authorization -- the app polls STATUS to learn it must wait
+                # for the on-screen approval. No pre-emptive Dial prompt here.
                 value = GATTServer.getServer().improv_server.handle_read(characteristic.uuid)
             if isinstance(value, list):
                 value = bytearray(value[0])
-            logger.info(f"BLE READ  {char_name} -> {len(value)} bytes: {value.hex()}")
+            logger.info(f"BLE READ  {char_name} -> {payload_metadata(value)}")
             return value
 
         logger.info(f"BLE READ  {char_name} (non-improv)")
@@ -642,10 +925,50 @@ class GATTServer:
         logger.info(f"BLE WRITE {char_name} <- {payload_metadata(value)}")
 
         if characteristic.service_uuid == ImprovUUID.SERVICE_UUID.value:
+            server = GATTServer.getServer()
+            if characteristic.uuid == ImprovUUID.RPC_COMMAND_UUID.value:
+                # A WIFI_SETTINGS write is not executed immediately. Buffer the
+                # credentials, ask on the Dial "Connect to '<SSID>'?" naming the
+                # network, and let the app wait (STATUS = AWAITING_AUTHORIZATION).
+                # The actual connect + token delivery happens in _run_provision
+                # once the user approves. Other RPCs (identify, get networks,
+                # get device info) pass through unchanged.
+                parsed = server.improv_server.parse_improv_data(value)
+                if parsed[0] == ImprovCommand.WIFI_SETTINGS and len(parsed) >= 3:
+                    peer_id = server._sole_connected_peer()
+                    if peer_id is None:
+                        server._reject_provision_request(
+                            "exactly one BLE peer must be connected"
+                        )
+                        return
+                    if (
+                        server.pending_provision_session is not None
+                        or server.provision_result is not None
+                    ):
+                        server._reject_provision_request(
+                            "another provisioning session is still active"
+                        )
+                        return
+                    if not server.ble_auth.should_prompt(prompt_pending=False):
+                        server._reject_provision_request("approval prompt cooldown is active")
+                        return
+                    try:
+                        ssid = bytes(parsed[1]).decode("utf-8", "replace")
+                    except Exception:
+                        ssid = "this network"
+                    session = ProvisioningSession.create(peer_id, value)
+                    server.pending_provision_session = session
+                    server.ble_auth.note_prompt()
+                    server.improv_server.state = ImprovState.AWAITING_AUTHORIZATION
+                    server.improv_server.last_error = ImprovError.NONE
+                    server._push_state()
+                    server.send_provision_prompt(session, ssid)
+                    logger.info("BLE provisioning requested; awaiting Dial approval")
+                    return
             (
                 target_uuid,
                 target_values,
-            ) = GATTServer.getServer().improv_server.handle_write(characteristic.uuid, value)
+            ) = server.improv_server.handle_write(characteristic.uuid, value)
             if target_uuid is not None and target_values is not None:
                 target_name = target_uuid
                 try:

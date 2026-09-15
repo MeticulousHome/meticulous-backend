@@ -16,7 +16,7 @@ from esp_serial.data import ButtonEventData
 
 from ble_gatt import GATTServer
 from wifi import WifiManager
-from notifications import Notification, NotificationManager
+from notifications import DIAL_ROOM, Notification, NotificationManager
 from profiles import ProfileManager
 from pour_over_profiles import PourOverProfileManager
 from hostname import HostnameManager
@@ -29,6 +29,7 @@ from config import (
 )
 
 from machine import Machine
+import socket_registry
 from sounds import SoundPlayer
 from imager import DiscImager
 from ota import UpdateManager
@@ -36,6 +37,8 @@ from esp_serial.connection.emulation_data import EmulationData
 from usb import USBManager
 
 from api.api import API
+from api.auth import is_socket_authorized, socket_device_id, socket_is_local
+from identity import IdentityManagerInstance
 from api.emulation import register_emulation_handlers
 from api.web_ui import WEB_UI_HANDLER
 
@@ -69,13 +72,31 @@ UpdateOSStatus.setSio(sio)
 
 
 @sio.event
-async def connect(sid, environ):
+async def connect(sid, environ, auth=None):
+    # Same authorization boundary as the HTTP API: the Dial connects over
+    # loopback and is exempt; a LAN client must present a valid device token in
+    # the handshake. Rejecting here closes the sensor/status stream, the action
+    # control channel, and the notification-ack path to unpaired peers.
+    if not is_socket_authorized(environ, auth):
+        logger.warning("Rejected unauthorized socket.io connection %s", sid)
+        raise socketio.exceptions.ConnectionRefusedError("unauthorized")
+    # Remember which paired device authorized this socket so a later revoke can
+    # drop it (None for the Dial/loopback, which is never dropped).
+    device_id = socket_device_id(environ, auth)
+    # Locality is decided from the REAL peer (see socket_is_local) and stored
+    # explicitly; only such a socket (the Dial) joins the room that receives
+    # security prompts and may answer them.
+    is_local = socket_is_local(environ)
+    socket_registry.register(sid, device_id, is_local=is_local)
+    if is_local:
+        await sio.enter_room(sid, DIAL_ROOM)
     logger.info("connect %s", sid)
     await ProfileManager._async_emit_profile_hover(to=sid)
 
 
 @sio.event
 def disconnect(sid):
+    socket_registry.unregister(sid)
     logger.info("disconnect %s", sid)
 
 
@@ -97,8 +118,11 @@ def msg(sid, data):
 def notification(sid, noti_json):
     notification = json.loads(noti_json)
     if "id" in notification and "response" in notification:
+        # Only the Dial (the loopback socket in DIAL_ROOM) may answer a security
+        # prompt; a LAN client acknowledging one would approve its own access.
+        is_local = socket_registry.is_dial(sid)
         NotificationManager.acknowledge_notification(
-            notification["id"], notification["response"]
+            notification["id"], notification["response"], is_local=is_local
         )
 
 
@@ -295,6 +319,10 @@ def main():
 
     AlarmManager.init()
     Machine.init(sio)
+    # The machine identity must exist before the HTTP app serves /machine and
+    # before the BLE GATT server can return the fingerprint in a provisioning
+    # result, so load (or first-boot generate) it here.
+    IdentityManagerInstance.load_or_create()
     SSHManager.init()
     SystemServices.init()
 
@@ -304,12 +332,15 @@ def main():
     send_data_thread = NamedThread("SendSocketIO", target=send_data_loop)
     send_data_thread.start()
 
-    GATTServer.getServer().start()
-
     if Machine.emulated:
         WifiManager.init()
 
     NotificationManager.init(sio)
+    # Started after the NotificationManager so an early BLE read cannot queue
+    # an authorization prompt before there is an emitter for it. Not a real
+    # window in practice (BLE only advertises after MIN_BOOT_TIME), but keeps
+    # the dependency order honest.
+    GATTServer.getServer().start()
     ProfileManager.init(sio)
     PourOverProfileManager.init()
     SoundPlayer.init(emulation=Machine.emulated)
@@ -318,6 +349,7 @@ def main():
     TimezoneManager.init()
 
     MeticulousConfig.setSIO(sio)
+    socket_registry.set_sio(sio)
 
     handlers = [
         (r"/socket.io/", socketio.get_tornado_handler(sio)),

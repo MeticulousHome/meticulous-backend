@@ -26,6 +26,11 @@ class NotificationResponse:
     ABORT = "Abort"
 
 
+# Room every loopback (Dial) socket joins. Security prompts are emitted only
+# here, never broadcast to LAN clients.
+DIAL_ROOM = "dial"
+
+
 class Notification:
     def __init__(
         self,
@@ -33,6 +38,7 @@ class Notification:
         responses=[NotificationResponse.OK],
         image=None,
         callback: callable = None,
+        sensitive: bool = False,
     ):
         self.id = str(uuid.uuid4())
         self.message = message
@@ -43,6 +49,12 @@ class Notification:
         self.response = None
         self.callback = callback
         self.timestamp = datetime.now()
+        # A security prompt (pairing code, BLE provisioning approval). Its body
+        # carries an enrollment secret and answering it grants access, so it must
+        # never be readable, listable, loggable or acknowledgeable by a LAN
+        # client -- only by the person at the Dial. See api/notifications.py and
+        # the emit path below.
+        self.sensitive = sensitive
 
     def add_image(self, filename):
         ext = filename.split(".")[-1]
@@ -79,6 +91,9 @@ class Notification:
                 "image": self.image,
                 "responses": [x for x in self.respone_options],
                 "timestamp": self.timestamp.isoformat(),
+                # Lets the Dial (and any consumer) know this body must never be
+                # logged or forwarded: it may carry an enrollment secret.
+                "sensitive": self.sensitive,
             }
         )
 
@@ -111,21 +126,45 @@ class NotificationManager:
                     # If the queue is empty, wait for a short period before trying again
                     await asyncio.sleep(0.1)
                 else:
-                    # Emit the notification over socketIO as json
-                    await NotificationManager._sio.emit("notification", notification.to_json())
-                    logger.info(f"send notification: {notification.to_json()}")
+                    await NotificationManager._emit(notification)
 
         # Create and run the asyncio event loop
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(process_queue())
 
-    def acknowledge_notification(notification_id, response):
+    async def _emit(notification):
+        """Security prompts go ONLY to the Dial (loopback sockets in DIAL_ROOM)
+        and are logged by id only; broadcasting them would hand the pairing
+        code -- and the ability to answer the prompt -- to every authorized LAN
+        client, defeating physical approval."""
+        if notification.sensitive:
+            await NotificationManager._sio.emit(
+                "notification", notification.to_json(), room=DIAL_ROOM
+            )
+            logger.info(f"send security notification to Dial: id={notification.id}")
+        else:
+            await NotificationManager._sio.emit("notification", notification.to_json())
+            logger.info(f"send notification: {notification.to_json()}")
+
+    def acknowledge_notification(notification_id, response, is_local: bool = False):
+        """Acknowledge a notification.
+
+        `is_local` must be True only for a genuine loopback/Dial caller. A
+        security prompt (pairing / BLE approval) can be answered ONLY from the
+        Dial: answering it grants access, so allowing a LAN client to do it
+        would let any token holder approve its own enrollment.
+        """
         for notification in NotificationManager.get_unacknowledged_notifications():
             if notification.id == notification_id:
+                if notification.sensitive and not is_local:
+                    logger.warning(
+                        "Refused remote acknowledgement of a security prompt "
+                        f"(id={notification_id})"
+                    )
+                    return False
+                # acknowledge() already runs the callback; do not run it twice.
                 notification.acknowledge(response)
-                if notification.callback:
-                    notification.callback()
                 return True
         return False
 
@@ -136,6 +175,13 @@ class NotificationManager:
             if notification.id == old_notfication.id and not old_notfication.acknowledged:
                 del NotificationManager._notifications[idx]
                 updating = True
+
+        # An empty body is a dismissal (e.g. a pairing prompt cleared after
+        # approval): tell the Dial to remove it, but do not keep it around --
+        # otherwise it lingers, unacknowledged, in every client's listing.
+        if not notification.message and not notification.image:
+            NotificationManager._queue.put(notification)
+            return
 
         notification.acknowledged = False
         NotificationManager._notifications.append(notification)

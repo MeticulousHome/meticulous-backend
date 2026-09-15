@@ -54,6 +54,9 @@ class API:
         from . import serial as _serial  # noqa
         from . import password_handler as _password_handler  # noqa
         from . import smoke_validation as _smoke_validation  # noqa
+        from . import pairing as _pairing  # noqa
+        from . import identity as _identity  # noqa
+        from .auth import with_auth
 
         routes = []
         logger.info("API Routes registered:")
@@ -64,7 +67,11 @@ class API:
             version_routes = []
             for path, (handler, kwargs) in paths.items():
                 route_path = f"{version_path}{path}"
-                version_routes.append((route_path, handler, kwargs))
+                # Enforce authorization on every route uniformly. Public paths
+                # (pairing) and loopback/Dial calls are allowed inside the check;
+                # LAN clients need a bearer token. Wrapping here also covers
+                # handlers that do not derive from BaseHandler.
+                version_routes.append((route_path, with_auth(handler), kwargs))
             version_routes.sort(key=lambda route: route[0])
             for path, _, _ in version_routes:
                 logger.info(f"    {path}")
