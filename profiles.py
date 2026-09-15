@@ -25,6 +25,7 @@ from config import (
 import asyncio
 from log import MeticulousLogger
 from machine import Machine
+from manual_program import build_manual_program
 from profile_preprocessor import ProfilePreprocessor
 from api.alarms import AlarmManager, AlarmType
 from images.notificationImages.base64 import WARNING_TRIANGLE_IMAGE
@@ -536,7 +537,16 @@ class ProfileManager:
             f"simplified profile streamed to ESP32: data MD5={ProfileManager._get_payload_md5(preprocessed_profile)}"
         )
 
-        Machine.send_json_with_hash(preprocessed_profile)
+        if data.get("manual") is True:
+            # A manual document carries no curve to follow -- the encoder drives
+            # the target live -- so the machine gets the node program that
+            # implements the interaction instead of the document itself.
+            program = build_manual_program(preprocessed_profile)
+            node_count = sum(len(stage.get("nodes") or []) for stage in program["stages"])
+            logger.info(f"Manual profile converted to node program: {node_count} nodes")
+            Machine.send_json_with_hash(program)
+        else:
+            Machine.send_json_with_hash(preprocessed_profile)
 
         ProfileManager._set_last_profile(data)
 

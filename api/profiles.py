@@ -158,7 +158,7 @@ class CreateProfileFromManualHandler(BaseHandler):
             self.write({"status": "error", "error": "no manual brew found"})
         except manual_mode.ManualShotHasNoTargets:
             self.set_status(409)
-            self.write({"status": "error", "error": "manual brew has no pressure targets"})
+            self.write({"status": "error", "error": "shot has no target samples"})
         except jsonschema.exceptions.ValidationError as err:
             self.set_status(400)
             self.write({"status": "error", "error": f"JSON validation error: {err.message}"})
