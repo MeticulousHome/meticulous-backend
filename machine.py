@@ -135,6 +135,8 @@ class Machine:
         "scale_master_calibration",
         "preheat",
         "continue",
+        # ends the user stages of a running shot through the normal retract; the dial sends it on a double click inside a user stage
+        "finish",
         "home",
         "purge",
         "continue",
@@ -852,14 +854,6 @@ class Machine:
                         logger.debug(f"Button Event recieved: {button_event}")
 
                     await Machine._sio.emit("button", button_event.to_sio())
-
-                # FIXME this should be a callback to the frontends in the future
-                if (
-                    button_event is not None
-                    and button_event.event is ButtonEventEnum.ENCODER_DOUBLE
-                ):
-                    logger.info("DOUBLE ENCODER, Returning to idle")
-                    Machine.end_profile()
 
                 if (
                     not old_ready
