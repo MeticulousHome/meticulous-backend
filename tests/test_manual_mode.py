@@ -1231,6 +1231,7 @@ def test_loading_a_manual_profile_sends_the_node_program(sent_to_esp32):
 
     assert len(sent) == 1
     program = sent[0]
+    assert "id" not in program
     assert [stage["name"] for stage in program["stages"]] == (
         HEAD_STAGE_NAMES + ["Manual pressure", "Manual flow"] + TAIL_STAGE_NAMES
     )
@@ -1248,7 +1249,7 @@ def test_loading_a_manual_profile_still_records_the_simplified_document(sent_to_
     assert "nodes" not in json.dumps(last[0])
 
 
-def test_loading_an_ordinary_profile_still_sends_the_document(sent_to_esp32):
+def test_loading_an_ordinary_profile_sends_only_runtime_fields(sent_to_esp32):
     sent, last = sent_to_esp32
     document = _loadable_manual_document()
     del document["manual"]
@@ -1256,7 +1257,7 @@ def test_loading_an_ordinary_profile_still_sends_the_document(sent_to_esp32):
 
     ProfileManager.send_profile_to_esp32(document)
 
-    assert sent == [document]
+    assert sent == [ProfileManager._profile_for_esp32(document)]
 
 
 def test_a_profile_marked_manual_with_a_string_is_not_converted(sent_to_esp32):
@@ -1266,7 +1267,7 @@ def test_a_profile_marked_manual_with_a_string_is_not_converted(sent_to_esp32):
 
     ProfileManager.send_profile_to_esp32(document)
 
-    assert sent == [document]
+    assert sent == [ProfileManager._profile_for_esp32(document)]
 
 
 # --- locating the manual shot ----------------------------------------------

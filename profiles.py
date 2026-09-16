@@ -62,6 +62,18 @@ DEFAULT_PROFILES_PATH = os.getenv(
     "DEFAULT_PROFILES", "/opt/meticulous-backend/default_profiles"
 )
 
+# Only recipe/runtime data belongs on the constrained UART link. These fields cover
+# both firmware profile runtimes: the node engine consumes name/stages, while the
+# simplified espresso engine additionally consumes temperature, final_weight, and
+# variables. Profile identity remains in backend state and load events.
+ESP32_PROFILE_FIELDS = (
+    "name",
+    "temperature",
+    "final_weight",
+    "variables",
+    "stages",
+)
+
 # Manual mode profile (cross-repo contract "Manual mode" v5, section 2). The id
 # is stable across boots and machines so the dial and the firmware can rely on
 # it; clients still detect a manual profile by `manual is True`, never by id or
@@ -387,6 +399,10 @@ class ProfileManager:
         logger.info(f"{action} Manual mode profile")
         return True
 
+    @staticmethod
+    def _profile_for_esp32(profile):
+        return {field: profile[field] for field in ESP32_PROFILE_FIELDS if field in profile}
+
     def save_profile(
         data,
         set_last_changed: bool = False,
@@ -533,10 +549,6 @@ class ProfileManager:
                 f"Preprocessing and variable expansion took {int(preprocessing_time_ms*1000)} ns"
             )
 
-        logger.info(
-            f"simplified profile streamed to ESP32: data MD5={ProfileManager._get_payload_md5(preprocessed_profile)}"
-        )
-
         if data.get("manual") is True:
             # A manual document carries no curve to follow -- the encoder drives
             # the target live -- so the machine gets the node program that
@@ -544,9 +556,14 @@ class ProfileManager:
             program = build_manual_program(preprocessed_profile)
             node_count = sum(len(stage.get("nodes") or []) for stage in program["stages"])
             logger.info(f"Manual profile converted to node program: {node_count} nodes")
-            Machine.send_json_with_hash(program)
         else:
-            Machine.send_json_with_hash(preprocessed_profile)
+            program = preprocessed_profile
+
+        esp32_profile = ProfileManager._profile_for_esp32(program)
+        logger.info(
+            f"simplified profile streamed to ESP32: data MD5={ProfileManager._get_payload_md5(esp32_profile)}"
+        )
+        Machine.send_json_with_hash(esp32_profile)
 
         ProfileManager._set_last_profile(data)
 
