@@ -27,6 +27,7 @@ from log import MeticulousLogger
 from machine import Machine
 from manual_program import build_manual_program
 from profile_preprocessor import ProfilePreprocessor
+from profile_types import is_cleaning_profile, is_node_profile
 from api.alarms import AlarmManager, AlarmType
 from images.notificationImages.base64 import WARNING_TRIANGLE_IMAGE
 import math
@@ -507,14 +508,19 @@ class ProfileManager:
         data_md5 = ProfileManager._get_payload_md5(data)
         logger.info(f"Recieved {type(data)} data with MD5: {data_md5}")
 
-        logger.info("processing simplified profile")
+        node_profile = is_node_profile(data)
+        logger.info(
+            "processing node profile" if node_profile else "processing simplified profile"
+        )
         errors = ProfileManager.validate_profile(data)
         if errors is not None:
             raise errors
 
         start = time.time()
         try:
-            preprocessed_profile = ProfilePreprocessor.processVariables(data)
+            preprocessed_profile = (
+                data if node_profile else ProfilePreprocessor.processVariables(data)
+            )
         except Exception as err:
             logger.info(
                 f"Profile variables could not be processed: {err.__class__.__name__}: {err}"
@@ -534,7 +540,7 @@ class ProfileManager:
             )
 
         logger.info(
-            f"simplified profile streamed to ESP32: data MD5={ProfileManager._get_payload_md5(preprocessed_profile)}"
+            f"{'node' if node_profile else 'simplified'} profile streamed to ESP32: data MD5={ProfileManager._get_payload_md5(preprocessed_profile)}"
         )
 
         if data.get("manual") is True:
@@ -548,20 +554,24 @@ class ProfileManager:
         else:
             Machine.send_json_with_hash(preprocessed_profile)
 
-        ProfileManager._set_last_profile(data)
+        # Maintenance profiles are temporary machine operations, not coffee
+        # selections. Keeping them out of last-profile state prevents a later
+        # generic start command from unexpectedly restarting maintenance.
+        if not is_cleaning_profile(data):
+            ProfileManager._set_last_profile(data)
 
-        ProfileManager._emit_profile_event(PROFILE_EVENT.LOAD, data["id"])
+            ProfileManager._emit_profile_event(PROFILE_EVENT.LOAD, data["id"])
 
-        # Loading auto-selects the profile — emit profileHover so clients update
-        ProfileManager._profile_hover = ProfileHover(
-            id=data["id"],
-            type="focus",
-            from_="dial",
-        )
-        asyncio.run_coroutine_threadsafe(
-            ProfileManager._async_emit_profile_hover(),
-            ProfileManager._loop,
-        )
+            # Loading auto-selects the profile — emit profileHover so clients update
+            ProfileManager._profile_hover = ProfileHover(
+                id=data["id"],
+                type="focus",
+                from_="dial",
+            )
+            asyncio.run_coroutine_threadsafe(
+                ProfileManager._async_emit_profile_hover(),
+                ProfileManager._loop,
+            )
 
         return data
 
@@ -830,13 +840,14 @@ class ProfileManager:
 
     def validate_profile(data):
 
-        try:
-            ProfilePreprocessor.processVariables(data)
-        except Exception as err:
-            logger.info(
-                f"Profile variables could not be processed: {err.__class__.__name__}: {err}"
-            )
-            return err
+        if not is_node_profile(data):
+            try:
+                ProfilePreprocessor.processVariables(data)
+            except Exception as err:
+                logger.info(
+                    f"Profile variables could not be processed: {err.__class__.__name__}: {err}"
+                )
+                return err
 
         if not ProfileManager._schema:
             logger.warning("No schema available, not validating")
