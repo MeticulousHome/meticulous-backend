@@ -1229,12 +1229,9 @@ def test_repeat_submit_after_finalization_is_a_successful_noop(report_module):
             )
         )
 
-    assert (
-        report_module._mark_report_submitted(
-            local_id, "retry-event", 3, ticket_provided=False, ticket=None
-        )
-        is True
-    )
+    assert report_module._mark_report_submitted(
+        local_id, "retry-event", 3, ticket_provided=False, ticket=None
+    ) is True
     with ShotDataBase.engine.connect() as connection:
         row = connection.execute(select(bug_reports)).one()
     assert row.status == "submitted"
