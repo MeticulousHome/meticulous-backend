@@ -159,6 +159,14 @@ class LimitedAccessApiTests(AsyncHTTPTestCase):
         MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL] = "factory"
         MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER] = "12345"
         assert self.post_unlock("{").code == 400
+        malformed = self.fetch(
+            "/api/v1/machine/unlock",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            body=b"\x80",
+        )
+        assert malformed.code == 400
+        assert json.loads(malformed.body)["data"]["code"] == "INVALID_BODY"
         assert self.post_unlock({"code": "00000"}).code == 403
         response = self.post_unlock({"code": js_code(12345)})
         assert response.code == 200

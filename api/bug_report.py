@@ -930,11 +930,17 @@ def _mark_report_submitted(
     ticket_provided: bool,
     ticket: int | None,
 ) -> bool:
-    if _get_report_row(local_id) is None:
+    row = _get_report_row(local_id)
+    if row is None:
         return False
 
     draft_dir = _draft_path(local_id)
     if not draft_dir.exists() or not draft_dir.is_dir():
+        # A client may retry after the first submit finalized and removed the
+        # draft directory. The submission has already been recorded, so this
+        # is a successful no-op rather than an unknown draft.
+        if row.status == "submitted":
+            return True
         raise FileNotFoundError(local_id)
 
     report_info = _read_draft_report_info(draft_dir)

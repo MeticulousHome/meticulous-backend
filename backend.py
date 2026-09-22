@@ -327,6 +327,14 @@ def main():
     except Exception:
         logger.warning("Initial report sweep failed", exc_info=True)
 
+    async def sweep_reports_daily():
+        try:
+            await asyncio.get_running_loop().run_in_executor(None, sweep_reports)
+        except Exception:
+            logger.warning("Daily report sweep failed", exc_info=True)
+
+    tornado.ioloop.PeriodicCallback(sweep_reports_daily, 24 * 60 * 60 * 1000).start()
+
     app = tornado.web.Application(
         handlers,
         debug=DEBUG,

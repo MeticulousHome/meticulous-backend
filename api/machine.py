@@ -173,7 +173,7 @@ class MachineUnlockHandler(BaseHandler):
     def post(self):
         try:
             body = json.loads(self.request.body or b"null")
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, UnicodeDecodeError):
             body = None
         code = body.get("code") if isinstance(body, dict) else None
         if not isinstance(code, str) or not code.strip():

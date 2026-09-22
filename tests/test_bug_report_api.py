@@ -1212,6 +1212,33 @@ def test_submit_without_ticket_preserves_existing_ticket(report_module):
     assert archived_info["ticket"] == 42
 
 
+def test_repeat_submit_after_finalization_is_a_successful_noop(report_module):
+    local_id = "018f0a2b-1234-7abc-8def-0123456789ab"
+    with ShotDataBase.engine.begin() as connection:
+        connection.execute(
+            insert(bug_reports).values(
+                localID=local_id,
+                issueTime=1,
+                creationTime=1,
+                machineInfo=False,
+                machineLogs=False,
+                machineStatus=False,
+                eventID="first-event",
+                submissionTime=2,
+                status="submitted",
+            )
+        )
+
+    assert report_module._mark_report_submitted(
+        local_id, "retry-event", 3, ticket_provided=False, ticket=None
+    ) is True
+    with ShotDataBase.engine.connect() as connection:
+        row = connection.execute(select(bug_reports)).one()
+    assert row.status == "submitted"
+    assert row.eventID == "first-event"
+    assert row.submissionTime == 2
+
+
 class _DeleteDraftHandler:
     def __init__(self, body=b""):
         self.request = SimpleNamespace(body=body)
