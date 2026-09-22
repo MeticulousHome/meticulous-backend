@@ -25,6 +25,7 @@ def report_module(tmp_path, monkeypatch):
     metadata.create_all(engine)
     monkeypatch.setattr(ShotDataBase, "engine", engine)
     monkeypatch.setattr(bug_report, "DEBUG_HISTORY_ROOT", debug_root)
+    monkeypatch.setattr(bug_report, "REPORTS_DIR", draft_root.parent)
     monkeypatch.setattr(bug_report, "DRAFT_REPORTS_DIR", draft_root)
     return bug_report
 
@@ -116,7 +117,7 @@ def test_fetch_machine_logs_uses_emulated_response_without_watcher(report_module
 def test_fetch_machine_logs_converts_range_to_watcher_hours(report_module, monkeypatch):
     captured = {}
 
-    async def fake_fetch_watcher_text(url, timeout_seconds, cancellation=None):
+    async def fake_fetch_watcher_text(url, timeout_seconds, cancellation=None, max_bytes=None):
         captured["url"] = url
         captured["timeout_seconds"] = timeout_seconds
         captured["cancellation"] = cancellation
@@ -200,7 +201,7 @@ def test_fetch_watcher_text_uses_aiohttp_and_preserves_timeout_and_decoding(
 def test_fetch_watcher_text_cancels_active_task_on_disconnect(report_module, monkeypatch):
     started = asyncio.Event()
 
-    async def slow_get_watcher_body(url, timeout_seconds):
+    async def slow_get_watcher_body(url, timeout_seconds, max_bytes=None):
         started.set()
         await asyncio.sleep(10)
         return b"too slow"
@@ -1057,7 +1058,7 @@ def test_submit_update_persists_db_and_report_info(report_module):
 
 
 def test_get_draft_returns_finalized_archive_without_recompressing(report_module, monkeypatch):
-    local_id = "submit-id"
+    local_id = "018f0a2b-1234-7abc-8def-0123456789ab"
     draft_dir = report_module._draft_path(local_id)
     draft_dir.mkdir(parents=True)
     draft_dir.joinpath(report_module.MACHINE_STATUS_NAME).write_text(
@@ -1102,7 +1103,7 @@ def test_get_draft_returns_finalized_archive_without_recompressing(report_module
 
     assert not draft_dir.exists()
     assert handler.headers["Content-Type"] == "application/octet-stream"
-    assert handler.headers["Content-Disposition"] == 'attachment; filename="submit-id.zstd"'
+    assert handler.headers["Content-Disposition"] == f'attachment; filename="{local_id}.zstd"'
     assert handler.body == finalized_archive_bytes
 
 
@@ -1247,7 +1248,7 @@ def _insert_deletable_report(report_module, local_id: str, status: str = "draft"
 def test_delete_draft_removes_all_report_representations_and_db_row(
     report_module, representation
 ):
-    local_id = f"delete-{representation}"
+    local_id = {"directory": "018f0a2b-1234-7abc-8def-0123456789ab", "archive": "018f0a2b-1234-7abc-8def-0123456789ac", "both": "018f0a2b-1234-7abc-8def-0123456789ad"}[representation]
     draft_dir = report_module._draft_path(local_id)
     archive_path = report_module._finalized_draft_path(local_id)
     if representation in {"directory", "both"}:
@@ -1272,7 +1273,7 @@ def test_delete_draft_removes_all_report_representations_and_db_row(
 
 
 def test_delete_draft_allows_submitted_report(report_module):
-    local_id = "submitted-report"
+    local_id = "018f0a2b-1234-7abc-8def-0123456789ab"
     archive_path = report_module._finalized_draft_path(local_id)
     archive_path.write_bytes(b"archive")
     _insert_deletable_report(report_module, local_id, status="submitted")
@@ -1288,19 +1289,94 @@ def test_delete_draft_allows_submitted_report(report_module):
 def test_delete_draft_returns_not_found_for_unknown_local_id(report_module):
     handler = _DeleteDraftHandler()
 
-    asyncio.run(report_module.ReportDraftHandler.delete(handler, "unknown-id"))
+    asyncio.run(report_module.ReportDraftHandler.delete(handler, "018f0a2b-1234-7abc-8def-0123456789ab"))
 
     assert handler.status == 404
-    assert handler.response == {"error": "Unknown localID", "description": ""}
+    assert handler.response == {"error": "Unknown localID", "description": "", "data": {"code": "UNKNOWN_LOCAL_ID"}}
 
 
 def test_delete_draft_rejects_request_body(report_module):
     handler = _DeleteDraftHandler(body=b"{}")
 
-    asyncio.run(report_module.ReportDraftHandler.delete(handler, "unknown-id"))
+    asyncio.run(report_module.ReportDraftHandler.delete(handler, "018f0a2b-1234-7abc-8def-0123456789ab"))
 
     assert handler.status == 400
     assert handler.response == {
         "error": "Delete report draft request must not contain a body",
         "description": "",
+        "data": {"code": "INVALID_BODY"},
     }
+
+
+def test_local_id_validation_and_paths_reject_traversal(report_module):
+    valid = "018f0a2b-1234-7abc-8def-0123456789ab"
+    assert report_module._validate_local_id(valid) == valid
+    for value in ("../history", "..", "A18f0a2b-1234-7abc-8def-0123456789ab", "short"):
+        with pytest.raises(report_module.ReportRequestError) as exc:
+            report_module._validate_local_id(value)
+        assert exc.value.data["code"] == "INVALID_LOCAL_ID"
+    with pytest.raises(report_module.ReportRequestError):
+        report_module._draft_path("../history")
+
+
+def test_submit_body_contract_validation(report_module):
+    local_id = "018f0a2b-1234-7abc-8def-0123456789ab"
+    parsed = report_module._parse_submit_body(
+        json.dumps({"localID": local_id, "eventID": "event", "submissionTime": 3, "ticket": None}).encode()
+    )
+    assert parsed == (local_id, "event", 3, True, None)
+    for body in (
+        {"localID": local_id, "eventID": ""},
+        {"localID": local_id, "eventID": "event", "submissionTime": True},
+        {"localID": local_id, "eventID": "event", "ticket": "12"},
+        {"localID": local_id, "eventID": "event", "extra": 1},
+    ):
+        with pytest.raises(report_module.ReportRequestError) as exc:
+            report_module._parse_submit_body(json.dumps(body).encode())
+        assert exc.value.data["code"] == "INVALID_BODY"
+
+
+def test_write_tar_zstd_cleans_atomic_temp_on_failure(report_module, monkeypatch):
+    draft_dir = report_module._draft_path("draft")
+    draft_dir.mkdir()
+    draft_dir.joinpath("file.txt").write_text("data")
+    output = report_module.DRAFT_REPORTS_DIR.joinpath("draft.zstd")
+
+    monkeypatch.setattr(
+        report_module.subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(returncode=1, stderr="failed"),
+    )
+    with pytest.raises(RuntimeError):
+        report_module._write_tar_zstd_from_draft(output, draft_dir)
+    assert not output.exists()
+    assert not output.with_name("draft.zstd.tmp").exists()
+
+
+def test_find_debug_file_rejects_globs(report_module):
+    _debug_file(report_module.DEBUG_HISTORY_ROOT, "2026-05-18", "10:00:00.shot.json.zst")
+    assert report_module._find_debug_file("*") is None
+    assert report_module._find_debug_file("**/*") is None
+    assert report_module._find_debug_file("../x.json.zst") is None
+    assert report_module._find_debug_file("10:00:00.shot.json.zst") is not None
+
+
+def test_preflight_has_ordered_blockers(report_module, monkeypatch):
+    class Handler:
+        def get_query_arguments(self, name):
+            assert name == "probe"
+            return ["http://invalid", "https://unreachable"]
+
+        def write(self, body):
+            self.body = body
+
+    async def fake_probe(url):
+        return {"reachable": False, "status": None, "latencyMs": None, "error": "INVALID_PROBE"}
+
+    monkeypatch.setattr(report_module, "_probe_url", fake_probe)
+    monkeypatch.setattr(report_module, "_disk_free_bytes", lambda: 0)
+    monkeypatch.setitem(report_module.MeticulousConfig[report_module.CONFIG_SYSTEM], report_module.MACHINE_SERIAL_NUMBER, None)
+    handler = Handler()
+    asyncio.run(report_module.ReportsPreflightHandler.get(handler))
+    assert handler.body["blockers"] == ["NO_SERIAL_NUMBER", "INSUFFICIENT_DISK_SPACE", "NETWORK_UNREACHABLE"]
+    assert handler.body["network"]["http://invalid"]["error"] == "INVALID_PROBE"
