@@ -9,7 +9,7 @@ from enum import Enum
 import asyncio
 
 from .api import API, APIVersion
-from .base_handler import BaseHandler, LocalAccessHandler
+from .base_handler import BaseHandler, LocalAccessHandler, redact_ip
 from ota import UpdateManager
 from backlight_controller import BacklightController
 from datetime import datetime
@@ -24,6 +24,7 @@ from config import (
     MACHINE_BUILD_DATE,
     LAST_SYSTEM_VERSIONS,
 )
+from limited_access import UnlockThrottle, unlock, validate_unlock_code
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -168,6 +169,57 @@ class MachineInfoHandler(BaseHandler):
         self.write(json.dumps(get_machine_info()))
 
 
+class MachineUnlockHandler(BaseHandler):
+    def post(self):
+        try:
+            body = json.loads(self.request.body or b"null")
+        except json.JSONDecodeError:
+            body = None
+        code = body.get("code") if isinstance(body, dict) else None
+        if not isinstance(code, str) or not code.strip():
+            self.set_status(400)
+            self.write(
+                {
+                    "status": "error",
+                    "error": 'body must be {"code": string}',
+                    "data": {"code": "INVALID_BODY"},
+                }
+            )
+            return
+        retry_after = UnlockThrottle.retry_after()
+        if retry_after > 0:
+            self.set_status(429)
+            self.set_header("Retry-After", str(retry_after))
+            self.write(
+                {
+                    "status": "error",
+                    "error": "too many failed attempts",
+                    "data": {
+                        "code": "UNLOCK_THROTTLED",
+                        "retryAfterSeconds": retry_after,
+                    },
+                }
+            )
+            return
+        if not validate_unlock_code(code):
+            UnlockThrottle.record_failure()
+            logger.warning(
+                "Rejected unlock code from %s", redact_ip(self.request.remote_ip or "")
+            )
+            self.set_status(403)
+            self.write(
+                {
+                    "status": "error",
+                    "error": "invalid unlock code",
+                    "data": {"code": "INVALID_UNLOCK_CODE"},
+                }
+            )
+            return
+        UnlockThrottle.reset()
+        channel = unlock()
+        self.write({"status": "ok", "update_channel": channel, "limited_access": False})
+
+
 class MachineResetHandler(LocalAccessHandler):
     def get(self):
         confirm = self.get_argument("confirm", None)
@@ -252,6 +304,7 @@ class MachineTimeHandler(BaseHandler):
 
 
 API.register_handler(APIVersion.V1, r"/machine", MachineInfoHandler)
+API.register_handler(APIVersion.V1, r"/machine/unlock", MachineUnlockHandler)
 API.register_handler(APIVersion.V1, r"/machine/backlight", MachineBacklightController)
 API.register_handler(APIVersion.V1, r"/machine/factory_reset", MachineResetHandler)
 API.register_handler(APIVersion.V1, r"/machine/OS_update_status", UpdateOSStatus)

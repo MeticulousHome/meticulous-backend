@@ -45,7 +45,6 @@ RUN mkdir -p opt/meticulous-venv \
     opt/meticulous-backend/alembic/versions \
     opt/meticulous-backend/db-migrations \
     opt/meticulous-backend/profile_schema \
-    opt/meticulous-backend/default_profiles/community \
     opt/meticulous-backend/log_redactor \
     opt/meticulous-backend/sounds/default
 
@@ -57,6 +56,7 @@ COPY *.py /pkg/opt/meticulous-backend/
 COPY pyproject.toml /pkg/opt/meticulous-backend/
 COPY alembic.ini /pkg/opt/meticulous-backend/
 COPY UI_timezones.json /pkg/opt/meticulous-backend/
+COPY simple_profile.json /pkg/opt/meticulous-backend/
 
 COPY api/*.py /pkg/opt/meticulous-backend/api/
 COPY esp_serial/*.py /pkg/opt/meticulous-backend/esp_serial/
@@ -74,9 +74,8 @@ COPY alembic/versions/*.py /pkg/opt/meticulous-backend/alembic/versions/
 # import time, so a .deb built without this fails at service start.
 COPY log_redactor/*.py /pkg/opt/meticulous-backend/log_redactor/
 
-# Data files (submodules - must be checked out before building)
+# Data files (submodules must be checked out before building)
 COPY profile_schema/ /pkg/opt/meticulous-backend/profile_schema/
-COPY default_profiles/ /pkg/opt/meticulous-backend/default_profiles/
 COPY sounds/ /pkg/opt/meticulous-backend/sounds/
 COPY images/default/ /pkg/opt/meticulous-backend/images/default/
 
