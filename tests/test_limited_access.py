@@ -147,12 +147,12 @@ class LimitedAccessApiTests(AsyncHTTPTestCase):
         MeticulousConfig[CONFIG_USER][UPDATE_CHANNEL] = "factory"
         profiles = json.loads(self.fetch("/api/v1/profile/list?full=true").body)
         assert len(profiles) == 1
-        assert profiles[0]["id"] == "83888510-ac09-44c6-af64-2bfa12550f60"
+        assert profiles[0]["id"] == "f5db85cc-ab0d-4c81-aee8-bcac7da77141"
         assert profiles[0]["stages"]
         assert "stages" not in json.loads(self.fetch("/api/v1/profile/list").body)[0]
         defaults = json.loads(self.fetch("/api/v1/profile/defaults").body)
         assert len(defaults["default"]) == 1 and defaults["community"] == []
-        response = self.fetch("/api/v1/profile/get/83888510-ac09-44c6-af64-2bfa12550f60")
+        response = self.fetch("/api/v1/profile/get/f5db85cc-ab0d-4c81-aee8-bcac7da77141")
         assert response.code == 200
 
     def test_unlock_statuses_and_side_effects(self):
