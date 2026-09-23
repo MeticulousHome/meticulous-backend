@@ -56,10 +56,6 @@ DEFAULT_IMAGES_PATH = os.getenv("DEFAULT_IMAGES", "/opt/meticulous-backend/image
 
 DEFAULT_IMAGES_PATH_ACCENT_COLORS = os.path.join(DEFAULT_IMAGES_PATH, "accent_colors.json")
 
-DEFAULT_PROFILES_PATH = os.getenv(
-    "DEFAULT_PROFILES", "/opt/meticulous-backend/default_profiles"
-)
-
 
 class PROFILE_EVENT(Enum):
     CREATE = "create"
@@ -72,8 +68,6 @@ class PROFILE_EVENT(Enum):
 class ProfileManager:
     _known_profiles = dict()
     _known_images = []
-    _default_profiles = []
-    _community_profiles = []
     _profile_default_images = []
     _profile_default_images_accent_colors = {}
     _sio: socketio.AsyncServer = None
@@ -106,7 +100,9 @@ class ProfileManager:
             ProfileManager._schema = json.load(schema_file)
 
         ProfileManager.refresh_image_list()
-        ProfileManager.refresh_default_profile_list()
+        from simple_profile import SimpleProfile
+
+        SimpleProfile.load()
         ProfileManager.refresh_profile_list()
         ProfileManager._delete_unused_images()
 
@@ -505,57 +501,6 @@ class ProfileManager:
         logger.info("Profile order changed")
         ProfileManager._emit_profile_event(PROFILE_EVENT.RELOAD)
 
-    def refresh_default_profile_list():
-        logger.info("Refreshing default profiles")
-        start = time.time()
-        ProfileManager._default_profiles = []
-        files = os.listdir(DEFAULT_PROFILES_PATH)
-        files.sort()
-        for filename in files:
-            if not filename.endswith(".json"):
-                continue
-
-            file_path = os.path.join(DEFAULT_PROFILES_PATH, filename)
-            with open(file_path, "r") as f:
-                try:
-                    profile = json.load(f)
-                except json.decoder.JSONDecodeError as error:
-                    logger.warning(f"Could not decode default profile {f.name}: {error}")
-                    continue
-                logger.info("Found default profile: " + filename)
-                ProfileManager._default_profiles.append(profile)
-
-        # Check for community profiles
-        community_profiles_path = DEFAULT_PROFILES_PATH + "/community"
-        if os.path.exists(community_profiles_path):
-            logger.info("Refreshing community profiles")
-            ProfileManager._community_profiles = []
-            files = os.listdir(community_profiles_path)
-            files.sort()
-            for filename in files:
-                if not filename.endswith(".json"):
-                    continue
-
-                file_path = os.path.join(community_profiles_path, filename)
-                with open(file_path, "r") as f:
-                    try:
-                        profile = json.load(f)
-                    except json.decoder.JSONDecodeError as error:
-                        logger.warning(f"Could not decode community profile {f.name}: {error}")
-                        continue
-                    logger.info("Found community profile: " + filename)
-                    ProfileManager._community_profiles.append(profile)
-
-        end = time.time()
-        time_ms = (end - start) * 1000
-        if time_ms > 10:
-            time_str = f"{int(time_ms)} ms"
-        else:
-            time_str = f"{int(time_ms*1000)} ns"
-        logger.info(
-            f"Refreshed default profile list in {time_str} with {len(ProfileManager._default_profiles)} default and {len(ProfileManager._community_profiles)} community profiles."
-        )
-
     def refresh_image_list():
         logger.info("Refreshing default image list")
         ProfileManager._profile_default_images = []
@@ -637,12 +582,6 @@ class ProfileManager:
             MeticulousConfig[CONFIG_USER][PROFILE_ORDER].append(id)
             MeticulousConfig.save()
         return profile_list
-
-    def list_default_profiles():
-        return {
-            "default": ProfileManager._default_profiles,
-            "community": ProfileManager._community_profiles,
-        }
 
     def get_last_profile():
         return MeticulousConfig[CONFIG_PROFILES][PROFILE_LAST]

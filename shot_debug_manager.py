@@ -125,13 +125,21 @@ class ShotDebugManager:
 
     @staticmethod
     def _copy_current_data(clear_current_data: bool = False):
-        current_data_copy = None
         with ShotDebugManager.clear_current_data_lock:
-            if ShotDebugManager._current_data is not None:
-                current_data_copy = copy.deepcopy(ShotDebugManager._current_data)
+            current = ShotDebugManager._current_data
+            if current is None:
+                return None
+            # DebugShot mutates shotData and logs on the serial path. Copy the
+            # containers while protected, then do the expensive deep copy after
+            # releasing the lock so ingestion is not stalled.
+            current_data_copy = copy.copy(current)
+            for attribute in ("logs", "shotData"):
+                value = getattr(current, attribute, None)
+                if isinstance(value, list):
+                    setattr(current_data_copy, attribute, list(value))
             if clear_current_data:
                 ShotDebugManager._current_data = None
-        return current_data_copy
+        return copy.deepcopy(current_data_copy)
 
     @staticmethod
     def _prepare_debug_shot_data(current_data_copy: DebugShot, start: datetime) -> str:

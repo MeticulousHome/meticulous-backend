@@ -1,0 +1,28 @@
+{
+  "name": "9 Bar Demo",
+  "id": "83888510-ac09-44c6-af64-2bfa12550f60",
+  "author": "meticulous",
+  "author_id": "d9123a0a-d3d7-40fd-a548-b81376e43f23",
+  "previous_authors": [],
+  "display": {
+    "shortDescription": "9 Bar Italian",
+    "description": "Replicates the extraction characteristics of traditional Italian espresso machines.",
+    "image": "/api/v1/profile/image/59894b10354b95395b434b49399966f2.png"
+  },
+  "temperature": 90.5,
+  "final_weight": 36,
+  "stages": [
+    {
+      "name": "Infusion",
+      "key": "infusion_1",
+      "type": "pressure",
+      "dynamics": {
+        "points": [[0, 9]],
+        "over": "time",
+        "interpolation": "curve"
+      },
+      "exit_triggers": [],
+      "limits": []
+    }
+  ]
+}

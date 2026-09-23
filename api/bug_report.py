@@ -7,12 +7,13 @@ import subprocess
 import tarfile
 import tempfile
 import time
+from collections import deque
 import uuid_utils as uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote_plus
+from urllib.parse import unquote_plus, urlsplit
 
 import aiohttp
 from sqlalchemy import and_, delete, desc, func, insert, or_, select, update
@@ -46,6 +47,19 @@ MACHINE_LOGS_NAME = "machine_logs.txt"
 MACHINE_STATUS_NAME = "machine_status.json"
 DEBUG_ARCHIVE_DIR = "debug"
 MAX_DEBUG_SHOTS = 10
+LOCAL_ID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+DEBUG_FILE_NAME_RE = re.compile(
+    r"^(?:\d{4}-\d{2}-\d{2}/)?\d{2}:\d{2}:\d{2}\.[A-Za-z0-9_-]+\.json\.zst$"
+)
+REPORTS_MIN_FREE_BYTES = int(os.getenv("REPORTS_MIN_FREE_BYTES", str(200 * 1024 * 1024)))
+REPORT_MAX_MACHINE_LOGS_BYTES = int(
+    os.getenv("REPORT_MAX_MACHINE_LOGS_BYTES", str(20 * 1024 * 1024))
+)
+DRAFT_MAX_AGE_SECONDS = int(os.getenv("REPORTS_DRAFT_MAX_AGE_SECONDS", str(7 * 24 * 3600)))
+ARCHIVE_MAX_AGE_SECONDS = int(os.getenv("REPORTS_ARCHIVE_MAX_AGE_SECONDS", str(30 * 24 * 3600)))
+PREFLIGHT_PROBE_TIMEOUT_SECONDS = 5
+PREFLIGHT_MAX_PROBES = 4
+ARCHIVE_STREAM_CHUNK = 256 * 1024
 ALLOWED_DRAFT_UPDATE_KEYS = {
     "description",
     "baseEventID",
@@ -90,6 +104,31 @@ class CollectionCancellation:
             raise asyncio.CancelledError("client disconnected during report collection")
 
 
+class ReportRequestError(Exception):
+    def __init__(self, status: int, code: str, message: str, data: dict | None = None):
+        super().__init__(message)
+        self.status = status
+        self.data = {"code": code, **(data or {})}
+
+
+class InsufficientDiskSpace(ReportRequestError):
+    def __init__(self, free_bytes: int, required_bytes: int):
+        super().__init__(
+            507,
+            "INSUFFICIENT_DISK_SPACE",
+            "Not enough free disk space to collect a report",
+            {"freeBytes": free_bytes, "requiredBytes": required_bytes},
+        )
+
+
+class CollectionInProgress(ReportRequestError):
+    def __init__(self):
+        super().__init__(409, "COLLECTION_IN_PROGRESS", "A report is already being collected")
+
+
+_collection_lock = asyncio.Lock()
+
+
 def _ensure_database_initialized():
     if ShotDataBase.engine is None:
         from sqlalchemy import create_engine
@@ -107,7 +146,26 @@ def _api_error(handler: BaseHandler, status_code: int, error: str, context: dict
             body["data"] = context
         else:
             body["description"] = f"{context}"
+    if status_code >= 500:
+        body.setdefault("data", {}).setdefault("code", "INTERNAL")
     handler.write(body)
+
+
+def _reply_error(handler: BaseHandler, exc: ReportRequestError) -> None:
+    _api_error(handler, exc.status, str(exc), exc.data)
+
+
+def _validate_local_id(local_id: str) -> str:
+    if not isinstance(local_id, str) or not LOCAL_ID_RE.fullmatch(local_id):
+        raise ReportRequestError(400, "INVALID_LOCAL_ID", "localID must be a UUID")
+    return local_id
+
+
+def _reports_child(base: Path, name: str) -> Path:
+    target = base.joinpath(name)
+    if target.resolve().parent != base.resolve():
+        raise ReportRequestError(400, "INVALID_LOCAL_ID", "localID must be a UUID")
+    return target
 
 
 def _now_seconds() -> int:
@@ -135,11 +193,11 @@ def _json_loads_body(body: bytes) -> dict[str, Any]:
 
 
 def _draft_path(local_id: str) -> Path:
-    return DRAFT_REPORTS_DIR.joinpath(local_id)
+    return _reports_child(DRAFT_REPORTS_DIR, local_id)
 
 
 def _finalized_draft_path(local_id: str) -> Path:
-    return DRAFT_REPORTS_DIR.joinpath(f"{local_id}.zstd")
+    return _reports_child(DRAFT_REPORTS_DIR, f"{local_id}.zstd")
 
 
 def _safe_draft_file_path(draft_dir: Path, archive_name: str) -> Path:
@@ -241,24 +299,40 @@ def _read_tar_zstd(
     return report_info, files, temp_dir_obj
 
 
+def _fsync_path(path: Path) -> None:
+    fd = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
 def _write_tar_zstd_from_draft(output_path: Path, draft_dir: Path):
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory() as temp_dir:
-        tar_path = Path(temp_dir).joinpath("draft.tar")
-
-        with tarfile.open(tar_path, "w") as archive:
-            for source_path in sorted(draft_dir.rglob("*")):
-                if source_path.is_file():
-                    archive.add(source_path, arcname=str(source_path.relative_to(draft_dir)))
-
-        result = subprocess.run(
-            ["zstd", "-10", "-f", "-q", "-o", str(output_path), str(tar_path)],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if result.returncode != 0:
-            raise RuntimeError(result.stderr or "zstd compression failed")
+    tmp_path = output_path.with_name(output_path.name + ".tmp")
+    try:
+        with tempfile.TemporaryDirectory(dir=output_path.parent) as temp_dir:
+            tar_path = Path(temp_dir).joinpath("draft.tar")
+            with tarfile.open(tar_path, "w") as archive:
+                for source_path in sorted(draft_dir.rglob("*")):
+                    if source_path.is_file():
+                        archive.add(
+                            source_path, arcname=str(source_path.relative_to(draft_dir))
+                        )
+            result = subprocess.run(
+                ["zstd", "-10", "-f", "-q", "-o", str(tmp_path), str(tar_path)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode != 0:
+                raise RuntimeError(result.stderr or "zstd compression failed")
+        _fsync_path(tmp_path)
+        os.replace(tmp_path, output_path)
+        _fsync_path(output_path.parent)
+    except BaseException:
+        tmp_path.unlink(missing_ok=True)
+        raise
 
 
 def _finalize_draft_archive(local_id: str):
@@ -312,11 +386,21 @@ def _remove_draft_file(draft_dir: Path, archive_name: str):
 
 
 def _find_debug_file(file_name: str) -> Path | None:
-    candidate = DEBUG_HISTORY_ROOT.joinpath(file_name)
-    if candidate.exists() and candidate.is_file():
+    if not isinstance(file_name, str) or not DEBUG_FILE_NAME_RE.fullmatch(file_name):
+        return None
+    root = DEBUG_HISTORY_ROOT.resolve()
+    candidate = root.joinpath(file_name)
+    if candidate.is_file() and candidate.resolve().is_relative_to(root):
         return candidate
-    matches = list(DEBUG_HISTORY_ROOT.rglob(file_name))
-    return matches[0] if matches else None
+    if "/" in file_name:
+        return None
+    for day_dir in sorted(
+        (p for p in root.iterdir() if p.is_dir()), key=lambda p: p.name, reverse=True
+    ):
+        candidate = day_dir.joinpath(file_name)
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 def _debug_file_timestamp(path: Path) -> int | None:
@@ -420,7 +504,9 @@ def _emulated_machine_status() -> str:
     )
 
 
-async def _get_watcher_body(url: str, timeout_seconds: int) -> bytes:
+async def _get_watcher_body(
+    url: str, timeout_seconds: int, max_bytes: int | None = None
+) -> bytes:
     """Issue the actual watcher HTTP GET.
 
     Runs inside its own task (see `_fetch_watcher_text`) so a disconnect can
@@ -436,18 +522,37 @@ async def _get_watcher_body(url: str, timeout_seconds: int) -> bytes:
     timeout = aiohttp.ClientTimeout(total=timeout_seconds)
     async with aiohttp.ClientSession(timeout=timeout, raise_for_status=True) as session:
         async with session.get(url) as response:
-            return await response.read()
+            if max_bytes is None:
+                return await response.read()
+            chunks: deque[bytes] = deque()
+            kept = dropped = 0
+            async for chunk in response.content.iter_chunked(64 * 1024):
+                chunks.append(chunk)
+                kept += len(chunk)
+                while kept > max_bytes and len(chunks) > 1:
+                    head = chunks.popleft()
+                    kept -= len(head)
+                    dropped += len(head)
+            body = b"".join(chunks)
+            if dropped:
+                banner = f"[meticulous-backend] machine logs truncated: dropped the oldest {dropped} bytes, kept the newest {kept} bytes\n".encode()
+                newline = body.find(b"\n")
+                body = banner + (body[newline + 1 :] if newline >= 0 else body)
+            return body
 
 
 async def _fetch_watcher_text(
     url: str,
     timeout_seconds: int,
     cancellation: CollectionCancellation | None = None,
+    max_bytes: int | None = None,
 ) -> str:
     if cancellation is not None:
         cancellation.raise_if_disconnected()
 
-    task: asyncio.Task[bytes] = asyncio.ensure_future(_get_watcher_body(url, timeout_seconds))
+    task: asyncio.Task[bytes] = asyncio.ensure_future(
+        _get_watcher_body(url, timeout_seconds, max_bytes)
+    )
     if cancellation is not None:
         cancellation.active_task = task
     try:
@@ -473,7 +578,7 @@ async def _fetch_machine_logs(
         end_hours = max(0, (collection_time - end_time) // 3600)
         separator = "&" if "?" in url else "?"
         url = f"{url}{separator}since={start_hours}&until={end_hours}"
-    return await _fetch_watcher_text(url, 600, cancellation)
+    return await _fetch_watcher_text(url, 600, cancellation, REPORT_MAX_MACHINE_LOGS_BYTES)
 
 
 async def _fetch_machine_status(
@@ -508,9 +613,12 @@ async def _record_machine_logs(
 ) -> None:
     try:
         machine_logs_path = draft_dir.joinpath(MACHINE_LOGS_NAME)
-        machine_logs_path.write_text(
-            await _fetch_machine_logs(start_time, end_time, cancellation), encoding="utf-8"
-        )
+        logs = await _fetch_machine_logs(start_time, end_time, cancellation)
+        machine_logs_path.write_text(logs, encoding="utf-8")
+        if logs.startswith("[meticulous-backend] machine logs truncated:"):
+            result.errors.append(
+                f"Machine logs truncated to the newest {REPORT_MAX_MACHINE_LOGS_BYTES} bytes"
+            )
         result.files[MACHINE_LOGS_NAME] = machine_logs_path
         result.machine_logs = True
     except Exception as exc:
@@ -733,6 +841,9 @@ def _validate_draft_patch(data: dict[str, Any]):
             raise PermissionError("Only attachments.debugFiles.user can be updated")
         if user_files is not None and not isinstance(user_files, list):
             raise ValueError("attachments.debugFiles.user must be a list")
+        for name in user_files or []:
+            if not isinstance(name, str) or not DEBUG_FILE_NAME_RE.fullmatch(name):
+                raise ValueError(f"Invalid debug file name: {name!r}")
 
 
 def _apply_scalar_draft_patch(
@@ -838,11 +949,17 @@ def _mark_report_submitted(
     ticket_provided: bool,
     ticket: int | None,
 ) -> bool:
-    if _get_report_row(local_id) is None:
+    row = _get_report_row(local_id)
+    if row is None:
         return False
 
     draft_dir = _draft_path(local_id)
     if not draft_dir.exists() or not draft_dir.is_dir():
+        # A client may retry after the first submit finalized and removed the
+        # draft directory. The submission has already been recorded, so this
+        # is a successful no-op rather than an unknown draft.
+        if row.status == "submitted":
+            return True
         raise FileNotFoundError(local_id)
 
     report_info = _read_draft_report_info(draft_dir)
@@ -850,6 +967,15 @@ def _mark_report_submitted(
     if ticket_provided:
         report_info["ticket"] = ticket
     _write_draft_report_info(draft_dir, report_info)
+
+    archive_ok = True
+    try:
+        _write_tar_zstd_from_draft(_finalized_draft_path(local_id), draft_dir)
+    except Exception as exc:
+        archive_ok = False
+        message = f"Failed to finalize draft archive: {type(exc).__name__}"
+        logger.warning(f"[{local_id}] {message}", exc_info=True)
+        _append_reporting_log_to_dir(draft_dir, [message])
 
     db_values = {
         "eventID": event_id,
@@ -859,9 +985,95 @@ def _mark_report_submitted(
     if ticket_provided:
         db_values["ticketNumber"] = ticket
     updated = _update_report_db(local_id, db_values)
-    if updated:
-        _finalize_draft_archive(local_id)
+    if updated and archive_ok:
+        shutil.rmtree(draft_dir, ignore_errors=True)
     return updated
+
+
+def _disk_free_bytes() -> int:
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    return shutil.disk_usage(REPORTS_DIR).free
+
+
+def _check_disk_space() -> None:
+    free = _disk_free_bytes()
+    if free < REPORTS_MIN_FREE_BYTES:
+        raise InsufficientDiskSpace(free, REPORTS_MIN_FREE_BYTES)
+
+
+def _sweep_entry(path: Path, rows: dict, now: int, stats: dict[str, int]) -> None:
+    if path.name.endswith((".tmp", ".cache")):
+        if now - int(path.stat().st_mtime) > 3600:
+            path.unlink()
+            stats["tmp"] += 1
+        return
+    local_id = path.name[:-5] if path.name.endswith(".zstd") else path.name
+    row = rows.get(local_id)
+    if path.is_dir():
+        _sweep_draft_dir(path, local_id, row, now, stats)
+    elif path.is_file() and path.name.endswith(".zstd"):
+        reference = (row.submissionTime if row is not None else None) or int(
+            path.stat().st_mtime
+        )
+        if now - int(reference) > ARCHIVE_MAX_AGE_SECONDS:
+            path.unlink()
+            stats["archives"] += 1
+
+
+def _sweep_draft_dir(path: Path, local_id: str, row, now: int, stats: dict[str, int]) -> None:
+    if row is None:
+        if now - int(path.stat().st_mtime) > 3600:
+            shutil.rmtree(path, ignore_errors=True)
+            stats["drafts"] += 1
+    elif row.status == "submitted":
+        try:
+            _write_tar_zstd_from_draft(_finalized_draft_path(local_id), path)
+            shutil.rmtree(path, ignore_errors=True)
+            stats["finalized"] += 1
+        except Exception:
+            logger.warning(f"[{local_id}] retry of archive finalization failed", exc_info=True)
+    elif now - int(row.creationTime or 0) > DRAFT_MAX_AGE_SECONDS:
+        if _delete_report(local_id):
+            stats["drafts"] += 1
+            stats["rows"] += 1
+
+
+def _sweep_orphan_rows(rows: dict, stats: dict[str, int]) -> None:
+    for local_id, row in rows.items():
+        if (
+            row.status == "draft"
+            and not _draft_path(local_id).exists()
+            and not _finalized_draft_path(local_id).exists()
+        ):
+            if _delete_report(local_id):
+                stats["rows"] += 1
+
+
+def sweep_reports(now: int | None = None) -> dict[str, int]:
+    now = _now_seconds() if now is None else now
+    stats = {"tmp": 0, "drafts": 0, "rows": 0, "archives": 0, "finalized": 0}
+    if not DRAFT_REPORTS_DIR.is_dir():
+        return stats
+    _ensure_database_initialized()
+    with ShotDataBase.engine.connect() as connection:
+        rows = {
+            row.localID: row
+            for row in connection.execute(
+                select(
+                    bug_reports.c.localID,
+                    bug_reports.c.status,
+                    bug_reports.c.creationTime,
+                    bug_reports.c.submissionTime,
+                )
+            )
+        }
+    for path in DRAFT_REPORTS_DIR.iterdir():
+        try:
+            _sweep_entry(path, rows, now, stats)
+        except Exception:
+            logger.warning(f"sweep_reports failed for {path.name}", exc_info=True)
+    _sweep_orphan_rows(rows, stats)
+    return stats
 
 
 def _column_for_filter(name: str):
@@ -954,118 +1166,156 @@ class ReportsCreateHandler(BaseHandler):
         try:
             requested_issue_time = _create_report_issue_time(self.request.body)
         except ValueError as exc:
-            _api_error(self, 400, str(exc))
+            _api_error(self, 400, str(exc), {"code": "INVALID_BODY"})
             return
 
-        local_id = _new_local_id()
-        issue_time = requested_issue_time if requested_issue_time is not None else now
-        collection_range = (
-            _collection_range(issue_time, now) if requested_issue_time is not None else None
-        )
-        if collection_range is not None:
-            start, end = collection_range
-            logger.debug(f"information requested from {start} to {end}")
-        else:
-            logger.debug("information requested from the last day")
-        draft_dir = _draft_path(local_id)
-        try:
-            fetched = await _fetch_report_files(
-                draft_dir,
-                *(collection_range or (None, None)),
-                capture_active_debug_shot=(
-                    collection_range is None or collection_range[1] == now
-                ),
-                cancellation=self._cancellation,
+        if _collection_lock.locked():
+            _reply_error(self, CollectionInProgress())
+            return
+
+        async with _collection_lock:
+            try:
+                await asyncio.get_running_loop().run_in_executor(None, sweep_reports)
+            except Exception:
+                logger.warning("Report sweep failed", exc_info=True)
+            try:
+                _check_disk_space()
+            except ReportRequestError as exc:
+                _reply_error(self, exc)
+                return
+            local_id = _new_local_id()
+            issue_time = requested_issue_time if requested_issue_time is not None else now
+            collection_range = (
+                _collection_range(issue_time, now) if requested_issue_time is not None else None
             )
-            attachments = {
-                "debugFiles": {"automatic": fetched.automatic_debug_files},
-                "machineInfo": fetched.machine_info,
-                "machineLogs": fetched.machine_logs,
-                "machineStatus": fetched.machine_status,
-            }
-            report_info = {
-                "description": None,
-                "dateAndTime": now,
-                "issueTime": issue_time,
-                "attachments": attachments,
-                "multimedia": None,
-                "machineID": MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER],
-                "eventID": None,
-                "baseEventID": None,
-                "ticket": None,
-                "localID": local_id,
-            }
-            _write_draft_report_info(draft_dir, report_info)
-            _insert_report(report_info)
-            self.write({"localID": local_id, "machineID": report_info["machineID"]})
-        except asyncio.CancelledError:
-            # The client disconnected. This is not an error: no Sentry
-            # report, no error-level log, no response. Leave the system
-            # exactly as if this create had never run.
-            shutil.rmtree(draft_dir, ignore_errors=True)
-        except Exception as exc:
-            shutil.rmtree(draft_dir, ignore_errors=True)
-            logger.exception("Failed to create bug report draft")
-            _api_error(self, 500, "Failed to create report draft", {"message": str(exc)})
+            draft_dir = _draft_path(local_id)
+            try:
+                fetched = await _fetch_report_files(
+                    draft_dir,
+                    *(collection_range or (None, None)),
+                    capture_active_debug_shot=(
+                        collection_range is None or collection_range[1] == now
+                    ),
+                    cancellation=self._cancellation,
+                )
+                attachments = {
+                    "debugFiles": {"automatic": fetched.automatic_debug_files},
+                    "machineInfo": fetched.machine_info,
+                    "machineLogs": fetched.machine_logs,
+                    "machineStatus": fetched.machine_status,
+                }
+                report_info = {
+                    "description": None,
+                    "dateAndTime": now,
+                    "issueTime": issue_time,
+                    "attachments": attachments,
+                    "multimedia": None,
+                    "machineID": MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER],
+                    "eventID": None,
+                    "baseEventID": None,
+                    "ticket": None,
+                    "localID": local_id,
+                }
+                _write_draft_report_info(draft_dir, report_info)
+                _insert_report(report_info)
+                self.write({"localID": local_id, "machineID": report_info["machineID"]})
+            except asyncio.CancelledError:
+                # The client disconnected. This is not an error: no Sentry
+                # report, no error-level log, no response. Leave the system
+                # exactly as if this create had never run.
+                shutil.rmtree(draft_dir, ignore_errors=True)
+            except Exception as exc:
+                shutil.rmtree(draft_dir, ignore_errors=True)
+                logger.exception("Failed to create bug report draft")
+                _api_error(self, 500, "Failed to create report draft", {"message": str(exc)})
 
 
 class ReportDraftHandler(BaseHandler):
+    async def _stream_file(self, path: Path) -> None:
+        self.set_header("Content-Length", str(path.stat().st_size))
+        with path.open("rb") as handle:
+            while chunk := handle.read(ARCHIVE_STREAM_CHUNK):
+                self.write(chunk)
+                flush = getattr(self, "flush", None)
+                if flush is not None:
+                    await flush()
+
     async def get(self, local_id: str):
+        try:
+            _validate_local_id(local_id)
+        except ReportRequestError as exc:
+            _reply_error(self, exc)
+            return
         draft_dir = _draft_path(local_id)
         finalized_archive_path = _finalized_draft_path(local_id)
-        if finalized_archive_path.exists() and finalized_archive_path.is_file():
-            archive_path = finalized_archive_path
-        elif draft_dir.exists() and draft_dir.is_dir():
+        if draft_dir.is_dir():
             archive_path = None
+        elif finalized_archive_path.is_file():
+            archive_path = finalized_archive_path
         else:
-            _api_error(self, 404, "Unknown localID")
+            _api_error(self, 404, "Unknown localID", {"code": "UNKNOWN_LOCAL_ID"})
             return
 
         self.set_header("Content-Type", "application/octet-stream")
         self.set_header("Content-Disposition", f'attachment; filename="{local_id}.zstd"')
         try:
             if archive_path is not None:
-                with archive_path.open("rb") as handle:
-                    self.write(handle.read())
+                await ReportDraftHandler._stream_file(self, archive_path)
             else:
-                with tempfile.TemporaryDirectory() as temp_dir:
+                with tempfile.TemporaryDirectory(dir=DRAFT_REPORTS_DIR) as temp_dir:
                     temp_archive_path = Path(temp_dir).joinpath(f"{local_id}.zstd")
-                    _write_tar_zstd_from_draft(temp_archive_path, draft_dir)
-                    with temp_archive_path.open("rb") as handle:
-                        self.write(handle.read())
+                    await asyncio.get_running_loop().run_in_executor(
+                        None, _write_tar_zstd_from_draft, temp_archive_path, draft_dir
+                    )
+                    await ReportDraftHandler._stream_file(self, temp_archive_path)
         except Exception as exc:
             logger.exception("Failed to read bug report draft")
             _api_error(self, 500, "Failed to read report draft", {"message": str(exc)})
 
     async def put(self, local_id: str):
         try:
+            _validate_local_id(local_id)
+        except ReportRequestError as exc:
+            _reply_error(self, exc)
+            return
+        try:
             data = _json_loads_body(self.request.body)
             _validate_draft_patch(data)
         except PermissionError as exc:
-            _api_error(self, 403, str(exc))
+            _api_error(self, 403, str(exc), {"code": "FORBIDDEN_UPDATE"})
             return
         except ValueError as exc:
-            _api_error(self, 400, str(exc))
+            _api_error(self, 400, str(exc), {"code": "INVALID_BODY"})
             return
 
         if _get_report_row(local_id) is None:
-            _api_error(self, 404, "Unknown localID")
+            _api_error(self, 404, "Unknown localID", {"code": "UNKNOWN_LOCAL_ID"})
             return
 
         try:
             report_info = await _apply_draft_patch(local_id, data)
             self.write(report_info)
         except FileNotFoundError:
-            _api_error(self, 404, "Unknown localID")
+            _api_error(self, 404, "Unknown localID", {"code": "UNKNOWN_LOCAL_ID"})
         except ValueError as exc:
-            _api_error(self, 400, str(exc))
+            _api_error(self, 400, str(exc), {"code": "INVALID_BODY"})
         except Exception as exc:
             logger.exception("Failed to update bug report draft")
             _api_error(self, 500, "Failed to update report draft", {"message": str(exc)})
 
     async def delete(self, local_id: str):
+        try:
+            _validate_local_id(local_id)
+        except ReportRequestError as exc:
+            _reply_error(self, exc)
+            return
         if self.request.body:
-            _api_error(self, 400, "Delete report draft request must not contain a body")
+            _api_error(
+                self,
+                400,
+                "Delete report draft request must not contain a body",
+                {"code": "INVALID_BODY"},
+            )
             return
 
         try:
@@ -1077,7 +1327,7 @@ class ReportDraftHandler(BaseHandler):
             return
 
         if not deleted:
-            _api_error(self, 404, "Unknown localID")
+            _api_error(self, 404, "Unknown localID", {"code": "UNKNOWN_LOCAL_ID"})
             return
         self.set_status(204)
         self.finish()
@@ -1106,14 +1356,11 @@ class ReportsListHandler(BaseHandler):
 class ReportsSubmitHandler(BaseHandler):
     async def post(self):
         try:
-            data = _json_loads_body(self.request.body)
-            local_id = data["localID"]
-            event_id = data["eventID"]
-            submission_time = data.get("submissionTime", _now_seconds())
-            ticket_provided = "ticket" in data
-            ticket = data.get("ticket") if ticket_provided else None
-        except (KeyError, ValueError) as exc:
-            _api_error(self, 400, f"Invalid submit body: {exc}")
+            local_id, event_id, submission_time, ticket_provided, ticket = _parse_submit_body(
+                self.request.body
+            )
+        except ReportRequestError as exc:
+            _reply_error(self, exc)
             return
 
         try:
@@ -1121,7 +1368,7 @@ class ReportsSubmitHandler(BaseHandler):
                 local_id, event_id, submission_time, ticket_provided, ticket
             )
         except FileNotFoundError:
-            _api_error(self, 404, "Unknown localID")
+            _api_error(self, 404, "Unknown localID", {"code": "UNKNOWN_LOCAL_ID"})
             return
         except Exception as exc:
             logger.exception("Failed to submit bug report draft")
@@ -1129,13 +1376,105 @@ class ReportsSubmitHandler(BaseHandler):
             return
 
         if not updated:
-            _api_error(self, 404, "Unknown localID")
+            _api_error(self, 404, "Unknown localID", {"code": "UNKNOWN_LOCAL_ID"})
             return
         self.set_status(200)
         self.finish()
 
 
+SUBMIT_KEYS = {"localID", "eventID", "submissionTime", "ticket"}
+
+
+def _parse_submit_body(body: bytes) -> tuple[str, str, int, bool, int | None]:
+    try:
+        data = _json_loads_body(body)
+    except ValueError as exc:
+        raise ReportRequestError(400, "INVALID_BODY", str(exc)) from exc
+    unknown = set(data) - SUBMIT_KEYS
+    if unknown:
+        raise ReportRequestError(
+            400, "INVALID_BODY", f"Unknown keys: {', '.join(sorted(unknown))}"
+        )
+    local_id = _validate_local_id(data.get("localID"))
+    event_id = data.get("eventID")
+    if not isinstance(event_id, str) or not event_id.strip():
+        raise ReportRequestError(400, "INVALID_BODY", "eventID must be a non-empty string")
+    submission_time = data.get("submissionTime", _now_seconds())
+    if isinstance(submission_time, bool) or not isinstance(submission_time, int):
+        raise ReportRequestError(
+            400, "INVALID_BODY", "submissionTime must be an integer epoch timestamp"
+        )
+    ticket_provided = "ticket" in data
+    ticket = data.get("ticket")
+    if (
+        ticket_provided
+        and ticket is not None
+        and (isinstance(ticket, bool) or not isinstance(ticket, int))
+    ):
+        raise ReportRequestError(400, "INVALID_BODY", "ticket must be an integer or null")
+    return local_id, event_id, submission_time, ticket_provided, ticket
+
+
+async def _probe_url(url: str) -> dict[str, Any]:
+    parsed = urlsplit(url)
+    if parsed.scheme != "https" or not parsed.netloc:
+        return {"reachable": False, "status": None, "latencyMs": None, "error": "INVALID_PROBE"}
+    started = time.monotonic()
+    try:
+        timeout = aiohttp.ClientTimeout(total=PREFLIGHT_PROBE_TIMEOUT_SECONDS)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.head(url, allow_redirects=False) as response:
+                return {
+                    "reachable": True,
+                    "status": response.status,
+                    "latencyMs": int((time.monotonic() - started) * 1000),
+                    "error": None,
+                }
+    except Exception as exc:
+        return {
+            "reachable": False,
+            "status": None,
+            "latencyMs": None,
+            "error": type(exc).__name__,
+        }
+
+
+class ReportsPreflightHandler(BaseHandler):
+    async def get(self):
+        probes = _dedupe(self.get_query_arguments("probe"))[:PREFLIGHT_MAX_PROBES]
+        blockers: list[str] = []
+        machine_id = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER] or None
+        if not machine_id:
+            blockers.append("NO_SERIAL_NUMBER")
+        free = _disk_free_bytes()
+        disk_ok = free >= REPORTS_MIN_FREE_BYTES
+        if not disk_ok:
+            blockers.append("INSUFFICIENT_DISK_SPACE")
+        busy = _collection_lock.locked()
+        if busy:
+            blockers.append("COLLECTION_IN_PROGRESS")
+        results = await asyncio.gather(*(_probe_url(url) for url in probes))
+        network = dict(zip(probes, results))
+        if network and not all(item["reachable"] for item in network.values()):
+            blockers.append("NETWORK_UNREACHABLE")
+        self.write(
+            {
+                "ok": not blockers,
+                "blockers": blockers,
+                "machineID": machine_id,
+                "disk": {
+                    "freeBytes": free,
+                    "requiredBytes": REPORTS_MIN_FREE_BYTES,
+                    "ok": disk_ok,
+                },
+                "collectionInProgress": busy,
+                "network": network,
+            }
+        )
+
+
 API.register_handler(APIVersion.V1, r"/reports/create", ReportsCreateHandler)
+API.register_handler(APIVersion.V1, r"/reports/preflight", ReportsPreflightHandler)
 API.register_handler(APIVersion.V1, r"/reports/draft/([^/]+)", ReportDraftHandler)
 API.register_handler(APIVersion.V1, r"/reports/list", ReportsListHandler)
 API.register_handler(APIVersion.V1, r"/reports/submit", ReportsSubmitHandler)
