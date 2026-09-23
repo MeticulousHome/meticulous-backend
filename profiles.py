@@ -56,6 +56,7 @@ DEFAULT_IMAGES_PATH = os.getenv("DEFAULT_IMAGES", "/opt/meticulous-backend/image
 
 DEFAULT_IMAGES_PATH_ACCENT_COLORS = os.path.join(DEFAULT_IMAGES_PATH, "accent_colors.json")
 
+
 class PROFILE_EVENT(Enum):
     CREATE = "create"
     UPDATE = "update"
@@ -100,6 +101,7 @@ class ProfileManager:
 
         ProfileManager.refresh_image_list()
         from simple_profile import SimpleProfile
+
         SimpleProfile.load()
         ProfileManager.refresh_profile_list()
         ProfileManager._delete_unused_images()

@@ -52,7 +52,9 @@ DEBUG_FILE_NAME_RE = re.compile(
     r"^(?:\d{4}-\d{2}-\d{2}/)?\d{2}:\d{2}:\d{2}\.[A-Za-z0-9_-]+\.json\.zst$"
 )
 REPORTS_MIN_FREE_BYTES = int(os.getenv("REPORTS_MIN_FREE_BYTES", str(200 * 1024 * 1024)))
-REPORT_MAX_MACHINE_LOGS_BYTES = int(os.getenv("REPORT_MAX_MACHINE_LOGS_BYTES", str(20 * 1024 * 1024)))
+REPORT_MAX_MACHINE_LOGS_BYTES = int(
+    os.getenv("REPORT_MAX_MACHINE_LOGS_BYTES", str(20 * 1024 * 1024))
+)
 DRAFT_MAX_AGE_SECONDS = int(os.getenv("REPORTS_DRAFT_MAX_AGE_SECONDS", str(7 * 24 * 3600)))
 ARCHIVE_MAX_AGE_SECONDS = int(os.getenv("REPORTS_ARCHIVE_MAX_AGE_SECONDS", str(30 * 24 * 3600)))
 PREFLIGHT_PROBE_TIMEOUT_SECONDS = 5
@@ -111,7 +113,12 @@ class ReportRequestError(Exception):
 
 class InsufficientDiskSpace(ReportRequestError):
     def __init__(self, free_bytes: int, required_bytes: int):
-        super().__init__(507, "INSUFFICIENT_DISK_SPACE", "Not enough free disk space to collect a report", {"freeBytes": free_bytes, "requiredBytes": required_bytes})
+        super().__init__(
+            507,
+            "INSUFFICIENT_DISK_SPACE",
+            "Not enough free disk space to collect a report",
+            {"freeBytes": free_bytes, "requiredBytes": required_bytes},
+        )
 
 
 class CollectionInProgress(ReportRequestError):
@@ -309,10 +316,14 @@ def _write_tar_zstd_from_draft(output_path: Path, draft_dir: Path):
             with tarfile.open(tar_path, "w") as archive:
                 for source_path in sorted(draft_dir.rglob("*")):
                     if source_path.is_file():
-                        archive.add(source_path, arcname=str(source_path.relative_to(draft_dir)))
+                        archive.add(
+                            source_path, arcname=str(source_path.relative_to(draft_dir))
+                        )
             result = subprocess.run(
                 ["zstd", "-10", "-f", "-q", "-o", str(tmp_path), str(tar_path)],
-                capture_output=True, text=True, check=False,
+                capture_output=True,
+                text=True,
+                check=False,
             )
             if result.returncode != 0:
                 raise RuntimeError(result.stderr or "zstd compression failed")
@@ -383,7 +394,9 @@ def _find_debug_file(file_name: str) -> Path | None:
         return candidate
     if "/" in file_name:
         return None
-    for day_dir in sorted((p for p in root.iterdir() if p.is_dir()), key=lambda p: p.name, reverse=True):
+    for day_dir in sorted(
+        (p for p in root.iterdir() if p.is_dir()), key=lambda p: p.name, reverse=True
+    ):
         candidate = day_dir.joinpath(file_name)
         if candidate.is_file():
             return candidate
@@ -491,7 +504,9 @@ def _emulated_machine_status() -> str:
     )
 
 
-async def _get_watcher_body(url: str, timeout_seconds: int, max_bytes: int | None = None) -> bytes:
+async def _get_watcher_body(
+    url: str, timeout_seconds: int, max_bytes: int | None = None
+) -> bytes:
     """Issue the actual watcher HTTP GET.
 
     Runs inside its own task (see `_fetch_watcher_text`) so a disconnect can
@@ -522,7 +537,7 @@ async def _get_watcher_body(url: str, timeout_seconds: int, max_bytes: int | Non
             if dropped:
                 banner = f"[meticulous-backend] machine logs truncated: dropped the oldest {dropped} bytes, kept the newest {kept} bytes\n".encode()
                 newline = body.find(b"\n")
-                body = banner + (body[newline + 1:] if newline >= 0 else body)
+                body = banner + (body[newline + 1 :] if newline >= 0 else body)
             return body
 
 
@@ -535,7 +550,9 @@ async def _fetch_watcher_text(
     if cancellation is not None:
         cancellation.raise_if_disconnected()
 
-    task: asyncio.Task[bytes] = asyncio.ensure_future(_get_watcher_body(url, timeout_seconds, max_bytes))
+    task: asyncio.Task[bytes] = asyncio.ensure_future(
+        _get_watcher_body(url, timeout_seconds, max_bytes)
+    )
     if cancellation is not None:
         cancellation.active_task = task
     try:
@@ -599,7 +616,9 @@ async def _record_machine_logs(
         logs = await _fetch_machine_logs(start_time, end_time, cancellation)
         machine_logs_path.write_text(logs, encoding="utf-8")
         if logs.startswith("[meticulous-backend] machine logs truncated:"):
-            result.errors.append(f"Machine logs truncated to the newest {REPORT_MAX_MACHINE_LOGS_BYTES} bytes")
+            result.errors.append(
+                f"Machine logs truncated to the newest {REPORT_MAX_MACHINE_LOGS_BYTES} bytes"
+            )
         result.files[MACHINE_LOGS_NAME] = machine_logs_path
         result.machine_logs = True
     except Exception as exc:
@@ -982,6 +1001,54 @@ def _check_disk_space() -> None:
         raise InsufficientDiskSpace(free, REPORTS_MIN_FREE_BYTES)
 
 
+def _sweep_entry(path: Path, rows: dict, now: int, stats: dict[str, int]) -> None:
+    if path.name.endswith((".tmp", ".cache")):
+        if now - int(path.stat().st_mtime) > 3600:
+            path.unlink()
+            stats["tmp"] += 1
+        return
+    local_id = path.name[:-5] if path.name.endswith(".zstd") else path.name
+    row = rows.get(local_id)
+    if path.is_dir():
+        _sweep_draft_dir(path, local_id, row, now, stats)
+    elif path.is_file() and path.name.endswith(".zstd"):
+        reference = (row.submissionTime if row is not None else None) or int(
+            path.stat().st_mtime
+        )
+        if now - int(reference) > ARCHIVE_MAX_AGE_SECONDS:
+            path.unlink()
+            stats["archives"] += 1
+
+
+def _sweep_draft_dir(path: Path, local_id: str, row, now: int, stats: dict[str, int]) -> None:
+    if row is None:
+        if now - int(path.stat().st_mtime) > 3600:
+            shutil.rmtree(path, ignore_errors=True)
+            stats["drafts"] += 1
+    elif row.status == "submitted":
+        try:
+            _write_tar_zstd_from_draft(_finalized_draft_path(local_id), path)
+            shutil.rmtree(path, ignore_errors=True)
+            stats["finalized"] += 1
+        except Exception:
+            logger.warning(f"[{local_id}] retry of archive finalization failed", exc_info=True)
+    elif now - int(row.creationTime or 0) > DRAFT_MAX_AGE_SECONDS:
+        if _delete_report(local_id):
+            stats["drafts"] += 1
+            stats["rows"] += 1
+
+
+def _sweep_orphan_rows(rows: dict, stats: dict[str, int]) -> None:
+    for local_id, row in rows.items():
+        if (
+            row.status == "draft"
+            and not _draft_path(local_id).exists()
+            and not _finalized_draft_path(local_id).exists()
+        ):
+            if _delete_report(local_id):
+                stats["rows"] += 1
+
+
 def sweep_reports(now: int | None = None) -> dict[str, int]:
     now = _now_seconds() if now is None else now
     stats = {"tmp": 0, "drafts": 0, "rows": 0, "archives": 0, "finalized": 0}
@@ -989,36 +1056,23 @@ def sweep_reports(now: int | None = None) -> dict[str, int]:
         return stats
     _ensure_database_initialized()
     with ShotDataBase.engine.connect() as connection:
-        rows = {row.localID: row for row in connection.execute(select(bug_reports.c.localID, bug_reports.c.status, bug_reports.c.creationTime, bug_reports.c.submissionTime))}
+        rows = {
+            row.localID: row
+            for row in connection.execute(
+                select(
+                    bug_reports.c.localID,
+                    bug_reports.c.status,
+                    bug_reports.c.creationTime,
+                    bug_reports.c.submissionTime,
+                )
+            )
+        }
     for path in DRAFT_REPORTS_DIR.iterdir():
         try:
-            if path.name.endswith((".tmp", ".cache")):
-                if now - int(path.stat().st_mtime) > 3600:
-                    path.unlink()
-                    stats["tmp"] += 1
-                continue
-            local_id = path.name[:-5] if path.name.endswith(".zstd") else path.name
-            row = rows.get(local_id)
-            if path.is_dir():
-                if row is None and now - int(path.stat().st_mtime) > 3600:
-                    shutil.rmtree(path, ignore_errors=True); stats["drafts"] += 1
-                elif row is not None and row.status == "submitted":
-                    try:
-                        _write_tar_zstd_from_draft(_finalized_draft_path(local_id), path)
-                        shutil.rmtree(path, ignore_errors=True); stats["finalized"] += 1
-                    except Exception:
-                        logger.warning(f"[{local_id}] retry of archive finalization failed", exc_info=True)
-                elif row is not None and now - int(row.creationTime or 0) > DRAFT_MAX_AGE_SECONDS:
-                    if _delete_report(local_id): stats["drafts"] += 1; stats["rows"] += 1
-            elif path.is_file() and path.name.endswith(".zstd"):
-                reference = (row.submissionTime if row is not None else None) or int(path.stat().st_mtime)
-                if now - int(reference) > ARCHIVE_MAX_AGE_SECONDS:
-                    path.unlink(); stats["archives"] += 1
+            _sweep_entry(path, rows, now, stats)
         except Exception:
             logger.warning(f"sweep_reports failed for {path.name}", exc_info=True)
-    for local_id, row in rows.items():
-        if row.status == "draft" and not _draft_path(local_id).exists() and not _finalized_draft_path(local_id).exists():
-            if _delete_report(local_id): stats["rows"] += 1
+    _sweep_orphan_rows(rows, stats)
     return stats
 
 
@@ -1131,39 +1185,44 @@ class ReportsCreateHandler(BaseHandler):
                 return
             local_id = _new_local_id()
             issue_time = requested_issue_time if requested_issue_time is not None else now
-            collection_range = _collection_range(issue_time, now) if requested_issue_time is not None else None
+            collection_range = (
+                _collection_range(issue_time, now) if requested_issue_time is not None else None
+            )
             draft_dir = _draft_path(local_id)
             try:
                 fetched = await _fetch_report_files(
-                    draft_dir, *(collection_range or (None, None)),
-                    capture_active_debug_shot=(collection_range is None or collection_range[1] == now),
+                    draft_dir,
+                    *(collection_range or (None, None)),
+                    capture_active_debug_shot=(
+                        collection_range is None or collection_range[1] == now
+                    ),
                     cancellation=self._cancellation,
                 )
                 attachments = {
-                "debugFiles": {"automatic": fetched.automatic_debug_files},
-                "machineInfo": fetched.machine_info,
-                "machineLogs": fetched.machine_logs,
-                "machineStatus": fetched.machine_status,
-            }
+                    "debugFiles": {"automatic": fetched.automatic_debug_files},
+                    "machineInfo": fetched.machine_info,
+                    "machineLogs": fetched.machine_logs,
+                    "machineStatus": fetched.machine_status,
+                }
                 report_info = {
-                "description": None,
-                "dateAndTime": now,
-                "issueTime": issue_time,
-                "attachments": attachments,
-                "multimedia": None,
-                "machineID": MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER],
-                "eventID": None,
-                "baseEventID": None,
-                "ticket": None,
-                "localID": local_id,
-            }
+                    "description": None,
+                    "dateAndTime": now,
+                    "issueTime": issue_time,
+                    "attachments": attachments,
+                    "multimedia": None,
+                    "machineID": MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER],
+                    "eventID": None,
+                    "baseEventID": None,
+                    "ticket": None,
+                    "localID": local_id,
+                }
                 _write_draft_report_info(draft_dir, report_info)
                 _insert_report(report_info)
                 self.write({"localID": local_id, "machineID": report_info["machineID"]})
             except asyncio.CancelledError:
-            # The client disconnected. This is not an error: no Sentry
-            # report, no error-level log, no response. Leave the system
-            # exactly as if this create had never run.
+                # The client disconnected. This is not an error: no Sentry
+                # report, no error-level log, no response. Leave the system
+                # exactly as if this create had never run.
                 shutil.rmtree(draft_dir, ignore_errors=True)
             except Exception as exc:
                 shutil.rmtree(draft_dir, ignore_errors=True)
@@ -1185,7 +1244,8 @@ class ReportDraftHandler(BaseHandler):
         try:
             _validate_local_id(local_id)
         except ReportRequestError as exc:
-            _reply_error(self, exc); return
+            _reply_error(self, exc)
+            return
         draft_dir = _draft_path(local_id)
         finalized_archive_path = _finalized_draft_path(local_id)
         if draft_dir.is_dir():
@@ -1204,7 +1264,9 @@ class ReportDraftHandler(BaseHandler):
             else:
                 with tempfile.TemporaryDirectory(dir=DRAFT_REPORTS_DIR) as temp_dir:
                     temp_archive_path = Path(temp_dir).joinpath(f"{local_id}.zstd")
-                    await asyncio.get_running_loop().run_in_executor(None, _write_tar_zstd_from_draft, temp_archive_path, draft_dir)
+                    await asyncio.get_running_loop().run_in_executor(
+                        None, _write_tar_zstd_from_draft, temp_archive_path, draft_dir
+                    )
                     await ReportDraftHandler._stream_file(self, temp_archive_path)
         except Exception as exc:
             logger.exception("Failed to read bug report draft")
@@ -1214,7 +1276,8 @@ class ReportDraftHandler(BaseHandler):
         try:
             _validate_local_id(local_id)
         except ReportRequestError as exc:
-            _reply_error(self, exc); return
+            _reply_error(self, exc)
+            return
         try:
             data = _json_loads_body(self.request.body)
             _validate_draft_patch(data)
@@ -1244,9 +1307,15 @@ class ReportDraftHandler(BaseHandler):
         try:
             _validate_local_id(local_id)
         except ReportRequestError as exc:
-            _reply_error(self, exc); return
+            _reply_error(self, exc)
+            return
         if self.request.body:
-            _api_error(self, 400, "Delete report draft request must not contain a body", {"code": "INVALID_BODY"})
+            _api_error(
+                self,
+                400,
+                "Delete report draft request must not contain a body",
+                {"code": "INVALID_BODY"},
+            )
             return
 
         try:
@@ -1287,7 +1356,9 @@ class ReportsListHandler(BaseHandler):
 class ReportsSubmitHandler(BaseHandler):
     async def post(self):
         try:
-            local_id, event_id, submission_time, ticket_provided, ticket = _parse_submit_body(self.request.body)
+            local_id, event_id, submission_time, ticket_provided, ticket = _parse_submit_body(
+                self.request.body
+            )
         except ReportRequestError as exc:
             _reply_error(self, exc)
             return
@@ -1321,17 +1392,25 @@ def _parse_submit_body(body: bytes) -> tuple[str, str, int, bool, int | None]:
         raise ReportRequestError(400, "INVALID_BODY", str(exc)) from exc
     unknown = set(data) - SUBMIT_KEYS
     if unknown:
-        raise ReportRequestError(400, "INVALID_BODY", f"Unknown keys: {', '.join(sorted(unknown))}")
+        raise ReportRequestError(
+            400, "INVALID_BODY", f"Unknown keys: {', '.join(sorted(unknown))}"
+        )
     local_id = _validate_local_id(data.get("localID"))
     event_id = data.get("eventID")
     if not isinstance(event_id, str) or not event_id.strip():
         raise ReportRequestError(400, "INVALID_BODY", "eventID must be a non-empty string")
     submission_time = data.get("submissionTime", _now_seconds())
     if isinstance(submission_time, bool) or not isinstance(submission_time, int):
-        raise ReportRequestError(400, "INVALID_BODY", "submissionTime must be an integer epoch timestamp")
+        raise ReportRequestError(
+            400, "INVALID_BODY", "submissionTime must be an integer epoch timestamp"
+        )
     ticket_provided = "ticket" in data
     ticket = data.get("ticket")
-    if ticket_provided and ticket is not None and (isinstance(ticket, bool) or not isinstance(ticket, int)):
+    if (
+        ticket_provided
+        and ticket is not None
+        and (isinstance(ticket, bool) or not isinstance(ticket, int))
+    ):
         raise ReportRequestError(400, "INVALID_BODY", "ticket must be an integer or null")
     return local_id, event_id, submission_time, ticket_provided, ticket
 
@@ -1345,9 +1424,19 @@ async def _probe_url(url: str) -> dict[str, Any]:
         timeout = aiohttp.ClientTimeout(total=PREFLIGHT_PROBE_TIMEOUT_SECONDS)
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.head(url, allow_redirects=False) as response:
-                return {"reachable": True, "status": response.status, "latencyMs": int((time.monotonic() - started) * 1000), "error": None}
+                return {
+                    "reachable": True,
+                    "status": response.status,
+                    "latencyMs": int((time.monotonic() - started) * 1000),
+                    "error": None,
+                }
     except Exception as exc:
-        return {"reachable": False, "status": None, "latencyMs": None, "error": type(exc).__name__}
+        return {
+            "reachable": False,
+            "status": None,
+            "latencyMs": None,
+            "error": type(exc).__name__,
+        }
 
 
 class ReportsPreflightHandler(BaseHandler):
@@ -1368,9 +1457,20 @@ class ReportsPreflightHandler(BaseHandler):
         network = dict(zip(probes, results))
         if network and not all(item["reachable"] for item in network.values()):
             blockers.append("NETWORK_UNREACHABLE")
-        self.write({"ok": not blockers, "blockers": blockers, "machineID": machine_id,
-                    "disk": {"freeBytes": free, "requiredBytes": REPORTS_MIN_FREE_BYTES, "ok": disk_ok},
-                    "collectionInProgress": busy, "network": network})
+        self.write(
+            {
+                "ok": not blockers,
+                "blockers": blockers,
+                "machineID": machine_id,
+                "disk": {
+                    "freeBytes": free,
+                    "requiredBytes": REPORTS_MIN_FREE_BYTES,
+                    "ok": disk_ok,
+                },
+                "collectionInProgress": busy,
+                "network": network,
+            }
+        )
 
 
 API.register_handler(APIVersion.V1, r"/reports/create", ReportsCreateHandler)

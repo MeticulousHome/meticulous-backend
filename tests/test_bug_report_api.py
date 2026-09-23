@@ -1229,9 +1229,12 @@ def test_repeat_submit_after_finalization_is_a_successful_noop(report_module):
             )
         )
 
-    assert report_module._mark_report_submitted(
-        local_id, "retry-event", 3, ticket_provided=False, ticket=None
-    ) is True
+    assert (
+        report_module._mark_report_submitted(
+            local_id, "retry-event", 3, ticket_provided=False, ticket=None
+        )
+        is True
+    )
     with ShotDataBase.engine.connect() as connection:
         row = connection.execute(select(bug_reports)).one()
     assert row.status == "submitted"
@@ -1275,7 +1278,11 @@ def _insert_deletable_report(report_module, local_id: str, status: str = "draft"
 def test_delete_draft_removes_all_report_representations_and_db_row(
     report_module, representation
 ):
-    local_id = {"directory": "018f0a2b-1234-7abc-8def-0123456789ab", "archive": "018f0a2b-1234-7abc-8def-0123456789ac", "both": "018f0a2b-1234-7abc-8def-0123456789ad"}[representation]
+    local_id = {
+        "directory": "018f0a2b-1234-7abc-8def-0123456789ab",
+        "archive": "018f0a2b-1234-7abc-8def-0123456789ac",
+        "both": "018f0a2b-1234-7abc-8def-0123456789ad",
+    }[representation]
     draft_dir = report_module._draft_path(local_id)
     archive_path = report_module._finalized_draft_path(local_id)
     if representation in {"directory", "both"}:
@@ -1316,16 +1323,24 @@ def test_delete_draft_allows_submitted_report(report_module):
 def test_delete_draft_returns_not_found_for_unknown_local_id(report_module):
     handler = _DeleteDraftHandler()
 
-    asyncio.run(report_module.ReportDraftHandler.delete(handler, "018f0a2b-1234-7abc-8def-0123456789ab"))
+    asyncio.run(
+        report_module.ReportDraftHandler.delete(handler, "018f0a2b-1234-7abc-8def-0123456789ab")
+    )
 
     assert handler.status == 404
-    assert handler.response == {"error": "Unknown localID", "description": "", "data": {"code": "UNKNOWN_LOCAL_ID"}}
+    assert handler.response == {
+        "error": "Unknown localID",
+        "description": "",
+        "data": {"code": "UNKNOWN_LOCAL_ID"},
+    }
 
 
 def test_delete_draft_rejects_request_body(report_module):
     handler = _DeleteDraftHandler(body=b"{}")
 
-    asyncio.run(report_module.ReportDraftHandler.delete(handler, "018f0a2b-1234-7abc-8def-0123456789ab"))
+    asyncio.run(
+        report_module.ReportDraftHandler.delete(handler, "018f0a2b-1234-7abc-8def-0123456789ab")
+    )
 
     assert handler.status == 400
     assert handler.response == {
@@ -1349,7 +1364,9 @@ def test_local_id_validation_and_paths_reject_traversal(report_module):
 def test_submit_body_contract_validation(report_module):
     local_id = "018f0a2b-1234-7abc-8def-0123456789ab"
     parsed = report_module._parse_submit_body(
-        json.dumps({"localID": local_id, "eventID": "event", "submissionTime": 3, "ticket": None}).encode()
+        json.dumps(
+            {"localID": local_id, "eventID": "event", "submissionTime": 3, "ticket": None}
+        ).encode()
     )
     assert parsed == (local_id, "event", 3, True, None)
     for body in (
@@ -1402,8 +1419,16 @@ def test_preflight_has_ordered_blockers(report_module, monkeypatch):
 
     monkeypatch.setattr(report_module, "_probe_url", fake_probe)
     monkeypatch.setattr(report_module, "_disk_free_bytes", lambda: 0)
-    monkeypatch.setitem(report_module.MeticulousConfig[report_module.CONFIG_SYSTEM], report_module.MACHINE_SERIAL_NUMBER, None)
+    monkeypatch.setitem(
+        report_module.MeticulousConfig[report_module.CONFIG_SYSTEM],
+        report_module.MACHINE_SERIAL_NUMBER,
+        None,
+    )
     handler = Handler()
     asyncio.run(report_module.ReportsPreflightHandler.get(handler))
-    assert handler.body["blockers"] == ["NO_SERIAL_NUMBER", "INSUFFICIENT_DISK_SPACE", "NETWORK_UNREACHABLE"]
+    assert handler.body["blockers"] == [
+        "NO_SERIAL_NUMBER",
+        "INSUFFICIENT_DISK_SPACE",
+        "NETWORK_UNREACHABLE",
+    ]
     assert handler.body["network"]["http://invalid"]["error"] == "INVALID_PROBE"
