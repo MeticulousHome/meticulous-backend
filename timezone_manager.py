@@ -1,6 +1,7 @@
 import os
 import json
 import subprocess
+import time
 from log import MeticulousLogger
 from config import (
     MeticulousConfig,
@@ -117,6 +118,10 @@ class TimezoneManager:
             if len(cmd_result.stderr) > 0 or len(cmd_result.stdout) > 0:
                 error = f"[ Out:{cmd_result.stdout} | Err: {cmd_result.stderr} ]"
                 raise Exception(error)
+
+            # glibc caches /etc/localtime on first use; refresh it so this
+            # process (shot file names, logs) follows the new zone immediately
+            time.tzset()
 
             logger.info(
                 f"new system time zone: {TimezoneManager.redact_timezone(TimezoneManager.get_system_timezone())}"
