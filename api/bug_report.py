@@ -31,6 +31,7 @@ from shot_database import ShotDataBase
 
 from .api import API, APIVersion
 from .base_handler import BaseHandler
+from . import community_upload_diagnostics
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -612,6 +613,14 @@ async def _fetch_report_files(
     draft_dir.mkdir(parents=True, exist_ok=True)
 
     _record_machine_info(result, draft_dir)
+    try:
+        upload_path = draft_dir / community_upload_diagnostics.NAME
+        upload_path.write_text(
+            json.dumps(community_upload_diagnostics.collect()), encoding="utf-8"
+        )
+        result.files[community_upload_diagnostics.NAME] = upload_path
+    except OSError:
+        result.errors.append("Unable to write community upload diagnostics")
 
     if cancellation is not None:
         cancellation.raise_if_disconnected()
