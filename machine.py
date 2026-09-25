@@ -47,7 +47,7 @@ from esp_serial.esp_tool_wrapper import ESPToolWrapper
 from log import MeticulousLogger
 from notifications import Notification, NotificationManager, NotificationResponse
 from shot_debug_manager import ShotDebugManager
-from shot_manager import ShotManager
+from shot_manager import PushToBrewTimer, ShotManager
 from smoke_validation import SmokeValidationManager
 from sounds import SoundPlayer, Sounds
 from api.alarms import AlarmManager, AlarmType
@@ -342,6 +342,7 @@ class Machine:
         info_requested = False
         time_passed = 0
         profile_time = 0
+        push_to_brew_timer = PushToBrewTimer()
         emulated_firmware = False
         previous_preheat_remaining = None
         ESP_tracing_info = []
@@ -545,12 +546,16 @@ class Machine:
                     is_heating = data.status == MachineStatus.HEATING
                     is_starting = data.status == MachineStatus.STARTING
 
+                    if old_status == MachineStatus.IDLE and not Machine.is_idle:
+                        push_to_brew_timer.reset()
+                    push_to_brew_timer.observe(data.status, time.monotonic())
+
                     # A shot started
                     if was_preparing and data.status != old_status:
                         time_flag = True
                         shot_start_time = time.time()
                         logger.info("shot start_time: {:.1f}".format(shot_start_time))
-                        ShotManager.start()
+                        ShotManager.start(push_to_brew_timer.duration_ms)
                         SoundPlayer.play_event_sound(Sounds.BREWING_START)
                     elif time_flag:
                         # A shot could have ended
