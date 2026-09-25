@@ -140,6 +140,21 @@ class TestSearchHistory:
         assert results[0]["name"] == "Test Espresso"
         assert results[0]["profile"]["name"] == "Test Espresso"
 
+    def test_search_returns_push_to_brew_time_from_shot_file(self, tmp_path):
+        entry = make_history_entry(file="2026-09-25/shot.json.zst")
+        shot_file = tmp_path / "shots" / entry["file"]
+        shot_file.parent.mkdir(parents=True)
+        shot_file.write_bytes(
+            zstd.ZstdCompressor().compress(
+                json.dumps({"data": [], "push_to_brew_time": 1234}).encode("utf-8")
+            )
+        )
+        ShotDataBase.insert_history(entry)
+
+        results = ShotDataBase.search_history(SearchParams(dump_data=True))
+
+        assert results[0]["push_to_brew_time"] == 1234
+
     def test_search_with_max_results(self):
         for i in range(5):
             e = make_history_entry(

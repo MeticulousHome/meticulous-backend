@@ -40,6 +40,7 @@ RUN mkdir -p opt/meticulous-venv \
     opt/meticulous-backend/api \
     opt/meticulous-backend/esp_serial/connection \
     opt/meticulous-backend/monitoring \
+    opt/meticulous-backend/profile_converter \
     opt/meticulous-backend/images/notificationImages \
     opt/meticulous-backend/images/default \
     opt/meticulous-backend/alembic/versions \
@@ -64,6 +65,9 @@ COPY esp_serial/*.py /pkg/opt/meticulous-backend/esp_serial/
 COPY esp_serial/connection/*.py /pkg/opt/meticulous-backend/esp_serial/connection/
 COPY esp_serial/connection/*.json /pkg/opt/meticulous-backend/esp_serial/connection/
 COPY monitoring/*.py /pkg/opt/meticulous-backend/monitoring/
+# Imported at module load by manual_program.py (via profiles.py), so the backend
+# fails to start without it. Plain package, not a submodule.
+COPY profile_converter/*.py /pkg/opt/meticulous-backend/profile_converter/
 COPY images/notificationImages/*.py /pkg/opt/meticulous-backend/images/notificationImages/
 
 # Alembic migrations

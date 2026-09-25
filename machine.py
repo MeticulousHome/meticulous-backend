@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 from named_thread import NamedThread
+import threading
 import time
 from enum import Enum
 import sentry_sdk
@@ -44,10 +45,20 @@ from esp_serial.data import (
     HeaterTimeoutInfo,
 )
 from esp_serial.esp_tool_wrapper import ESPToolWrapper
+from esp_observability import (
+    ESPDiagnostic,
+    ESPObservability,
+    should_start_firmware_update,
+)
+from device_identity import (
+    get_device_uuid_assignment,
+    is_valid_device_uuid,
+    update_device_uuid_cache,
+)
 from log import MeticulousLogger
 from notifications import Notification, NotificationManager, NotificationResponse
 from shot_debug_manager import ShotDebugManager
-from shot_manager import ShotManager
+from shot_manager import PushToBrewTimer, ShotManager
 from smoke_validation import SmokeValidationManager
 from sounds import SoundPlayer, Sounds
 from api.alarms import AlarmManager, AlarmType
@@ -98,6 +109,10 @@ logger = MeticulousLogger.getLogger(__name__)
 # can be from [FIKA, USB, EMULATOR / EMULATION]
 BACKEND = os.getenv("BACKEND", "FIKA").upper()
 
+# The ESP does not always answer the mileage read we issue when it first reports
+# its info. Repeat the read at this interval until it does.
+MILEAGE_RETRY_INTERVAL_SECONDS = 5
+
 
 class esp_nvs_keys(Enum):
     color = "color_key"
@@ -107,6 +122,7 @@ class esp_nvs_keys(Enum):
     partial_retraction = "partial_retraction_key"
     auto_purge_after_shot = "auto_purge_after_shot_key"
     tare_behavior = "tare_behavior_key"
+    mileage = "mileage_key"
 
 
 class Machine:
@@ -119,6 +135,8 @@ class Machine:
         "scale_master_calibration",
         "preheat",
         "continue",
+        # ends the user stages of a running shot through the normal retract; the dial sends it on a double click inside a user stage
+        "finish",
         "home",
         "purge",
         "continue",
@@ -133,6 +151,14 @@ class Machine:
     heater_timeout_info: HeaterTimeoutInfo = None
 
     infoReady = False
+    # Lifetime shot count held by the ESP. None until the ESP reports it.
+    mileage = None
+    # Seed we computed for this boot, cached so the ESP re-asking does not
+    # re-run the aggregate query.
+    _mileage_seed = None
+    # When we last asked the ESP for its mileage, set by every request so a
+    # retry never races one already in flight.
+    _mileage_last_request = 0.0
     profileReady = False
     oldProfileReady = False
 
@@ -145,6 +171,7 @@ class Machine:
     shot_start_time = 0
     emulated = False
     firmware_available = None
+    firmware_available_string = None
     firmware_running = None
     startTime = None
 
@@ -161,7 +188,65 @@ class Machine:
     aborted_by_motor_consumtion = False
 
     esp_restart_request = False
+    esp_observability = ESPObservability(time.monotonic())
+    pending_device_uuid_assignment: str | None = None
+    device_uuid_assignment_attempts = 0
+    device_uuid_retry_timer: threading.Timer | None = None
+
+    DEVICE_UUID_MAX_ASSIGNMENT_ATTEMPTS = 3
+    DEVICE_UUID_RETRY_DELAY_SECONDS = 2.0
+    HAWKBIT_UPDATER_RESTART_TIMEOUT_SECONDS = 5
     _pending_tare_behavior_writes = []
+
+    @staticmethod
+    def _capture_esp_diagnostic(diagnostic: ESPDiagnostic):
+        with sentry_sdk.new_scope() as scope:
+            scope.set_client(ESPSentryClient)
+            for key, value in diagnostic.tags.items():
+                if value:
+                    scope.set_tag(key, value)
+            if diagnostic.context:
+                scope.set_context("esp-diagnostic", diagnostic.context)
+
+            firmware_version = (
+                diagnostic.context.get("previous_firmware")
+                or Machine.esp_observability.previous_firmware
+            )
+            event = {
+                "message": diagnostic.title,
+                "level": diagnostic.level,
+                "fingerprint": [diagnostic.fingerprint],
+            }
+            if firmware_version:
+                event["release"] = f"espresso-firmware@{firmware_version}"
+                scope.set_tag("firmware-version", firmware_version)
+            scope.capture_event(event)
+
+    @staticmethod
+    def _report_esp_diagnostics(diagnostics: list[ESPDiagnostic]):
+        for diagnostic in diagnostics:
+            logger.warning(f"{diagnostic.title}: tags={diagnostic.tags}")
+            Machine._capture_esp_diagnostic(diagnostic)
+            if diagnostic.title in {
+                "ESP32 firmware panic detected",
+                "ESP32 unexpected reset detected",
+                "ESP32 firmware boot loop detected",
+            }:
+                if AlarmManager.is_alarm_set(AlarmType.ESP_RESTART) is None:
+                    AlarmManager.set_alarm(
+                        AlarmType.ESP_RESTART, end_time=None, force=False, quiet=True
+                    )
+            elif diagnostic.title in {
+                "ESP32 valid-message timeout",
+                "ESP32 did not recover after firmware update",
+            }:
+                if AlarmManager.is_alarm_set(AlarmType.ESP_DISCONNECTED) is None:
+                    AlarmManager.set_alarm(
+                        AlarmType.ESP_DISCONNECTED,
+                        end_time=None,
+                        force=True,
+                        quiet=True,
+                    )
 
     @staticmethod
     def get_somrev():
@@ -242,14 +327,16 @@ class Machine:
             logger.info("The ESP is alive")
 
     def refreshAvailableFirmware():
+        Machine.firmware_available_string = ESPToolWrapper.get_version_from_firmware()
         Machine.firmware_available = Machine._parseVersionString(
-            ESPToolWrapper.get_version_from_firmware()
+            Machine.firmware_available_string
         )
         logger.info(f"Backend available firmware version: {Machine.firmware_available}")
         return Machine.firmware_available
 
     def init(sio):
         Machine.esp_restart_request = True
+        Machine.esp_observability = ESPObservability(time.monotonic())
         Machine._sio = sio
         Machine.refreshAvailableFirmware()
 
@@ -342,12 +429,9 @@ class Machine:
         info_requested = False
         time_passed = 0
         profile_time = 0
+        push_to_brew_timer = PushToBrewTimer()
         emulated_firmware = False
         previous_preheat_remaining = None
-        ESP_tracing_info = []
-        collect_tracing_info = False
-        previous_valid_message_timestamp = time.monotonic()
-
         logger.info("Starting to listen for esp32 messages")
         Machine.startTime = time.time()
         while True:
@@ -369,6 +453,15 @@ class Machine:
                     logger.info(data_str.strip("\r\n"))
 
                 data_str_sensors = data_str.strip("\r\n").split(",")
+                now = time.monotonic()
+                is_boot_banner = data_str.startswith("rst:0x") and all(
+                    boot_check in data_str
+                    for boot_check in ["boot:0x", " (SPI_FAST_FLASH_BOOT)"]
+                )
+                if is_boot_banner:
+                    Machine._report_esp_diagnostics(
+                        Machine.esp_observability.observe_raw_line(data_str, now)
+                    )
 
                 # potential message types
                 button_event = None
@@ -376,12 +469,11 @@ class Machine:
                 data = None
                 info = None
                 notify = None
+                boot_reason = None
+                valid_message_type = None
                 is_valid_message = True
 
-                if data_str.startswith("rst:0x") and all(
-                    boot_check in data_str
-                    for boot_check in ["boot:0x", " (SPI_FAST_FLASH_BOOT)"]
-                ):
+                if is_boot_banner:
                     Machine.reset_count += 1
                     Machine.startTime = time.time()
                     Machine.esp_info = None
@@ -389,26 +481,16 @@ class Machine:
                     info_requested = False
                     Machine.infoReady = False
                     Machine.profileReady = False
+                    Machine._resetDeviceUUIDEnrollment()
                     is_valid_message = False
-                    collect_tracing_info = False
 
-                if Machine.reset_count >= 3:
+                if (
+                    Machine.reset_count >= 3
+                    and not Machine.esp_observability.update_in_progress
+                ):
                     logger.warning("The ESP seems to be resetting, sending update now")
                     Machine.startUpdate()
                     Machine.reset_count = 0
-
-                if any(
-                    crash_check in data_str.lower()
-                    for crash_check in [
-                        "backtrace",
-                        "guru meditation error",
-                        "register dump",
-                    ]
-                ):
-                    collect_tracing_info = True
-
-                if collect_tracing_info:
-                    ESP_tracing_info.append(data_str)
 
                 if Machine.infoReady and not info_requested and Machine.esp_info is None:
                     logger.info(
@@ -424,24 +506,39 @@ class Machine:
                         "CCW" | "CW" | "push" | "pu_d" | "elng" | "ta_d" | "ta_l" | "strt"
                     ] as ev:
                         button_event = ButtonEventData.from_args(ev)
+                        valid_message_type = "Event"
                     case ["Event", *eventData]:
                         button_event = ButtonEventData.from_args(eventData)
+                        valid_message_type = "Event"
                     case ["Data", *dataArgs]:
                         data = ShotData.from_args(dataArgs)
+                        valid_message_type = "Data"
                     case ["Sensors", colorCodedString]:
                         sensor = SensorData.from_color_coded_args(colorCodedString)
+                        valid_message_type = "Sensors"
                     case ["Sensors", *sensorArgs]:
                         sensor = SensorData.from_args(sensorArgs)
+                        valid_message_type = "Sensors"
                     case ["ESPInfo", *infoArgs]:
                         info = ESPInfo.from_args(infoArgs)
+                        valid_message_type = "ESPInfo"
+                    case ["ESPBoot", reason, code]:
+                        boot_reason = (reason, code)
+                        valid_message_type = "ESPBoot"
+                    case ["device_uuid_response", response]:
+                        Machine.handleDeviceUUIDResponse(response)
+                        valid_message_type = "DeviceUUIDResponse"
                     case ["nvs_response", "tare_behavior_key", status]:
                         Machine.handleTareBehaviorNVSResponse(status)
+                        valid_message_type = "NVSResponse"
                     case ["Notify", *notifyArgs]:
                         notify = MachineNotify(
                             notifyArgs[0], ",".join(notifyArgs[1:]).replace(";", "\n")
                         )
+                        valid_message_type = "Notify"
 
                     case ["HeaterTimeoutInfo", *timeoutArgs]:
+                        valid_message_type = "HeaterTimeoutInfo"
                         try:
                             heater_timeout_info = HeaterTimeoutInfo.from_args(timeoutArgs)
                             Machine.heater_timeout_info = heater_timeout_info
@@ -461,6 +558,7 @@ class Machine:
                                 exc_info=True,
                             )
                     case ["Log", *log_data]:
+                        valid_message_type = "Log"
 
                         def get_log_items(log_data: list[str]):
                             for data_str in log_data[2:]:
@@ -530,9 +628,41 @@ class Machine:
                             logger.error(
                                 f"Error processing ESP log ({type(e).__name__})",
                             )
+                    case ["MileageRequest"]:
+                        Machine._handleMileageRequest()
+                        valid_message_type = "MileageRequest"
+                    case ["nvs_response", nvs_key, nvs_value]:
+                        Machine._handleNvsResponse(nvs_key, nvs_value)
+                        valid_message_type = "NVSResponse"
+                    case ["nvs_response", *nvs_error]:
+                        logger.warning(f"ESP nvs_response error: {','.join(nvs_error)}")
+                        valid_message_type = "NVSResponse"
                     case [*_]:
                         logger.info(data_str.strip("\r\n"))
                         is_valid_message = False
+
+                if (not is_valid_message or valid_message_type is None) and not is_boot_banner:
+                    Machine._report_esp_diagnostics(
+                        Machine.esp_observability.observe_raw_line(data_str, now)
+                    )
+
+                if boot_reason is not None:
+                    Machine._report_esp_diagnostics(
+                        Machine.esp_observability.observe_boot_reason(
+                            boot_reason[0], boot_reason[1], now
+                        )
+                    )
+
+                # The read issued alongside the ESP's first info report is not
+                # always answered, which would leave the counter unknown for the
+                # rest of the session. Keep asking until it replies.
+                if (
+                    Machine.infoReady
+                    and Machine.mileage is None
+                    and time.time() - Machine._mileage_last_request
+                    >= MILEAGE_RETRY_INTERVAL_SECONDS
+                ):
+                    Machine.requestMileage()
 
                 old_ready = Machine.infoReady
 
@@ -545,12 +675,16 @@ class Machine:
                     is_heating = data.status == MachineStatus.HEATING
                     is_starting = data.status == MachineStatus.STARTING
 
+                    if old_status == MachineStatus.IDLE and not Machine.is_idle:
+                        push_to_brew_timer.reset()
+                    push_to_brew_timer.observe(data.status, time.monotonic())
+
                     # A shot started
                     if was_preparing and data.status != old_status:
                         time_flag = True
                         shot_start_time = time.time()
                         logger.info("shot start_time: {:.1f}".format(shot_start_time))
-                        ShotManager.start()
+                        ShotManager.start(push_to_brew_timer.duration_ms)
                         SoundPlayer.play_event_sound(Sounds.BREWING_START)
                     elif time_flag:
                         # A shot could have ended
@@ -584,6 +718,10 @@ class Machine:
                                 logger.info("shot ended with weight unstable")
                             SoundPlayer.play_event_sound(Sounds.BREWING_END)
                             ShotManager.stop()
+                            # The ESP counted this shot when heating handed over
+                            # to the first stage. Re-read so what we expose is
+                            # the counter's current value, not a boot snapshot.
+                            Machine.requestMileage()
 
                     if Machine.is_idle and old_status != MachineStatus.IDLE:
                         Machine.profileReady = False
@@ -646,6 +784,7 @@ class Machine:
                 if info is not None:
                     Machine.esp_info = info
                     Machine.infoReady = True
+                    Machine.requestMileage()
                     info_requested = False
                     Machine.firmware_running = Machine._parseVersionString(info.firmwareV)
 
@@ -659,6 +798,7 @@ class Machine:
                         MeticulousConfig[CONFIG_USER][PROFILE_TARE_BEHAVIOR]
                     )
                     Machine.setTareBehavior(backend_tare_behavior)
+                    Machine.syncDeviceUUID(info.deviceUUID, info.deviceUUIDSupported)
 
                     if (
                         info.serialNumber != ""
@@ -698,13 +838,13 @@ class Machine:
                         )
                         emulated_firmware = Machine.emulated
 
-                    needs_update = Machine.firmware_available is not None and (
-                        Machine.firmware_available != Machine.firmware_running
-                    )
-
-                    if (
-                        needs_update
-                        and not MeticulousConfig[CONFIG_USER][DISALLOW_FIRMWARE_FLASHING]
+                    if should_start_firmware_update(
+                        available_firmware=Machine.firmware_available,
+                        running_firmware=Machine.firmware_running,
+                        update_in_progress=Machine.esp_observability.update_in_progress,
+                        flashing_disallowed=MeticulousConfig[CONFIG_USER][
+                            DISALLOW_FIRMWARE_FLASHING
+                        ],
                     ):
                         info_string = f"Firmware {Machine.firmware_running.get('Release')}-{Machine.firmware_running['ExtraCommits']} is outdated, upgrading"
                         logger.info(info_string)
@@ -719,14 +859,6 @@ class Machine:
                         logger.debug(f"Button Event recieved: {button_event}")
 
                     await Machine._sio.emit("button", button_event.to_sio())
-
-                # FIXME this should be a callback to the frontends in the future
-                if (
-                    button_event is not None
-                    and button_event.event is ButtonEventEnum.ENCODER_DOUBLE
-                ):
-                    logger.info("DOUBLE ENCODER, Returning to idle")
-                    Machine.end_profile()
 
                 if (
                     not old_ready
@@ -753,52 +885,26 @@ class Machine:
                     )
                     NotificationManager.add_notification(Machine._espNotification)
 
-            # healthcheck:
-            # Notify Sentry if
-            # ESP has not sent a valid message in the last 500ms
-            # ESP has rebooted (append backtrace if there is one)
-            #
-            # - NOTE: If the ESP is rebooting, it will not send messages within those 500ms
-            #         So after a reboot we disable this timeout check and re-enable it once
-            #         it starts sending valid messages
-            #
-            # Notify user if
-            # ESP has rebooted
-
             now = time.monotonic()
 
-            if data_bytes is not None and is_valid_message:
-                previous_valid_message_timestamp = now
-                if Machine.esp_restart_request:
-                    logger.debug("clearing Machine.esp_restart_request flag")
-                Machine.esp_restart_request = False
+            if (
+                data_bytes is not None
+                and len(data_bytes) > 0
+                and is_valid_message
+                and valid_message_type is not None
+            ):
+                firmware_version = info.firmwareV if info is not None else None
+                Machine._report_esp_diagnostics(
+                    Machine.esp_observability.observe_valid_message(
+                        valid_message_type, now, firmware_version
+                    )
+                )
+                Machine.esp_restart_request = Machine.esp_observability.phase.value != "normal"
                 Machine.reset_count = 0
                 AlarmManager.clear_alarm(AlarmType.ESP_DISCONNECTED)
                 AlarmManager.clear_alarm(AlarmType.ESP_RESTART)
 
-            if Machine.reset_count > 0 and not Machine.esp_restart_request:
-                if AlarmManager.is_alarm_set(AlarmType.ESP_RESTART) is None:
-                    # notify sentry
-                    with sentry_sdk.new_scope() as scope:
-                        if len(ESP_tracing_info) > 0:
-                            tracing_info = "\n".join(ESP_tracing_info)
-                            scope.set_extra("Tracing Info", tracing_info)
-                        sentry_sdk.capture_message("ESP has restarted unexpectedly", "critical")
-                    AlarmManager.set_alarm(
-                        AlarmType.ESP_RESTART, end_time=None, force=False, quiet=True
-                    )
-                    ESP_tracing_info = []
-
-            if now - previous_valid_message_timestamp > 0.5 and not Machine.esp_restart_request:
-                if AlarmManager.is_alarm_set(AlarmType.ESP_DISCONNECTED) is None:
-                    # notify sentry
-                    sentry_sdk.capture_message("ESP has stopped communicating", "error")
-                    AlarmManager.set_alarm(
-                        AlarmType.ESP_DISCONNECTED,
-                        end_time=None,
-                        force=True,
-                        quiet=True,
-                    )
+            Machine._report_esp_diagnostics(Machine.esp_observability.check_timeouts(now))
 
     def stopMotorIfHot(_shotData: ShotData, _sensorData: SensorData):
         from monitoring.motor_power_monitoring import MAX_ENERGY_ALLOWED
@@ -822,11 +928,41 @@ class Machine:
         Machine.action("scale_master_calibration")
 
     def startUpdate():
-
+        previous_firmware = Machine.esp_info.firmwareV if Machine.esp_info is not None else None
+        Machine._report_esp_diagnostics(
+            Machine.esp_observability.begin_update(
+                Machine.firmware_available_string,
+                previous_firmware,
+                time.monotonic(),
+            )
+        )
         Machine._stopESPcomm = True
         Machine.esp_restart_request = True
-        error_msg = Machine._connection.sendUpdate()
-        Machine._stopESPcomm = False
+        error_msg = None
+        try:
+            error_msg = Machine._connection.sendUpdate()
+            if error_msg:
+                Machine._report_esp_diagnostics(
+                    [
+                        Machine.esp_observability.fail_flashing(
+                            str(error_msg), "flash", time.monotonic()
+                        )
+                    ]
+                )
+            else:
+                Machine.esp_observability.finish_flashing(time.monotonic())
+        except Exception as error:
+            error_msg = f"{type(error).__name__}: {error}"
+            Machine._report_esp_diagnostics(
+                [
+                    Machine.esp_observability.fail_flashing(
+                        error_msg, "exception", time.monotonic()
+                    )
+                ]
+            )
+        finally:
+            Machine._stopESPcomm = False
+            Machine.esp_restart_request = Machine.esp_observability.phase.value != "normal"
 
         if error_msg:
             updateNotification = Notification(
@@ -892,8 +1028,79 @@ class Machine:
         if not Machine._stopESPcomm:
             Machine._connection.port.write(content)
 
+    def _handleMileageRequest():
+        """Seed the ESP's mileage counter, once, on its own request.
+
+        The ESP only asks when its counter has never been seeded, and it refuses
+        a seed it did not ask for. We answer with the shot count the history
+        database currently holds; that number is not monotonic (shots can be
+        deleted) and it excludes brews that never reached the database, so it is
+        a starting point rather than a true lifetime total. From the seed
+        onwards the ESP counts for itself.
+        """
+        if Machine._mileage_seed is None:
+            try:
+                from shot_database import ShotDataBase
+
+                Machine._mileage_seed = int(ShotDataBase.statistics().get("totalSavedShots", 0))
+            except Exception as e:
+                logger.error(f"Could not compute mileage seed: {type(e).__name__}: {e}")
+                return
+
+        if (
+            Machine._connection is None
+            or Machine._connection.port is None
+            or Machine._stopESPcomm
+        ):
+            logger.warning("Cannot seed mileage because the serial connection is not ready")
+            return
+
+        payload = (
+            "nvs_request,write,"
+            + esp_nvs_keys.mileage.value
+            + ","
+            + str(Machine._mileage_seed)
+            + "\x03"
+        )
+        Machine.write(payload.encode("utf-8"))
+        logger.info(f"Seeding ESP mileage counter with {Machine._mileage_seed} shots")
+
+    def requestMileage():
+        """Ask the ESP for its current mileage. Read-only; always permitted."""
+        if (
+            Machine._connection is None
+            or Machine._connection.port is None
+            or Machine._stopESPcomm
+        ):
+            return
+
+        payload = "nvs_request,read," + esp_nvs_keys.mileage.value + "\x03"
+        Machine.write(payload.encode("utf-8"))
+        Machine._mileage_last_request = time.time()
+
+    def _handleNvsResponse(nvs_key: str, nvs_value: str):
+        if nvs_key != esp_nvs_keys.mileage.value:
+            # Other keys are written blind today; nothing consumes their reply.
+            return
+
+        if nvs_value in ("SUCCESS", "ERROR") or nvs_value.startswith("ERROR"):
+            if nvs_value != "SUCCESS":
+                logger.warning(f"ESP rejected the mileage write: {nvs_value}")
+            else:
+                logger.info("ESP accepted the mileage seed")
+                # Read it back so what we expose is the ESP's value, not ours.
+                Machine.requestMileage()
+            return
+
+        try:
+            Machine.mileage = int(nvs_value)
+            logger.info(f"ESP reported mileage: {Machine.mileage}")
+        except ValueError:
+            logger.warning(f"Unparseable mileage from ESP: {nvs_value}")
+
     def reset():
         Machine.esp_restart_request = True
+        Machine.esp_observability.begin_expected_reset(time.monotonic())
         Machine._connection.reset()
         Machine.infoReady = False
         Machine.profileReady = False
@@ -966,6 +1173,179 @@ Build Date: {build_date}
 
         MeticulousConfig.save()
         # TODO FIXME IMPLEMENT THIS!!!!
+
+    def syncDeviceUUID(device_uuid: str, device_uuid_supported: bool):
+        if is_valid_device_uuid(device_uuid):
+            Machine._resetDeviceUUIDEnrollment()
+        elif not device_uuid_supported:
+            Machine._resetDeviceUUIDEnrollment()
+            return
+        else:
+            if device_uuid:
+                logger.error("ESP32 reported an invalid device UUID: %r", device_uuid)
+
+            if Machine.pending_device_uuid_assignment is None:
+                Machine.pending_device_uuid_assignment = get_device_uuid_assignment(
+                    device_uuid,
+                    device_uuid_supported,
+                    None,
+                )
+                Machine.device_uuid_assignment_attempts = 0
+                Machine._sendDeviceUUIDAssignment()
+            return
+
+        try:
+            cache_changed = update_device_uuid_cache(device_uuid)
+        except OSError:
+            logger.exception("Failed to update OTA device UUID cache")
+            return
+
+        if not cache_changed:
+            return
+
+        logger.info("Updated OTA device UUID cache from ESP32")
+        if Machine.emulated:
+            return
+
+        restart_thread = NamedThread(
+            "HawkbitRestart",
+            target=Machine._restartHawkbitUpdater,
+            daemon=True,
+        )
+        restart_thread.start()
+
+    def _resetDeviceUUIDEnrollment():
+        Machine._cancelDeviceUUIDRetry()
+        Machine.pending_device_uuid_assignment = None
+        Machine.device_uuid_assignment_attempts = 0
+
+    def _cancelDeviceUUIDRetry():
+        retry_timer = Machine.device_uuid_retry_timer
+        if retry_timer is not None:
+            retry_timer.cancel()
+        Machine.device_uuid_retry_timer = None
+
+    def _sendDeviceUUIDAssignment():
+        candidate = Machine.pending_device_uuid_assignment
+        if candidate is None:
+            return
+        if (
+            Machine.device_uuid_assignment_attempts
+            >= Machine.DEVICE_UUID_MAX_ASSIGNMENT_ATTEMPTS
+        ):
+            logger.error(
+                "ESP32 device UUID assignment exhausted %d attempts; "
+                "the OTA identity cache will remain unchanged until ESPInfo "
+                "confirms a valid UUID",
+                Machine.DEVICE_UUID_MAX_ASSIGNMENT_ATTEMPTS,
+            )
+            return
+
+        Machine.device_uuid_assignment_attempts += 1
+        Machine.writeStr("device_uuid,assign," + candidate + "\x03")
+
+    def _retryDeviceUUIDAssignment():
+        Machine.device_uuid_retry_timer = None
+        Machine._sendDeviceUUIDAssignment()
+
+    def handleDeviceUUIDResponse(response: str):
+        if response == "SUCCESS":
+            Machine._cancelDeviceUUIDRetry()
+            logger.info(
+                "ESP32 device UUID assignment response: SUCCESS; awaiting ESPInfo confirmation"
+            )
+            return
+
+        if response == "ALREADY_ASSIGNED":
+            Machine._cancelDeviceUUIDRetry()
+            logger.info(
+                "ESP32 device UUID assignment response: ALREADY_ASSIGNED; "
+                "awaiting ESPInfo confirmation of the stored UUID"
+            )
+            return
+
+        if response == "ERROR_WRITE_FAILED":
+            if Machine.pending_device_uuid_assignment is None:
+                logger.error(
+                    "ESP32 device UUID assignment response: ERROR_WRITE_FAILED, "
+                    "but no same-boot assignment is pending; no retry scheduled"
+                )
+                return
+
+            if (
+                Machine.device_uuid_assignment_attempts
+                >= Machine.DEVICE_UUID_MAX_ASSIGNMENT_ATTEMPTS
+            ):
+                logger.error(
+                    "ESP32 device UUID assignment response: ERROR_WRITE_FAILED; "
+                    "exhausted %d attempts and the OTA identity cache remains unchanged",
+                    Machine.DEVICE_UUID_MAX_ASSIGNMENT_ATTEMPTS,
+                )
+                return
+
+            if Machine.device_uuid_retry_timer is not None:
+                logger.warning(
+                    "ESP32 device UUID assignment response: ERROR_WRITE_FAILED; "
+                    "a bounded retry is already scheduled"
+                )
+                return
+
+            logger.warning(
+                "ESP32 device UUID assignment response: ERROR_WRITE_FAILED; "
+                "scheduling attempt %d of %d in %.1f seconds",
+                Machine.device_uuid_assignment_attempts + 1,
+                Machine.DEVICE_UUID_MAX_ASSIGNMENT_ATTEMPTS,
+                Machine.DEVICE_UUID_RETRY_DELAY_SECONDS,
+            )
+            retry_timer = threading.Timer(
+                Machine.DEVICE_UUID_RETRY_DELAY_SECONDS,
+                Machine._retryDeviceUUIDAssignment,
+            )
+            retry_timer.daemon = True
+            Machine.device_uuid_retry_timer = retry_timer
+            retry_timer.start()
+            return
+
+        if response in {"ERROR_INVALID_FORMAT", "ERROR_INVALID_UUID"}:
+            logger.error(
+                "ESP32 device UUID assignment response: %s; "
+                "the OTA identity cache remains unchanged",
+                response,
+            )
+            return
+
+        logger.error(
+            "ESP32 device UUID assignment response: %s; "
+            "unrecognized response and no retry scheduled",
+            response,
+        )
+
+    def _restartHawkbitUpdater():
+        try:
+            restart_result = subprocess.run(
+                [
+                    "systemctl",
+                    "--no-block",
+                    "restart",
+                    "rauc-hawkbit-updater.service",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=Machine.HAWKBIT_UPDATER_RESTART_TIMEOUT_SECONDS,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            logger.exception(
+                "Could not restart rauc-hawkbit-updater after updating device UUID cache"
+            )
+            return
+
+        if restart_result.returncode != 0:
+            logger.warning(
+                "Could not restart rauc-hawkbit-updater after updating device UUID cache: "
+                "exit=%d stderr=%r",
+                restart_result.returncode,
+                restart_result.stderr,
+            )
 
     def setPartialRetraction(partial_retraction: float):
         desired_value = float(partial_retraction)
