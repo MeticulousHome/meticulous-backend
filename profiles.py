@@ -508,10 +508,6 @@ class ProfileManager:
             ProfileManager.send_profile_to_esp32(profile)
         return profile
 
-    @staticmethod
-    def _profile_for_esp32(profile):
-        return {field: profile[field] for field in ESP32_PROFILE_FIELDS if field in profile}
-
     def send_profile_to_esp32(data):
         if (end_time := AlarmManager.is_alarm_set(AlarmType.MOTOR_STRESSED)) is not None:
             AlarmManager._notify_user(
