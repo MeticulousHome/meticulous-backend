@@ -5,6 +5,7 @@ from pathlib import Path
 import zstandard as zstd
 
 import pytest
+from sqlalchemy import text
 
 import config as cfg
 import shot_database as sdb_module
@@ -185,6 +186,23 @@ class TestSearchHistory:
             {"file": "2026-08-16/shot_2.shot.json.zst"},
             {"file": "2026-08-16/shot_3.shot.json.zst"},
         ]
+
+    def test_last_upload_file_is_none_for_empty_history(self):
+        assert ShotDataBase.last_history_file() is None
+
+    def test_last_upload_file_uses_file_cursor_order_without_loading_profile(self):
+        for index, file in enumerate(
+            ["2026-08-16/09:00:00.shot.json.zst", "2026-08-16/10:00:00.shot.json.zst"]
+        ):
+            ShotDataBase.insert_history(
+                make_history_entry(id=f"upload-{index}", file=file, time=2000 - index)
+            )
+        # Legacy profile JSON can be malformed. Establishing an upload cursor
+        # needs only the file column, so it must not deserialize that profile.
+        with ShotDataBase.engine.begin() as connection:
+            connection.execute(text("UPDATE profile SET display = 'invalid JSON'"))
+
+        assert ShotDataBase.last_history_file() == "2026-08-16/10:00:00.shot.json.zst"
 
     def test_search_by_profile_id(self):
         p1 = make_profile(id="p-aaa", name="Ristretto")
