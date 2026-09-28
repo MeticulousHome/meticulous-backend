@@ -1310,3 +1310,39 @@ def test_delete_draft_rejects_request_body(report_module):
         "error": "Delete report draft request must not contain a body",
         "description": "",
     }
+
+
+def test_upload_diagnostics_survive_report_archive(report_module, tmp_path, monkeypatch):
+    monkeypatch.setenv("CONFIG_PATH", str(tmp_path))
+    source = tmp_path / "community-upload" / "diagnostics.json"
+    source.parent.mkdir()
+    source.write_text(
+        json.dumps({"schemaVersion": 1, "pendingCount": 7, "privateSeed": "SECRET"})
+    )
+
+    async def logs(*args):
+        return "[CommunityUpload] upload_resumed"
+
+    async def status(*args):
+        return "{}"
+
+    monkeypatch.setattr(report_module, "_get_machine_info", lambda: {})
+    monkeypatch.setattr(report_module, "_fetch_machine_logs", logs)
+    monkeypatch.setattr(report_module, "_fetch_machine_status", status)
+    draft = report_module._draft_path("upload-diagnostics-test")
+    fetched = asyncio.run(
+        report_module._fetch_report_files(draft, capture_active_debug_shot=False)
+    )
+    name = report_module.community_upload_diagnostics.NAME
+    assert name in fetched.files
+    (draft / report_module.REPORT_INFO_NAME).write_text("{}")
+    archive = tmp_path / "report.tar.zst"
+    report_module._write_tar_zstd_from_draft(archive, draft)
+    _, files, extracted = report_module._read_tar_zstd(archive)
+    try:
+        payload = files[name].read_text()
+        assert "SECRET" not in payload
+        assert json.loads(payload)["pendingCount"] == 7
+        assert "upload_resumed" in files[report_module.MACHINE_LOGS_NAME].read_text()
+    finally:
+        extracted.cleanup()
