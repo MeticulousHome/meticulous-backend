@@ -22,6 +22,8 @@ from pour_over_profiles import (
     PourOverProfileTooLargeError,
 )
 from .pour_over_profiles import write_pour_over_profile_error
+from limited_access import is_limited_access
+from simple_profile import SimpleProfile
 
 from .api import API, APIVersion
 from .base_handler import BaseHandler
@@ -37,6 +39,9 @@ POUR_OVER_BREW_TYPE_PATTERN = re.compile(rb'"brew_type"\s*:\s*"pour_over"')
 class ListHandler(BaseHandler):
     def get(self):
         full_profiles = self.get_argument("full", "false").lower() == "true"
+        if is_limited_access():
+            self.write(json.dumps(SimpleProfile.list(full=full_profiles)))
+            return
         profiles = ProfileManager.list_profiles()
         response = []
         for profile in profiles:
@@ -55,8 +60,7 @@ class ListHandler(BaseHandler):
 
 class ListDefaultsHandler(BaseHandler):
     def get(self):
-        profiles = ProfileManager.list_default_profiles()
-        self.write(json.dumps(profiles))
+        self.write(json.dumps(SimpleProfile.defaults()))
 
 
 class SaveProfileHandler(BaseHandler):
@@ -181,6 +185,23 @@ class LoadProfileHandler(BaseHandler):
             self.set_status(409)
             self.write({"status": "error", "error": "machine is busy"})
             return
+        limited = SimpleProfile.get_by_id(profile_id) if is_limited_access() else None
+        if limited is not None:
+            try:
+                profile = await loop.run_in_executor(
+                    None, ProfileManager.send_profile_to_esp32, limited
+                )
+                if not profile:
+                    self.set_status(403)
+                    self.write({"status": "error", "error": "high strain on motor"})
+                    return
+                self.write({"name": profile["name"], "id": profile["id"]})
+            except jsonschema.exceptions.ValidationError as err:
+                self.set_status(400)
+                self.write(
+                    {"status": "error", "error": f"JSON validation error: {err.message}"}
+                )
+            return
         try:
             data = await loop.run_in_executor(None, ProfileManager.get_profile, profile_id)
             if data:
@@ -299,7 +320,9 @@ class LegacyProfileHandler(BaseHandler):
 class GetProfileHandler(BaseHandler):
     def get(self, profile_id):
         logger.info("Request for profile " + profile_id)
-        data = ProfileManager.get_profile(profile_id)
+        data = SimpleProfile.get_by_id(profile_id) if is_limited_access() else None
+        if data is None:
+            data = ProfileManager.get_profile(profile_id)
         if data:
             self.write(data)
             logger.info(data)
