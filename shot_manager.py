@@ -16,15 +16,39 @@ from config import SHOT_PATH
 
 logger = MeticulousLogger.getLogger(__name__)
 
+PUSH_TO_BREW_STATUS = "click to start"
+
+
+class PushToBrewTimer:
+    def __init__(self) -> None:
+        self._started_at = None
+        self.duration_ms = 0
+
+    def reset(self):
+        self._started_at = None
+        self.duration_ms = 0
+
+    def observe(self, status: str, timestamp: float):
+        if status == PUSH_TO_BREW_STATUS:
+            if self._started_at is None:
+                self._started_at = timestamp
+            return
+
+        if self._started_at is not None:
+            self.duration_ms = max(0, int((timestamp - self._started_at) * 1000))
+            self._started_at = None
+
 
 class Shot:
-    def __init__(self) -> None:
+    def __init__(self, push_to_brew_time: int = 0) -> None:
         self.shotData = []
         self.profile = None
         self.profile_name = None
         self.startTime = time.time()
         self.extractionTime = None
         self.id = str(uuid.uuid4())
+        # Milliseconds, matching the debug shot's profile_ms timeline.
+        self.push_to_brew_time = push_to_brew_time
 
     def addSensorData(self, sensorData: SensorData):
         if len(self.shotData) > 0:
@@ -89,6 +113,7 @@ class Shot:
             "profile_name": self.profile_name,
             "data": self.shotData,
             "id": self.id,
+            "push_to_brew_time": self.push_to_brew_time,
         }
         # empty dictionary evaluate to false
         if bool(self.profile):
@@ -112,8 +137,8 @@ class ShotManager:
         logger.info("ShotManager initialized successfully")
 
     @staticmethod
-    def start():
-        ShotManager._current_shot = Shot()
+    def start(push_to_brew_time: int = 0):
+        ShotManager._current_shot = Shot(push_to_brew_time)
 
     @staticmethod
     def handleSensorData(sensoData: SensorData):

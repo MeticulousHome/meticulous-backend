@@ -411,6 +411,7 @@ class ShotDataBase:
             for row in results:
                 row_dict = dict(row._mapping)
                 data = None
+                push_to_brew_time = None
                 file_entry = row_dict.pop("history_file")
 
                 if params.dump_data:
@@ -428,6 +429,7 @@ class ShotDataBase:
                                 raw = raw.replace(b": NaN", b": 0.0")
                             file_contents = json.loads(raw)
                             data = file_contents.get("data")
+                            push_to_brew_time = file_contents.get("push_to_brew_time")
                     except Exception as e:
                         logger.error(f"Failed to read shot file {file_entry}: {e}")
                         continue
@@ -454,6 +456,7 @@ class ShotDataBase:
                     "debug_file": row_dict.pop("history_debug_file", None),
                     "name": row_dict.pop("history_profile_name"),
                     "data": data,
+                    "push_to_brew_time": push_to_brew_time,
                     "profile": profile,
                 }
 
