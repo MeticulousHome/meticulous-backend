@@ -58,10 +58,6 @@ DEFAULT_IMAGES_PATH = os.getenv("DEFAULT_IMAGES", "/opt/meticulous-backend/image
 
 DEFAULT_IMAGES_PATH_ACCENT_COLORS = os.path.join(DEFAULT_IMAGES_PATH, "accent_colors.json")
 
-DEFAULT_PROFILES_PATH = os.getenv(
-    "DEFAULT_PROFILES", "/opt/meticulous-backend/default_profiles"
-)
-
 # Only recipe/runtime data belongs on the constrained UART link. These fields cover
 # both firmware profile runtimes: the node engine consumes name/stages, while the
 # simplified espresso engine additionally consumes temperature, final_weight, and
