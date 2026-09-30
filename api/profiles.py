@@ -13,6 +13,7 @@ from profile_preprocessor import (
     UndefinedVariableException,
     VariableTypeException,
 )
+import manual_mode
 from profiles import IMAGES_PATH, ProfileManager
 from pour_over_profiles import (
     MAX_POUR_OVER_PROFILE_BYTES,
@@ -21,6 +22,8 @@ from pour_over_profiles import (
     PourOverProfileTooLargeError,
 )
 from .pour_over_profiles import write_pour_over_profile_error
+from limited_access import is_limited_access
+from simple_profile import SimpleProfile
 
 from .api import API, APIVersion
 from .base_handler import BaseHandler
@@ -36,9 +39,17 @@ POUR_OVER_BREW_TYPE_PATTERN = re.compile(rb'"brew_type"\s*:\s*"pour_over"')
 class ListHandler(BaseHandler):
     def get(self):
         full_profiles = self.get_argument("full", "false").lower() == "true"
+        if is_limited_access():
+            self.write(json.dumps(SimpleProfile.list(full=full_profiles)))
+            return
         profiles = ProfileManager.list_profiles()
         response = []
         for profile in profiles:
+            # Manual profiles are reached from the manual-mode setup flow, not
+            # from the profile list (contract "Manual mode" v5, section 2).
+            # `get`, `load`, `save` and `last` still serve them.
+            if profile.get("manual") is True:
+                continue
             p = profile.copy()
             if not full_profiles:
                 if "stages" in p:
@@ -49,8 +60,7 @@ class ListHandler(BaseHandler):
 
 class ListDefaultsHandler(BaseHandler):
     def get(self):
-        profiles = ProfileManager.list_default_profiles()
-        self.write(json.dumps(profiles))
+        self.write(json.dumps(SimpleProfile.defaults()))
 
 
 class SaveProfileHandler(BaseHandler):
@@ -113,12 +123,84 @@ class SaveProfileHandler(BaseHandler):
             logger.warning("Failed to save profile:", exc_info=e, stack_info=True)
 
 
+class CreateProfileFromManualHandler(BaseHandler):
+    """Save a regular profile built from the targets of a recorded manual brew."""
+
+    async def post(self):
+        try:
+            body = self.request.body
+            data = json.loads(body) if body else {}
+            if not isinstance(data, dict):
+                self.set_status(400)
+                self.write({"status": "error", "error": "body must be a JSON object"})
+                return
+
+            name = data.get("name")
+            if "name" in data and not isinstance(name, str):
+                self.set_status(400)
+                self.write({"status": "error", "error": "name must be a string"})
+                return
+
+            shot_id = data.get("shot_id")
+            if "shot_id" in data and not isinstance(shot_id, str):
+                self.set_status(400)
+                self.write({"status": "error", "error": "shot_id must be a string"})
+                return
+
+            change_id = self.request.headers.get("X-Change-Id", None)
+
+            # Reading the shot decompresses its file, so keep it off the loop.
+            loop = asyncio.get_event_loop()
+            shot = await loop.run_in_executor(None, manual_mode.find_manual_shot, shot_id)
+            profile = await loop.run_in_executor(
+                None, manual_mode.build_profile_from_manual_shot, shot, name
+            )
+
+            self.write(ProfileManager.save_profile(profile, change_id=change_id))
+        except manual_mode.ManualShotNotFound:
+            self.set_status(404)
+            self.write({"status": "error", "error": "no manual brew found"})
+        except manual_mode.ManualShotHasNoTargets:
+            self.set_status(409)
+            self.write({"status": "error", "error": "shot has no target samples"})
+        except jsonschema.exceptions.ValidationError as err:
+            self.set_status(400)
+            self.write({"status": "error", "error": f"JSON validation error: {err.message}"})
+        except Exception as e:
+            self.set_status(400)
+            self.write(
+                {
+                    "status": "error",
+                    "error": "failed to create profile from manual brew",
+                    "cause": f"{e}",
+                }
+            )
+            logger.warning("Failed to create profile from manual brew:", exc_info=e)
+
+
 class LoadProfileHandler(BaseHandler):
     async def get(self, profile_id):
         loop = asyncio.get_event_loop()
         if not Machine.is_idle:
             self.set_status(409)
             self.write({"status": "error", "error": "machine is busy"})
+            return
+        limited = SimpleProfile.get_by_id(profile_id) if is_limited_access() else None
+        if limited is not None:
+            try:
+                profile = await loop.run_in_executor(
+                    None, ProfileManager.send_profile_to_esp32, limited
+                )
+                if not profile:
+                    self.set_status(403)
+                    self.write({"status": "error", "error": "high strain on motor"})
+                    return
+                self.write({"name": profile["name"], "id": profile["id"]})
+            except jsonschema.exceptions.ValidationError as err:
+                self.set_status(400)
+                self.write(
+                    {"status": "error", "error": f"JSON validation error: {err.message}"}
+                )
             return
         try:
             data = await loop.run_in_executor(None, ProfileManager.get_profile, profile_id)
@@ -238,7 +320,9 @@ class LegacyProfileHandler(BaseHandler):
 class GetProfileHandler(BaseHandler):
     def get(self, profile_id):
         logger.info("Request for profile " + profile_id)
-        data = ProfileManager.get_profile(profile_id)
+        data = SimpleProfile.get_by_id(profile_id) if is_limited_access() else None
+        if data is None:
+            data = ProfileManager.get_profile(profile_id)
         if data:
             self.write(data)
             logger.info(data)
@@ -307,6 +391,7 @@ class ListImagesHandler(BaseHandler):
 
 API.register_handler(APIVersion.V1, r"/profile/list", ListHandler),
 API.register_handler(APIVersion.V1, r"/profile/save", SaveProfileHandler),
+API.register_handler(APIVersion.V1, r"/profile/from_manual", CreateProfileFromManualHandler),
 API.register_handler(APIVersion.V1, r"/profile/load", LoadProfileHandler),
 API.register_handler(APIVersion.V1, r"/profile/defaults", ListDefaultsHandler),
 API.register_handler(APIVersion.V1, r"/profile/image([/]*)", ListImagesHandler),
