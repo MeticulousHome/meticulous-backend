@@ -30,6 +30,7 @@ from esp_serial.data import (
 )
 from log import MeticulousLogger
 from shot_manager import Shot, ShotManager
+from shot_data_sharing import ShotDataSharing
 import copy
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -340,6 +341,8 @@ class ShotDebugManager:
         start, file_path = ShotDebugManager._debug_file_path(
             DEBUG_HISTORY_PATH, current_data_copy
         )
+        shot_start = start
+        shot_type = current_data_copy.shottype
         data_json = ShotDebugManager._prepare_debug_shot_data(current_data_copy, start)
 
         async def compress_current_data(data_json):
@@ -358,6 +361,9 @@ class ShotDebugManager:
                 ShotDataBase.link_debug_file(ShotManager.db_history_id, debug_dir_filename)
 
             ShotManager.db_history_id = None
+
+            if ShotDataSharing.should_upload(shot_type):
+                await ShotDataSharing.upload_debug_shot(data_json, shot_start, file_path)
 
             data_json = None
             logger.info("Debug shot data compressed and saved")

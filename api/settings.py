@@ -15,6 +15,7 @@ from config import (
     PROFILE_AUTO_PURGE,
     PROFILE_TARE_BEHAVIOR,
     PROFILE_PARTIAL_RETRACTION,
+    SHOT_DATA_SHARING,
 )
 
 from heater_actuator import HeaterActuator
@@ -34,6 +35,7 @@ from timezone_manager import TimezoneManager
 
 from machine import Machine
 from settings_validation import validate_partial_retraction, validate_tare_behavior
+from shot_data_sharing import ShotDataSharing
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -174,6 +176,9 @@ class SettingsHandler(BaseHandler):
 
                 if setting_target == PROFILE_TARE_BEHAVIOR:
                     Machine.setTareBehavior(value)
+
+                if setting_target == SHOT_DATA_SHARING:
+                    ShotDataSharing.on_setting_changed(value)
 
                 # If we made it here without exception we can update the setting
                 workConfig[setting_target] = value

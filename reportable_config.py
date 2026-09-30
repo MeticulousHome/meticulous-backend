@@ -52,6 +52,7 @@ _APPROVED_PATHS: tuple[tuple[tuple[str, ...], Validator], ...] = (
     (("user", "reverse_scrolling", "menus"), _is_bool),
     (("user", "clock_format_24_hour"), _is_bool),
     (("user", "allow_legacy_json"), _is_bool),
+    (("user", "shot_data_sharing"), _is_bool),
     (("user", "allow_stage_skipping"), _is_bool),
     (("user", "usb_mode"), _is_string),
     (("user", "timezone_sync"), _is_string),
