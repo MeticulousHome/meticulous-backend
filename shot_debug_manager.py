@@ -37,6 +37,8 @@ logger = MeticulousLogger.getLogger(__name__)
 DEBUG_FOLDER_FORMAT = "%Y-%m-%d"
 DEBUG_FILE_FORMAT = "%H:%M:%S"
 
+MAX_DEBUG_SHOT_RETENTION_DAYS = 365
+
 
 class ShotLogHandler(logging.Handler):
     def emit(self, record):
@@ -125,13 +127,21 @@ class ShotDebugManager:
 
     @staticmethod
     def _copy_current_data(clear_current_data: bool = False):
-        current_data_copy = None
         with ShotDebugManager.clear_current_data_lock:
-            if ShotDebugManager._current_data is not None:
-                current_data_copy = copy.deepcopy(ShotDebugManager._current_data)
+            current = ShotDebugManager._current_data
+            if current is None:
+                return None
+            # DebugShot mutates shotData and logs on the serial path. Copy the
+            # containers while protected, then do the expensive deep copy after
+            # releasing the lock so ingestion is not stalled.
+            current_data_copy = copy.copy(current)
+            for attribute in ("logs", "shotData"):
+                value = getattr(current, attribute, None)
+                if isinstance(value, list):
+                    setattr(current_data_copy, attribute, list(value))
             if clear_current_data:
                 ShotDebugManager._current_data = None
-        return current_data_copy
+        return copy.deepcopy(current_data_copy)
 
     @staticmethod
     def _prepare_debug_shot_data(current_data_copy: DebugShot, start: datetime) -> str:
@@ -250,11 +260,22 @@ class ShotDebugManager:
                     ShotDebugManager._current_data.set_shot_type(status)
 
     @staticmethod
-    def deleteOldDebugShotData():
+    def _getRetentionDays() -> int:
+        # Retention is bounded: out-of-range values (negative used to mean
+        # "keep forever") are clamped so debug shots are never retained
+        # indefinitely.
         retention_days = MeticulousConfig[CONFIG_USER][DEBUG_SHOT_DATA_RETENTION]
-        if retention_days < 0:
-            logger.info("Debug shot data retention is disabled, not deleting old files")  #
-            return
+        if retention_days < 0 or retention_days > MAX_DEBUG_SHOT_RETENTION_DAYS:
+            logger.warning(
+                f"Debug shot data retention of {retention_days} days is out of range, "
+                f"clamping to {MAX_DEBUG_SHOT_RETENTION_DAYS} days"
+            )
+            return MAX_DEBUG_SHOT_RETENTION_DAYS
+        return retention_days
+
+    @staticmethod
+    def deleteOldDebugShotData():
+        retention_days = ShotDebugManager._getRetentionDays()
 
         logger.info(
             f"Debug shot data retention is set to {retention_days} days, deleting old files"
@@ -274,11 +295,6 @@ class ShotDebugManager:
 
     @staticmethod
     def zipAllDebugShots():
-        retention_days = MeticulousConfig[CONFIG_USER][DEBUG_SHOT_DATA_RETENTION]
-        if retention_days < 0:
-            logger.info("Debug shot data retention is disabled, not deleting old files")  #
-            return
-
         logger.info("Zipping all debug files")
         start = time.time()
 

@@ -240,6 +240,7 @@ class TestESPInfo:
         assert info.batchNumber == "B456"
         assert info.buildDate == "2024-01-01"
         assert info.scaleModule == "scale1"
+        assert not info.deviceUUIDSupported
         assert info.tareBehavior is None
 
     def test_parse_tare_behavior_from_new_firmware(self):
@@ -259,7 +260,31 @@ class TestESPInfo:
         info = ESPInfo.from_args(args)
 
         assert info.tareBehavior == "before_retraction"
+        assert not info.deviceUUIDSupported
         assert info.to_sio()["tare_behavior_supported"] is True
+
+    def test_parse_device_uuid_from_pre_tare_protocol(self):
+        device_uuid = "123e4567-e89b-42d3-a456-426614174000"
+        args = [
+            "1.2.3",
+            "2",
+            "24.5",
+            "black",
+            "SN123",
+            "B456",
+            "2024-01-01",
+            "scale1",
+            "45.33",
+            "false",
+            device_uuid,
+        ]
+
+        info = ESPInfo.from_args(args)
+
+        assert info.tareBehavior is None
+        assert info.deviceUUID == device_uuid
+        assert info.deviceUUIDSupported
+        assert device_uuid not in str(info.to_sio())
 
     def test_parse_minimal(self):
         args = ["0.9.1", "1", "23.0"]
@@ -286,13 +311,96 @@ class TestESPInfo:
         assert sio["serial_number"] == "SN123"
 
     def test_roundtrip_to_args(self):
-        args = ["1.2.3", "2", "24.5", "black", "SN123", "B456", "2024-01-01", "scale1"]
+        args = [
+            "1.2.3",
+            "2",
+            "24.5",
+            "black",
+            "SN123",
+            "B456",
+            "2024-01-01",
+            "scale1",
+            "45.0",
+            "false",
+            "before_retraction",
+            "123e4567-e89b-42d3-a456-426614174000",
+        ]
         info = ESPInfo.from_args(args)
         output = info.to_args()
         reparsed = ESPInfo.from_args(output)
         assert reparsed.firmwareV == info.firmwareV
         assert reparsed.mainVoltage == info.mainVoltage
         assert reparsed.color == info.color
+        assert reparsed.tareBehavior == info.tareBehavior
+        assert reparsed.deviceUUID == info.deviceUUID
+        assert reparsed.deviceUUIDSupported
+
+    def test_parse_device_uuid_without_exposing_it_to_sio(self):
+        device_uuid = "123e4567-e89b-42d3-a456-426614174000"
+        args = [
+            "1.2.3",
+            "2",
+            "24.5",
+            "black",
+            "SN123",
+            "B456",
+            "2024-01-01",
+            "scale1",
+            "45.0",
+            "false",
+            "before_retraction",
+            device_uuid,
+        ]
+
+        info = ESPInfo.from_args(args)
+
+        payload = info.to_sio()
+
+        def contains_value(value):
+            if isinstance(value, dict):
+                return any(contains_value(item) for item in value.values())
+            if isinstance(value, (list, tuple)):
+                return any(contains_value(item) for item in value)
+            return value == device_uuid
+
+        assert info.deviceUUID == device_uuid
+        assert info.deviceUUIDSupported
+        assert set(payload) == {
+            "firmware_version",
+            "esp_pinout",
+            "main_voltage",
+            "color",
+            "serial_number",
+            "batch_number",
+            "build_date",
+            "scale_module",
+            "partial_retraction",
+            "auto_purge_after_shot",
+            "tare_behavior",
+            "tare_behavior_supported",
+        }
+        assert not contains_value(payload)
+
+    def test_empty_device_uuid_still_reports_protocol_support(self):
+        args = [
+            "1.2.3",
+            "2",
+            "24.5",
+            "black",
+            "SN123",
+            "B456",
+            "2024-01-01",
+            "scale1",
+            "45.0",
+            "false",
+            "before_retraction",
+            "",
+        ]
+
+        info = ESPInfo.from_args(args)
+
+        assert info.deviceUUID == ""
+        assert info.deviceUUIDSupported
 
     def test_roundtrip_to_args_with_tare_behavior(self):
         info = ESPInfo(tareBehavior="after_retraction")
@@ -300,6 +408,21 @@ class TestESPInfo:
         reparsed = ESPInfo.from_args(info.to_args())
 
         assert reparsed.tareBehavior == "after_retraction"
+
+    def test_roundtrip_device_uuid_without_tare_behavior_uses_distinct_field(self):
+        info = ESPInfo(
+            deviceUUID="123e4567-e89b-42d3-a456-426614174000",
+            deviceUUIDSupported=True,
+        )
+
+        output = info.to_args()
+        reparsed = ESPInfo.from_args(output)
+
+        assert output[10] == ""
+        assert output[11] == info.deviceUUID
+        assert reparsed.tareBehavior is None
+        assert reparsed.deviceUUID == info.deviceUUID
+        assert reparsed.deviceUUIDSupported
 
 
 class TestButtonEventData:
