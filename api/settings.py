@@ -34,7 +34,11 @@ import copy
 from timezone_manager import TimezoneManager
 
 from machine import Machine
-from settings_validation import validate_partial_retraction, validate_tare_behavior
+from settings_validation import (
+    is_valid_setting_type,
+    validate_partial_retraction,
+    validate_tare_behavior,
+)
 from shot_data_sharing import ShotDataSharing
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -43,9 +47,8 @@ logger = MeticulousLogger.getLogger(__name__)
 class SettingsHandler(BaseHandler):
     def get(self, setting_name=None):
         if setting_name:
-            setting = MeticulousConfig[CONFIG_USER].get(setting_name)
-            if setting is not None:
-                response = {setting_name: setting}
+            if setting_name in MeticulousConfig[CONFIG_USER]:
+                response = {setting_name: MeticulousConfig[CONFIG_USER][setting_name]}
                 self.write(json.dumps(response))
             else:
                 self.set_status(404)
@@ -64,8 +67,9 @@ class SettingsHandler(BaseHandler):
             error_message = f"setting {setting_target} not found"
             raise KeyError(error_message)
 
-        if type(value) is not type(MeticulousConfig[CONFIG_USER][setting_target]):
-            error_message = f"setting value invalid, received {type(value)} and expected {type(MeticulousConfig[CONFIG_USER][setting_target])}"
+        current_value = MeticulousConfig[CONFIG_USER][setting_target]
+        if not is_valid_setting_type(setting_target, value, current_value):
+            error_message = f"setting value invalid, received {type(value)} and expected {type(current_value)}"
             raise KeyError(error_message)
 
         if setting_target == PROFILE_TARE_BEHAVIOR:

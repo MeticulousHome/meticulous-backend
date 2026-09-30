@@ -1,7 +1,8 @@
 """Opt-in, anonymous upload of debug shot files to a Supabase storage bucket.
 
 The upload only happens when the user enabled ``shot_data_sharing`` in the
-settings. The uploaded copy of the debug file is stripped of everything that
+settings. The setting is tri-state: None until the user answers the prompt on
+the dial, then True (opted in) or False (declined). The uploaded copy of the debug file is stripped of everything that
 would tie it to a machine or its owner (serial number, hostname, device name,
 ...) and is grouped under a random per-machine sharing id that is generated
 when the user opts in.

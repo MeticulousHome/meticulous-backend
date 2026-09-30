@@ -16,7 +16,9 @@ from config import (
     DefaultConfiguration_V1,
     MeticulousConfig,
     SHOT_DATA_SHARING,
+    SHOT_DATA_SHARING_DEFAULT,
     SHOT_DATA_SHARING_ID,
+    SHOT_DATA_SHARING_ID_DEFAULT,
 )
 from shot_data_sharing import ShotDataSharing, ShotDataUploadError
 
@@ -104,9 +106,13 @@ def _fake_session(captured, status=200, text=""):
     return FakeSession
 
 
-def test_default_config_has_sharing_disabled_and_no_sharing_id():
-    assert DefaultConfiguration_V1[CONFIG_USER][SHOT_DATA_SHARING] is False
-    assert DefaultConfiguration_V1[CONFIG_SYSTEM][SHOT_DATA_SHARING_ID] is None
+def test_default_config_has_sharing_unanswered_and_no_sharing_id():
+    # The nested default dicts are shared with the loaded config, so check the
+    # constants rather than the (possibly merged) DefaultConfiguration_V1.
+    assert SHOT_DATA_SHARING_DEFAULT is None
+    assert SHOT_DATA_SHARING_ID_DEFAULT is None
+    assert SHOT_DATA_SHARING in DefaultConfiguration_V1[CONFIG_USER]
+    assert SHOT_DATA_SHARING_ID in DefaultConfiguration_V1[CONFIG_SYSTEM]
 
 
 def test_anonymize_strips_identifiers_and_keeps_sensor_data():
@@ -162,6 +168,8 @@ def test_should_upload_requires_opt_in_real_machine_and_shot_type(config, monkey
         emulated = False
 
     monkeypatch.setitem(sys.modules, "machine", types.SimpleNamespace(Machine=Machine))
+    assert ShotDataSharing.should_upload("shot") is False
+    config[CONFIG_USER][SHOT_DATA_SHARING] = False
     assert ShotDataSharing.should_upload("shot") is False
 
     config[CONFIG_USER][SHOT_DATA_SHARING] = True

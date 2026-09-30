@@ -122,9 +122,11 @@ DEBUG_SHOT_DATA_RETENTION_DEFAULT = 31
 ALLOW_LEGACY_JSON = "allow_legacy_json"
 ALLOW_LEGACY_JSON_DEFAULT = False
 
-# Anonymous shot data sharing (opt-in upload of debug shot files)
+# Anonymous shot data sharing (opt-in upload of debug shot files).
+# None means the user has not answered the prompt yet; the dial asks on boot
+# until the value becomes True (opted in) or False (declined).
 SHOT_DATA_SHARING = "shot_data_sharing"
-SHOT_DATA_SHARING_DEFAULT = False
+SHOT_DATA_SHARING_DEFAULT = None
 
 # Updates
 UPDATE_CHANNEL = "update_channel"
