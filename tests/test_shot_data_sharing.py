@@ -115,34 +115,92 @@ def test_default_config_has_sharing_unanswered_and_no_sharing_id():
     assert SHOT_DATA_SHARING_ID in DefaultConfiguration_V1[CONFIG_SYSTEM]
 
 
-def test_anonymize_strips_identifiers_and_keeps_sensor_data():
+def test_anonymize_keeps_only_allowlisted_fields():
     original = _debug_shot()
     snapshot = copy.deepcopy(original)
 
     anonymized = ShotDataSharing.anonymize(original)
 
     assert original == snapshot
-    for key in shot_data_sharing.MACHINE_IDENTIFYING_KEYS:
+    assert set(anonymized) == {
+        "time",
+        "type",
+        "profile_name",
+        "machine",
+        "profile",
+        "nodeJSON",
+        "config",
+        "data",
+        "logs",
+    }
+    for key in ("name", "hostname", "serial_number", "batch_number", "build_date", "color"):
         assert key not in anonymized["machine"]
-    for key in shot_data_sharing.CONFIG_IDENTIFYING_KEYS:
-        assert key not in anonymized["config"]
-    assert anonymized["machine"]["firmware_version"] == "1.2.3"
-    assert anonymized["machine"]["image_build_channel"] == "beta"
-    assert anonymized["config"]["heat_on_boot"] is True
+    assert anonymized["machine"] == {
+        "software_version": "2026-09-01 00:00:00",
+        "image_build_channel": "beta",
+        "firmware_version": "1.2.3",
+    }
+    assert anonymized["config"] == {"heat_on_boot": True}
+    assert anonymized["profile"] == {"name": "Espresso"}
     assert anonymized["data"] == original["data"]
-    assert anonymized["profile"] == original["profile"]
+    assert anonymized["logs"] == []
 
 
-def test_legacy_jwt_key_is_also_sent_as_bearer_token(monkeypatch):
-    monkeypatch.setattr(shot_data_sharing, "SUPABASE_ANON_KEY", "eyJhbGciOiJIUzI1NiJ9.x.y")
-    headers = ShotDataSharing.build_headers()
-    assert headers["apikey"] == "eyJhbGciOiJIUzI1NiJ9.x.y"
-    assert headers["Authorization"] == "Bearer eyJhbGciOiJIUzI1NiJ9.x.y"
+def test_anonymize_drops_unknown_fields_at_every_level():
+    debug_shot = _debug_shot()
+    debug_shot["new_top_level"] = "x"
+    debug_shot["machine"]["new_machine_field"] = "x"
+    debug_shot["config"]["new_setting"] = "x"
+    debug_shot["profile"].update({"author": "Someone", "author_id": "u1", "id": "p1"})
+    debug_shot["data"][0]["new_sample_field"] = "x"
+    debug_shot["data"][0]["shot"]["new_shot_field"] = "x"
+    debug_shot["data"][0]["shot"]["setpoints"] = {"active": "pressure", "pressure": 9.0, "x": 1}
+    debug_shot["data"][0]["sensors"]["new_sensor"] = 1.0
+    debug_shot["logs"] = [
+        {"profile_ms": 1, "loglevel": "INFO", "caller": "m", "log_message": "hi", "extra": 1}
+    ]
 
-    monkeypatch.setattr(shot_data_sharing, "SUPABASE_ANON_KEY", "sb_publishable_abc")
-    headers = ShotDataSharing.build_headers()
-    assert headers["apikey"] == "sb_publishable_abc"
-    assert "Authorization" not in headers
+    anonymized = ShotDataSharing.anonymize(debug_shot)
+
+    assert "new_top_level" not in anonymized
+    assert "new_machine_field" not in anonymized["machine"]
+    assert "new_setting" not in anonymized["config"]
+    assert anonymized["profile"] == {"name": "Espresso"}
+    sample = anonymized["data"][0]
+    assert set(sample) == {"shot", "sensors"}
+    assert sample["shot"] == {
+        "pressure": 9.0,
+        "setpoints": {"active": "pressure", "pressure": 9.0},
+    }
+    assert sample["sensors"] == {"motor_temp": 40.0}
+    assert anonymized["logs"] == [
+        {"profile_ms": 1, "loglevel": "INFO", "caller": "m", "log_message": "hi"}
+    ]
+
+
+def test_anonymize_drops_values_with_an_unexpected_shape():
+    debug_shot = _debug_shot()
+    debug_shot["machine"] = "not a dict"
+    debug_shot["data"] = {"not": "a list"}
+    debug_shot["logs"] = ["not a dict", {"loglevel": "INFO"}]
+
+    anonymized = ShotDataSharing.anonymize(debug_shot)
+
+    assert "machine" not in anonymized
+    assert "data" not in anonymized
+    assert anonymized["logs"] == [{"loglevel": "INFO"}]
+    assert ShotDataSharing.anonymize({}) == {}
+
+
+def test_shared_schema_names_only_real_fields():
+    from dataclasses import fields
+
+    from esp_serial.data import SensorData
+
+    sensor_fields = {field.name for field in fields(SensorData)}
+    assert set(shot_data_sharing.SHARED_SENSOR_FIELDS) <= sensor_fields
+    user_settings = set(DefaultConfiguration_V1[CONFIG_USER])
+    assert set(shot_data_sharing.SHARED_SHOT_SCHEMA["config"]) <= user_settings
 
 
 def test_object_path_groups_by_sharing_id_and_day():

@@ -2,10 +2,11 @@
 
 The upload only happens when the user enabled ``shot_data_sharing`` in the
 settings. The setting is tri-state: None until the user answers the prompt on
-the dial, then True (opted in) or False (declined). The uploaded copy of the debug file is stripped of everything that
-would tie it to a machine or its owner (serial number, hostname, device name,
-...) and is grouped under a random per-machine sharing id that is generated
-when the user opts in.
+the dial, then True (opted in) or False (declined). The uploaded copy of the debug file only contains the fields listed in
+SHARED_SHOT_SCHEMA (sensor data, brew recipe and software revisions), never
+the serial number, hostname, device name or network details, and is grouped
+under a random per-machine sharing id that is generated when the user opts
+in.
 """
 
 import copy
@@ -23,8 +24,6 @@ import zstandard as zstd
 from config import (
     CONFIG_SYSTEM,
     CONFIG_USER,
-    CONFIG_WIFI,
-    HOSTNAME_OVERRIDE,
     MeticulousConfig,
     SHOT_DATA_SHARING,
     SHOT_DATA_SHARING_ID,
@@ -50,17 +49,141 @@ UPLOAD_TIMEOUT_SECONDS = 60
 COMPRESSION_LEVEL = 10
 SHARED_SHOT_TYPE = "shot"
 
-# Keys of the debug file "machine" section that identify the machine or its owner.
-MACHINE_IDENTIFYING_KEYS = (
-    "name",
-    "hostname",
-    "serial_number",
-    "batch_number",
-    "build_date",
-    "color",
-)
-# Keys of the debug file "config" section that identify the machine or its owner.
-CONFIG_IDENTIFYING_KEYS = (HOSTNAME_OVERRIDE, "machine_name", CONFIG_WIFI)
+# Allowlist of what a shared debug shot may contain. Anything not listed here
+# is dropped from the uploaded copy, so new fields added to the debug file are
+# not shared until they are deliberately added below. KEEP copies a value as
+# is; a dict lists the allowed keys of a dict; a one-element list applies its
+# schema to every element of a list.
+KEEP = "keep"
+
+SHARED_SENSOR_FIELDS = {
+    "external_1": KEEP,
+    "external_2": KEEP,
+    "bar_up": KEEP,
+    "bar_mid_up": KEEP,
+    "bar_mid_down": KEEP,
+    "bar_down": KEEP,
+    "tube": KEEP,
+    "motor_temp": KEEP,
+    "lam_temp": KEEP,
+    "motor_position": KEEP,
+    "motor_speed": KEEP,
+    "motor_power": KEEP,
+    "motor_current": KEEP,
+    "bandheater_power": KEEP,
+    "bandheater_current": KEEP,
+    "pressure_sensor": KEEP,
+    "adc_0": KEEP,
+    "adc_1": KEEP,
+    "adc_2": KEEP,
+    "adc_3": KEEP,
+    "water_status": KEEP,
+    "motor_thermistor": KEEP,
+    "weight_prediction": KEEP,
+}
+
+SHARED_SHOT_SCHEMA = {
+    "time": KEEP,
+    "type": KEEP,
+    "profile_name": KEEP,
+    # Software and hardware revision only; serial, batch, colour, build date,
+    # hostname and device name stay on the machine.
+    "machine": {
+        "software_version": KEEP,
+        "image_build_channel": KEEP,
+        "image_version": KEEP,
+        "repository_info": KEEP,
+        "version_history": KEEP,
+        "manufacturing": KEEP,
+        "upgrade_first_boot": KEEP,
+        "firmware_version": KEEP,
+        "esp_pinout": KEEP,
+        "main_voltage": KEEP,
+        "scale_module": KEEP,
+        "partial_retraction": KEEP,
+        "auto_purge_after_shot": KEEP,
+        "tare_behavior": KEEP,
+        "tare_behavior_supported": KEEP,
+    },
+    # The brew recipe without its author or identifiers.
+    "profile": {
+        "version": KEEP,
+        "name": KEEP,
+        "temperature": KEEP,
+        "final_weight": KEEP,
+        "variables": KEEP,
+        "stages": KEEP,
+    },
+    "nodeJSON": KEEP,
+    # Only the settings that influence how a brew runs.
+    "config": {
+        "auto_purge_after_shot": KEEP,
+        "auto_start_shot": KEEP,
+        "tare_behavior": KEEP,
+        "partial_retraction": KEEP,
+        "heat_on_boot": KEEP,
+        "heating_timeout": KEEP,
+        "allow_stage_skipping": KEEP,
+    },
+    "data": [
+        {
+            "time": KEEP,
+            "profile_time": KEEP,
+            "profile_ms": KEEP,
+            "status": KEEP,
+            "shot": {
+                "pressure": KEEP,
+                "flow": KEEP,
+                "weight": KEEP,
+                "gravimetric_flow": KEEP,
+                "setpoints": {
+                    "active": KEEP,
+                    "pressure": KEEP,
+                    "flow": KEEP,
+                    "power": KEEP,
+                    "piston": KEEP,
+                    "temperature": KEEP,
+                },
+            },
+            "sensors": SHARED_SENSOR_FIELDS,
+        }
+    ],
+    # Log lines already went through the redaction filter.
+    "logs": [
+        {
+            "profile_ms": KEEP,
+            "loglevel": KEEP,
+            "caller": KEEP,
+            "log_message": KEEP,
+        }
+    ],
+}
+
+_OMIT = object()
+
+
+def _select(value, schema):
+    """Return the part of ``value`` allowed by ``schema``, or ``_OMIT``."""
+    if schema is KEEP:
+        return copy.deepcopy(value)
+    if isinstance(schema, dict):
+        if not isinstance(value, dict):
+            return _OMIT
+        selected = {}
+        for key, sub_schema in schema.items():
+            if key not in value:
+                continue
+            sub_value = _select(value[key], sub_schema)
+            if sub_value is not _OMIT:
+                selected[key] = sub_value
+        return selected
+    if isinstance(schema, list):
+        if not isinstance(value, list):
+            return _OMIT
+        item_schema = schema[0]
+        items = (_select(item, item_schema) for item in value)
+        return [item for item in items if item is not _OMIT]
+    raise TypeError(f"unsupported schema node: {schema!r}")
 
 
 class ShotDataUploadError(Exception):
@@ -130,17 +253,9 @@ class ShotDataSharing:
 
     @staticmethod
     def anonymize(debug_shot: dict) -> dict:
-        """Return a copy of the debug shot without machine or owner identifiers."""
-        anonymized = copy.deepcopy(debug_shot)
-        machine = anonymized.get("machine")
-        if isinstance(machine, dict):
-            for key in MACHINE_IDENTIFYING_KEYS:
-                machine.pop(key, None)
-        config = anonymized.get("config")
-        if isinstance(config, dict):
-            for key in CONFIG_IDENTIFYING_KEYS:
-                config.pop(key, None)
-        return anonymized
+        """Return a copy of the debug shot reduced to SHARED_SHOT_SCHEMA."""
+        selected = _select(debug_shot, SHARED_SHOT_SCHEMA)
+        return {} if selected is _OMIT else selected
 
     @staticmethod
     def build_object_path(sharing_id: str, start: datetime, file_path: Path) -> str:
