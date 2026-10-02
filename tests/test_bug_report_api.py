@@ -1003,6 +1003,7 @@ def test_list_report_page_returns_newest_first_with_machine_id(report_module):
     assert response["content"][0]["machineID"] == "newer-machine"
     assert response["content"][0]["dateAndTime"] == 2
     assert response["content"][0]["issueTime"] == 2
+    assert response["content"][0]["status"] == "draft"
     assert response["hasMore"] is True
 
 

@@ -295,6 +295,7 @@ def _row_to_report_info(row) -> dict[str, Any]:
         "baseEventID": row.baseEventID,
         "ticket": row.ticketNumber,
         "localID": row.localID,
+        "status": row.status,
     }
 
 
