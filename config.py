@@ -128,6 +128,12 @@ ALLOW_LEGACY_JSON_DEFAULT = False
 SHOT_DATA_SHARING = "shot_data_sharing"
 SHOT_DATA_SHARING_DEFAULT = None
 
+# Contact email attached to bug reports so support can reach the user back.
+# None means the user never provided one; the dial asks before its first
+# report and the mobile app prefills its email field from it.
+REPORT_CONTACT_MAIL = "report_contact_mail"
+REPORT_CONTACT_MAIL_DEFAULT = None
+
 # Updates
 UPDATE_CHANNEL = "update_channel"
 UPDATE_CHANNEL_DEFAULT = ""
@@ -253,6 +259,7 @@ DefaultConfiguration_V1 = {
         REVERSE_SCROLLING: REVERSE_SCROLLING_DEFAULT,
         ALLOW_LEGACY_JSON: ALLOW_LEGACY_JSON_DEFAULT,
         SHOT_DATA_SHARING: SHOT_DATA_SHARING_DEFAULT,
+        REPORT_CONTACT_MAIL: REPORT_CONTACT_MAIL_DEFAULT,
         MACHINE_ALLOW_STAGE_SKIPPING: MACHINE_ALLOW_STAGE_SKIPPING_DEFAULT,
         USB_MODE: USB_MODE_DEFAULT,
         TIMEZONE_SYNC: DEFAULT_TIMEZONE_SYNC,

@@ -1474,3 +1474,850 @@ def test_upload_diagnostics_survive_report_archive(report_module, tmp_path, monk
         assert "upload_resumed" in files[report_module.MACHINE_LOGS_NAME].read_text()
     finally:
         extracted.cleanup()
+
+
+# Reports handed over by the mobile app: request (mint a localID), dispatch (store the
+# ticket and contact details as a `queued` row), then create by localID (collect).
+
+MACHINE_SERIAL = "machine-test-id"
+QUEUED_ID = "018f0a2b-1234-7abc-8def-0123456789ab"
+SECOND_ID = "018f0a2b-1234-7abc-8def-0123456789ac"
+THIRD_ID = "018f0a2b-1234-7abc-8def-0123456789ad"
+DISPATCHED_AT = 1_700_000_000
+HOUR = 60 * 60
+AUTOMATIC_DEBUG_FILE = "2026-05-18/10:00:00.shot.json.zst"
+
+
+class _FakeSio:
+    def __init__(self):
+        self.calls = []
+
+    async def emit(self, event, data):
+        self.calls.append((event, data))
+
+
+class _FailingSio:
+    async def emit(self, event, data):
+        raise RuntimeError("socket down")
+
+
+class _ApiHandler:
+    """Stands in for a Tornado handler and records what the API wrote."""
+
+    def __init__(self, report_module, body=b""):
+        self.request = SimpleNamespace(body=body)
+        self._cancellation = report_module.CollectionCancellation()
+        self.status = None
+        self.response = None
+        self.writes = 0
+
+    def set_status(self, status):
+        self.status = status
+
+    def write(self, body):
+        self.writes += 1
+        self.response = body
+
+
+class _Collector:
+    """Replaces `_fetch_report_files` and records how the create handler called it."""
+
+    def __init__(self, report_module):
+        self.report_module = report_module
+        self.calls = []
+
+    async def __call__(self, draft_dir, *args, **kwargs):
+        self.calls.append((args, kwargs))
+        draft_dir.mkdir(parents=True, exist_ok=True)
+        machine_status = draft_dir.joinpath(self.report_module.MACHINE_STATUS_NAME)
+        machine_status.write_text('{"ok": true}', encoding="utf-8")
+        return self.report_module.FetchResult(
+            files={self.report_module.MACHINE_STATUS_NAME: machine_status},
+            automatic_debug_files=[AUTOMATIC_DEBUG_FILE],
+            machine_status=True,
+        )
+
+
+@pytest.fixture
+def machine_serial(report_module, monkeypatch):
+    monkeypatch.setitem(
+        report_module.MeticulousConfig[report_module.CONFIG_SYSTEM],
+        report_module.MACHINE_SERIAL_NUMBER,
+        MACHINE_SERIAL,
+    )
+    return MACHINE_SERIAL
+
+
+@pytest.fixture
+def clock(report_module, monkeypatch):
+    state = SimpleNamespace(now=DISPATCHED_AT)
+    monkeypatch.setattr(report_module, "_now_seconds", lambda: state.now)
+    return state
+
+
+@pytest.fixture
+def fake_sio(report_module, monkeypatch):
+    sio = _FakeSio()
+    monkeypatch.setattr(report_module, "_sio", sio)
+    return sio
+
+
+@pytest.fixture
+def collector(report_module, monkeypatch):
+    fake = _Collector(report_module)
+    monkeypatch.setattr(report_module, "_fetch_report_files", fake)
+    return fake
+
+
+def _all_report_rows():
+    with ShotDataBase.engine.connect() as connection:
+        return connection.execute(
+            select(bug_reports).order_by(bug_reports.c.creationTime, bug_reports.c.localID)
+        ).all()
+
+
+def _report_row(local_id: str):
+    with ShotDataBase.engine.connect() as connection:
+        return connection.execute(
+            select(bug_reports).where(bug_reports.c.localID == local_id)
+        ).first()
+
+
+def _insert_report_row(
+    local_id: str, status: str, creation_time: int = DISPATCHED_AT, **values
+):
+    row = {
+        "localID": local_id,
+        "issueTime": creation_time,
+        "creationTime": creation_time,
+        "status": status,
+        **values,
+    }
+    with ShotDataBase.engine.begin() as connection:
+        connection.execute(insert(bug_reports).values(**row))
+
+
+def _dispatch_body(local_id: str = QUEUED_ID, **fields):
+    return {"localID": local_id, "ticket": 4242, **fields}
+
+
+def _post_dispatch(report_module, body):
+    handler = _ApiHandler(report_module, json.dumps(body).encode())
+    asyncio.run(report_module.ReportsDispatchHandler.post(handler))
+    return handler
+
+
+def _post_create(report_module, body):
+    handler = _ApiHandler(report_module, json.dumps(body).encode())
+    asyncio.run(report_module.ReportsCreateHandler.post(handler))
+    return handler
+
+
+def _assert_api_error(handler, status: int, code: str):
+    assert handler.status == status
+    assert handler.response["data"]["code"] == code
+
+
+def test_dispatch_routes_are_registered(report_module):
+    from api.api import API, APIVersion
+
+    routes = API._versions[APIVersion.V1]
+
+    assert routes["/reports/request"][0] is report_module.ReportsRequestHandler
+    assert routes["/reports/dispatch"][0] is report_module.ReportsDispatchHandler
+
+
+@pytest.mark.parametrize(
+    "body, expected",
+    [
+        (b"", (None, None)),
+        (b'{"issueTime": 123}', (123, None)),
+        (b'{"issueTime": 0}', (0, None)),
+        (json.dumps({"localID": QUEUED_ID}).encode(), (None, QUEUED_ID)),
+    ],
+)
+def test_parse_create_body_accepts_each_documented_shape(report_module, body, expected):
+    assert report_module._parse_create_body(body) == expected
+    assert report_module._create_report_issue_time(body) == expected[0]
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        b"{}",
+        json.dumps({"issueTime": 1, "localID": QUEUED_ID}).encode(),
+        json.dumps({"localID": QUEUED_ID, "extra": 1}).encode(),
+        b'{"issueTime": 1, "extra": 1}',
+        b'{"extra": 1}',
+        b"[]",
+        b'"text"',
+        b"{",
+        b'{"issueTime": true}',
+        b'{"issueTime": 1.5}',
+        b'{"issueTime": "1"}',
+        b'{"issueTime": null}',
+    ],
+)
+def test_parse_create_body_rejects_everything_else(report_module, body):
+    with pytest.raises(ValueError):
+        report_module._parse_create_body(body)
+    with pytest.raises(ValueError):
+        report_module._create_report_issue_time(body)
+
+
+@pytest.mark.parametrize("local_id", ["not-a-uuid", "../history", QUEUED_ID.upper(), 123, None])
+def test_parse_create_body_rejects_malformed_local_id(report_module, local_id):
+    with pytest.raises(report_module.ReportRequestError) as exc:
+        report_module._parse_create_body(json.dumps({"localID": local_id}).encode())
+
+    assert exc.value.status == 400
+    assert exc.value.data["code"] == "INVALID_LOCAL_ID"
+
+
+def test_request_handler_mints_local_id_and_stores_nothing(report_module, machine_serial):
+    first = _ApiHandler(report_module)
+    second = _ApiHandler(report_module)
+
+    asyncio.run(report_module.ReportsRequestHandler.post(first))
+    asyncio.run(report_module.ReportsRequestHandler.post(second))
+
+    for handler in (first, second):
+        assert handler.status is None
+        assert set(handler.response) == {"localID", "machineID"}
+        assert report_module.LOCAL_ID_RE.fullmatch(handler.response["localID"])
+        assert handler.response["machineID"] == machine_serial
+    assert first.response["localID"] != second.response["localID"]
+    assert _all_report_rows() == []
+    assert list(report_module.DRAFT_REPORTS_DIR.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    "body", [b"{}", b"garbage", json.dumps({"localID": QUEUED_ID}).encode()]
+)
+def test_request_handler_rejects_any_body(report_module, machine_serial, body):
+    handler = _ApiHandler(report_module, body)
+
+    asyncio.run(report_module.ReportsRequestHandler.post(handler))
+
+    _assert_api_error(handler, 400, "INVALID_BODY")
+    assert _all_report_rows() == []
+
+
+def test_parse_dispatch_body_accepts_a_full_body(report_module):
+    body = {
+        "localID": QUEUED_ID,
+        "ticket": 42,
+        "issueTime": 1_700_000_000,
+        "description": "Espresso is slow",
+        "name": "Ada",
+        "email": "ada@example.com",
+    }
+
+    assert report_module._parse_dispatch_body(json.dumps(body).encode()) == body
+
+
+def test_parse_dispatch_body_fills_missing_optionals_with_none(report_module):
+    parsed = report_module._parse_dispatch_body(
+        json.dumps({"localID": QUEUED_ID, "ticket": 42}).encode()
+    )
+
+    assert parsed == {
+        "localID": QUEUED_ID,
+        "ticket": 42,
+        "issueTime": None,
+        "description": None,
+        "name": None,
+        "email": None,
+    }
+
+
+def test_parse_dispatch_body_trims_text_fields(report_module):
+    parsed = report_module._parse_dispatch_body(
+        json.dumps(
+            {
+                "localID": QUEUED_ID,
+                "ticket": 42,
+                "description": "  Espresso is slow \n",
+                "name": "  Ada ",
+                "email": " ada@example.com ",
+            }
+        ).encode()
+    )
+
+    assert parsed["description"] == "Espresso is slow"
+    assert parsed["name"] == "Ada"
+    assert parsed["email"] == "ada@example.com"
+
+
+def test_parse_dispatch_body_maps_empty_text_fields_to_none(report_module):
+    parsed = report_module._parse_dispatch_body(
+        json.dumps(
+            {
+                "localID": QUEUED_ID,
+                "ticket": 42,
+                "issueTime": None,
+                "description": "   ",
+                "name": "",
+                "email": None,
+            }
+        ).encode()
+    )
+
+    assert parsed["issueTime"] is None
+    assert parsed["description"] is None
+    assert parsed["name"] is None
+    assert parsed["email"] is None
+
+
+def test_parse_dispatch_body_accepts_text_at_the_limits(report_module):
+    parsed = report_module._parse_dispatch_body(
+        json.dumps(
+            {
+                "localID": QUEUED_ID,
+                "ticket": 42,
+                "description": "d" * 10_000,
+                "name": "n" * 200,
+                "email": "e" * 249 + "@b.cd",
+            }
+        ).encode()
+    )
+
+    assert len(parsed["description"]) == 10_000
+    assert len(parsed["name"]) == 200
+    assert len(parsed["email"]) == 254
+
+
+@pytest.mark.parametrize(
+    "body, status, code",
+    [
+        ({"localID": QUEUED_ID, "ticket": 42, "email": "not-an-email"}, 400, "INVALID_BODY"),
+        (
+            {"localID": QUEUED_ID, "ticket": 42, "email": "e" * 250 + "@b.cd"},
+            400,
+            "INVALID_BODY",
+        ),
+        ({"localID": QUEUED_ID, "ticket": 42, "email": 7}, 400, "INVALID_BODY"),
+        ({"localID": QUEUED_ID, "ticket": True}, 400, "INVALID_BODY"),
+        ({"localID": QUEUED_ID, "ticket": "42"}, 400, "INVALID_BODY"),
+        ({"localID": QUEUED_ID, "ticket": 4.5}, 400, "INVALID_BODY"),
+        ({"localID": QUEUED_ID, "ticket": None}, 400, "INVALID_BODY"),
+        ({"localID": QUEUED_ID}, 400, "INVALID_BODY"),
+        ({"localID": QUEUED_ID, "ticket": 42, "issueTime": True}, 400, "INVALID_BODY"),
+        ({"localID": QUEUED_ID, "ticket": 42, "issueTime": "1"}, 400, "INVALID_BODY"),
+        ({"localID": QUEUED_ID, "ticket": 42, "issueTime": 1.5}, 400, "INVALID_BODY"),
+        ({"localID": QUEUED_ID, "ticket": 42, "unknown": 1}, 400, "INVALID_BODY"),
+        (
+            {"localID": QUEUED_ID, "ticket": 42, "description": "d" * 10_001},
+            400,
+            "INVALID_BODY",
+        ),
+        ({"localID": QUEUED_ID, "ticket": 42, "description": 5}, 400, "INVALID_BODY"),
+        ({"localID": QUEUED_ID, "ticket": 42, "name": "n" * 201}, 400, "INVALID_BODY"),
+        ({"localID": "not-a-uuid", "ticket": 42}, 400, "INVALID_LOCAL_ID"),
+        ({"localID": QUEUED_ID.upper(), "ticket": 42}, 400, "INVALID_LOCAL_ID"),
+        ({"localID": None, "ticket": 42}, 400, "INVALID_LOCAL_ID"),
+        ({"ticket": 42}, 400, "INVALID_LOCAL_ID"),
+    ],
+)
+def test_parse_dispatch_body_rejects_invalid_bodies(report_module, body, status, code):
+    with pytest.raises(report_module.ReportRequestError) as exc:
+        report_module._parse_dispatch_body(json.dumps(body).encode())
+
+    assert exc.value.status == status
+    assert exc.value.data["code"] == code
+
+
+@pytest.mark.parametrize("body", [b"[]", b"{", b'"text"'])
+def test_parse_dispatch_body_rejects_non_object_json(report_module, body):
+    with pytest.raises(report_module.ReportRequestError) as exc:
+        report_module._parse_dispatch_body(body)
+
+    assert exc.value.status == 400
+    assert exc.value.data["code"] == "INVALID_BODY"
+
+
+def test_dispatch_post_queues_the_report_and_emits_upload_report(
+    report_module, machine_serial, clock, fake_sio
+):
+    issue_time = DISPATCHED_AT - 600
+
+    handler = _post_dispatch(
+        report_module,
+        _dispatch_body(
+            issueTime=issue_time,
+            description="Grinder jammed",
+            name="Ada",
+            email="ada@example.com",
+        ),
+    )
+
+    expected = {
+        "localID": QUEUED_ID,
+        "machineID": machine_serial,
+        "ticket": 4242,
+        "issueTime": issue_time,
+        "requestTime": DISPATCHED_AT,
+        "description": "Grinder jammed",
+        "name": "Ada",
+        "email": "ada@example.com",
+    }
+    assert handler.status == 202
+    assert handler.response == expected
+    assert fake_sio.calls == [(report_module.UPLOAD_REPORT_EVENT, expected)]
+    assert report_module.UPLOAD_REPORT_EVENT == "upload_report"
+    (row,) = _all_report_rows()
+    assert row.localID == QUEUED_ID
+    assert row.status == "queued"
+    assert row.ticketNumber == 4242
+    assert row.issueTime == issue_time
+    assert row.creationTime == DISPATCHED_AT
+    assert row.submissionTime is None
+    assert row.description == "Grinder jammed"
+    assert row.machineID == machine_serial
+    assert row.contactName == "Ada"
+    assert row.contactEmail == "ada@example.com"
+    assert row.eventID is None
+    assert row.logFiles is None
+    assert row.machineStatus is None
+
+
+def test_dispatch_post_defaults_issue_time_to_now_and_contact_to_none(
+    report_module, machine_serial, clock, fake_sio
+):
+    handler = _post_dispatch(report_module, _dispatch_body())
+
+    assert handler.status == 202
+    assert handler.response == {
+        "localID": QUEUED_ID,
+        "machineID": machine_serial,
+        "ticket": 4242,
+        "issueTime": DISPATCHED_AT,
+        "requestTime": DISPATCHED_AT,
+        "description": None,
+        "name": None,
+        "email": None,
+    }
+    assert fake_sio.calls == [("upload_report", handler.response)]
+    (row,) = _all_report_rows()
+    assert row.issueTime == DISPATCHED_AT
+    assert row.creationTime == DISPATCHED_AT
+    assert row.contactName is None
+    assert row.contactEmail is None
+
+
+def test_dispatch_post_with_the_same_local_id_is_a_conflict(
+    report_module, machine_serial, clock, fake_sio
+):
+    first = _post_dispatch(report_module, _dispatch_body(description="first"))
+    clock.now += 60
+
+    second = _post_dispatch(
+        report_module, _dispatch_body(ticket=9999, description="second", name="Eve")
+    )
+
+    assert first.status == 202
+    _assert_api_error(second, 409, "DUPLICATE_LOCAL_ID")
+    assert len(fake_sio.calls) == 1
+    (row,) = _all_report_rows()
+    assert row.ticketNumber == 4242
+    assert row.description == "first"
+    assert row.contactName is None
+    assert row.creationTime == DISPATCHED_AT
+
+
+@pytest.mark.parametrize("status", ["draft", "submitted"])
+def test_dispatch_post_conflicts_with_a_report_in_any_status(
+    report_module, machine_serial, clock, fake_sio, status
+):
+    _insert_report_row(QUEUED_ID, status, machineID=machine_serial)
+
+    handler = _post_dispatch(report_module, _dispatch_body())
+
+    _assert_api_error(handler, 409, "DUPLICATE_LOCAL_ID")
+    assert fake_sio.calls == []
+    (row,) = _all_report_rows()
+    assert row.status == status
+
+
+def test_dispatch_post_without_a_socket_server_still_queues_the_report(
+    report_module, machine_serial, clock, monkeypatch
+):
+    monkeypatch.setattr(report_module, "_sio", None)
+
+    handler = _post_dispatch(report_module, _dispatch_body())
+
+    assert handler.status == 202
+    assert handler.response["localID"] == QUEUED_ID
+    (row,) = _all_report_rows()
+    assert row.status == "queued"
+
+
+def test_dispatch_post_survives_a_failing_socket_emit(
+    report_module, machine_serial, clock, monkeypatch
+):
+    monkeypatch.setattr(report_module, "_sio", _FailingSio())
+
+    handler = _post_dispatch(report_module, _dispatch_body())
+
+    assert handler.status == 202
+    (row,) = _all_report_rows()
+    assert row.status == "queued"
+
+
+def test_init_socket_registers_the_server_used_for_emits(
+    report_module, machine_serial, clock, monkeypatch
+):
+    monkeypatch.setattr(report_module, "_sio", None)
+    sio = _FakeSio()
+
+    report_module.init_socket(sio)
+    _post_dispatch(report_module, _dispatch_body())
+
+    assert report_module._sio is sio
+    assert [event for event, _ in sio.calls] == ["upload_report"]
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"localID": QUEUED_ID},
+        {"localID": QUEUED_ID, "ticket": 42, "email": "not-an-email"},
+        {"localID": "nope", "ticket": 42},
+    ],
+)
+def test_dispatch_post_rejects_invalid_bodies_without_side_effects(
+    report_module, machine_serial, clock, fake_sio, body
+):
+    handler = _post_dispatch(report_module, body)
+
+    assert handler.status == 400
+    assert handler.response["data"]["code"] in {"INVALID_BODY", "INVALID_LOCAL_ID"}
+    assert fake_sio.calls == []
+    assert _all_report_rows() == []
+
+
+def test_dispatch_get_lists_only_queued_reports_oldest_first(report_module, machine_serial):
+    # Inserted out of order; ties on creationTime fall back to the localID.
+    _insert_report_row(
+        SECOND_ID,
+        "queued",
+        DISPATCHED_AT + 10,
+        issueTime=DISPATCHED_AT + 5,
+        ticketNumber=2,
+        machineID=machine_serial,
+        description="later",
+    )
+    _insert_report_row(
+        "018f0a2b-1234-7abc-8def-0123456789ae",
+        "draft",
+        DISPATCHED_AT - 5,
+        ticketNumber=3,
+        contactName="Draft",
+    )
+    _insert_report_row(
+        THIRD_ID,
+        "queued",
+        DISPATCHED_AT,
+        ticketNumber=4,
+        machineID=machine_serial,
+        contactName="Ada",
+        contactEmail="ada@example.com",
+    )
+    _insert_report_row(
+        "018f0a2b-1234-7abc-8def-0123456789af",
+        "submitted",
+        DISPATCHED_AT - 10,
+        ticketNumber=5,
+        contactName="Done",
+    )
+    _insert_report_row(
+        QUEUED_ID,
+        "queued",
+        DISPATCHED_AT,
+        issueTime=DISPATCHED_AT - 600,
+        ticketNumber=1,
+        machineID=machine_serial,
+    )
+    handler = _ApiHandler(report_module)
+
+    asyncio.run(report_module.ReportsDispatchHandler.get(handler))
+
+    assert handler.status is None
+    assert handler.response == {
+        "content": [
+            {
+                "localID": QUEUED_ID,
+                "machineID": machine_serial,
+                "ticket": 1,
+                "issueTime": DISPATCHED_AT - 600,
+                "requestTime": DISPATCHED_AT,
+                "description": None,
+                "name": None,
+                "email": None,
+            },
+            {
+                "localID": THIRD_ID,
+                "machineID": machine_serial,
+                "ticket": 4,
+                "issueTime": DISPATCHED_AT,
+                "requestTime": DISPATCHED_AT,
+                "description": None,
+                "name": "Ada",
+                "email": "ada@example.com",
+            },
+            {
+                "localID": SECOND_ID,
+                "machineID": machine_serial,
+                "ticket": 2,
+                "issueTime": DISPATCHED_AT + 5,
+                "requestTime": DISPATCHED_AT + 10,
+                "description": "later",
+                "name": None,
+                "email": None,
+            },
+        ]
+    }
+
+
+def test_dispatch_get_is_empty_without_queued_reports(report_module):
+    _insert_report_row(QUEUED_ID, "draft")
+    handler = _ApiHandler(report_module)
+
+    asyncio.run(report_module.ReportsDispatchHandler.get(handler))
+
+    assert handler.response == {"content": []}
+
+
+def test_create_by_local_id_collects_around_the_dispatch_and_promotes_the_row(
+    report_module, machine_serial, clock, fake_sio, collector, monkeypatch
+):
+    issue_time = DISPATCHED_AT - 600
+    _post_dispatch(
+        report_module,
+        _dispatch_body(
+            issueTime=issue_time,
+            description="Grinder jammed",
+            name="Ada",
+            email="ada@example.com",
+        ),
+    )
+    queued = _report_row(QUEUED_ID)
+
+    def fail_new_local_id():
+        raise AssertionError("Create by localID must reuse the dispatched localID")
+
+    monkeypatch.setattr(report_module, "_new_local_id", fail_new_local_id)
+    # More than 12 hours after the issue time: the historical range applies.
+    clock.now = issue_time + 13 * HOUR
+    handler = _post_create(report_module, {"localID": QUEUED_ID})
+
+    assert handler.status is None
+    assert handler.response == {"localID": QUEUED_ID, "machineID": machine_serial}
+    assert len(collector.calls) == 1
+    call_args, call_kwargs = collector.calls[0]
+    assert call_args == report_module._collection_range(queued.issueTime, clock.now)
+    assert call_args == (issue_time - 12 * HOUR, issue_time + 12 * HOUR)
+    assert call_kwargs["capture_active_debug_shot"] is False
+    assert call_kwargs["cancellation"] is handler._cancellation
+
+    report_info = report_module._read_draft_report_info(report_module._draft_path(QUEUED_ID))
+    assert report_info["localID"] == QUEUED_ID
+    assert report_info["description"] == "Grinder jammed"
+    assert report_info["ticket"] == 4242
+    assert report_info["dateAndTime"] == queued.creationTime == DISPATCHED_AT
+    assert report_info["issueTime"] == queued.issueTime == issue_time
+    assert report_info["machineID"] == machine_serial
+
+    (row,) = _all_report_rows()
+    assert row.localID == QUEUED_ID
+    assert row.status == "draft"
+    assert row.ticketNumber == 4242
+    assert row.contactName == "Ada"
+    assert row.contactEmail == "ada@example.com"
+    assert row.creationTime == DISPATCHED_AT
+    assert row.issueTime == issue_time
+    assert row.description == "Grinder jammed"
+    assert row.machineID == machine_serial
+    assert row.machineStatus is True
+    assert row.logFiles == AUTOMATIC_DEBUG_FILE
+
+
+def test_create_by_local_id_shortly_after_the_dispatch_uses_the_trailing_range(
+    report_module, machine_serial, clock, fake_sio, collector
+):
+    _post_dispatch(report_module, _dispatch_body())
+    clock.now = DISPATCHED_AT + 60
+
+    handler = _post_create(report_module, {"localID": QUEUED_ID})
+
+    assert handler.response == {"localID": QUEUED_ID, "machineID": machine_serial}
+    call_args, call_kwargs = collector.calls[0]
+    assert call_args == (clock.now - 24 * HOUR, clock.now)
+    assert call_kwargs["capture_active_debug_shot"] is True
+    assert _report_row(QUEUED_ID).status == "draft"
+
+
+def test_create_by_local_id_picked_up_late_still_covers_the_dispatch_time(
+    report_module, machine_serial, clock, fake_sio, collector
+):
+    # No issueTime in the dispatch: the issue time is the dispatch time, even when the
+    # dial only gets around to collecting hours later (for example after a restart).
+    _post_dispatch(report_module, _dispatch_body())
+    clock.now = DISPATCHED_AT + 20 * HOUR
+
+    _post_create(report_module, {"localID": QUEUED_ID})
+
+    call_args, call_kwargs = collector.calls[0]
+    assert call_args == (DISPATCHED_AT - 12 * HOUR, DISPATCHED_AT + 12 * HOUR)
+    assert call_kwargs["capture_active_debug_shot"] is False
+    row = _report_row(QUEUED_ID)
+    assert row.issueTime == DISPATCHED_AT
+    assert row.creationTime == DISPATCHED_AT
+
+
+def test_create_by_local_id_of_a_collected_draft_answers_without_collecting(
+    report_module, machine_serial, clock, collector
+):
+    _insert_report_row(QUEUED_ID, "draft", machineID=machine_serial, ticketNumber=4242)
+    draft_dir = report_module._draft_path(QUEUED_ID)
+    draft_dir.mkdir()
+    marker = draft_dir.joinpath("kept.txt")
+    marker.write_text("kept", encoding="utf-8")
+
+    handler = _post_create(report_module, {"localID": QUEUED_ID})
+
+    assert handler.status is None
+    assert handler.response == {"localID": QUEUED_ID, "machineID": machine_serial}
+    assert collector.calls == []
+    assert marker.read_text(encoding="utf-8") == "kept"
+    (row,) = _all_report_rows()
+    assert row.status == "draft"
+    assert row.ticketNumber == 4242
+
+
+def test_create_by_unknown_local_id_is_not_found(
+    report_module, machine_serial, clock, collector
+):
+    handler = _post_create(report_module, {"localID": QUEUED_ID})
+
+    _assert_api_error(handler, 404, "UNKNOWN_LOCAL_ID")
+    assert collector.calls == []
+    assert _all_report_rows() == []
+    assert list(report_module.DRAFT_REPORTS_DIR.iterdir()) == []
+
+
+def test_create_by_submitted_local_id_is_a_conflict(
+    report_module, machine_serial, clock, collector
+):
+    _insert_report_row(QUEUED_ID, "submitted", machineID=machine_serial)
+
+    handler = _post_create(report_module, {"localID": QUEUED_ID})
+
+    _assert_api_error(handler, 409, "DUPLICATE_LOCAL_ID")
+    assert collector.calls == []
+    assert _report_row(QUEUED_ID).status == "submitted"
+
+
+def test_create_by_draft_local_id_without_a_directory_is_not_found(
+    report_module, machine_serial, clock, collector
+):
+    _insert_report_row(QUEUED_ID, "draft", machineID=machine_serial)
+
+    handler = _post_create(report_module, {"localID": QUEUED_ID})
+
+    _assert_api_error(handler, 404, "UNKNOWN_LOCAL_ID")
+    assert collector.calls == []
+    assert _report_row(QUEUED_ID).status == "draft"
+    assert not report_module._draft_path(QUEUED_ID).exists()
+
+
+def test_create_rejects_issue_time_together_with_local_id(
+    report_module, machine_serial, clock, fake_sio, collector
+):
+    _post_dispatch(report_module, _dispatch_body())
+
+    handler = _post_create(report_module, {"localID": QUEUED_ID, "issueTime": 1})
+
+    _assert_api_error(handler, 400, "INVALID_BODY")
+    assert collector.calls == []
+    assert _report_row(QUEUED_ID).status == "queued"
+
+
+def test_create_rejects_malformed_local_id(report_module, machine_serial, clock, collector):
+    handler = _post_create(report_module, {"localID": "../history"})
+
+    _assert_api_error(handler, 400, "INVALID_LOCAL_ID")
+    assert collector.calls == []
+
+
+def test_create_by_local_id_cancelled_mid_collection_keeps_the_row_queued(
+    report_module, machine_serial, clock, fake_sio, collector, monkeypatch
+):
+    _post_dispatch(report_module, _dispatch_body(name="Ada", email="ada@example.com"))
+    queued = _report_row(QUEUED_ID)
+
+    async def cancelling_fetch_report_files(draft_dir, *args, **kwargs):
+        draft_dir.mkdir(parents=True, exist_ok=True)
+        draft_dir.joinpath("partial.txt").write_text("partial", encoding="utf-8")
+        raise asyncio.CancelledError()
+
+    def fail_if_called(*args, **kwargs):
+        raise AssertionError("Cancellation must not be treated as an error")
+
+    monkeypatch.setattr(report_module, "_fetch_report_files", cancelling_fetch_report_files)
+    monkeypatch.setattr(report_module.logger, "exception", fail_if_called)
+    monkeypatch.setattr(report_module.logger, "error", fail_if_called)
+    monkeypatch.setattr(report_module, "_api_error", fail_if_called)
+    clock.now += HOUR
+
+    handler = _post_create(report_module, {"localID": QUEUED_ID})
+
+    assert not report_module._draft_path(QUEUED_ID).exists()
+    assert handler.writes == 0
+    assert handler.status is None
+    row = _report_row(QUEUED_ID)
+    assert row.status == "queued"
+    assert row == queued
+
+    # The dial can simply try again: the report is still waiting to be collected.
+    monkeypatch.setattr(report_module, "_fetch_report_files", collector)
+    retry = _post_create(report_module, {"localID": QUEUED_ID})
+
+    assert retry.response == {"localID": QUEUED_ID, "machineID": machine_serial}
+    assert _report_row(QUEUED_ID).status == "draft"
+
+
+def test_sweep_keeps_fresh_queued_reports_and_expires_stale_ones(report_module):
+    now = DISPATCHED_AT
+    max_age = report_module.DRAFT_MAX_AGE_SECONDS
+    _insert_report_row(QUEUED_ID, "queued", now - 60)
+    _insert_report_row(SECOND_ID, "queued", now - max_age)
+    _insert_report_row(THIRD_ID, "queued", now - max_age - 1)
+
+    stats = report_module.sweep_reports(now)
+
+    assert stats == {"tmp": 0, "drafts": 0, "rows": 1, "archives": 0, "finalized": 0}
+    assert {row.localID for row in _all_report_rows()} == {QUEUED_ID, SECOND_ID}
+
+
+def test_sweep_still_deletes_draft_rows_without_files(report_module):
+    now = DISPATCHED_AT
+    _insert_report_row(QUEUED_ID, "queued", now - 60)
+    _insert_report_row(SECOND_ID, "draft", now - 60)
+
+    stats = report_module.sweep_reports(now)
+
+    assert stats["rows"] == 1
+    assert [row.localID for row in _all_report_rows()] == [QUEUED_ID]
+
+
+def test_list_report_page_includes_queued_reports_with_their_ticket(
+    report_module, machine_serial, clock, fake_sio
+):
+    _post_dispatch(report_module, _dispatch_body())
+
+    (listed,) = report_module._list_report_page(page=0, size=10)["content"]
+
+    assert listed["localID"] == QUEUED_ID
+    assert listed["ticket"] == 4242
+    assert listed["dateAndTime"] == DISPATCHED_AT

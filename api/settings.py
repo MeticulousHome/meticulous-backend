@@ -15,6 +15,7 @@ from config import (
     PROFILE_AUTO_PURGE,
     PROFILE_TARE_BEHAVIOR,
     PROFILE_PARTIAL_RETRACTION,
+    REPORT_CONTACT_MAIL,
     SHOT_DATA_SHARING,
 )
 
@@ -36,6 +37,7 @@ from timezone_manager import TimezoneManager
 from machine import Machine
 from settings_validation import (
     is_valid_setting_type,
+    normalize_report_contact_mail,
     validate_partial_retraction,
     validate_tare_behavior,
 )
@@ -125,6 +127,10 @@ class SettingsHandler(BaseHandler):
 
                 if setting_target == PROFILE_PARTIAL_RETRACTION and isinstance(value, int):
                     value = float(value)
+
+                # Stored trimmed, with an empty address meaning "not provided".
+                if setting_target == REPORT_CONTACT_MAIL:
+                    value = normalize_report_contact_mail(value)
 
                 self.validate_setting(setting_target, value)
 

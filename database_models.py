@@ -112,6 +112,10 @@ bug_reports = Table(
     Column("machineStatus", Boolean, nullable=True),
     Column("status", Text, nullable=False),
     Column("ticketNumber", Integer, nullable=True),
+    # Contact details handed over with a report dispatched from the mobile
+    # app. Keep in sync with the c4d2e9f1a7b3 migration.
+    Column("contactName", Text, nullable=True),
+    Column("contactEmail", Text, nullable=True),
 )
 
 # FTS structure is defined here for reference
