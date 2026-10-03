@@ -6,6 +6,7 @@ from config import (
 )
 from settings_validation import (
     is_valid_setting_type,
+    normalize_report_contact_mail,
     validate_partial_retraction,
     validate_tare_behavior,
 )
@@ -51,3 +52,56 @@ def test_other_settings_keep_strict_type_matching():
     assert is_valid_setting_type("ssh_enabled", 1, False) is False
     assert is_valid_setting_type("heating_timeout", 5, 10) is True
     assert is_valid_setting_type("heating_timeout", "5", 10) is False
+
+
+@pytest.mark.parametrize("current", [None, "a@b.c"])
+@pytest.mark.parametrize("value", [None, "x@y.z", ""])
+def test_report_contact_mail_accepts_null_or_string_from_any_state(current, value):
+    assert is_valid_setting_type("report_contact_mail", value, current) is True
+
+
+@pytest.mark.parametrize("value", [1, True, ["a"]])
+@pytest.mark.parametrize("current", [None, "a@b.c"])
+def test_report_contact_mail_rejects_other_types(current, value):
+    assert is_valid_setting_type("report_contact_mail", value, current) is False
+
+
+@pytest.mark.parametrize("value", [None, "", "   ", "\t\n"])
+def test_report_contact_mail_normalizes_missing_values_to_none(value):
+    assert normalize_report_contact_mail(value) is None
+
+
+def test_report_contact_mail_is_trimmed():
+    assert normalize_report_contact_mail(" user@example.com ") == "user@example.com"
+    assert normalize_report_contact_mail("user@example.com") == "user@example.com"
+
+
+def test_report_contact_mail_accepts_longest_allowed_address():
+    address = "a" * 249 + "@b.cd"
+    assert len(address) == 254
+    assert normalize_report_contact_mail(address) == address
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "userexample.com",
+        "@example.com",
+        "user@",
+        "@",
+        "user@@example.com",
+        "user@exa@mple.com",
+        "us er@example.com",
+        "user@exam ple.com",
+        "a" * 250 + "@b.cd",
+    ],
+)
+def test_report_contact_mail_rejects_malformed_addresses(value):
+    with pytest.raises(ValueError):
+        normalize_report_contact_mail(value)
+
+
+@pytest.mark.parametrize("value", [123, True, ["user@example.com"]])
+def test_report_contact_mail_rejects_non_strings(value):
+    with pytest.raises(ValueError, match="string or null"):
+        normalize_report_contact_mail(value)

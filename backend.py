@@ -319,6 +319,12 @@ def main():
 
     MeticulousConfig.setSIO(sio)
 
+    # Reports dispatched from the mobile app are announced to the dial over
+    # socket.io, so the report module needs the server too.
+    from api.bug_report import init_socket as init_report_socket
+
+    init_report_socket(sio)
+
     handlers = [
         (r"/socket.io/", socketio.get_tornado_handler(sio)),
     ]
