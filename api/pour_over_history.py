@@ -87,6 +87,14 @@ class PourOverFileHandler(BaseHandler):
 
 
 class PourOverHistoryHandler(LocalAccessHandler):
+    def prepare(self):
+        # LAN clients discover saved brews here, then read the existing public
+        # history-file endpoint. Only reads share that endpoint's access policy;
+        # saving a record still requires the machine-local guard.
+        if self.request.method == "GET":
+            return BaseHandler.prepare(self)
+        return super().prepare()
+
     async def post(self):
         if len(self.request.body) > MAX_POUR_OVER_BODY_BYTES:
             self.set_status(413)

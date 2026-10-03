@@ -231,6 +231,13 @@ class UploadHistoryIndexHandler(LocalAccessHandler):
         self.write({"history": history})
 
 
+class LastUploadHistoryFileHandler(LocalAccessHandler):
+    async def get(self):
+        loop = asyncio.get_event_loop()
+        file = await loop.run_in_executor(None, ShotDataBase.last_history_file)
+        self.write({"file": file})
+
+
 class HistoryHandler(BaseHandler):
     async def searchHistory(self, params: SearchParams):
         loop = asyncio.get_event_loop()
@@ -332,6 +339,9 @@ API.register_handler(APIVersion.V1, r"/history/search", ProfileSearchHandler),
 API.register_handler(APIVersion.V1, r"/history/current", CurrentShotHandler),
 API.register_handler(APIVersion.V1, r"/history/last", LastShotHandler),
 API.register_handler(APIVersion.V1, r"/history/upload-index", UploadHistoryIndexHandler),
+API.register_handler(
+    APIVersion.V1, r"/history/upload-index/last", LastUploadHistoryFileHandler
+),
 API.register_handler(APIVersion.V1, r"/history/stats", StatisticsHandler),
 
 API.register_handler(APIVersion.V1, r"/history", HistoryHandler),
