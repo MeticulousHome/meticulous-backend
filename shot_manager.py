@@ -170,10 +170,13 @@ class ShotManager:
             "software_version": (
                 build_time.strftime("%Y-%m-%d %H:%M:%S") if build_time is not None else None
             ),
-            "image_build_channel": UpdateManager.getImageChannel(),
-            "image_version": UpdateManager.getImageVersion(),
+            "image_build_channel": UpdateManager.getImageChannel() or None,
+            "image_version": UpdateManager.getImageVersion() or None,
             "repository_info": {
-                repo: {"branch": info.get("branch"), "commit": _repository_revision(info)}
+                repo: {
+                    "branch": info.get("branch") or None,
+                    "commit": _repository_revision(info),
+                }
                 for repo, info in repo_info.items()
             },
             "firmware_version": (esp_info.firmwareV or None) if esp_info is not None else None,

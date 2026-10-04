@@ -134,6 +134,16 @@ def test_empty_firmware_is_explicitly_unknown(version_sources):
     assert ShotManager.getCurrentShot()["machine"]["firmware_version"] is None
 
 
+@pytest.mark.parametrize(
+    "source, field",
+    [("BUILD_CHANNEL_FILE", "image_build_channel"), ("BUILD_VERSION_FILE", "image_version")],
+)
+def test_empty_image_version_files_are_explicitly_unknown(version_sources, source, field):
+    Path(getattr(ota, source)).write_text("\n")
+    ShotManager.start()
+    assert ShotManager.getCurrentShot()["machine"] == {**version_sources, field: None}
+
+
 def test_debug_shot_keeps_its_existing_version_fields(version_sources, monkeypatch):
     from hostname import HostnameManager
     from shot_debug_manager import DebugShot
