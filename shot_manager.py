@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from named_thread import NamedThread
 import time
 import traceback
@@ -17,6 +18,16 @@ from config import SHOT_PATH
 logger = MeticulousLogger.getLogger(__name__)
 
 PUSH_TO_BREW_STATUS = "click to start"
+
+
+def _repository_revision(info):
+    # New images record the resolved SHA; older summaries can say "HEAD".
+    # Their last-commit line begins with the actual short SHA, followed by a
+    # subject and author. Retain only the revision, never that free-form text.
+    for candidate in (info.get("commit"), (info.get("last_commit") or "").split(" ")[0]):
+        if isinstance(candidate, str) and re.fullmatch(r"[0-9a-fA-F]{7,40}", candidate):
+            return candidate
+    return None
 
 
 class PushToBrewTimer:
@@ -49,6 +60,7 @@ class Shot:
         self.id = str(uuid.uuid4())
         # Milliseconds, matching the debug shot's profile_ms timeline.
         self.push_to_brew_time = push_to_brew_time
+        self.machine = None
 
     def addSensorData(self, sensorData: SensorData):
         if len(self.shotData) > 0:
@@ -118,6 +130,8 @@ class Shot:
         # empty dictionary evaluate to false
         if bool(self.profile):
             shot_dict["profile"] = self.profile
+        if self.machine is not None:
+            shot_dict["machine"] = self.machine
         return shot_dict
 
     def get_last_datapoints(self, field, n=1):
@@ -138,7 +152,33 @@ class ShotManager:
 
     @staticmethod
     def start(push_to_brew_time: int = 0):
-        ShotManager._current_shot = Shot(push_to_brew_time)
+        from machine import Machine
+        from ota import UpdateManager
+
+        shot = Shot(push_to_brew_time)
+        # Snapshot versions at extraction start, never at finalization or download.
+        # Keep the debug shot's field names, but exclude device/configuration data.
+        esp_info = Machine.esp_info
+        try:
+            build_time = UpdateManager.getBuildTimestamp()
+        except (OSError, UnicodeError) as error:
+            logger.warning("Could not read shot build timestamp: %s", type(error).__name__)
+            build_time = None
+
+        repo_info = UpdateManager.getRepositoryInfo() or {}
+        shot.machine = {
+            "software_version": (
+                build_time.strftime("%Y-%m-%d %H:%M:%S") if build_time is not None else None
+            ),
+            "image_build_channel": UpdateManager.getImageChannel(),
+            "image_version": UpdateManager.getImageVersion(),
+            "repository_info": {
+                repo: {"branch": info.get("branch"), "commit": _repository_revision(info)}
+                for repo, info in repo_info.items()
+            },
+            "firmware_version": (esp_info.firmwareV or None) if esp_info is not None else None,
+        }
+        ShotManager._current_shot = shot
 
     @staticmethod
     def handleSensorData(sensoData: SensorData):
