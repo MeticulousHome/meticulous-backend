@@ -178,6 +178,20 @@ def test_anonymize_drops_unknown_fields_at_every_level():
     ]
 
 
+def test_anonymize_keeps_both_final_weight_predictions():
+    # LinearLearning runs in ghost mode: shared shots are where its prediction is
+    # compared with the current one (weight_prediction) across machines
+    debug_shot = _debug_shot()
+    debug_shot["data"][0]["sensors"].update(
+        weight_prediction=36.4, linear_learning_prediction=36.25
+    )
+
+    sensors = ShotDataSharing.anonymize(debug_shot)["data"][0]["sensors"]
+
+    assert sensors["weight_prediction"] == 36.4
+    assert sensors["linear_learning_prediction"] == 36.25
+
+
 def test_anonymize_drops_values_with_an_unexpected_shape():
     debug_shot = _debug_shot()
     debug_shot["machine"] = "not a dict"
