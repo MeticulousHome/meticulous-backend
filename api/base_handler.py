@@ -1,3 +1,5 @@
+from ipaddress import ip_address
+
 import tornado.web
 from netaddr import IPNetwork
 
@@ -87,22 +89,29 @@ class BaseHandler(tornado.web.RequestHandler):
 class LocalAccessHandler(BaseHandler):
     """Base handler that restricts access to local requests only."""
 
+    @staticmethod
+    def _is_loopback(address):
+        try:
+            return ip_address(address).is_loopback
+        except (TypeError, ValueError):
+            return False
+
+    @classmethod
+    def _request_is_local(cls, request):
+        forwarded_ip = request.headers.get("X-Real-IP")
+        return cls._is_loopback(request.remote_ip) and (
+            forwarded_ip is None or cls._is_loopback(forwarded_ip)
+        )
+
     def prepare(self):
         super().prepare()
-        remote_ip = self.request.headers.get("X-Real-IP")
-        request_host = self.request.host.split(":")[0]
-        if (
-            remote_ip
-            and remote_ip not in ("127.0.0.1", "::1", "localhost")
-            and request_host
-            not in (
-                "localhost",
-                "127.0.0.1",
-            )
-        ):
+        peer_ip = self.request.remote_ip
+        forwarded_ip = self.request.headers.get("X-Real-IP")
+        if not self._request_is_local(self.request):
+            rejected_ip = forwarded_ip or peer_ip
             logger.warning(
                 f"Unauthorized access to {self.request.uri} "
-                f"from remote IP: {redact_ip(remote_ip)}"
+                f"from remote IP: {redact_ip(rejected_ip)}"
             )
             self.set_status(403)
             self.write(
