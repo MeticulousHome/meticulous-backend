@@ -14,6 +14,8 @@ import subprocess
 from monitoring.motor_power_monitoring import motor_energy_calculator
 
 from config import (
+    CONFIG_PATH,
+    DEBUG_HISTORY_PATH,
     CONFIG_LOGGING,
     CONFIG_SYSTEM,
     CONFIG_USER,
@@ -167,6 +169,8 @@ class Machine:
     )
     sensor_sensors: SensorData = None
     esp_info = None
+    # LinearLearning calibration learner (ghost mode); LINEAR_LEARNING_CALIBRATION=0 disables it
+    linear_learning = None
     reset_count = 0
     shot_start_time = 0
     emulated = False
@@ -334,6 +338,33 @@ class Machine:
         logger.info(f"Backend available firmware version: {Machine.firmware_available}")
         return Machine.firmware_available
 
+    def _init_linear_learning():
+        """Learn the per-machine, per-retraction calibration of the ESP32's LinearLearning
+        final-weight predictor from finished shots and send it to the ESP32 (only to firmware
+        that runs LinearLearning).
+        """
+        try:
+            from linear_learning import LinearLearningCalibrator
+
+            Machine.linear_learning = LinearLearningCalibrator(
+                store_path=os.path.join(CONFIG_PATH, "linear_learning_calibration.json"),
+                send=Machine.writeStr,
+                retraction_mm=lambda: MeticulousConfig[CONFIG_USER][PROFILE_PARTIAL_RETRACTION],
+                history_path=DEBUG_HISTORY_PATH,
+            )
+            if Machine.linear_learning.needs_bootstrap:
+                # one-off replay of the stored debug shots; never holds up a backend shutdown
+                NamedThread(
+                    "LinearLearningBootstrap",
+                    target=Machine.linear_learning.bootstrap,
+                    daemon=True,
+                ).start()
+            model_id = Machine.linear_learning.model.model_id
+            logger.info(f"LinearLearning calibration enabled (model {model_id})")
+        except Exception:
+            logger.exception("Could not enable the LinearLearning calibration")
+            Machine.linear_learning = None
+
     def init(sio):
         Machine.esp_restart_request = True
         Machine.esp_observability = ESPObservability(time.monotonic())
@@ -361,6 +392,9 @@ class Machine:
             # Everything else is proper fika Connection
             case "FIKA" | _:
                 Machine._connection = FikaSerialConnection("/dev/ttymxc0")
+
+        if os.getenv("LINEAR_LEARNING_CALIBRATION", "1") == "1":
+            Machine._init_linear_learning()
 
         Machine.writeStr("\x03")
         Machine.action("info")
@@ -780,6 +814,10 @@ class Machine:
                     if time_flag:
                         ShotManager.handleSensorData(Machine.sensor_sensors)
                         ShotManager.handleShotData(Machine.data_sensors)
+                    if Machine.linear_learning is not None:
+                        Machine.linear_learning.on_sample(
+                            Machine.data_sensors, Machine.sensor_sensors
+                        )
 
                 if info is not None:
                     Machine.esp_info = info
@@ -798,6 +836,8 @@ class Machine:
                         MeticulousConfig[CONFIG_USER][PROFILE_TARE_BEHAVIOR]
                     )
                     Machine.setTareBehavior(backend_tare_behavior)
+                    if Machine.linear_learning is not None:
+                        Machine.linear_learning.push()
                     Machine.syncDeviceUUID(info.deviceUUID, info.deviceUUIDSupported)
 
                     if (

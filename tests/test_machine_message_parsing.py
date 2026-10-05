@@ -105,6 +105,21 @@ class TestSensorData:
         data = SensorData.from_args(args)
         assert data.motor_thermistor == "NaN"
 
+    def test_linear_learning_prediction_absent_on_older_firmware(self):
+        # the Sensors line ends with a comma, so older firmware leaves an empty last field
+        data = SensorData.from_args(self.make_args() + [""])
+        assert data.linear_learning_prediction is None
+        assert len(data.to_args()) == 23
+
+    def test_linear_learning_prediction(self):
+        data = SensorData.from_args(self.make_args() + ["36.25", ""])
+        assert data.linear_learning_prediction == 36.25
+        assert SensorData.from_args(data.to_args()).linear_learning_prediction == 36.25
+
+    def test_linear_learning_prediction_nan_outside_extraction(self):
+        data = SensorData.from_args(self.make_args() + ["nan", ""])
+        assert data.linear_learning_prediction == "NaN"
+
     def test_too_few_args_returns_none(self):
         data = SensorData.from_args(["1.0", "2.0"])
         assert data is None
