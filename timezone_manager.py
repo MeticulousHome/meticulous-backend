@@ -90,7 +90,7 @@ class TimezoneManager:
                 MeticulousConfig.save()
 
     @staticmethod
-    def update_timezone(new_timezone: str) -> None:
+    def update_timezone(new_timezone: str) -> str:
         stripped_new_tz = new_timezone.rstrip('"').lstrip('"')
         if MeticulousConfig[CONFIG_USER][TIME_ZONE] != stripped_new_tz:
             try:
@@ -99,6 +99,22 @@ class TimezoneManager:
             except TimezoneManagerError as e:
                 logger.error(f"Error updating timezone: {e}")
                 raise TimezoneManagerError(f"Error updating timezone: {e}")
+        return stripped_new_tz
+
+    @staticmethod
+    def persist_timezone(timezone: str) -> None:
+        previous_timezone = MeticulousConfig[CONFIG_USER][TIME_ZONE]
+        if previous_timezone == timezone:
+            return
+
+        MeticulousConfig[CONFIG_USER][TIME_ZONE] = timezone
+        try:
+            MeticulousConfig.save()
+        except Exception:
+            # Keep the in-memory value aligned with what was last known to be
+            # persisted so the next background attempt retries the save.
+            MeticulousConfig[CONFIG_USER][TIME_ZONE] = previous_timezone
+            raise
 
     @staticmethod
     def set_system_timezone(new_timezone: str) -> str:
@@ -295,17 +311,29 @@ class TimezoneManager:
             try:
                 logger.info("Timezone is set to automatic, fetching timezone in the background")
                 loop = asyncio.get_event_loop()
-                loop.run_until_complete(TimezoneManager.request_and_sync_tz())
+                new_timezone = loop.run_until_complete(TimezoneManager.request_and_sync_tz())
+                if new_timezone is not None:
+                    if MeticulousConfig[CONFIG_USER][TIMEZONE_SYNC] == "automatic":
+                        TimezoneManager.persist_timezone(new_timezone)
+                    else:
+                        # Automatic sync may finish after the user switches to
+                        # manual mode. Restore the saved manual timezone instead
+                        # of letting the stale request overwrite that choice.
+                        configured_timezone = MeticulousConfig[CONFIG_USER][TIME_ZONE]
+                        if configured_timezone and configured_timezone != new_timezone:
+                            TimezoneManager.set_system_timezone(configured_timezone)
+                        TimezoneManager.__system_synced = False
                 # Clear the attempt counter on a successful request so that, if
                 # __system_synced is ever reset, an unstable network gets a fresh
                 # batch of attempts instead of inheriting an exhausted counter.
                 TimezoneManager.__timezone_fetch_attempts = 0
             except Exception as e:
+                TimezoneManager.__system_synced = False
                 logger.error(f"Error while fetching timezone in the background: {e}")
 
     @staticmethod
-    async def request_and_sync_tz() -> str:
-        async def request_tz_task() -> str:
+    async def request_and_sync_tz() -> str | None:
+        async def request_tz_task() -> str | None:
             # nonlocal error
             import aiohttp
 
@@ -319,7 +347,7 @@ class TimezoneManager:
                             str_content = await response.text()
                             tz = json.loads(str_content).get("tz")
                             if tz is not None:
-                                TimezoneManager.update_timezone(
+                                tz = TimezoneManager.update_timezone(
                                     tz
                                 )  # raises TimezoneManagerError if fails
                                 TimezoneManager.__system_synced = True

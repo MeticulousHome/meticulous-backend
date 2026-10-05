@@ -72,7 +72,7 @@ class SettingsHandler(BaseHandler):
         if setting_target == PROFILE_PARTIAL_RETRACTION:
             validate_partial_retraction(value)
 
-    async def update_timezone_sync(self, value) -> str:
+    async def update_timezone_sync(self, value) -> str | None:
         if value == AUTOMATIC_TIMEZONE_SYNC:
             try:
                 new_tz = await TimezoneManager.request_and_sync_tz()
