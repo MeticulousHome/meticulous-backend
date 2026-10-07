@@ -80,6 +80,8 @@ SHARED_SENSOR_FIELDS = {
     "water_status": KEEP,
     "motor_thermistor": KEEP,
     "weight_prediction": KEEP,
+    "linear_learning_prediction": KEEP,
+    "linear_learning_control": KEEP,
 }
 
 SHARED_SHOT_SCHEMA = {

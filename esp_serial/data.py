@@ -33,6 +33,20 @@ def safe_float_with_nan(value):
         return "NaN"
 
 
+def _optional_trailing_float(args, index):
+    """A field newer firmware appends to the Sensors line; None when this firmware does not send it."""
+    if len(args) <= index or args[index].strip() == "":
+        return None
+    return safe_float_with_nan(args[index])
+
+
+def _optional_trailing_bool(args, index):
+    """A 0/1 field newer firmware appends to the Sensors line; None when this firmware does not send it."""
+    if len(args) <= index or args[index].strip() == "":
+        return None
+    return args[index].strip().lower() in ("1", "true")
+
+
 @dataclass
 class SensorData:
     """Class respresenting the current state of all sensors"""
@@ -60,6 +74,10 @@ class SensorData:
     water_status: bool = False
     motor_thermistor: float = 0.0
     weight_prediction: float = 0.0
+    # LinearLearning final-weight prediction (ghost mode); None when the firmware does not run LinearLearning
+    linear_learning_prediction: float | None = None
+    # True while the main board has handed LinearLearning the final-weight stop (earned control)
+    linear_learning_control: bool | None = None
 
     def from_color_coded_args(colorSeperatedArgs):
         global colorSensorRegex
@@ -99,6 +117,8 @@ class SensorData:
                 water_status=args[20].lower() == "true",
                 motor_thermistor=safe_float_with_nan(args[21]),
                 weight_prediction=safe_float_with_nan(args[22]),
+                linear_learning_prediction=_optional_trailing_float(args, 23),
+                linear_learning_control=_optional_trailing_bool(args, 24),
             )
 
         except Exception as e:
@@ -133,6 +153,17 @@ class SensorData:
             str(self.motor_thermistor),
             str(self.weight_prediction),
         ]
+        if (
+            self.linear_learning_prediction is not None
+            or self.linear_learning_control is not None
+        ):
+            args.append(
+                "nan"
+                if self.linear_learning_prediction is None
+                else str(self.linear_learning_prediction)
+            )
+        if self.linear_learning_control is not None:
+            args.append("1" if self.linear_learning_control else "0")
         return args
 
     def to_sio_sensors(self):
