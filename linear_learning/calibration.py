@@ -6,7 +6,9 @@ Protection against bad shots (ruined puck, something put on the scale):
   - gate: a shot whose error is far from the recent norm (> max(1.5 g, 4 x robust spread of the last 20
     learned shots)) is recorded but not learned from;
   - but 3 rejected shots in a row that are off in the same direction are a real change: they are learned.
-While a retraction setting has fewer than MIN_BUCKET learned shots, the machine-wide calibration is used.
+While a retraction setting has fewer than MIN_BUCKET learned shots, the machine-wide calibration is used: a
+calibration fitted on a handful of shots (often of different profiles) overreacts. On a test machine, switching to
+the new setting's own calibration after 3 shots turned a +0.66 g miss into +0.93 g.
 Validated by replaying real shot histories with injected garbage and with genuine changes.
 """
 
@@ -21,7 +23,7 @@ LAM_OFFSET, LAM_SLOPE = 1.0, 5.0
 CLIP_G = 3.0
 GATE_MIN_G, GATE_SPREAD_K, GATE_WARMUP, GATE_WINDOW = 1.5, 4.0, 5, 20
 SAME_DIRECTION_RUN = 3
-MIN_BUCKET = 3
+MIN_BUCKET = 8
 MAX_RECORDS = 100  # per bucket (older shots weigh < 0.01%)
 
 
@@ -88,18 +90,19 @@ class CalibrationStore:
         self.path = path
         self.model_id = model_id
         self.buckets = {}
-        self.pending = (
-            {}
-        )  # bucket -> consecutive rejected records (indices into the bucket list)
+        # bucket -> consecutive rejected records (indices into the bucket list)
+        self.pending = {}
+        # earned-control state (control.py); judged on the same model's predictions, so kept here
+        self.control = {}
         self.loaded = False
         if path and os.path.exists(path):
             with open(path) as f:
                 data = json.load(f)
-            if (
-                data.get("model_id") == model_id
-            ):  # residuals are only meaningful for the same fleet model
+            # residuals (and the control record) are only meaningful for the same fleet model
+            if data.get("model_id") == model_id:
                 self.buckets = data.get("buckets", {})
                 self.pending = data.get("pending", {})
+                self.control = data.get("control", {})
                 self.loaded = True
 
     # ---------- calibration ----------
@@ -173,6 +176,7 @@ class CalibrationStore:
                     model_id=self.model_id,
                     buckets=self.buckets,
                     pending=self.pending,
+                    control=self.control,
                 ),
                 f,
             )

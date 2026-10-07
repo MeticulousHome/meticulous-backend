@@ -122,12 +122,14 @@ def test_mixed_direction_rejections_stay_rejected():
     assert _feed(store, [6.0, -6.0, 6.0]) == [False, False, False]
 
 
-def test_new_retraction_setting_uses_machine_wide_calibration_until_it_has_shots():
+def test_new_retraction_setting_uses_machine_wide_calibration_until_it_has_8_shots():
     store = CalibrationStore()
     _feed(store, [0.6] * 8, bucket="68")
     cal_new, source = store.calibration("45")
     assert "machine-wide" in source and cal_new[0] > 0.3
-    _feed(store, [-0.4] * 3, bucket="45")
+    _feed(store, [-0.4] * 7, bucket="45")
+    assert "machine-wide" in store.calibration("45")[1]  # 7 shots: not trusted on their own yet
+    _feed(store, [-0.4], bucket="45")
     cal_45, source = store.calibration("45")
     assert "retraction 45" in source and cal_45[0] < 0
 
@@ -185,7 +187,7 @@ def test_replay_reproduces_training_inputs_and_label():
 
 
 # ---------------- live path: samples in, calibration message out ----------------
-def _run_live(calibrator, linear_learning_prediction):
+def _run_live(calibrator, linear_learning_prediction, linear_learning_control=None):
     """Feed the fixture shot as the live serial loop does (each Data line with its own Sensors line)."""
     rows = load_fixture()["data"]
     for n, r in enumerate(rows):
@@ -203,6 +205,7 @@ def _run_live(calibrator, linear_learning_prediction):
         )
         sensors = SimpleNamespace(
             linear_learning_prediction=linear_learning_prediction,
+            linear_learning_control=linear_learning_control,
             **{
                 k: sens.get(k)
                 for k in ("motor_position", "motor_speed", "motor_power", "motor_current")
@@ -215,10 +218,14 @@ def test_live_samples_produce_a_calibration_message(tmp_path):
     sent = []
     cal = LinearLearningCalibrator(str(tmp_path / "cal.json"), sent.append, lambda: 45.33)
     _run_live(cal, linear_learning_prediction="NaN")
-    assert len(sent) == 1, "one calibration, sent once the shot has been learned"
-    parts = sent[0].rstrip("\x03").split(",")
+    calib = [m for m in sent if m.startswith("linear_learning_calib,")]
+    assert len(calib) == 1, "one calibration, sent once the shot has been learned"
+    parts = calib[0].rstrip("\x03").split(",")
     assert parts[:2] == ["linear_learning_calib", cal.model.model_id]
     assert len(parts) == 3 + 9 and all(math.isfinite(float(v)) for v in parts[3:])
+    # LinearLearning has not earned the stop: the stock prediction keeps it
+    control = [m for m in sent if m.startswith("linear_learning_control,")]
+    assert control and set(control) == {f"linear_learning_control,{cal.model.model_id},0\x03"}
     assert os.path.exists(tmp_path / "cal.json")
 
 
@@ -266,3 +273,50 @@ def test_shot_finishing_during_the_bootstrap_is_learned_after_the_stored_shots(t
     assert cal.bootstrap() == 1
     times = [r["t"] for r in cal.store.buckets["45"]]
     assert times[0] == 1000.0 and times[1] > times[0] and not cal.deferred
+
+
+# ---------------- earned control on the live path ----------------
+def _store_with_control(path, model_id, control):
+    with open(path, "w") as f:
+        json.dump(
+            dict(version=1, model_id=model_id, buckets={}, pending={}, control=control), f
+        )
+
+
+def test_a_coffee_stopped_by_weight_is_scored_for_earned_control(tmp_path):
+    path = str(tmp_path / "cal.json")
+    cal = LinearLearningCalibrator(path, [].append, lambda: 45.33, target_weight=lambda: 36)
+    _run_live(cal, linear_learning_prediction=35.9)
+    label = load_fixture()["expected"]["label"]
+    rec = cal.control.records[-1]
+    assert rec["phase"] == "ghost" and rec["arm"] == "stock"
+    assert rec["cup"] == pytest.approx(label - 36, abs=1e-3)
+    assert rec["ll"] == pytest.approx(label - 35.9, abs=1e-3)
+    with open(path) as f:
+        assert json.load(f)["control"]["records"] == cal.control.records  # persisted
+
+
+def test_a_coffee_not_stopped_by_weight_is_not_scored(tmp_path):
+    for target in (45, None, 2000):  # far from the cup; unknown; "no final weight"
+        cal = LinearLearningCalibrator(
+            str(tmp_path / f"cal{target}.json"),
+            [].append,
+            lambda: 45.33,
+            target_weight=lambda: target,
+        )
+        _run_live(cal, linear_learning_prediction=35.9)
+        assert cal.control.records == []
+
+
+def test_linear_learning_gets_the_stop_only_once_earned_and_allowed(tmp_path):
+    model_id = FleetModel().model_id
+    for allow, expected in ((True, "1"), (False, "0")):
+        path = str(tmp_path / f"cal_{allow}.json")
+        _store_with_control(path, model_id, dict(phase="live", records=[], live_count=0))
+        sent = []
+        cal = LinearLearningCalibrator(
+            path, sent.append, lambda: 45.33, target_weight=lambda: 36, allow_control=allow
+        )
+        _run_live(cal, linear_learning_prediction=35.9, linear_learning_control=allow)
+        assert sent[-1] == f"linear_learning_control,{model_id},{expected}\x03"
+        assert cal.control.records[-1]["arm"] == ("ll" if allow else "stock")

@@ -120,6 +120,23 @@ class TestSensorData:
         data = SensorData.from_args(self.make_args() + ["nan", ""])
         assert data.linear_learning_prediction == "NaN"
 
+    def test_linear_learning_control(self):
+        data = SensorData.from_args(self.make_args() + ["36.25", "1", ""])
+        assert data.linear_learning_control is True
+        again = SensorData.from_args(data.to_args())
+        assert (
+            again.linear_learning_control is True and again.linear_learning_prediction == 36.25
+        )
+        assert (
+            SensorData.from_args(self.make_args() + ["nan", "0", ""]).linear_learning_control
+            is False
+        )
+        # firmware without earned control
+        assert (
+            SensorData.from_args(self.make_args() + ["36.25", ""]).linear_learning_control
+            is None
+        )
+
     def test_too_few_args_returns_none(self):
         data = SensorData.from_args(["1.0", "2.0"])
         assert data is None

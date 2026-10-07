@@ -341,16 +341,26 @@ class Machine:
     def _init_linear_learning():
         """Learn the per-machine, per-retraction calibration of the ESP32's LinearLearning
         final-weight predictor from finished shots and send it to the ESP32 (only to firmware
-        that runs LinearLearning).
+        that runs LinearLearning). LinearLearning gets this machine's final-weight stop only
+        after it has beaten the stock prediction here (earned control, linear_learning/control.py).
         """
         try:
             from linear_learning import LinearLearningCalibrator
+
+            def target_weight():
+                from profiles import ProfileManager
+
+                last = ProfileManager.get_last_profile() or {}
+                return (last.get("profile") or {}).get("final_weight")
 
             Machine.linear_learning = LinearLearningCalibrator(
                 store_path=os.path.join(CONFIG_PATH, "linear_learning_calibration.json"),
                 send=Machine.writeStr,
                 retraction_mm=lambda: MeticulousConfig[CONFIG_USER][PROFILE_PARTIAL_RETRACTION],
                 history_path=DEBUG_HISTORY_PATH,
+                target_weight=target_weight,
+                # LINEAR_LEARNING_CONTROL=0: LinearLearning never gets the final-weight stop (ghost only)
+                allow_control=os.getenv("LINEAR_LEARNING_CONTROL", "1") == "1",
             )
             if Machine.linear_learning.needs_bootstrap:
                 # one-off replay of the stored debug shots; never holds up a backend shutdown
