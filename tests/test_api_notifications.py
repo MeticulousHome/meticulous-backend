@@ -1,3 +1,12 @@
+"""Notifications and smoke validation (api/notifications.py, api/smoke_validation.py).
+
+Protects the notifications the Dial shows and acknowledges (listing, filtering by
+acknowledged, acknowledging over HTTP, the callback a response triggers) and the
+post-update smoke validation state the image reports. Limits come from
+NotificationManager and SmokeValidationManager; backend bugs found are strict
+xfails naming the file and line.
+"""
+
 import copy
 import json
 import tempfile
