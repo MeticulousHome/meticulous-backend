@@ -73,3 +73,27 @@ jobs:
             exit 1
         fi
         echo "log_redactor pinned to $SHA (on main)"
+
+  # mypy reports hundreds of errors on the existing code, recorded in
+  # tests/static/mypy-baseline.txt. A change may not add one, and one that
+  # removes errors shrinks the baseline (tests/static/mypy_ratchet.py --update).
+  typecheck:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+
+    - name: Set up Python
+      run: uv python install
+
+    - name: Install dependencies
+      run: uv sync --group dev
+
+    - name: No new type errors
+      run: uv run --with mypy==1.18.2 python tests/static/mypy_ratchet.py
