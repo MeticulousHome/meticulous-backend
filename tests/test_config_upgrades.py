@@ -27,6 +27,17 @@ def _load(path):
     return MeticulousConfigDict(path, copy.deepcopy(DefaultConfiguration_V1))
 
 
+def test_settings_written_and_loaded_never_change_the_defaults(tmp_path):
+    defaults = copy.deepcopy(DefaultConfiguration_V1)
+    path = tmp_path / "config.yml"
+    path.write_text(yaml.safe_dump({CONFIG_USER: {SOUNDS_ENABLED: "from disk"}}))
+
+    config = MeticulousConfigDict(path, DefaultConfiguration_V1)
+    config[CONFIG_USER][MACHINE_HEAT_ON_BOOT] = "written"
+
+    assert DefaultConfiguration_V1 == defaults
+
+
 def test_an_older_config_gains_every_new_default_and_keeps_the_users_values(tmp_path):
     path = tmp_path / "config.yml"
     # Values that differ from the defaults, so keeping them is observable.
