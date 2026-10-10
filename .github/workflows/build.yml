@@ -73,3 +73,47 @@ jobs:
             exit 1
         fi
         echo "log_redactor pinned to $SHA (on main)"
+
+  # The suite in a random order, so a test that only passes after another one
+  # fails here. The seed is printed in the log; reproduce with
+  # uv run --with pytest-randomly pytest -p randomly --randomly-seed=<seed>.
+  test-random-order:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+
+    - name: Set up Python
+      run: uv python install
+
+    - name: Install dependencies
+      run: uv sync --group dev
+
+    - name: Run tests in a random order
+      run: >
+        uv run --with pytest-randomly pytest -q -p randomly --randomly-seed=${{ github.run_id }}
+        tests log_redactor/tests/test_redaction_contract.py
+
+  # meticulous-typescript-api is how the Dial and the mobile app reach the
+  # backend: every call, event and payload key it relies on must still exist.
+  client-contract:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Checkout meticulous-typescript-api
+      uses: actions/checkout@v4
+      with:
+        repository: MeticulousHome/meticulous-typescript-api
+        path: meticulous-typescript-api
+
+    - name: The client only relies on what the backend provides
+      run: python3 tests/contracts/check_ts_client.py --client meticulous-typescript-api
