@@ -46,6 +46,12 @@ def shot_db(tmp_path, monkeypatch):
     if ShotDataBase.engine:
         ShotDataBase.engine.dispose()
 
+    # init() reflected the FTS tables into the shared metadata; left there, the
+    # next module's metadata.create_all() fails to render them.
+    for table_name in list(metadata.tables.keys()):
+        if table_name in ("profile_fts", "stage_fts"):
+            metadata.remove(metadata.tables[table_name])
+
 
 def make_profile(**overrides):
     base = {
