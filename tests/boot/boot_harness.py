@@ -6,6 +6,10 @@ backend came up:
 
 * the HTTP server answers and every read-only GET route answers below 500,
 * a Socket.IO client receives the ``status`` stream with its documented keys,
+* each event a client sends does what backend.py's handler says: whitelisted
+  actions reach the ESP32 and the rest do not, calibrate writes its command,
+  profileHover is relayed to the other clients, and a notification is
+  delivered and acknowledged,
 * the ESP32 was greeted over the UART (``\\x03`` then ``action,info``),
 * the history database was migrated to ``DB_VERSION_REQUIRED``,
 * nothing logged at ERROR or above while booting.
@@ -408,6 +412,113 @@ async def _socketio_checks(port: int, report: dict):
         report["failures"].append(f"status event has undocumented keys {sorted(unexpected)}")
 
 
+async def _wait_for(condition, timeout: float) -> bool:
+    deadline = time.monotonic() + timeout
+    while not condition():
+        if time.monotonic() > deadline:
+            return False
+        await asyncio.sleep(0.05)
+    return True
+
+
+async def _socketio_inbound_checks(port: int, report: dict):
+    """What the server does with each event a client sends (backend.py's handlers)."""
+    import socketio
+    from tornado.httpclient import AsyncHTTPClient
+
+    from machine import Machine
+    from notifications import Notification, NotificationManager
+
+    failures = report["failures"]
+    received = {"dial": [], "app": []}
+    clients = {}
+    for name in received:
+        client = socketio.AsyncClient(reconnection=False)
+
+        def recorder(name):
+            async def record(event, data=None):
+                received[name].append((event, data))
+
+            return record
+
+        client.on("*", recorder(name))
+        await client.connect(
+            f"http://127.0.0.1:{port}", transports=["websocket"], wait_timeout=10
+        )
+        clients[name] = client
+    dial, app = clients["dial"], clients["app"]
+
+    uart = FakeFikaSerialConnection.instances[0].port
+
+    def written_since(mark: int) -> bytes:
+        return bytes(uart.written[mark:])
+
+    # A whitelisted ESP32 action is forwarded as action,<name>.
+    mark = len(uart.written)
+    await dial.emit("action", "tare")
+    if not await _wait_for(lambda: b"action,tare\x03" in written_since(mark), 3):
+        failures.append("socket.io action 'tare' was not forwarded to the ESP32")
+
+    # reset is refused from socket.io; an unknown action is dropped; abort
+    # while idle does nothing (Machine.end_profile).
+    mark = len(uart.written)
+    for action in ("reset", "not-an-action", "abort"):
+        await dial.emit("action", action)
+    await asyncio.sleep(0.5)
+    leaked = [
+        command
+        for command in (
+            b"action,reset",
+            b"action,not-an-action",
+            b"action,stop",
+            b"action,home",
+        )
+        if command in written_since(mark)
+    ]
+    if leaked:
+        failures.append(f"socket.io actions reached the ESP32 that must not: {leaked}")
+
+    # calibrate sends the known weight and the current reading.
+    mark = len(uart.written)
+    await dial.emit("calibrate", True)
+    expected = f"action,calibration,100.0,{Machine.data_sensors.weight}\x03".encode()
+    if not await _wait_for(lambda: expected in written_since(mark), 3):
+        failures.append(f"socket.io calibrate did not write {expected!r}")
+
+    # A hovered profile is relayed to every other client, not back to the sender.
+    hover = {"id": "05051ed3-9996-43e8-9da6-963f2b31d481", "type": "profile", "from": "dial"}
+    await dial.emit("profileHover", hover)
+    if not await _wait_for(lambda: ("profileHover", hover) in received["app"], 3):
+        failures.append("profileHover was not relayed to the other client")
+    if ("profileHover", hover) in received["dial"]:
+        failures.append("profileHover was echoed back to its sender")
+
+    # A notification reaches the clients and is acknowledged over socket.io.
+    notification = Notification("boot harness notification")
+    NotificationManager.add_notification(notification)
+
+    def delivered():
+        return any(
+            event == "notification" and notification.id in str(data)
+            for event, data in received["app"]
+        )
+
+    if not await _wait_for(delivered, 5):
+        failures.append("a new notification was not emitted to the clients")
+    await app.emit("notification", json.dumps({"id": notification.id, "response": "Ok"}))
+    if not await _wait_for(lambda: notification.acknowledged, 3):
+        failures.append("acknowledging a notification over socket.io had no effect")
+    response = await AsyncHTTPClient().fetch(
+        f"http://127.0.0.1:{port}/api/v1/notifications", raise_error=False
+    )
+    pending = [entry["id"] for entry in json.loads(response.body or b"[]")]
+    if notification.id in pending:
+        failures.append("an acknowledged notification is still listed as pending")
+
+    for client in clients.values():
+        await client.disconnect()
+
+
 def _uart_checks(report: dict):
     if not FakeFikaSerialConnection.instances:
         report["failures"].append("Machine.init never opened the ESP32 UART")
@@ -487,6 +598,7 @@ def _run_backend(args, report: dict, errors: ErrorCollector):
         try:
             await _http_checks(port, report)
             await _socketio_checks(port, report)
+            await _socketio_inbound_checks(port, report)
             _uart_checks(report)
             _database_checks(report)
         except Exception:
