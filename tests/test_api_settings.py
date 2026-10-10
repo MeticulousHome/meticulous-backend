@@ -1,3 +1,16 @@
+"""Settings, serial number and root password routes through the real handlers.
+
+Covers api/settings.py, api/serial.py and api/password_handler.py.
+
+Protects what changing a setting does beyond the config file: the bytes sent to
+the ESP32, the systemd unit changes, the timezone commands, the update channel,
+the socket.io events, and the YAML persisted, plus manufacturing settings, the
+timezone lists, the serial number and the root password routes. Hardware and OS
+are replaced at their boundary (serial port, D-Bus, subprocess). Limits come from
+the handlers and config.py; backend bugs found are strict xfails naming the file
+and line.
+"""
+
 import copy
 import json
 import queue

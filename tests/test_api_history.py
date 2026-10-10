@@ -1,3 +1,13 @@
+"""The shot history routes (api/history.py) through the real handlers.
+
+Protects what the Dial and the mobile app show and upload as history: the shot
+list, search, current and last shot, statistics, ratings, the upload index, and
+the shot and debug files served. Shots are recorded through ShotManager, the
+production write path, so a change to the stored format fails here. Limits come
+from the handlers' own responses and ShotDataBase; backend bugs found are strict
+xfails naming the file and line.
+"""
+
 import json
 import os
 import threading
