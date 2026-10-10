@@ -1,0 +1,424 @@
+# Type errors mypy reports on gates/main, by file, code and message, with
+# their count. Regenerate with tests/static/mypy_ratchet.py --update.
+1 PTN5150.py: [return-value] Incompatible return value type (got "None", expected "InterruptMask")
+1 PTN5150.py: [return-value] Incompatible return value type (got "None", expected "PortState")
+1 PTN5150.py: [return-value] Incompatible return value type (got "None", expected "RpSelection")
+3 PTN5150.py: [return-value] Incompatible return value type (got "None", expected "int")
+1 api/action.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 api/alarms.py: [arg-type] Argument "name" to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+2 api/alarms.py: [arg-type] Argument 1 to "isfinite" has incompatible type "float | None"; expected "SupportsFloat | SupportsIndex"
+4 api/alarms.py: [assignment] Incompatible types in assignment (expression has type "None", target has type "Alarm")
+1 api/alarms.py: [assignment] Incompatible types in assignment (expression has type "None", variable has type "NamedThread")
+1 api/alarms.py: [assignment] Incompatible types in assignment (expression has type "TextIOWrapper[_WrappedBuffer]", variable has type "str")
+1 api/alarms.py: [attr-defined] "str" has no attribute "read"
+1 api/alarms.py: [operator] Unsupported operand types for - ("None" and "float")
+1 api/alarms.py: [operator] Unsupported operand types for > ("float" and "None")
+1 api/api.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 api/api.py: [var-annotated] Need type annotation for "_versions"
+1 api/base_handler.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 api/bug_report.py: [arg-type] Argument 1 to "_parse_fiql" has incompatible type "str | None"; expected "str"
+2 api/bug_report.py: [arg-type] Argument 1 to "_validate_local_id" has incompatible type "Any | None"; expected "str"
+1 api/bug_report.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 api/bug_report.py: [arg-type] Argument 2 to "setdefault" of "MutableMapping" has incompatible type "dict[Never, Never]"; expected "str"
+1 api/bug_report.py: [assignment] Incompatible types in assignment (expression has type "dict[Any, Any]", target has type "str")
+1 api/bug_report.py: [attr-defined] "str" has no attribute "setdefault"
+1 api/bug_report.py: [misc] "_fetch_report_files" gets multiple values for keyword argument "cancellation"
+1 api/bug_report.py: [misc] "_fetch_report_files" gets multiple values for keyword argument "capture_active_debug_shot"
+8 api/bug_report.py: [union-attr] Item "None" of "Engine | None" has no attribute "connect"
+1 api/bug_report.py: [var-annotated] Need type annotation for "db_values" (hint: "db_values: dict[<type>, <type>] = ...")
+1 api/bug_report.py: [var-annotated] Need type annotation for "errors" (hint: "errors: list[<type>] = ...")
+1 api/bug_report.py: [var-annotated] Need type annotation for "names" (hint: "names: list[<type>] = ...")
+1 api/community_upload_diagnostics.py: [assignment] Incompatible types in assignment (expression has type "Any | None", target has type "bool")
+1 api/community_upload_diagnostics.py: [assignment] Incompatible types in assignment (expression has type "Any | None", target has type "int")
+1 api/community_upload_diagnostics.py: [assignment] Incompatible types in assignment (expression has type "None", target has type "int")
+3 api/community_upload_diagnostics.py: [assignment] Incompatible types in assignment (expression has type "dict[str, bool]", target has type "int")
+1 api/community_upload_diagnostics.py: [assignment] Incompatible types in assignment (expression has type "str", target has type "bool")
+4 api/community_upload_diagnostics.py: [assignment] Incompatible types in assignment (expression has type "str", target has type "int")
+1 api/community_upload_diagnostics.py: [dict-item] Dict entry 2 has incompatible type "str": "Any | None"; expected "str": "bool"
+1 api/community_upload_diagnostics.py: [dict-item] Dict entry 4 has incompatible type "str": "None"; expected "str": "bool"
+1 api/emulation.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 api/history.py: [arg-type] Argument "end_date" to "SearchParams" has incompatible type "str | None"; expected "float | None"
+1 api/history.py: [arg-type] Argument "ids" to "SearchParams" has incompatible type "list[str]"; expected "list[str | int]"
+1 api/history.py: [arg-type] Argument "order_by" to "SearchParams" has incompatible type "list[str]"; expected "list[SearchOrderBy]"
+1 api/history.py: [arg-type] Argument "sort" to "SearchParams" has incompatible type "str"; expected "SearchOrder"
+1 api/history.py: [arg-type] Argument "start_date" to "SearchParams" has incompatible type "str | None"; expected "float | None"
+1 api/history.py: [arg-type] Argument 1 to "exists" has incompatible type "str | None"; expected "int | str | bytes | PathLike[str] | PathLike[bytes]"
+1 api/history.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 api/history.py: [arg-type] Argument 1 to "isdir" has incompatible type "str | None"; expected "int | str | bytes | PathLike[str] | PathLike[bytes]"
+1 api/history.py: [arg-type] Argument 1 to "set_default_headers" has incompatible type "ZstdHistoryHandler"; expected "BaseHandler"
+1 api/history.py: [arg-type] Argument 2 to "get_query_arguments" of "RequestHandler" has incompatible type "list[SearchOrderBy]"; expected "bool"
+1 api/history.py: [call-overload] No overload variant of "get_query_argument" of "RequestHandler" matches argument types "str", "bool"
+1 api/history.py: [call-overload] No overload variant of "get_query_argument" of "RequestHandler" matches argument types "str", "int"
+1 api/history.py: [override] Signature of "get" incompatible with supertype "tornado.web.StaticFileHandler"
+1 api/history.py: [union-attr] Item "None" of "str | None" has no attribute "endswith"
+1 api/machine.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 api/machine.py: [assignment] Incompatible types in assignment (expression has type "None", target has type "str")
+1 api/machine.py: [assignment] Incompatible types in assignment (expression has type "None", variable has type "str")
+4 api/machine.py: [assignment] Incompatible types in assignment (expression has type "bool", target has type "str")
+1 api/machine.py: [assignment] Incompatible types in assignment (expression has type "dict[Never, Never]", target has type "str")
+1 api/machine.py: [assignment] Incompatible types in assignment (expression has type "int | None", target has type "str")
+2 api/machine.py: [assignment] Incompatible types in assignment (expression has type "list[Never]", target has type "str")
+1 api/machine.py: [index] Unsupported target for indexed assignment ("str")
+1 api/machine.py: [union-attr] Item "None" of "Any | None" has no attribute "emit"
+1 api/notifications.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 api/password_handler.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 api/pour_over_history.py: [arg-type] Argument "mode" to "search" of "PourOverHistoryManager" has incompatible type "str | None"; expected "Literal['free_pour', 'profile'] | None"
+1 api/pour_over_history.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 api/pour_over_history.py: [arg-type] Argument 1 to "write" of "RequestHandler" has incompatible type "list[dict[str, str]]"; expected "str | bytes | dict[Any, Any]"
+1 api/pour_over_profiles.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 api/profiles.py: [arg-type] Argument 1 to "_set_last_profile" of "ProfileManager" has incompatible type "dict[str, object]"; expected "ProfileManager"
+1 api/profiles.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 api/profiles.py: [arg-type] Argument 1 to "save_profile" of "ProfileManager" has incompatible type "dict[Any, Any]"; expected "ProfileManager"
+1 api/profiles.py: [arg-type] Argument 2 to "run_in_executor" of "AbstractEventLoop" has incompatible type "Callable[[ProfileManager], Any]"; expected "Callable[[dict[Any, Any]], Any]"
+1 api/profiles.py: [attr-defined] "object" has no attribute "copy"
+1 api/serial.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 api/serial.py: [arg-type] Argument 1 to "setSerial" has incompatible type "str"; expected "Machine"
+1 api/settings.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 api/settings.py: [assignment] Incompatible types in assignment (expression has type "Any | None", variable has type "dict[Any, Any]")
+1 api/settings.py: [misc] List comprehension has incompatible type List[dict[Any, Any | None]]; expected List[str]
+1 api/settings.py: [return] Missing return statement
+1 api/smoke_validation.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 api/sounds.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 api/update.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 api/update.py: [assignment] Incompatible types in assignment (expression has type "FikaSupportedESP32 | None", variable has type "str | None")
+1 api/wifi.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 api/wifi.py: [arg-type] Argument 2 to "run_in_executor" of "AbstractEventLoop" has incompatible type "Callable[[WifiManager, Any], Any]"; expected "Callable[[Any | None, Any | None], Any]"
+1 api/wifi.py: [var-annotated] Need type annotation for "networks" (hint: "networks: dict[<type>, <type>] = ...")
+1 api/zeroconf_announcement.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+2 api/zeroconf_announcement.py: [assignment] Incompatible types in assignment (expression has type "ServiceInfo", variable has type "None")
+1 api/zeroconf_announcement.py: [attr-defined] "None" has no attribute "connected"
+1 api/zeroconf_announcement.py: [attr-defined] "None" has no attribute "domains"
+1 api/zeroconf_announcement.py: [attr-defined] "None" has no attribute "hostname"
+1 api/zeroconf_announcement.py: [attr-defined] "None" has no attribute "ips"
+1 back.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+2 backend.py: [arg-type] Argument 1 to "action" of "Machine" has incompatible type "str"; expected "Machine"
+1 backend.py: [arg-type] Argument 1 to "extend" of "list" has incompatible type "list[tuple[str, type[RequestHandler], dict[str, str]]]"; expected "Iterable[tuple[str, Any]]"
+9 backend.py: [arg-type] Argument 1 to "from_args" has incompatible type "list[str]"; expected "ButtonEventData"
+4 backend.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+4 backend.py: [arg-type] Argument 1 to "write" has incompatible type "bytes"; expected "Machine"
+1 backend.py: [assignment] Incompatible types in assignment (expression has type "float", variable has type "int")
+1 backlight_controller.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 ble_gatt.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 ble_gatt.py: [assignment] Incompatible types in assignment (expression has type "None", variable has type "Notification")
+1 ble_gatt.py: [attr-defined] "ProxyInterface" has no attribute "call_register_agent"
+1 ble_gatt.py: [attr-defined] "ProxyInterface" has no attribute "call_request_default_agent"
+2 ble_gatt.py: [attr-defined] "str" has no attribute "decode"; maybe "encode"?
+1 ble_gatt.py: [attr-defined] Module "bless" has no attribute "BlessGATTCharacteristic"
+1 ble_gatt.py: [attr-defined] Module "bless" has no attribute "GATTAttributePermissions"
+1 ble_gatt.py: [attr-defined] Module "bless" has no attribute "GATTCharacteristicProperties"
+1 ble_gatt.py: [call-arg] Too few arguments for "with_traceback" of "BaseException"
+3 ble_gatt.py: [misc] Method must have at least one argument. Did you forget the "self" argument?
+1 ble_gatt.py: [misc] Self argument missing for a non-static method (or an invalid type for self)
+2 ble_gatt.py: [name-defined] Name "o" is not defined
+1 ble_gatt.py: [name-defined] Name "s" is not defined
+1 ble_gatt.py: [name-defined] Name "u" is not defined
+1 ble_gatt.py: [union-attr] Item "None" of "Any | None" has no attribute "adapter"
+1 ble_gatt.py: [union-attr] Item "None" of "Any | None" has no attribute "app"
+3 ble_gatt.py: [union-attr] Item "None" of "Any | None" has no attribute "bus"
+1 config.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 config.py: [import-untyped] Library stubs not installed for "yaml"
+1 config.py: [var-annotated] Need type annotation for "DEVICE_DEFAULT_IDENTIFIER" (hint: "DEVICE_DEFAULT_IDENTIFIER: list[<type>] = ...")
+1 config.py: [var-annotated] Need type annotation for "HTTP_DEFAULT_ALLOWED_NETWORKS" (hint: "HTTP_DEFAULT_ALLOWED_NETWORKS: list[<type>] = ...")
+1 config.py: [var-annotated] Need type annotation for "LAST_SYSTEM_VERSIONS_DEFAULT" (hint: "LAST_SYSTEM_VERSIONS_DEFAULT: list[<type>] = ...")
+1 config.py: [var-annotated] Need type annotation for "PROFILE_ORDER_DEFAULT" (hint: "PROFILE_ORDER_DEFAULT: list[<type>] = ...")
+1 config.py: [var-annotated] Need type annotation for "WIFI_DEFAULT_KNOWN_WIFIS" (hint: "WIFI_DEFAULT_KNOWN_WIFIS: dict[<type>, <type>] = ...")
+1 db_migration_updater.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 db_migration_updater.py: [arg-type] Argument 2 to "isinstance" has incompatible type "object"; expected "_ClassInfo"
+1 db_migration_updater.py: [assignment] Incompatible types in assignment (expression has type "str | None", variable has type "str")
+1 db_migration_updater.py: [return-value] Return value expected
+1 db_migration_updater.py: [valid-type] Module "os.path" is not valid as a type
+1 db_migration_updater.py: [var-annotated] Need type annotation for "backed_up_files" (hint: "backed_up_files: list[<type>] = ...")
+1 dbus_client.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 dbus_client.py: [var-annotated] Need type annotation for "dbus_events"
+6 dbus_monitor.py: [arg-type] Argument 1 to "add_notification" of "NotificationManager" has incompatible type "Notification | None"; expected "Notification"
+1 dbus_monitor.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+7 dbus_monitor.py: [union-attr] Item "None" of "Notification | None" has no attribute "image"
+6 dbus_monitor.py: [union-attr] Item "None" of "Notification | None" has no attribute "message"
+3 dbus_monitor.py: [union-attr] Item "None" of "Notification | None" has no attribute "respone_options"
+2 esp_observability.py: [assignment] Incompatible types in assignment (expression has type "None", variable has type "float")
+2 esp_observability.py: [assignment] Incompatible types in assignment (expression has type "float", variable has type "None")
+1 esp_observability.py: [assignment] Incompatible types in assignment (expression has type "str | Any | None", variable has type "None")
+5 esp_observability.py: [assignment] Incompatible types in assignment (expression has type "str | Any", variable has type "None")
+1 esp_observability.py: [assignment] Incompatible types in assignment (expression has type "str | None", variable has type "None")
+7 esp_observability.py: [assignment] Incompatible types in assignment (expression has type "str", variable has type "None")
+1 esp_serial/connection/emulation_data.py: [arg-type] Argument "main_setpoint" to "ShotData" has incompatible type "Any | None"; expected "float"
+1 esp_serial/connection/emulation_data.py: [attr-defined] "type[EmulationData]" has no attribute "HOME_DATA"
+1 esp_serial/connection/emulation_data.py: [attr-defined] "type[EmulationData]" has no attribute "PURGE_DATA"
+2 esp_serial/connection/emulation_data.py: [index] Value of type "EmulationData" is not indexable
+1 esp_serial/connection/emulation_data.py: [misc] Method must have at least one argument. Did you forget the "self" argument?
+1 esp_serial/connection/emulation_data.py: [var-annotated] Need type annotation for "ESPRESSO_DATA" (hint: "ESPRESSO_DATA: list[<type>] = ...")
+1 esp_serial/connection/emulation_data.py: [var-annotated] Need type annotation for "IDLE_DATA" (hint: "IDLE_DATA: list[<type>] = ...")
+1 esp_serial/connection/emulator_serial_connection.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 esp_serial/connection/emulator_serial_connection.py: [attr-defined] "type[EmulationData]" has no attribute "HOME_DATA"
+1 esp_serial/connection/emulator_serial_connection.py: [attr-defined] "type[EmulationData]" has no attribute "PURGE_DATA"
+1 esp_serial/connection/emulator_serial_connection.py: [override] Signature of "reset" incompatible with supertype "esp_serial.connection.serial_connection.SerialConnection"
+1 esp_serial/connection/fika_serial_connection.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 esp_serial/connection/fika_serial_connection.py: [assignment] Incompatible default for argument "alias" (default has type "None", argument has type "str")
+1 esp_serial/connection/fika_serial_connection.py: [override] Signature of "reset" incompatible with supertype "esp_serial.connection.serial_connection.SerialConnection"
+2 esp_serial/connection/fika_serial_connection.py: [valid-type] Bracketed expression "[...]" is not valid as a type
+1 esp_serial/connection/fika_serial_connection.py: [var-annotated] Need type annotation for "gpioChip" (hint: "gpioChip: dict[<type>, <type>] = ...")
+1 esp_serial/connection/fika_serial_connection.py: [var-annotated] Need type annotation for "pins" (hint: "pins: dict[<type>, <type>] = ...")
+1 esp_serial/connection/serial_connection.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 esp_serial/connection/usb_serial_connection.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 esp_serial/connection/usb_serial_connection.py: [override] Signature of "reset" incompatible with supertype "esp_serial.connection.serial_connection.SerialConnection"
+1 esp_serial/data.py: [arg-type] Argument "aux_controller_kind" to "ShotData" has incompatible type "Any | None"; expected "ControlTypes"
+1 esp_serial/data.py: [arg-type] Argument "main_controller_kind" to "ShotData" has incompatible type "Any | None"; expected "ControlTypes"
+2 esp_serial/data.py: [arg-type] Argument 1 to "append" of "list" has incompatible type "ControlTypes"; expected "str"
+1 esp_serial/data.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 esp_serial/data.py: [arg-type] Argument 1 to "len" has incompatible type "ButtonEventData"; expected "Sized"
+5 esp_serial/data.py: [arg-type] Argument 1 to "len" has incompatible type "ESPInfo"; expected "Sized"
+1 esp_serial/data.py: [arg-type] Argument 1 to "len" has incompatible type "SensorData"; expected "Sized"
+1 esp_serial/data.py: [arg-type] Argument 1 to "len" has incompatible type "ShotData"; expected "Sized"
+1 esp_serial/data.py: [arg-type] Argument 6 to "ShotData" has incompatible type "str | None"; expected "str"
+1 esp_serial/data.py: [arg-type] Argument 7 to "ShotData" has incompatible type "str | None"; expected "str"
+2 esp_serial/data.py: [assignment] Incompatible types in assignment (expression has type "None", variable has type "ControlTypes")
+2 esp_serial/data.py: [assignment] Incompatible types in assignment (expression has type "float", target has type "None")
+4 esp_serial/data.py: [attr-defined] "ControlTypes" has no attribute "lower"
+1 esp_serial/data.py: [attr-defined] "SensorData" has no attribute "split"
+1 esp_serial/data.py: [call-overload] No overload variant of "sub" of "Pattern" matches argument types "str", "SensorData"
+3 esp_serial/data.py: [index] Value of type "ButtonEventData" is not indexable
+58 esp_serial/data.py: [index] Value of type "ESPInfo" is not indexable
+1 esp_serial/data.py: [index] Value of type "MachineNotify" is not indexable
+23 esp_serial/data.py: [index] Value of type "SensorData" is not indexable
+13 esp_serial/data.py: [index] Value of type "ShotData" is not indexable
+1 esp_serial/esp_tool_wrapper.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 esp_serial/esp_tool_wrapper.py: [misc] Method must have at least one argument. Did you forget the "self" argument?
+1 esp_serial/esp_tool_wrapper.py: [misc] Self argument missing for a non-static method (or an invalid type for self)
+1 heater_actuator.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 heater_actuator.py: [arg-type] Argument 1 to "write" has incompatible type "bytes"; expected "Machine"
+1 hostname.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 hostname.py: [list-item] List item 2 has incompatible type "HostnameManager"; expected "str | bytes | PathLike[str] | PathLike[bytes]"
+6 hostname.py: [misc] Method must have at least one argument. Did you forget the "self" argument?
+2 hostname.py: [return-value] Incompatible return value type (got "None", expected "str")
+1 imager.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 imager.py: [assignment] Incompatible types in assignment (expression has type "CompletedProcess[bytes]", variable has type "CompletedProcess[str]")
+2 imager.py: [attr-defined] "Notification" has no attribute "responses"; maybe "response"?
+2 imager.py: [operator] Unsupported operand types for * ("object" and "int")
+1 imager.py: [union-attr] Item "None" of "IO[bytes] | None" has no attribute "__iter__" (not iterable)
+2 imager.py: [union-attr] Item "None" of "IO[str] | None" has no attribute "__iter__" (not iterable)
+1 imager.py: [union-attr] Item "None" of "IO[str] | None" has no attribute "close"
+1 limited_access.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 log.py: [arg-type] Argument "name" to "getLogger" has incompatible type "MeticulousLogger"; expected "str | None"
+1 log.py: [arg-type] Argument 1 to "addHandler" of "Logger" has incompatible type "StreamHandler[TextIO] | None"; expected "Handler"
+1 log.py: [arg-type] Argument 1 to "remove" has incompatible type "MeticulousLogger"; expected "str | bytes | PathLike[str] | PathLike[bytes]"
+1 log.py: [call-overload] No overload variant of "open" matches argument types "MeticulousLogger", "str"
+1 log.py: [misc] Method must have at least one argument. Did you forget the "self" argument?
+1 log.py: [operator] Unsupported left operand type for + ("MeticulousLogger")
+1 log_redaction_filter.py: [var-annotated] Need type annotation for "_key_cache" (hint: "_key_cache: dict[<type>, <type>] = ...")
+1 machine.py: [arg-type] Argument "before_send" to "Client" has incompatible type "Callable[[dict[str, Any], Any], dict[str, Any]]"; expected "Callable[[Event, dict[str, Any]], Event | None] | None"
+3 machine.py: [arg-type] Argument "enabled" to "toggle_manufacturing_mode" has incompatible type "bool"; expected "Machine"
+6 machine.py: [arg-type] Argument 1 to "action" of "Machine" has incompatible type "str"; expected "Machine"
+1 machine.py: [arg-type] Argument 1 to "capture_event" of "Scope" has incompatible type "dict[str, Any]"; expected "Event"
+1 machine.py: [arg-type] Argument 1 to "capture_event" of "Scope" has incompatible type "dict[str, Sequence[str]]"; expected "Event"
+1 machine.py: [arg-type] Argument 1 to "encode" of "str" has incompatible type "Machine"; expected "str"
+1 machine.py: [arg-type] Argument 1 to "from_args" has incompatible type "list[Any]"; expected "ButtonEventData"
+1 machine.py: [arg-type] Argument 1 to "from_args" has incompatible type "list[Any]"; expected "ESPInfo"
+1 machine.py: [arg-type] Argument 1 to "from_args" has incompatible type "list[Any]"; expected "SensorData"
+1 machine.py: [arg-type] Argument 1 to "from_args" has incompatible type "list[Any]"; expected "ShotData"
+1 machine.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+6 machine.py: [arg-type] Argument 1 to "write" has incompatible type "bytes"; expected "Machine"
+3 machine.py: [arg-type] Argument 1 to "writeStr" has incompatible type "str"; expected "Machine"
+1 machine.py: [assignment] Incompatible types in assignment (expression has type "EmulatorSerialConnection", variable has type "USBSerialConnection | None")
+1 machine.py: [assignment] Incompatible types in assignment (expression has type "FikaSerialConnection", variable has type "USBSerialConnection | None")
+1 machine.py: [assignment] Incompatible types in assignment (expression has type "Machine", variable has type "bool")
+1 machine.py: [assignment] Incompatible types in assignment (expression has type "None", variable has type "HeaterTimeoutInfo")
+1 machine.py: [assignment] Incompatible types in assignment (expression has type "None", variable has type "SensorData")
+1 machine.py: [assignment] Incompatible types in assignment (expression has type "float", variable has type "None")
+1 machine.py: [assignment] Incompatible types in assignment (expression has type "float", variable has type "int")
+1 machine.py: [assignment] Incompatible types in assignment (expression has type "str", variable has type "int")
+1 machine.py: [attr-defined] "None" has no attribute "batchNumber"
+1 machine.py: [attr-defined] "None" has no attribute "buildDate"
+1 machine.py: [attr-defined] "None" has no attribute "color"
+1 machine.py: [attr-defined] "None" has no attribute "espPinout"
+1 machine.py: [attr-defined] "None" has no attribute "get"
+1 machine.py: [attr-defined] "None" has no attribute "serialNumber"
+2 machine.py: [attr-defined] "type[Machine]" has no attribute "_flashingThread"
+1 machine.py: [index] Value of type "None" is not indexable
+16 machine.py: [misc] Method must have at least one argument. Did you forget the "self" argument?
+9 machine.py: [misc] Self argument missing for a non-static method (or an invalid type for self)
+1 machine.py: [operator] Unsupported operand types for + ("str" and "Machine")
+2 machine.py: [union-attr] Item "Machine" of "Machine | None" has no attribute "emit"
+1 machine.py: [union-attr] Item "None" of "Any | None" has no attribute "reset_input_buffer"
+2 machine.py: [union-attr] Item "None" of "Any | None" has no attribute "write"
+2 machine.py: [union-attr] Item "None" of "Machine | None" has no attribute "emit"
+4 machine.py: [union-attr] Item "None" of "USBSerialConnection | None" has no attribute "port"
+1 machine.py: [union-attr] Item "None" of "USBSerialConnection | None" has no attribute "reset"
+1 machine.py: [union-attr] Item "None" of "USBSerialConnection | None" has no attribute "sendUpdate"
+1 machine.py: [var-annotated] Need type annotation for "_pending_tare_behavior_writes" (hint: "_pending_tare_behavior_writes: list[<type>] = ...")
+1 manual_mode.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 manual_mode.py: [arg-type] Argument 1 to "round" has incompatible type "Any | None"; expected "_SupportsRound2[Any]"
+2 manual_program.py: [arg-type] Argument 1 to "add_controller" of "Nodes" has incompatible type "_RawController"; expected "Controllers"
+1 manual_program.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 manual_program.py: [index] Value of type "Any | None" is not indexable
+4 manual_program.py: [index] Value of type "object" is not indexable
+1 manufacturing.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 monitoring/motor_power_monitoring.py: [arg-type] Argument "name" to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 monitoring/motor_power_monitoring.py: [assignment] Incompatible types in assignment (expression has type "None", variable has type "NamedThread")
+1 named_thread.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 notifications.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 notifications.py: [assignment] Incompatible types in assignment (expression has type "float", variable has type "None")
+4 notifications.py: [misc] Method must have at least one argument. Did you forget the "self" argument?
+1 notifications.py: [misc] Self argument missing for a non-static method (or an invalid type for self)
+1 notifications.py: [misc] callable? not callable
+1 notifications.py: [union-attr] Item "None" of "NotificationManager | None" has no attribute "emit"
+1 notifications.py: [union-attr] Item "NotificationManager" of "NotificationManager | None" has no attribute "emit"
+1 notifications.py: [valid-type] Function "builtins.callable" is not valid as a type
+1 notifications.py: [var-annotated] Need type annotation for "_notifications" (hint: "_notifications: list[<type>] = ...")
+1 notifications.py: [var-annotated] Need type annotation for "_queue"
+1 ota.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 ota.py: [var-annotated] Need type annotation for "data" (hint: "data: dict[<type>, <type>] = ...")
+1 pour_over_history.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 pour_over_profiles.py: [arg-type] Argument 1 to "_issue" has incompatible type "list[str]"; expected "list[str | int]"
+1 pour_over_profiles.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 pour_over_profiles.py: [union-attr] Item "None" of "Any | None" has no attribute "iter_errors"
+12 profile_converter/controllers.py: [index] Value of type "object" is not indexable
+6 profile_converter/controllers.py: [operator] Unsupported right operand type for in ("object")
+4 profile_converter/dictionaries_simplified.py: [index] Value of type "Collection[object]" is not indexable
+1 profile_converter/nodes.py: [assignment] Incompatible types in assignment (expression has type "ButtonTrigger", variable has type "SpeedTrigger")
+1 profile_converter/nodes.py: [assignment] Incompatible types in assignment (expression has type "PressureController", variable has type "FlowController")
+1 profile_converter/nodes.py: [assignment] Incompatible types in assignment (expression has type "PressureCurveTrigger", variable has type "SpeedTrigger")
+1 profile_converter/nodes.py: [assignment] Incompatible types in assignment (expression has type "TemperatureController", variable has type "FlowController")
+1 profile_converter/nodes.py: [assignment] Incompatible types in assignment (expression has type "TemperatureValueTrigger", variable has type "SpeedTrigger")
+1 profile_converter/nodes.py: [assignment] Incompatible types in assignment (expression has type "TimeReferenceController", variable has type "FlowController")
+1 profile_converter/nodes.py: [assignment] Incompatible types in assignment (expression has type "TimerTrigger", variable has type "SpeedTrigger")
+1 profile_converter/nodes.py: [assignment] Incompatible types in assignment (expression has type "WeightController", variable has type "FlowController")
+1 profile_converter/nodes.py: [assignment] Incompatible types in assignment (expression has type "WeightTrigger", variable has type "SpeedTrigger")
+2 profile_converter/nodes.py: [assignment] Incompatible types in assignment (expression has type "list[Never]", target has type "int")
+2 profile_converter/nodes.py: [attr-defined] "int" has no attribute "append"
+1 profile_converter/profile_converter.py: [assignment] Incompatible default for argument "parameters" (default has type "None", argument has type "dict[Any, Any]")
+2 profile_converter/profile_json.py: [arg-type] Argument 1 to "set_algorithm" of "FlowController" has incompatible type "PressureAlgorithmType"; expected "FlowAlgorithmType"
+1 profile_converter/profile_json.py: [assignment] Incompatible default for argument "complex_stages" (default has type "None", argument has type "list[Any]")
+2 profile_converter/profile_json.py: [assignment] Incompatible types in assignment (expression has type "PressureController", variable has type "FlowController")
+1 profile_converter/profile_json.py: [assignment] Incompatible types in assignment (expression has type "TimeReferenceController", variable has type "FlowController")
+1 profile_converter/profile_json.py: [attr-defined] "Sequence[Any]" has no attribute "append"
+1 profile_converter/references.py: [attr-defined] "References" has no attribute "set_reference"; maybe "set_reference_kind", "get_reference_id", or "reference"?
+1 profile_converter/references.py: [index] Invalid index type "str" for "dict[ReferenceType, dict[ReferenceType, str]]"; expected type "ReferenceType"
+1 profile_converter/references.py: [index] Invalid index type "str" for "dict[ReferenceType, str]"; expected type "ReferenceType"
+1 profile_converter/simplified_json.py: [arg-type] Argument 1 to "enumerate" has incompatible type "Any | None"; expected "Iterable[Any]"
+1 profile_converter/simplified_json.py: [arg-type] Argument 1 to "len" has incompatible type "Any | None"; expected "Sized"
+1 profile_converter/simplified_json.py: [assignment] Incompatible default for argument "parameters" (default has type "None", argument has type "dict[Any, Any]")
+2 profile_converter/simplified_json.py: [assignment] Incompatible types in assignment (expression has type "FlowController", variable has type "PressureController")
+1 profile_converter/simplified_json.py: [assignment] Incompatible types in assignment (expression has type "FlowCurveTrigger", variable has type "PressureCurveTrigger")
+1 profile_converter/simplified_json.py: [assignment] Incompatible types in assignment (expression has type "FlowValueTrigger", variable has type "PressureValueTrigger | None")
+1 profile_converter/simplified_json.py: [assignment] Incompatible types in assignment (expression has type "FlowValueTrigger", variable has type "TimerTrigger")
+1 profile_converter/simplified_json.py: [assignment] Incompatible types in assignment (expression has type "PistonPositionTrigger", variable has type "TimerTrigger")
+2 profile_converter/simplified_json.py: [assignment] Incompatible types in assignment (expression has type "PowerController", variable has type "PressureController")
+1 profile_converter/simplified_json.py: [assignment] Incompatible types in assignment (expression has type "PowerCurveTrigger", variable has type "PressureCurveTrigger")
+1 profile_converter/simplified_json.py: [assignment] Incompatible types in assignment (expression has type "PowerValueTrigger", variable has type "PressureValueTrigger | None")
+1 profile_converter/simplified_json.py: [assignment] Incompatible types in assignment (expression has type "PowerValueTrigger", variable has type "TimerTrigger")
+1 profile_converter/simplified_json.py: [assignment] Incompatible types in assignment (expression has type "PressureValueTrigger", variable has type "TimerTrigger")
+2 profile_converter/simplified_json.py: [assignment] Incompatible types in assignment (expression has type "TemperatureController", variable has type "PressureController")
+1 profile_converter/simplified_json.py: [assignment] Incompatible types in assignment (expression has type "TemperatureCurveTrigger", variable has type "PressureCurveTrigger")
+1 profile_converter/simplified_json.py: [assignment] Incompatible types in assignment (expression has type "TemperatureValueTrigger", variable has type "PressureValueTrigger | None")
+1 profile_converter/simplified_json.py: [assignment] Incompatible types in assignment (expression has type "TemperatureValueTrigger", variable has type "TimerTrigger")
+1 profile_converter/simplified_json.py: [assignment] Incompatible types in assignment (expression has type "WeightTrigger", variable has type "TimerTrigger")
+1 profile_converter/simplified_json.py: [assignment] Incompatible types in assignment (expression has type "str", variable has type "dict[Any, Any]")
+1 profile_converter/simplified_json.py: [union-attr] Item "None" of "Nodes | None" has no attribute "get_node"
+1 profile_converter/simplified_json.py: [union-attr] Item "None" of "PressureValueTrigger | None" has no attribute "get_trigger"
+1 profile_converter/stages.py: [assignment] Incompatible types in assignment (expression has type "ExitTrigger", variable has type "SpeedTrigger")
+2 profile_converter/stages.py: [assignment] Incompatible types in assignment (expression has type "PressureController", variable has type "FlowController")
+1 profile_converter/stages.py: [assignment] Incompatible types in assignment (expression has type "TareController", variable has type "FlowController")
+2 profile_converter/stages.py: [assignment] Incompatible types in assignment (expression has type "TimeReferenceController", variable has type "FlowController")
+1 profile_converter/stages.py: [assignment] Incompatible types in assignment (expression has type "WeightController", variable has type "FlowController")
+1 profile_converter/stages.py: [assignment] Incompatible types in assignment (expression has type "WeightTrigger", variable has type "SpeedTrigger")
+1 profile_converter/stages.py: [assignment] Incompatible types in assignment (expression has type "list[Never]", target has type "str")
+1 profile_converter/stages.py: [attr-defined] "str" has no attribute "append"
+8 profile_converter/triggers.py: [index] Value of type "Collection[object]" is not indexable
+22 profile_converter/triggers.py: [index] Value of type "object" is not indexable
+4 profile_converter/triggers.py: [operator] Unsupported right operand type for in ("object")
+1 profile_preprocessor.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 profiles.py: [arg-type] Argument 1 to "_get_md5_hash" has incompatible type "str"; expected "ProfileManager"
+1 profiles.py: [arg-type] Argument 1 to "_get_payload_md5" has incompatible type "Any | None"; expected "ProfileManager"
+1 profiles.py: [arg-type] Argument 1 to "from_dict" of "ProfileHover" has incompatible type "ProfileManager"; expected "dict[Any, Any]"
+1 profiles.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 profiles.py: [arg-type] Argument 1 to "save_profile" of "ProfileManager" has incompatible type "dict[Any, Any]"; expected "ProfileManager"
+1 profiles.py: [arg-type] Argument 3 to "_register_profile_change" of "ProfileManager" has incompatible type "str | None"; expected "float | None"
+1 profiles.py: [assignment] Incompatible default for argument "skip_sid" (default has type "None", argument has type "ProfileManager")
+1 profiles.py: [assignment] Incompatible types in assignment (expression has type "None", variable has type "AbstractEventLoop")
+1 profiles.py: [assignment] Incompatible types in assignment (expression has type "None", variable has type "NamedThread")
+1 profiles.py: [attr-defined] "ProfileManager" has no attribute "get"
+1 profiles.py: [call-overload] No overload variant of "open" matches argument types "ProfileManager", "str"
+1 profiles.py: [call-overload] No overload variant of "urlparse" matches argument type "ProfileManager"
+4 profiles.py: [index] Unsupported target for indexed assignment ("ProfileManager")
+25 profiles.py: [index] Value of type "ProfileManager" is not indexable
+13 profiles.py: [misc] Method must have at least one argument. Did you forget the "self" argument?
+4 profiles.py: [misc] Self argument missing for a non-static method (or an invalid type for self)
+3 profiles.py: [operator] Unsupported right operand type for in ("ProfileManager")
+1 profiles.py: [var-annotated] Need type annotation for "_known_images" (hint: "_known_images: list[<type>] = ...")
+1 profiles.py: [var-annotated] Need type annotation for "_known_profiles" (hint: "_known_profiles: dict[<type>, <type>] = ...")
+1 profiles.py: [var-annotated] Need type annotation for "_last_profile_changes" (hint: "_last_profile_changes: list[<type>] = ...")
+1 profiles.py: [var-annotated] Need type annotation for "_profile_default_images" (hint: "_profile_default_images: list[<type>] = ...")
+1 profiles.py: [var-annotated] Need type annotation for "_profile_default_images_accent_colors" (hint: "_profile_default_images_accent_colors: dict[<type>, <type>] = ...")
+1 shot_data_sharing.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 shot_database.py: [arg-type] Argument 1 to "count" has incompatible type "Literal['profile_count']"; expected "ColumnElement[Any] | _HasClauseElement[Any] | SQLCoreOperations[Any] | ExpressionElementRole[Any] | TypedColumnsClauseRole[Any] | Callable[[], ColumnElement[Any]] | LambdaElement | Literal['*', 1] | None"
+2 shot_database.py: [arg-type] Argument 1 to "delete" has incompatible type "Table | None"; expected "TableClause | Join | Alias | CTE | type[Any] | Inspectable[_HasClauseElement[Any]] | _HasClauseElement[Any]"
+1 shot_database.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+2 shot_database.py: [arg-type] Argument 1 to "insert" has incompatible type "Table | None"; expected "TableClause | Join | Alias | CTE | type[Any] | Inspectable[_HasClauseElement[Any]] | _HasClauseElement[Any]"
+2 shot_database.py: [arg-type] Argument 1 to "outerjoin" of "Select" has incompatible type "Table | None"; expected "FromClauseRole | type[Any] | Inspectable[_HasClauseElement[Any]] | _HasClauseElement[Any] | JoinTargetRole"
+1 shot_database.py: [import-untyped] Library stubs not installed for "pytz"
+2 shot_database.py: [misc] "None" not callable
+11 shot_database.py: [union-attr] Item "None" of "Engine | None" has no attribute "connect"
+1 shot_database.py: [union-attr] Item "None" of "Engine | None" has no attribute "dispose"
+11 shot_database.py: [union-attr] Item "None" of "Table | None" has no attribute "c"
+1 shot_debug_manager.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 shot_debug_manager.py: [arg-type] Argument 1 to "remove_logging_handler" of "MeticulousLogger" has incompatible type "ShotLogHandler | None"; expected "Handler"
+1 shot_debug_manager.py: [assignment] Incompatible types in assignment (expression has type "None", target has type "str")
+3 shot_debug_manager.py: [assignment] Incompatible types in assignment (expression has type "None", variable has type "DebugShot")
+2 shot_debug_manager.py: [assignment] Incompatible types in assignment (expression has type "bool", target has type "str")
+1 shot_debug_manager.py: [assignment] Incompatible types in assignment (expression has type "dict[Never, Never]", target has type "str")
+1 shot_debug_manager.py: [assignment] Incompatible types in assignment (expression has type "dict[Never, Never]", variable has type "None")
+2 shot_debug_manager.py: [assignment] Incompatible types in assignment (expression has type "list[Never]", target has type "str")
+1 shot_debug_manager.py: [index] Unsupported target for indexed assignment ("str")
+1 shot_debug_manager.py: [str-bytes-safe] If x = b'abc' then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes
+1 shot_debug_manager.py: [var-annotated] Need type annotation for "logs" (hint: "logs: list[<type>] = ...")
+1 shot_debug_manager.py: [var-annotated] Need type annotation for "machine" (hint: "machine: dict[<type>, <type>] = ...")
+1 shot_manager.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+4 shot_manager.py: [assignment] Incompatible types in assignment (expression has type "None", variable has type "Shot")
+1 shot_manager.py: [assignment] Incompatible types in assignment (expression has type "None", variable has type "str")
+1 shot_manager.py: [assignment] Incompatible types in assignment (expression has type "float", variable has type "None")
+1 shot_manager.py: [assignment] Incompatible types in assignment (expression has type "str", variable has type "None")
+1 shot_manager.py: [str-bytes-safe] If x = b'abc' then f"{x}" or "{}".format(x) produces "b'abc'", not "abc". If this is desired behavior, use f"{x!r}" or "{!r}".format(x). Otherwise, decode the bytes
+1 shot_manager.py: [var-annotated] Need type annotation for "shotData" (hint: "shotData: list[<type>] = ...")
+1 simple_profile.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 smoke_validation.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 sounds.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 sounds.py: [assignment] Incompatible types in assignment (expression has type "Sound", variable has type "None")
+1 sounds.py: [var-annotated] Need type annotation for "CURRENT_THEME_CONFIG" (hint: "CURRENT_THEME_CONFIG: dict[<type>, <type>] = ...")
+1 sounds.py: [var-annotated] Need type annotation for "DEFAULT_THEME_CONFIG" (hint: "DEFAULT_THEME_CONFIG: dict[<type>, <type>] = ...")
+1 ssh_manager.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 system_services.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 timezone_manager.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 timezone_manager.py: [return-value] Incompatible return value type (got "None", expected "str")
+1 timezone_manager.py: [return] Missing return statement
+1 timezone_manager.py: [var-annotated] Need type annotation for "country_code_to_name" (hint: "country_code_to_name: dict[<type>, <type>] = ...")
+1 timezone_manager.py: [var-annotated] Need type annotation for "country_timezones" (hint: "country_timezones: dict[<type>, <type>] = ...")
+1 timezone_manager.py: [var-annotated] Need type annotation for "country_to_timezones" (hint: "country_to_timezones: dict[<type>, <type>] = ...")
+1 usb.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+1 wifi.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
+2 wifi.py: [arg-type] Argument 1 to "setHostname" has incompatible type "str"; expected "HostnameManager"
+1 wifi.py: [arg-type] Argument 2 to "wifi_connect" of "DeviceControl" has incompatible type "None"; expected "str"
+6 wifi.py: [assignment] Incompatible default for argument "config" (default has type "None", argument has type "WifiSystemConfig")
+1 wifi.py: [assignment] Incompatible default for argument "mode" (default has type "None", argument has type "WifiManager")
+1 wifi.py: [assignment] Incompatible default for argument "target_network_ssid" (default has type "None", argument has type "str")
+1 wifi.py: [assignment] Incompatible types in assignment (expression has type "Literal['802.1X']", base class "BaseWiFiCredentials" defined the type as "WifiType")
+1 wifi.py: [assignment] Incompatible types in assignment (expression has type "Literal['OPEN']", base class "BaseWiFiCredentials" defined the type as "WifiType")
+1 wifi.py: [assignment] Incompatible types in assignment (expression has type "Literal['PSK']", base class "BaseWiFiCredentials" defined the type as "WifiType")
+1 wifi.py: [assignment] Incompatible types in assignment (expression has type "Literal['SAE']", base class "WifiWpaPskCredentials" defined the type as "Literal['PSK']")
+1 wifi.py: [assignment] Incompatible types in assignment (expression has type "None", variable has type "WifiType")
+2 wifi.py: [assignment] Incompatible types in assignment (expression has type "None", variable has type "str")
+1 wifi.py: [assignment] Incompatible types in assignment (expression has type "dict[str, Any]", variable has type "WifiWpaPskCredentials")
+6 wifi.py: [assignment] Incompatible types in assignment (expression has type "float", variable has type "int")
+3 wifi.py: [assignment] Incompatible types in assignment (expression has type "str | None", variable has type "str")
+2 wifi.py: [assignment] Incompatible types in assignment (expression has type "str", variable has type "WifiWpaEnterpriseCredentials | WifiOpenCredentials | WifiWpaPskCredentials | WifiWpaSaeCredentials")
+2 wifi.py: [attr-defined] "WifiHealthStatus" has no attribute "connected"; maybe "link_connected"?
+2 wifi.py: [index] Unsupported target for indexed assignment ("WifiWpaEnterpriseCredentials | WifiOpenCredentials | WifiWpaPskCredentials | WifiWpaSaeCredentials")
+24 wifi.py: [misc] Method must have at least one argument. Did you forget the "self" argument?
+23 wifi.py: [misc] Self argument missing for a non-static method (or an invalid type for self)
+1 wifi.py: [return-value] Incompatible return value type (got "dict[str, Any]", expected "str")
+8 wifi.py: [union-attr] Item "None" of "ZeroConfAnnouncement | None" has no attribute "restart"
+4 wifi.py: [union-attr] Item "WifiOpenCredentials" of "WifiWpaEnterpriseCredentials | WifiOpenCredentials | WifiWpaPskCredentials | WifiWpaSaeCredentials" has no attribute "get"
+4 wifi.py: [union-attr] Item "WifiWpaEnterpriseCredentials" of "WifiWpaEnterpriseCredentials | WifiOpenCredentials | WifiWpaPskCredentials | WifiWpaSaeCredentials" has no attribute "get"
+4 wifi.py: [union-attr] Item "WifiWpaPskCredentials" of "WifiWpaEnterpriseCredentials | WifiOpenCredentials | WifiWpaPskCredentials | WifiWpaSaeCredentials" has no attribute "get"
+4 wifi.py: [union-attr] Item "WifiWpaSaeCredentials" of "WifiWpaEnterpriseCredentials | WifiOpenCredentials | WifiWpaPskCredentials | WifiWpaSaeCredentials" has no attribute "get"
+1 wifi.py: [var-annotated] Need type annotation for "_known_wifis" (hint: "_known_wifis: list[<type>] = ...")
+1 wifi.py: [var-annotated] Need type annotation for "_scan_cache" (hint: "_scan_cache: list[<type>] = ...")
