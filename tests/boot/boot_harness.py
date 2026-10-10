@@ -29,10 +29,16 @@ virtualenv from the built .deb; ``tests/test_boot.py`` runs it under pytest
 when those dependencies are installed.
 
 Usage: python tests/boot/boot_harness.py --data-dir DIR --report FILE
-           [--package-root DIR]
+           [--package-root DIR] [--esp-uart DEVICE] [--serve READY_FILE]
 
 Booting twice with the same --data-dir checks the restart of a machine that
 already has its own config, profiles and history.
+
+For integration tests against a real firmware: --esp-uart connects the backend
+to a serial device instead of the fake UART (fika-sil's --pty-link), and
+--serve skips the checks, writes READY_FILE once the server answers and keeps
+the backend running until SIGTERM. The report then holds the ERROR records,
+the UART greeting and the database check of the whole run.
 """
 
 import argparse
@@ -40,6 +46,7 @@ import asyncio
 import json
 import logging
 import os
+import signal
 import socket
 import sys
 import threading
@@ -193,21 +200,56 @@ class FakeEspPort:
         self.is_open = False
 
 
+# Every ESP32 connection Machine.init opened, fake or real. Their port records
+# the bytes the backend wrote in .written.
+ESP_CONNECTIONS = []
+
+
 class FakeFikaSerialConnection:
     """Stands in for FikaSerialConnection: no GPIO lines, a FakeEspPort as UART."""
-
-    instances = []
 
     def __init__(self, device, *args, **kwargs):
         self.device = device
         self.port = FakeEspPort()
-        FakeFikaSerialConnection.instances.append(self)
+        ESP_CONNECTIONS.append(self)
 
     def reset(self, *args, **kwargs):
         pass
 
     def sendUpdate(self, *args, **kwargs):
         return "firmware updates are not available in the boot harness"
+
+
+def _serial_device_connection(uart_path: str):
+    """FikaSerialConnection's stand-in for a firmware on a serial device.
+
+    With --esp-uart the backend talks to a real firmware, e.g. the one fika-sil
+    runs with --pty-link, through its own pyserial SerialConnection; only the
+    GPIO lines that enable and reset the ESP32 on the board are left out.
+    """
+    from esp_serial.connection.serial_connection import SerialConnection
+
+    class SerialDeviceConnection(SerialConnection):
+        def __init__(self, device, *args, **kwargs):
+            super().__init__(uart_path)
+            written = bytearray()
+            write = self.port.write
+
+            def recording_write(data):
+                written.extend(data)
+                return write(data)
+
+            self.port.write = recording_write
+            self.port.written = written
+            ESP_CONNECTIONS.append(self)
+
+        def reset(self, *args, **kwargs):
+            pass
+
+        def sendUpdate(self, *args, **kwargs):
+            return "firmware updates are not available in the boot harness"
+
+    return SerialDeviceConnection
 
 
 class ErrorCollector(logging.Handler):
@@ -296,13 +338,16 @@ def _install_import_time_fakes():
     sentry_sdk.init = offline_init
 
 
-def _hardware_patches(issue_file: Path):
+def _hardware_patches(issue_file: Path, esp_uart: str | None):
     """Patches at the hardware boundary, applied around back.run()."""
     gpio_chip = mock.MagicMock(name="gpiod.chip")
+    esp_connection = (
+        _serial_device_connection(esp_uart) if esp_uart else FakeFikaSerialConnection
+    )
 
     return [
         # ESP32 UART and its enable/boot GPIO lines.
-        mock.patch("machine.FikaSerialConnection", FakeFikaSerialConnection),
+        mock.patch("machine.FikaSerialConnection", esp_connection),
         # Audio enable GPIO and playback.
         mock.patch("sounds.gpiod.chip", gpio_chip, create=True),
         mock.patch("sounds.playsound", mock.MagicMock(name="playsound")),
@@ -322,6 +367,24 @@ def _hardware_patches(issue_file: Path):
     ]
 
 
+async def _wait_until_serving(port: int, report: dict) -> bool:
+    from tornado.httpclient import AsyncHTTPClient
+
+    deadline = time.monotonic() + 15
+    while True:
+        try:
+            # Any answer means the server is up; the sweep judges the status.
+            await AsyncHTTPClient().fetch(
+                f"http://127.0.0.1:{port}/api/v1/settings", raise_error=False
+            )
+            return True
+        except (ConnectionError, OSError):
+            if time.monotonic() > deadline:
+                report["failures"].append("HTTP server never accepted a connection")
+                return False
+            await asyncio.sleep(0.2)
+
+
 async def _http_checks(port: int, report: dict):
     from tornado.httpclient import AsyncHTTPClient, HTTPClientError
     from tornado.web import RequestHandler
@@ -331,17 +394,8 @@ async def _http_checks(port: int, report: dict):
     client = AsyncHTTPClient()
     base = f"http://127.0.0.1:{port}"
 
-    deadline = time.monotonic() + 15
-    while True:
-        try:
-            # Any answer means the server is up; the sweep judges the status.
-            await client.fetch(f"{base}/api/v1/settings", raise_error=False)
-            break
-        except (ConnectionError, OSError):
-            if time.monotonic() > deadline:
-                report["failures"].append("HTTP server never accepted a connection")
-                return
-            await asyncio.sleep(0.2)
+    if not await _wait_until_serving(port, report):
+        return
 
     swept = {}
     for route in API.get_routes():
@@ -448,7 +502,7 @@ async def _socketio_inbound_checks(port: int, report: dict):
         clients[name] = client
     dial, app = clients["dial"], clients["app"]
 
-    uart = FakeFikaSerialConnection.instances[0].port
+    uart = ESP_CONNECTIONS[0].port
 
     def written_since(mark: int) -> bytes:
         return bytes(uart.written[mark:])
@@ -520,10 +574,10 @@ async def _socketio_inbound_checks(port: int, report: dict):
 
 
 def _uart_checks(report: dict):
-    if not FakeFikaSerialConnection.instances:
+    if not ESP_CONNECTIONS:
         report["failures"].append("Machine.init never opened the ESP32 UART")
         return
-    written = bytes(FakeFikaSerialConnection.instances[0].port.written)
+    written = bytes(ESP_CONNECTIONS[0].port.written)
     report["uart_written"] = written.decode(errors="replace")
     greeting = b"\x03action,info\x03"
     if not written.startswith(greeting):
@@ -563,14 +617,14 @@ def _boot(args):
     timer.start()
 
     try:
-        _run_backend(args, report, errors)
+        _run_backend(args, report, errors, timer)
     except BaseException:
         report["failures"].append("boot crashed:\n" + traceback.format_exc())
     timer.cancel()
     _finish(report, errors, args.report)
 
 
-def _run_backend(args, report: dict, errors: ErrorCollector):
+def _run_backend(args, report: dict, errors: ErrorCollector, boot_timer: threading.Timer):
     data_dir = Path(args.data_dir).resolve()
     code_root = Path(args.package_root).resolve() if args.package_root else REPO_ROOT
     port = _free_port()
@@ -606,9 +660,33 @@ def _run_backend(args, report: dict, errors: ErrorCollector):
         finally:
             io_loop.stop()
 
-    io_loop.add_callback(checks)
+    async def serve():
+        """--serve: announce the running backend and keep it up until SIGTERM."""
+        if not await _wait_until_serving(port, report):
+            io_loop.stop()
+            return
+        boot_timer.cancel()
+        ready = {"port": port, "pid": os.getpid(), "data_dir": str(data_dir)}
+        Path(args.serve).write_text(json.dumps(ready))
 
-    patches = _hardware_patches(data_dir / "etc-issue")
+    def stop_serving(*_):
+        async def wind_down():
+            try:
+                _uart_checks(report)
+                _database_checks(report)
+            finally:
+                io_loop.stop()
+
+        io_loop.add_callback_from_signal(wind_down)
+
+    if args.serve:
+        signal.signal(signal.SIGTERM, stop_serving)
+        signal.signal(signal.SIGINT, stop_serving)
+        io_loop.add_callback(serve)
+    else:
+        io_loop.add_callback(checks)
+
+    patches = _hardware_patches(data_dir / "etc-issue", args.esp_uart)
     for patch in patches:
         patch.start()
     try:
@@ -646,6 +724,17 @@ def main():
     parser.add_argument(
         "--package-root",
         help="backend code to boot, e.g. /opt/meticulous-backend (default: this checkout)",
+    )
+    parser.add_argument(
+        "--esp-uart",
+        help="serial device of a real firmware, e.g. fika-sil's --pty-link, instead of the "
+        "fake UART",
+    )
+    parser.add_argument(
+        "--serve",
+        metavar="READY_FILE",
+        help="skip the checks and keep the backend running until SIGTERM; READY_FILE gets "
+        '{"port", "pid", "data_dir"} once it serves',
     )
     parser.add_argument("--boot-index", type=int, default=1, help=argparse.SUPPRESS)
     _boot(parser.parse_args())
