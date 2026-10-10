@@ -1,0 +1,86 @@
+name: Package
+
+# Builds the .deb that meticulous-machine installs, checks that it ships every
+# runtime file, installs it on a clean Debian bookworm and boots it twice with
+# the hardware faked (tests/boot/boot_harness.py). Built natively for both
+# architectures: arm64 is what machines run.
+#
+# Pull requests are tested on their merge result; pushes only on the branches
+# PRs merge into, so a push to a PR branch does not build twice.
+on:
+  pull_request:
+  push:
+    branches:
+      - beta
+      - nightly
+      - stable
+      - 'gates/main'
+  workflow_dispatch:
+
+jobs:
+  deb:
+    name: deb (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: 'true'
+
+    - name: Read the package version
+      id: version
+      run: echo "version=$(grep '^version' pyproject.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')" >> "$GITHUB_OUTPUT"
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build the .deb
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: Dockerfile.deb
+        platforms: linux/${{ matrix.arch }}
+        build-args: |
+          VERSION=${{ steps.version.outputs.version }}
+          ARCH=${{ matrix.arch }}
+        outputs: type=local,dest=out
+        cache-from: type=gha,scope=deb-${{ matrix.arch }}
+        cache-to: type=gha,mode=max,scope=deb-${{ matrix.arch }}
+
+    - name: Package ships every runtime file
+      run: |
+        mkdir pkg
+        dpkg-deb -x out/meticulous-backend_*.deb pkg
+        python3 tests/package/verify_package.py --repo . --package pkg
+
+    - name: Installed package boots twice
+      run: |
+        mkdir boot-reports
+        docker run --rm \
+          -v "$PWD:/src:ro" -v "$PWD/out:/deb:ro" -v "$PWD/boot-reports:/reports" \
+          debian:bookworm bash /src/tests/package/install_and_boot.sh
+
+    - name: Upload boot reports
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: boot-reports-${{ matrix.arch }}
+        path: boot-reports/
+        if-no-files-found: ignore
+
+    - name: Upload the .deb
+      uses: actions/upload-artifact@v4
+      with:
+        name: meticulous-backend-deb-${{ matrix.arch }}
+        path: out/meticulous-backend_*.deb
+        retention-days: 14

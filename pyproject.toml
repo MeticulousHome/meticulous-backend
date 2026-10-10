@@ -57,6 +57,8 @@ dev = [
     "flake8==7.2.0",
     "black==26.3.1",
     "pytest>=8.0.0",
+    "pytest-cov>=6.0",
+    "diff-cover>=9.2",
 ]
 
 [tool.black]
@@ -64,3 +66,18 @@ line-length = 96
 target-version = ["py311"]
 # log_redactor submodule formats itself
 extend-exclude = "/log_redactor/"
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "tests/*",
+    "log_redactor/*",
+    "alembic/*",
+    ".venv/*",
+]
+
+[tool.coverage.report]
+# Production code covered by the unit tests on gates/main, rounded down. Raise
+# it when coverage grows; the Build workflow fails a change that drops below.
+fail_under = 49
+skip_empty = true
