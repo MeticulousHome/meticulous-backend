@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "logging": [
+    "log_all_sensor_messages"
+  ],
+  "system": [
+    "always_allowed_networks",
+    "auth_key",
+    "batch_number",
+    "build_date",
+    "color",
+    "last_system_versions",
+    "machine_name",
+    "notifications_ttl",
+    "root_password",
+    "serial",
+    "shot_data_sharing_id",
+    "sounds_theme"
+  ],
+  "user": {
+    "allow_legacy_json": false,
+    "allow_stage_skipping": false,
+    "auto_purge_after_shot": false,
+    "auto_start_shot": false,
+    "clock_format_24_hour": true,
+    "debug_shot_data_retention_days": 31,
+    "disable_ui_features": false,
+    "disallow_firmware_flashing": false,
+    "enable_sounds": true,
+    "heat_on_boot": true,
+    "heating_timeout": 10,
+    "hostname_override": null,
+    "idle_screen": "default",
+    "partial_retraction": 45.33,
+    "profile_order": [],
+    "report_contact_mail": null,
+    "reverse_scrolling": {
+      "home": false,
+      "keyboard": false,
+      "menus": false
+    },
+    "shot_data_sharing": null,
+    "ssh_enabled": true,
+    "tare_behavior": "after_retraction",
+    "time_zone": null,
+    "timezone_sync": "automatic",
+    "update_channel": "",
+    "usb_mode": "host"
+  },
+  "wifi": [
+    "APName",
+    "APPassword",
+    "KnownWifis",
+    "mode"
+  ],
+  "profiles": [
+    "LastProfile"
+  ],
+  "manufacturing": [
+    "enabled",
+    "last_boot_mode",
+    "skip_stage"
+  ]
+}

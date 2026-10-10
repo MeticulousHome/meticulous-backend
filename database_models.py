@@ -116,6 +116,10 @@ bug_reports = Table(
     # app. Keep in sync with the c4d2e9f1a7b3 migration.
     Column("contactName", Text, nullable=True),
     Column("contactEmail", Text, nullable=True),
+    # Created by the 8f4e7b2c9d10 migration. tests/test_db_migrations.py fails
+    # when this table and the migrations disagree.
+    Index("ix_bug_reports_creationTime", "creationTime"),
+    Index("ix_bug_reports_status", "status"),
 )
 
 # FTS structure is defined here for reference
