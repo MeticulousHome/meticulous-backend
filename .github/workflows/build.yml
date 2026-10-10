@@ -50,6 +50,42 @@ jobs:
     - name: Run tests
       run: uv run pytest -v tests log_redactor/tests/test_redaction_contract.py
 
+  # Total coverage must stay above [tool.coverage.report] fail_under, and on a
+  # pull request the lines it adds or changes must be covered by tests.
+  coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: 'true'
+        fetch-depth: 0 # diff-cover compares against the base branch
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+
+    - name: Set up Python
+      run: uv python install
+
+    - name: Install dependencies
+      run: uv sync --group dev
+
+    - name: Run tests with coverage
+      run: >
+        uv run pytest -q --cov --cov-report=xml --cov-report=term-missing:skip-covered
+        tests log_redactor/tests/test_redaction_contract.py
+
+    - name: Changed lines are covered
+      if: github.event_name == 'pull_request'
+      run: >
+        uv run diff-cover coverage.xml --compare-branch=origin/${{ github.base_ref }}
+        --fail-under=80 --markdown-report=diff-cover.md
+
+    - name: Coverage of the change
+      if: always() && github.event_name == 'pull_request'
+      run: cat diff-cover.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+
   # Check the pinned log_redactor submodule commit is part of the main branch
   # ideally main's HEAD but at list within main's branch commit history ( not an
   # unmerged branch )
