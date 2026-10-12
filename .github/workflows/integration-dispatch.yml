@@ -1,10 +1,13 @@
 name: Firmware integration
 
-# EspressoFirmware is private, so the backend is tested against the real
-# firmware in the private MeticulousHome/meticulous-integration repository, not
-# here: this job asks it to test this commit, and the result comes back as the
-# commit status "integration/firmware". Forks never get the token, so their PRs
-# are skipped with a notice.
+# EspressoFirmware is private, so the backend is tested against the real firmware
+# (its fika-sil simulator) in the private MeticulousHome/meticulous-integration
+# repository, not here. This job asks it to test this commit against the firmware
+# of the same branch: the firmware branch with this PR's name if there is one (a
+# change made in both repositories), else the branch this PR targets, beta with
+# beta, nightly with nightly, stable with stable. The result comes back as the
+# commit status "integration/firmware". Forks never get the token, so their PRs are
+# skipped with a notice.
 on:
   pull_request:
   push:
@@ -24,14 +27,18 @@ jobs:
         TOKEN: ${{ secrets.INTEGRATION_DISPATCH_TOKEN }}
         SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         PR: ${{ github.event.pull_request.number }}
+        BASE_REF: ${{ github.base_ref || github.ref_name }}
+        HEAD_REF: ${{ github.head_ref }}
       run: |
         if [ -z "$TOKEN" ]; then
           echo "::notice::INTEGRATION_DISPATCH_TOKEN is not available: firmware integration not requested"
           exit 0
         fi
+        payload=$(jq -nc --arg sha "$SHA" --arg pr "$PR" --arg base "$BASE_REF" --arg head "$HEAD_REF" \
+          '{event_type: "backend-pr", client_payload: {backend_sha: $sha, pr: $pr, base_ref: $base, head_ref: $head}}')
         curl -fsS -X POST \
           -H "Authorization: Bearer $TOKEN" \
           -H "Accept: application/vnd.github+json" \
           https://api.github.com/repos/MeticulousHome/meticulous-integration/dispatches \
-          -d "{\"event_type\":\"backend-pr\",\"client_payload\":{\"backend_sha\":\"$SHA\",\"pr\":\"$PR\"}}"
-        echo "requested integration/firmware for $SHA"
+          -d "$payload"
+        echo "requested integration/firmware for $SHA (firmware branch: $HEAD_REF if it exists, else $BASE_REF)"
