@@ -89,3 +89,22 @@ def test_two_threads_logging_while_one_holds_the_data_lock_do_not_deadlock(debug
 
     assert sorted(done) == ["holder", "request"], "the two threads deadlocked"
     assert len(debug_shot.shot.logs) == 51
+
+
+def test_a_record_logged_with_no_shot_running_goes_nowhere(debug_shot, monkeypatch):
+    monkeypatch.setattr(ShotDebugManager, "_current_data", None)
+
+    debug_shot.logger.info("between shots")
+
+    assert debug_shot.shot.logs == []
+
+
+def test_the_saved_copy_keeps_the_logs_and_later_records_do_not_change_it(debug_shot):
+    """_copy_current_data snapshots the log list under the same lock the handler appends with."""
+    debug_shot.logger.warning("before the copy")
+
+    copy = ShotDebugManager._copy_current_data()
+    debug_shot.logger.warning("after the copy")
+
+    assert [entry["log_message"] for entry in copy.logs] == ["before the copy"]
+    assert len(debug_shot.shot.logs) == 2
