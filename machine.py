@@ -423,6 +423,7 @@ class Machine:
                     return None
             return self.buf
 
+    @staticmethod
     def _greet():
         """Drop what the port buffered before it was opened, then ask the ESP for its info.
 
