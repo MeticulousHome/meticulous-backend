@@ -7,10 +7,12 @@ meticulous-machine installs in the image. Pull requests target `beta`; fixes
 reach `stable` and `nightly` through the backport flow.
 
 Every pull request runs the gates below. This file says what each one protects,
-when a test is worth adding and where it goes. Tests that need the firmware or
-the Dial together with the backend live in the private
-MeticulousHome/meticulous-integration repository; its `ARCHITECTURE.md` describes
-the validation levels across repositories.
+when a test is worth adding and where it goes. How these gates fit the checks
+across repositories, up to the image, is in meticulous-machine's
+[`docs/testing/validation-architecture.md`](https://github.com/MeticulousHome/meticulous-machine/blob/beta/docs/testing/validation-architecture.md).
+In short: this repository tests itself with the firmware and the Dial mocked
+from contracts, owns and proves the HTTP and Socket.IO contract, and the real
+components are combined only when an image is built.
 
 ## The gates
 
@@ -24,7 +26,7 @@ the validation levels across repositories.
 | `client-contract` | everything meticulous-typescript-api calls, subscribes to and reads still exists | `python3 tests/contracts/check_ts_client.py --client <meticulous-typescript-api checkout>` |
 | `redactor-pin` | the `log_redactor` submodule points at a commit on its main | |
 | `deb (arm64)`, `deb (amd64)` | the .deb ships every module and data file, installs on Debian bookworm, and the installed backend boots twice with the hardware faked: every read-only GET below 500, the Socket.IO contract, the UART greeting, the DB migrated, nothing at ERROR | `tests/package/verify_package.py`, `tests/package/install_and_boot.sh` (see the Package workflow) |
-| `integration/firmware` | the backend against the real firmware (identity, status stream, an espresso shot) | runs in meticulous-integration; the status links to the run |
+| `integration/firmware` | informational: the backend against the real firmware (identity, status stream, an espresso shot); under the architecture the real combination gates the image, not this merge | runs in meticulous-integration; the status links to the run |
 
 Never weaken a gate to get green: no lower `fail_under`, no new entry in the mypy
 baseline, no skipped test, no widened assert.
@@ -95,7 +97,7 @@ the PR description.
 | Startup or a new init that touches hardware | Fake its boundary in `tests/boot/boot_harness.py`, or the Package boot fails. |
 | A new module or data directory | Add it to `Dockerfile.deb`; `tests/package/verify_package.py` fails on a tracked file that is not packaged, unless `NOT_PACKAGED` says why. |
 | A new host tool the backend runs | Add its package to `Depends:` in `debian/DEBIAN/control`; the image must not provide it by accident. |
-| The UART protocol | The firmware owns it: change both sides together and check with the integration status. |
+| The UART protocol | The firmware owns it and publishes the contract the backend tests replay: change both sides together, and the image pins them together. |
 | Type errors | Do not add any. When you fix some, shrink the baseline: `tests/static/mypy_ratchet.py --update`. |
 
 ## Where a test goes
