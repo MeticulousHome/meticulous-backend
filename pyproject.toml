@@ -79,5 +79,5 @@ omit = [
 [tool.coverage.report]
 # Production code covered by the unit tests on gates/main, rounded down. Raise
 # it when coverage grows; the Build workflow fails a change that drops below.
-fail_under = 49
+fail_under = 65
 skip_empty = true
