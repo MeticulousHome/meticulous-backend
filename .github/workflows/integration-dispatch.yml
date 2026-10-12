@@ -1,0 +1,37 @@
+name: Firmware integration
+
+# EspressoFirmware is private, so the backend is tested against the real
+# firmware in the private MeticulousHome/meticulous-integration repository, not
+# here: this job asks it to test this commit, and the result comes back as the
+# commit status "integration/firmware". Forks never get the token, so their PRs
+# are skipped with a notice.
+on:
+  pull_request:
+  push:
+    branches:
+      - beta
+      - nightly
+      - stable
+      - 'gates/main'
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Ask meticulous-integration to test this commit
+      env:
+        TOKEN: ${{ secrets.INTEGRATION_DISPATCH_TOKEN }}
+        SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        PR: ${{ github.event.pull_request.number }}
+      run: |
+        if [ -z "$TOKEN" ]; then
+          echo "::notice::INTEGRATION_DISPATCH_TOKEN is not available: firmware integration not requested"
+          exit 0
+        fi
+        curl -fsS -X POST \
+          -H "Authorization: Bearer $TOKEN" \
+          -H "Accept: application/vnd.github+json" \
+          https://api.github.com/repos/MeticulousHome/meticulous-integration/dispatches \
+          -d "{\"event_type\":\"backend-pr\",\"client_payload\":{\"backend_sha\":\"$SHA\",\"pr\":\"$PR\"}}"
+        echo "requested integration/firmware for $SHA"
