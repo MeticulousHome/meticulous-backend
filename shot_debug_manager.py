@@ -124,6 +124,11 @@ class DebugShot(Shot):
 class ShotDebugManager:
     _current_data: DebugShot = None
     clear_current_data_lock = threading.Lock()
+    # Guards only the current shot's log list. ShotLogHandler takes it with the
+    # logging handler's lock held, so it must never be held while logging; the
+    # handler must not take clear_current_data_lock either: code holding that one
+    # logs (building a DebugShot, ingesting data), and the two orders deadlocked.
+    _logs_lock = threading.Lock()
     logging_handler = None
 
     @staticmethod
@@ -139,7 +144,8 @@ class ShotDebugManager:
             for attribute in ("logs", "shotData"):
                 value = getattr(current, attribute, None)
                 if isinstance(value, list):
-                    setattr(current_data_copy, attribute, list(value))
+                    with ShotDebugManager._logs_lock:
+                        setattr(current_data_copy, attribute, list(value))
             if clear_current_data:
                 ShotDebugManager._current_data = None
         return copy.deepcopy(current_data_copy)
@@ -386,14 +392,16 @@ class ShotDebugManager:
 
     @staticmethod
     def handleLog(log_record: logging.LogRecord, formatter):
-        with ShotDebugManager.clear_current_data_lock:
-            if ShotDebugManager._current_data is not None:
-                start_time = ShotDebugManager._current_data.startTime
-                msg = formatter(log_record)
-                log: dict = {
-                    "profile_ms": int((log_record.created - start_time) * 1000.0),
-                    "loglevel": log_record.levelname,
-                    "caller": log_record.name,
-                    "log_message": msg,
-                }
-                ShotDebugManager._current_data.logs.append(log)
+        # Read the reference once instead of locking clear_current_data_lock (see
+        # _logs_lock): a shot cleared meanwhile only loses this record.
+        current = ShotDebugManager._current_data
+        if current is None:
+            return
+        log: dict = {
+            "profile_ms": int((log_record.created - current.startTime) * 1000.0),
+            "loglevel": log_record.levelname,
+            "caller": log_record.name,
+            "log_message": formatter(log_record),
+        }
+        with ShotDebugManager._logs_lock:
+            current.logs.append(log)
