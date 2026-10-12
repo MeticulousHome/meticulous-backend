@@ -239,9 +239,9 @@
 1 machine.py: [operator] Unsupported operand types for + ("str" and "Machine")
 2 machine.py: [union-attr] Item "Machine" of "Machine | None" has no attribute "emit"
 1 machine.py: [union-attr] Item "None" of "Any | None" has no attribute "reset_input_buffer"
-2 machine.py: [union-attr] Item "None" of "Any | None" has no attribute "write"
+1 machine.py: [union-attr] Item "None" of "Any | None" has no attribute "write"
 2 machine.py: [union-attr] Item "None" of "Machine | None" has no attribute "emit"
-4 machine.py: [union-attr] Item "None" of "USBSerialConnection | None" has no attribute "port"
+3 machine.py: [union-attr] Item "None" of "USBSerialConnection | None" has no attribute "port"
 1 machine.py: [union-attr] Item "None" of "USBSerialConnection | None" has no attribute "reset"
 1 machine.py: [union-attr] Item "None" of "USBSerialConnection | None" has no attribute "sendUpdate"
 1 machine.py: [var-annotated] Need type annotation for "_pending_tare_behavior_writes" (hint: "_pending_tare_behavior_writes: list[<type>] = ...")
