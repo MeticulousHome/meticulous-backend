@@ -1,6 +1,7 @@
 from log import MeticulousLogger
 from notifications import NotificationManager, Notification, NotificationResponse
 import subprocess
+import threading
 
 from config import MeticulousConfig, CONFIG_MANUFACTURING
 from hostname import HostnameManager
@@ -25,7 +26,38 @@ usb_device_notification.image = usb_device_notification_image
 
 error_rauc_updating = ""
 
+HAWKBIT_DEPLOYMENT_PROCESS = "EPRODEP"
+HAWKBIT_DEPLOYMENT_SPACE_ERROR = "File size exceeds available space"
+HAWKBIT_SENTRY_REPORT_INTERVAL_SECONDS = 60 * 60
+
+_hawkbit_error_last_reported_at: dict[tuple[str, str], float] = {}
+_hawkbit_error_report_lock = threading.Lock()
+
 logger = MeticulousLogger.getLogger(__name__)
+
+
+def _should_report_hawkbit_error(process: str, error: str) -> bool:
+    """Keep repeated disk-full deployment signals from flooding Sentry.
+
+    Each backend process keeps its own window, so the first occurrence on every
+    machine is still reported immediately. All other updater errors remain
+    unthrottled.
+    """
+
+    if process != HAWKBIT_DEPLOYMENT_PROCESS or error != HAWKBIT_DEPLOYMENT_SPACE_ERROR:
+        return True
+
+    now = time.monotonic()
+    key = (process, error)
+    with _hawkbit_error_report_lock:
+        last_reported_at = _hawkbit_error_last_reported_at.get(key)
+        if (
+            last_reported_at is not None
+            and now - last_reported_at < HAWKBIT_SENTRY_REPORT_INTERVAL_SECONDS
+        ):
+            return False
+        _hawkbit_error_last_reported_at[key] = now
+    return True
 
 
 class DBusMonitor:
@@ -114,9 +146,14 @@ class DBusMonitor:
         process: str = parameters[0]
         error: str = parameters[1]
 
-        process = "processing deployment" if process == "EPRODEP" else "downloading"
+        if not _should_report_hawkbit_error(process, error):
+            return
 
-        logger.error(f"Error in {process} process: {error}")
+        process_name = (
+            "processing deployment" if process == HAWKBIT_DEPLOYMENT_PROCESS else "downloading"
+        )
+
+        logger.error(f"Error in {process_name} process: {error}")
 
     @staticmethod
     async def install_progress(
