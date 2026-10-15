@@ -192,6 +192,31 @@ class TestPourOverHistoryAPI(AsyncHTTPTestCase):
         assert PourOverHistoryManager.search() == []
         assert not list(self.history_path.rglob("*.zst"))
 
+    def test_lan_can_list_and_read_saved_pour_over(self):
+        saved = self.save()
+        assert saved.code == 201
+        headers = {"Host": "192.168.2.183", "X-Real-IP": "192.168.2.50"}
+        response = self.fetch(
+            "/api/v1/history/pour-over?sort=desc&max_results=200", headers=headers
+        )
+        assert response.code == 200
+        records = json.loads(response.body)["history"]
+        assert len(records) == 1
+        assert records[0]["id"] == free_pour_session()["id"]
+        raw = self.fetch(
+            f"/api/v1/history/pour-over/files/{records[0]['file']}", headers=headers
+        )
+        assert raw.code == 200
+        assert json.loads(raw.body)["samples"] == free_pour_session()["samples"]
+
+    def test_lan_empty_history_is_a_successful_read(self):
+        response = self.fetch(
+            "/api/v1/history/pour-over?sort=desc&max_results=1",
+            headers={"Host": "machine.local", "X-Real-IP": "192.168.2.50"},
+        )
+        assert response.code == 200
+        assert json.loads(response.body) == {"history": []}
+
     def test_write_endpoint_is_local_only(self):
         response = self.save(headers={"Host": "machine.local", "X-Real-IP": "192.168.10.20"})
 

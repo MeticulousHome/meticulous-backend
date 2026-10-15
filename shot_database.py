@@ -478,6 +478,13 @@ class ShotDataBase:
             return [{"file": row.file} for row in connection.execute(statement).fetchall()]
 
     @staticmethod
+    def last_history_file() -> str | None:
+        """Return the upload index's latest cursor without loading the brew or profile."""
+        statement = select(history_table.c.file).order_by(desc(history_table.c.file)).limit(1)
+        with ShotDataBase.engine.connect() as connection:
+            return connection.execute(statement).scalar_one_or_none()
+
+    @staticmethod
     def autocomplete_profile_name(prefix):
         with ShotDataBase.session() as session:
             if not prefix:
