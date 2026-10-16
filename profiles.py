@@ -1,3 +1,4 @@
+import copy
 import hashlib
 import json
 import os
@@ -24,6 +25,7 @@ from config import (
 import asyncio
 from log import MeticulousLogger
 from machine import Machine
+from manual_program import build_manual_program
 from profile_preprocessor import ProfilePreprocessor
 from api.alarms import AlarmManager, AlarmType
 from images.notificationImages.base64 import WARNING_TRIANGLE_IMAGE
@@ -55,6 +57,39 @@ IMAGES_PATH = os.getenv("IMAGES_PATH", "/meticulous-user/profile-images/")
 DEFAULT_IMAGES_PATH = os.getenv("DEFAULT_IMAGES", "/opt/meticulous-backend/images/default")
 
 DEFAULT_IMAGES_PATH_ACCENT_COLORS = os.path.join(DEFAULT_IMAGES_PATH, "accent_colors.json")
+
+# Only recipe/runtime data belongs on the constrained UART link. These fields cover
+# both firmware profile runtimes: the node engine consumes name/stages, while the
+# simplified espresso engine additionally consumes temperature, final_weight, and
+# variables. Profile identity remains in backend state and load events.
+ESP32_PROFILE_FIELDS = (
+    "name",
+    "temperature",
+    "final_weight",
+    "variables",
+    "stages",
+)
+
+# Manual mode profile (cross-repo contract "Manual mode" v5, section 2). The id
+# is stable across boots and machines so the dial and the firmware can rely on
+# it; clients still detect a manual profile by `manual is True`, never by id or
+# name, because the user may rename it.
+MANUAL_MODE_PROFILE_ID = "4d616e75-616c-4d6f-8465-000000000001"
+MANUAL_MODE_PROFILE_NAME = "Manual mode"
+MANUAL_MODE_PRESSURE_STAGE_NAME = "Manual pressure"
+MANUAL_MODE_PRESSURE_STAGE_KEY = "manual_pressure"
+MANUAL_MODE_FLOW_STAGE_NAME = "Manual flow"
+MANUAL_MODE_FLOW_STAGE_KEY = "manual_flow"
+MANUAL_MODE_TEMPERATURE = 90.0
+# "No weight stop": a target the brew cannot reach, so the shot ends on the
+# click instead. v1 shipped 1000.0, which a large enough carafe could hit.
+# 2000.0 is the schema's own maximum for `final_weight`, so it is both the
+# largest value a profile may carry and the ceiling the dial's weight setting
+# offers -- `final_weight >= 2000` is the "no weight stop" convention.
+MANUAL_MODE_FINAL_WEIGHT_SENTINEL = 2000.0
+MANUAL_MODE_LEGACY_FINAL_WEIGHT_SENTINEL = 1000.0
+MANUAL_MODE_AUTHOR = "Meticulous"
+MANUAL_MODE_AUTHOR_ID = "00000000-0000-0000-0000-000000000000"
 
 
 class PROFILE_EVENT(Enum):
@@ -104,6 +139,7 @@ class ProfileManager:
 
         SimpleProfile.load()
         ProfileManager.refresh_profile_list()
+        ProfileManager.ensure_manual_mode_profile()
         ProfileManager._delete_unused_images()
 
         # Seed hover state from last loaded profile
@@ -146,6 +182,7 @@ class ProfileManager:
         change: PROFILE_EVENT,
         profile_id: Optional[str] = None,
         change_id: Optional[str] = None,
+        brew_type: Optional[str] = None,
     ) -> None:
 
         if not ProfileManager._loop:
@@ -157,6 +194,8 @@ class ProfileManager:
             payload["profile_id"] = profile_id
         if change_id is not None:
             payload["change_id"] = change_id
+        if brew_type is not None:
+            payload["brew_type"] = brew_type
 
         async def emit() -> None:
             await ProfileManager._sio.emit("profile", payload)
@@ -246,6 +285,119 @@ class ProfileManager:
             logger.info("No accent color found, generating random one")
             random_color = ProfileManager.generate_ramdom_accent_color()
             data["display"]["accentColor"] = random_color
+
+    def manual_mode_stages() -> list:
+        """The seeded manual stage pair, pressure first (contract section 2).
+
+        Only `stages[0].dynamics.points[0][1]` is read at load time, as the
+        initial target of the stage the shot starts in; the encoder drives the
+        target from there. The `user_interaction` exit triggers document the
+        click that hands over to the other stage -- the node program of
+        section 8 implements it as a button trigger.
+        """
+        return [
+            {
+                "name": MANUAL_MODE_PRESSURE_STAGE_NAME,
+                "key": MANUAL_MODE_PRESSURE_STAGE_KEY,
+                "type": "pressure",
+                "dynamics": {
+                    "points": [[0, 0]],
+                    "over": "time",
+                    "interpolation": "none",
+                },
+                "exit_triggers": [{"type": "user_interaction", "value": 1}],
+                "limits": [],
+            },
+            {
+                "name": MANUAL_MODE_FLOW_STAGE_NAME,
+                "key": MANUAL_MODE_FLOW_STAGE_KEY,
+                "type": "flow",
+                "dynamics": {
+                    "points": [[0, 0]],
+                    "over": "time",
+                    "interpolation": "none",
+                },
+                "exit_triggers": [{"type": "user_interaction", "value": 1}],
+                "limits": [],
+            },
+        ]
+
+    def build_manual_mode_profile() -> dict:
+        """A fresh copy of the seeded Manual mode document (contract section 2)."""
+        return {
+            "id": MANUAL_MODE_PROFILE_ID,
+            "name": MANUAL_MODE_PROFILE_NAME,
+            "author": MANUAL_MODE_AUTHOR,
+            "author_id": MANUAL_MODE_AUTHOR_ID,
+            "previous_authors": [],
+            "temperature": MANUAL_MODE_TEMPERATURE,
+            "final_weight": MANUAL_MODE_FINAL_WEIGHT_SENTINEL,
+            "variables": [],
+            "display": {},
+            "manual": True,
+            "stages": ProfileManager.manual_mode_stages(),
+        }
+
+    def manual_profile_has_seeded_stages(profile: dict) -> bool:
+        """True when `profile` already carries the section 2 stage pair.
+
+        Order is deliberately not checked: the dial reorders the pair to record
+        which stage the shot starts in, and that choice is the user's setup.
+        """
+        stages = profile.get("stages")
+        if not isinstance(stages, list) or len(stages) != 2:
+            return False
+
+        expected = {
+            (MANUAL_MODE_PRESSURE_STAGE_KEY, "pressure"),
+            (MANUAL_MODE_FLOW_STAGE_KEY, "flow"),
+        }
+        found = set()
+        for stage in stages:
+            if not isinstance(stage, dict):
+                return False
+            found.add((stage.get("key"), stage.get("type")))
+
+        return found == expected
+
+    def ensure_manual_mode_profile() -> bool:
+        """Seed or migrate the Manual mode profile on boot. True if written.
+
+        A profile that already has the seeded stage pair is left alone whatever
+        its stage order and values -- that is the user's saved setup. One that
+        does not (a v1 single-stage profile, or one a client has damaged) keeps
+        its name, temperature, display, authorship and final weight and has its
+        stages replaced.
+        """
+        existing = ProfileManager._known_profiles.get(MANUAL_MODE_PROFILE_ID)
+
+        if existing is None:
+            profile = ProfileManager.build_manual_mode_profile()
+            action = "Seeded"
+        elif ProfileManager.manual_profile_has_seeded_stages(existing):
+            return False
+        else:
+            profile = copy.deepcopy(existing)
+            profile["manual"] = True
+            profile["stages"] = ProfileManager.manual_mode_stages()
+            if profile.get("final_weight") == MANUAL_MODE_LEGACY_FINAL_WEIGHT_SENTINEL:
+                profile["final_weight"] = MANUAL_MODE_FINAL_WEIGHT_SENTINEL
+            action = "Migrated"
+
+        try:
+            ProfileManager.save_profile(profile, set_last_changed=True)
+        except Exception:
+            # Seeding is best effort: a machine that cannot write this profile
+            # must still finish starting up.
+            logger.error("Failed to write the Manual mode profile", exc_info=True)
+            return False
+
+        logger.info(f"{action} Manual mode profile")
+        return True
+
+    @staticmethod
+    def _profile_for_esp32(profile):
+        return {field: profile[field] for field in ESP32_PROFILE_FIELDS if field in profile}
 
     def save_profile(
         data,
@@ -393,11 +545,21 @@ class ProfileManager:
                 f"Preprocessing and variable expansion took {int(preprocessing_time_ms*1000)} ns"
             )
 
-        logger.info(
-            f"simplified profile streamed to ESP32: data MD5={ProfileManager._get_payload_md5(preprocessed_profile)}"
-        )
+        if data.get("manual") is True:
+            # A manual document carries no curve to follow -- the encoder drives
+            # the target live -- so the machine gets the node program that
+            # implements the interaction instead of the document itself.
+            program = build_manual_program(preprocessed_profile)
+            node_count = sum(len(stage.get("nodes") or []) for stage in program["stages"])
+            logger.info(f"Manual profile converted to node program: {node_count} nodes")
+        else:
+            program = preprocessed_profile
 
-        Machine.send_json_with_hash(preprocessed_profile)
+        esp32_profile = ProfileManager._profile_for_esp32(program)
+        logger.info(
+            f"simplified profile streamed to ESP32: data MD5={ProfileManager._get_payload_md5(esp32_profile)}"
+        )
+        Machine.send_json_with_hash(esp32_profile)
 
         ProfileManager._set_last_profile(data)
 

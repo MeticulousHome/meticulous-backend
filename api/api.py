@@ -41,6 +41,8 @@ class API:
     def get_routes(cls):
         from . import action as _action  # noqa
         from . import history as _history  # noqa
+        from . import pour_over_history as _pour_over_history  # noqa
+        from . import pour_over_profiles as _pour_over_profiles  # noqa
         from . import bug_report as _bug_report  # noqa
         from . import notifications as _noti  # noqa
         from . import profiles as _profiles  # noqa
@@ -51,6 +53,7 @@ class API:
         from . import machine as _machine  # noqa
         from . import serial as _serial  # noqa
         from . import password_handler as _password_handler  # noqa
+        from . import smoke_validation as _smoke_validation  # noqa
 
         routes = []
         logger.info("API Routes registered:")

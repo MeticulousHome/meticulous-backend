@@ -2,6 +2,7 @@ from sqlalchemy import (
     MetaData,
     Table,
     Column,
+    Index,
     Integer,
     Text,
     DateTime,
@@ -53,6 +54,24 @@ history = Table(
     Column("debug_file", Text, nullable=True),
 )
 
+brew_history = Table(
+    "brew_history",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("uuid", Text, nullable=False, unique=True),
+    Column("brew_type", Text, nullable=False),
+    Column("mode", Text, nullable=False),
+    Column("file", Text, nullable=False, unique=True),
+    Column("time", DateTime, nullable=False),
+    Column("completed_time", DateTime, nullable=False),
+    Column("name", Text, nullable=False),
+    Column("schema_version", Integer, nullable=False),
+    # Keep in sync with the b71d84a4c2ef migration so metadata.create_all
+    # produces the same schema as the alembic upgrade path.
+    Index("ix_brew_history_completed_time", "completed_time"),
+    Index("ix_brew_history_brew_type", "brew_type"),
+)
+
 shot_annotation = Table(
     "shot_annotation",
     metadata,
@@ -93,6 +112,14 @@ bug_reports = Table(
     Column("machineStatus", Boolean, nullable=True),
     Column("status", Text, nullable=False),
     Column("ticketNumber", Integer, nullable=True),
+    # Contact details handed over with a report dispatched from the mobile
+    # app. Keep in sync with the c4d2e9f1a7b3 migration.
+    Column("contactName", Text, nullable=True),
+    Column("contactEmail", Text, nullable=True),
+    # Created by the 8f4e7b2c9d10 migration. tests/test_db_migrations.py fails
+    # when this table and the migrations disagree.
+    Index("ix_bug_reports_creationTime", "creationTime"),
+    Index("ix_bug_reports_status", "status"),
 )
 
 # FTS structure is defined here for reference

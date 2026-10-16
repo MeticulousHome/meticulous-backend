@@ -1,4 +1,5 @@
 import asyncio
+import math
 import os
 import random
 import string
@@ -26,6 +27,7 @@ DATABASE_FILE = "history.sqlite"
 ABSOLUTE_DATABASE_FILE = Path(HISTORY_PATH).joinpath(DATABASE_FILE).resolve()
 DATABASE_URL = f"sqlite:///{ABSOLUTE_DATABASE_FILE}"
 SHOT_PATH = Path(HISTORY_PATH).joinpath("shots")
+POUR_OVER_PATH = Path(HISTORY_PATH).joinpath("pour-over")
 DEBUG_HISTORY_PATH = os.getenv("DEBUG_HISTORY_PATH", "/meticulous-user/history/debug")
 
 # Config Compontents
@@ -65,6 +67,11 @@ MACHINE_DEFAULT_BATCH_NUMBER = None
 
 MACHINE_COLOR = "color"
 MACHINE_DEFAULT_COLOR = None
+
+# Random identifier used to group anonymously shared shot data. It is generated
+# when the user opts in and is never derived from the serial number.
+SHOT_DATA_SHARING_ID = "shot_data_sharing_id"
+SHOT_DATA_SHARING_ID_DEFAULT = None
 
 MACHINE_BUILD_DATE = "build_date"
 MACHINE_DEFAULT_BUILD_DATE = None
@@ -115,6 +122,18 @@ DEBUG_SHOT_DATA_RETENTION_DEFAULT = 31
 ALLOW_LEGACY_JSON = "allow_legacy_json"
 ALLOW_LEGACY_JSON_DEFAULT = False
 
+# Anonymous shot data sharing (opt-in upload of debug shot files).
+# None means the user has not answered the prompt yet; the dial asks on boot
+# until the value becomes True (opted in) or False (declined).
+SHOT_DATA_SHARING = "shot_data_sharing"
+SHOT_DATA_SHARING_DEFAULT = None
+
+# Contact email attached to bug reports so support can reach the user back.
+# None means the user never provided one; the dial asks before its first
+# report and the mobile app prefills its email field from it.
+REPORT_CONTACT_MAIL = "report_contact_mail"
+REPORT_CONTACT_MAIL_DEFAULT = None
+
 # Updates
 UPDATE_CHANNEL = "update_channel"
 UPDATE_CHANNEL_DEFAULT = ""
@@ -124,8 +143,16 @@ PROFILE_AUTO_START = "auto_start_shot"
 PROFILE_AUTO_START_DEFAULT = False
 PROFILE_AUTO_PURGE = "auto_purge_after_shot"
 PROFILE_AUTO_PURGE_DEFAULT = False
+PROFILE_TARE_BEHAVIOR = "tare_behavior"
+TARE_BEHAVIOR_AFTER_RETRACTION = "after_retraction"
+TARE_BEHAVIOR_BEFORE_RETRACTION = "before_retraction"
+TARE_BEHAVIORS = frozenset({TARE_BEHAVIOR_AFTER_RETRACTION, TARE_BEHAVIOR_BEFORE_RETRACTION})
+PROFILE_TARE_BEHAVIOR_DEFAULT = TARE_BEHAVIOR_AFTER_RETRACTION
 PROFILE_PARTIAL_RETRACTION = "partial_retraction"
-PROFILE_PARTIAL_RETRACTION_DEFAULT = 45.0
+PROFILE_PARTIAL_RETRACTION_LEGACY_DEFAULT = 45.0
+PROFILE_PARTIAL_RETRACTION_DEFAULT = 45.33
+PROFILE_PARTIAL_RETRACTION_MIN = 36.26
+PROFILE_PARTIAL_RETRACTION_MAX = 67.99
 
 MACHINE_HEATING_TIMEOUT = "heating_timeout"
 MACHINE_HEATING_TIMEOUT_DEFAULT = 10  # minutes
@@ -212,6 +239,7 @@ DefaultConfiguration_V1 = {
         MACHINE_BATCH_NUMBER: MACHINE_DEFAULT_BATCH_NUMBER,
         MACHINE_BUILD_DATE: MACHINE_DEFAULT_BUILD_DATE,
         MACHINE_COLOR: MACHINE_DEFAULT_COLOR,
+        SHOT_DATA_SHARING_ID: SHOT_DATA_SHARING_ID_DEFAULT,
         ROOT_PASSWORD: ROOT_PASSWORD_DEFAULT,
         LAST_SYSTEM_VERSIONS: LAST_SYSTEM_VERSIONS_DEFAULT,
     },
@@ -222,6 +250,7 @@ DefaultConfiguration_V1 = {
         DEBUG_SHOT_DATA_RETENTION: DEBUG_SHOT_DATA_RETENTION_DEFAULT,
         PROFILE_AUTO_START: PROFILE_AUTO_START_DEFAULT,
         PROFILE_AUTO_PURGE: PROFILE_AUTO_PURGE_DEFAULT,
+        PROFILE_TARE_BEHAVIOR: PROFILE_TARE_BEHAVIOR_DEFAULT,
         PROFILE_PARTIAL_RETRACTION: PROFILE_PARTIAL_RETRACTION_DEFAULT,
         MACHINE_HEAT_ON_BOOT: MACHINE_HEAT_ON_BOOT_DEFAULT,
         MACHINE_HEATING_TIMEOUT: MACHINE_HEATING_TIMEOUT_DEFAULT,
@@ -229,6 +258,8 @@ DefaultConfiguration_V1 = {
         IDLE_SCREEN: IDLE_SCREEN_DEFAULT,
         REVERSE_SCROLLING: REVERSE_SCROLLING_DEFAULT,
         ALLOW_LEGACY_JSON: ALLOW_LEGACY_JSON_DEFAULT,
+        SHOT_DATA_SHARING: SHOT_DATA_SHARING_DEFAULT,
+        REPORT_CONTACT_MAIL: REPORT_CONTACT_MAIL_DEFAULT,
         MACHINE_ALLOW_STAGE_SKIPPING: MACHINE_ALLOW_STAGE_SKIPPING_DEFAULT,
         USB_MODE: USB_MODE_DEFAULT,
         TIMEZONE_SYNC: DEFAULT_TIMEZONE_SYNC,
@@ -281,7 +312,9 @@ class MeticulousConfigDict(dict):
     """
 
     def __init__(self, path, default_dict={}) -> None:
-        super().__init__(default_dict)
+        # A deep copy: the sections are dicts, and sharing them would make every
+        # setting written here, and the merged config file, overwrite the defaults.
+        super().__init__(copy.deepcopy(default_dict))
 
         # Make attributes inheritable
         self.__path = Path(path)
@@ -329,10 +362,44 @@ class MeticulousConfigDict(dict):
                     # Remove retired remote telemetry settings from existing configs.
                     self[CONFIG_USER].pop("telemetry_service_enabled", None)
                     self[CONFIG_USER].pop("allow_debug_sending", None)
-                    # migrate partial_retraction config data from int to float
+                    # Migrate and constrain partial_retraction values written by older releases.
                     retraction = self[CONFIG_USER][PROFILE_PARTIAL_RETRACTION]
-                    if isinstance(retraction, int):
-                        self[CONFIG_USER][PROFILE_PARTIAL_RETRACTION] = float(retraction)
+                    stored_retraction = retraction
+                    if (
+                        not isinstance(retraction, (int, float))
+                        or isinstance(retraction, bool)
+                        or not math.isfinite(float(retraction))
+                    ):
+                        retraction = PROFILE_PARTIAL_RETRACTION_DEFAULT
+                    else:
+                        retraction = float(retraction)
+                        if math.isclose(
+                            retraction,
+                            PROFILE_PARTIAL_RETRACTION_LEGACY_DEFAULT,
+                            rel_tol=0.0,
+                            abs_tol=1e-6,
+                        ):
+                            retraction = PROFILE_PARTIAL_RETRACTION_DEFAULT
+                        retraction = min(
+                            max(retraction, PROFILE_PARTIAL_RETRACTION_MIN),
+                            PROFILE_PARTIAL_RETRACTION_MAX,
+                        )
+                    self[CONFIG_USER][PROFILE_PARTIAL_RETRACTION] = retraction
+                    if stored_retraction != retraction:
+                        _config_logger.info(
+                            "Normalized partial_retraction to supported value "
+                            f"{retraction:.2f} mm"
+                        )
+
+                    tare_behavior = self[CONFIG_USER][PROFILE_TARE_BEHAVIOR]
+                    if (
+                        not isinstance(tare_behavior, str)
+                        or tare_behavior not in TARE_BEHAVIORS
+                    ):
+                        self[CONFIG_USER][PROFILE_TARE_BEHAVIOR] = PROFILE_TARE_BEHAVIOR_DEFAULT
+                        _config_logger.warning(
+                            "Reset unsupported tare_behavior to after_retraction"
+                        )
                     _config_logger.info("Successfully loaded config from disk")
                     self.__configError = False
                 except Exception as e:

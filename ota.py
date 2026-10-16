@@ -112,7 +112,6 @@ class UpdateManager:
                 with open(channel_file, "w") as f:
                     f.write(channel + "\n")
                 logger.info(f"Changed update channel from {current_channel} to {channel}")
-                subprocess.run(["systemctl", "restart", "rauc-hawkbit-updater"])
             except Exception as e:
                 logger.error(f"Failed to change update channel: {e}")
 

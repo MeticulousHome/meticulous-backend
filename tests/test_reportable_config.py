@@ -29,6 +29,7 @@ def test_reportable_config_is_allowlist_only_and_does_not_mutate_input():
             "debug_shot_data_retention_days": 31,
             "auto_start_shot": False,
             "auto_purge_after_shot": True,
+            "tare_behavior": "before_retraction",
             "partial_retraction": 45.0,
             "heat_on_boot": True,
             "heating_timeout": 10,
@@ -92,6 +93,7 @@ def test_reportable_config_is_allowlist_only_and_does_not_mutate_input():
         ("user", "debug_shot_data_retention_days"),
         ("user", "auto_start_shot"),
         ("user", "auto_purge_after_shot"),
+        ("user", "tare_behavior"),
         ("user", "partial_retraction"),
         ("user", "heat_on_boot"),
         ("user", "heating_timeout"),
@@ -134,3 +136,20 @@ def test_reportable_config_omits_invalid_types_and_non_mapping_input():
         == {}
     )
     assert get_reportable_config(None) == {}
+
+
+def test_reportable_config_never_includes_the_contact_mail():
+    # The address is PII and get_reportable_config only copies allowlisted keys.
+    reportable = get_reportable_config(
+        {
+            "user": {
+                "report_contact_mail": "user@example.com",
+                "enable_sounds": True,
+            },
+            "system": {"report_contact_mail": "user@example.com"},
+        }
+    )
+
+    assert reportable == {"user": {"enable_sounds": True}}
+    assert "report_contact_mail" not in repr(reportable)
+    assert "user@example.com" not in repr(reportable)

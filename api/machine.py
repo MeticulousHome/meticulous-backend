@@ -1,4 +1,6 @@
 import json
+from pathlib import Path
+import shutil
 import subprocess
 
 from hostname import HostnameManager
@@ -14,6 +16,7 @@ from ota import UpdateManager
 from backlight_controller import BacklightController
 from datetime import datetime
 from timezone_manager import TimezoneManager
+from pour_over_profiles import PourOverProfileManager
 
 from config import (
     MeticulousConfig,
@@ -28,6 +31,24 @@ from limited_access import UnlockThrottle, unlock, validate_unlock_code
 
 logger = MeticulousLogger.getLogger(__name__)
 
+FACTORY_RESET_ROOT = Path("/meticulous-user")
+
+
+def cleanup_factory_reset_data(root: Path = FACTORY_RESET_ROOT):
+    """Remove the same non-hidden user data matched by the historical shell glob."""
+    if not root.exists():
+        return
+    for entry in root.iterdir():
+        if entry.name.startswith("."):
+            continue
+        try:
+            if entry.is_dir() and not entry.is_symlink():
+                shutil.rmtree(entry)
+            else:
+                entry.unlink()
+        except OSError as error:
+            logger.warning("Could not remove factory reset entry %s: %s", entry, error)
+
 
 def get_machine_info():
     response = {}
@@ -38,6 +59,14 @@ def get_machine_info():
     if Machine.esp_info is not None:
         response["firmware"] = Machine.esp_info.firmwareV
         response["mainVoltage"] = Machine.esp_info.mainVoltage
+
+    response["tare_behavior_supported"] = bool(
+        Machine.esp_info is not None and Machine.esp_info.tareBehavior is not None
+    )
+    response["pour_over_profiles_supported"] = PourOverProfileManager.is_available()
+    response["pour_over_profile_schema_version"] = (
+        1 if PourOverProfileManager.is_available() else None
+    )
 
     response["serial"] = MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER]
 
@@ -232,7 +261,7 @@ class MachineResetHandler(LocalAccessHandler):
             self.write({"status": "success", "message": "Emulated mode"})
             return
         logger.warning("Performing factory reset")
-        subprocess.run("rm -rf /meticulous-user/*", shell=True)
+        cleanup_factory_reset_data()
         subprocess.run("reboot")
 
 

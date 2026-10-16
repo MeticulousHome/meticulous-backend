@@ -18,6 +18,7 @@ from ble_gatt import GATTServer
 from wifi import WifiManager
 from notifications import Notification, NotificationManager
 from profiles import ProfileManager
+from pour_over_profiles import PourOverProfileManager
 from hostname import HostnameManager
 from config import (
     MeticulousConfig,
@@ -117,6 +118,7 @@ def calibrate(sid, data=True):
 
 
 send_data_thread = None
+wifi_init_thread = None
 
 
 async def live():
@@ -174,6 +176,14 @@ def send_data_loop():
 
     loop.run_until_complete(send_data())
     loop.close()
+
+
+def start_wifi_manager_in_background():
+    global wifi_init_thread
+
+    logger.info("Starting Wi-Fi initialization in background")
+    wifi_init_thread = NamedThread("WifiInit", target=WifiManager.init)
+    wifi_init_thread.start()
 
 
 async def send_data():  # noqa: C901
@@ -296,15 +306,24 @@ def main():
 
     GATTServer.getServer().start()
 
-    WifiManager.init()
+    if Machine.emulated:
+        WifiManager.init()
+
     NotificationManager.init(sio)
     ProfileManager.init(sio)
+    PourOverProfileManager.init()
     SoundPlayer.init(emulation=Machine.emulated)
 
     # Check for mapped timezones json
     TimezoneManager.init()
 
     MeticulousConfig.setSIO(sio)
+
+    # Reports dispatched from the mobile app are announced to the dial over
+    # socket.io, so the report module needs the server too.
+    from api.bug_report import init_socket as init_report_socket
+
+    init_report_socket(sio)
 
     handlers = [
         (r"/socket.io/", socketio.get_tornado_handler(sio)),
@@ -341,6 +360,8 @@ def main():
     )
 
     app.listen(PORT, address="127.0.0.1")
+    if not Machine.emulated:
+        start_wifi_manager_in_background()
 
     sio.start_background_task(live)
 

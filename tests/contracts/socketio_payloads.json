@@ -1,0 +1,50 @@
+{
+  "status": [
+    "extracting",
+    "id",
+    "loaded_profile",
+    "name",
+    "profile",
+    "profile_time",
+    "sensors",
+    "setpoints",
+    "state",
+    "time"
+  ],
+  "status.sensors": [
+    "f",
+    "g",
+    "p",
+    "t",
+    "w"
+  ],
+  "sensors": [
+    "a_0",
+    "a_1",
+    "a_2",
+    "a_3",
+    "bh_cur",
+    "bh_pwr",
+    "lam_temp",
+    "m_cur",
+    "m_pos",
+    "m_pwr",
+    "m_spd",
+    "motor_temp",
+    "p",
+    "t_bar_down",
+    "t_bar_md",
+    "t_bar_mu",
+    "t_bar_up",
+    "t_ext_1",
+    "t_ext_2",
+    "t_motor_temp",
+    "t_tube",
+    "w_stat",
+    "weight_pred"
+  ],
+  "button": [
+    "time_since_last_event",
+    "type"
+  ]
+}

@@ -13,7 +13,10 @@ from config import (
     SSH_ENABLED,
     PROFILE_ORDER,
     PROFILE_AUTO_PURGE,
+    PROFILE_TARE_BEHAVIOR,
     PROFILE_PARTIAL_RETRACTION,
+    REPORT_CONTACT_MAIL,
+    SHOT_DATA_SHARING,
 )
 
 from heater_actuator import HeaterActuator
@@ -32,6 +35,13 @@ import copy
 from timezone_manager import TimezoneManager
 
 from machine import Machine
+from settings_validation import (
+    is_valid_setting_type,
+    normalize_report_contact_mail,
+    validate_partial_retraction,
+    validate_tare_behavior,
+)
+from shot_data_sharing import ShotDataSharing
 
 logger = MeticulousLogger.getLogger(__name__)
 
@@ -39,9 +49,8 @@ logger = MeticulousLogger.getLogger(__name__)
 class SettingsHandler(BaseHandler):
     def get(self, setting_name=None):
         if setting_name:
-            setting = MeticulousConfig[CONFIG_USER].get(setting_name)
-            if setting is not None:
-                response = {setting_name: setting}
+            if setting_name in MeticulousConfig[CONFIG_USER]:
+                response = {setting_name: MeticulousConfig[CONFIG_USER][setting_name]}
                 self.write(json.dumps(response))
             else:
                 self.set_status(404)
@@ -60,9 +69,16 @@ class SettingsHandler(BaseHandler):
             error_message = f"setting {setting_target} not found"
             raise KeyError(error_message)
 
-        if type(value) is not type(MeticulousConfig[CONFIG_USER][setting_target]):
-            error_message = f"setting value invalid, received {type(value)} and expected {type(MeticulousConfig[CONFIG_USER][setting_target])}"
+        current_value = MeticulousConfig[CONFIG_USER][setting_target]
+        if not is_valid_setting_type(setting_target, value, current_value):
+            error_message = f"setting value invalid, received {type(value)} and expected {type(current_value)}"
             raise KeyError(error_message)
+
+        if setting_target == PROFILE_TARE_BEHAVIOR:
+            validate_tare_behavior(value)
+
+        if setting_target == PROFILE_PARTIAL_RETRACTION:
+            validate_partial_retraction(value)
 
     async def update_timezone_sync(self, value) -> str:
         if value == AUTOMATIC_TIMEZONE_SYNC:
@@ -111,6 +127,10 @@ class SettingsHandler(BaseHandler):
 
                 if setting_target == PROFILE_PARTIAL_RETRACTION and isinstance(value, int):
                     value = float(value)
+
+                # Stored trimmed, with an empty address meaning "not provided".
+                if setting_target == REPORT_CONTACT_MAIL:
+                    value = normalize_report_contact_mail(value)
 
                 self.validate_setting(setting_target, value)
 
@@ -163,6 +183,12 @@ class SettingsHandler(BaseHandler):
 
                 if setting_target == PROFILE_AUTO_PURGE:
                     Machine.setAutoPurgeAfterShot(value)
+
+                if setting_target == PROFILE_TARE_BEHAVIOR:
+                    Machine.setTareBehavior(value)
+
+                if setting_target == SHOT_DATA_SHARING:
+                    ShotDataSharing.on_setting_changed(value)
 
                 # If we made it here without exception we can update the setting
                 workConfig[setting_target] = value

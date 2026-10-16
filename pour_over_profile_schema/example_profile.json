@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "brew_type": "pour_over",
+  "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "name": "Two Pour V60",
+  "author": "Meticulous",
+  "author_id": "f47ac10b-58cc-4372-a567-0e02b2c3d480",
+  "display": {
+    "accentColor": "#315566",
+    "shortDescription": "A clear two-pour V60 recipe.",
+    "description": "Bloom, wait, then complete the brew with one steady main pour."
+  },
+  "recipe": {
+    "coffee_dose_g": 15,
+    "total_water_g": 250,
+    "water_temperature_c": 92,
+    "target_total_time_s": 180,
+    "target_total_time_max_s": 210,
+    "brewer": {
+      "name": "V60",
+      "size": "02"
+    },
+    "filter": {
+      "name": "Hario 02 paper",
+      "preparation": "Rinse before brewing"
+    },
+    "grind": {
+      "description": "Medium-fine"
+    }
+  },
+  "stages": [
+    {
+      "key": "bloom",
+      "name": "Bloom",
+      "starts_at_s": 0,
+      "pour": {
+        "water_g": 50,
+        "duration_s": 10,
+        "target_cumulative_water_g": 50,
+        "flow_rate_g_s": 5,
+        "flow_range_g_s": [4, 6],
+        "pattern": "spiral_out"
+      },
+      "note": "Wet all grounds evenly"
+    },
+    {
+      "key": "main",
+      "name": "Main pour",
+      "starts_at_s": 45,
+      "pour": {
+        "water_g": 200,
+        "duration_s": 40,
+        "target_cumulative_water_g": 250,
+        "flow_rate_g_s": 5,
+        "pattern": "center"
+      }
+    }
+  ]
+}

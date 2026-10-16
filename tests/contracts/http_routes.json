@@ -1,0 +1,628 @@
+[
+  {
+    "path": "/api/v1/action/(.*)",
+    "handler": "ExecuteActionHandler",
+    "module": "api.action",
+    "methods": [
+      "get",
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/history",
+    "handler": "HistoryHandler",
+    "module": "api.history",
+    "methods": [
+      "get",
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/history/current",
+    "handler": "CurrentShotHandler",
+    "module": "api.history",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/history/debug",
+    "handler": "RedirectHandler",
+    "module": "api.history",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/history/debug.zip",
+    "handler": "CompressedDebugHistoryHandler",
+    "module": "api.history",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/history/debug/(.*)",
+    "handler": "ZstdHistoryHandler",
+    "module": "api.history",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/history/files",
+    "handler": "RedirectHandler",
+    "module": "api.history",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/history/files/(.*)",
+    "handler": "ZstdHistoryHandler",
+    "module": "api.history",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/history/last",
+    "handler": "LastShotHandler",
+    "module": "api.history",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/history/last-debug-file",
+    "handler": "LastDebugFileHandler",
+    "module": "api.history",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/history/pour-over",
+    "handler": "PourOverHistoryHandler",
+    "module": "api.pour_over_history",
+    "methods": [
+      "get",
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/history/pour-over/files",
+    "handler": "RedirectHandler",
+    "module": "api.pour_over_history",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/history/pour-over/files/(.*)",
+    "handler": "PourOverFileHandler",
+    "module": "api.pour_over_history",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/history/pour-over/last",
+    "handler": "LastPourOverHandler",
+    "module": "api.pour_over_history",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/history/rating/(.*)",
+    "handler": "ShotRatingHandler",
+    "module": "api.history",
+    "methods": [
+      "get",
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/history/search",
+    "handler": "ProfileSearchHandler",
+    "module": "api.history",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/history/stats",
+    "handler": "StatisticsHandler",
+    "module": "api.history",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/history/upload-index",
+    "handler": "UploadHistoryIndexHandler",
+    "module": "api.history",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/machine",
+    "handler": "MachineInfoHandler",
+    "module": "api.machine",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/machine/OS_update_status",
+    "handler": "UpdateOSStatus",
+    "module": "api.machine",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/machine/backlight",
+    "handler": "MachineBacklightController",
+    "module": "api.machine",
+    "methods": [
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/machine/factory_reset",
+    "handler": "MachineResetHandler",
+    "module": "api.machine",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/machine/root-password",
+    "handler": "RootPasswordHandler",
+    "module": "api.password_handler",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/machine/time",
+    "handler": "MachineTimeHandler",
+    "module": "api.machine",
+    "methods": [
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/machine/unlock",
+    "handler": "MachineUnlockHandler",
+    "module": "api.machine",
+    "methods": [
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/manufacturing[/]*",
+    "handler": "ManufacturingSettingsHandler",
+    "module": "api.settings",
+    "methods": [
+      "get",
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/notifications",
+    "handler": "GetNotificationsHandler",
+    "module": "api.notifications",
+    "methods": [
+      "get",
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/notifications/acknowledge",
+    "handler": "GetNotificationsHandler",
+    "module": "api.notifications",
+    "methods": [
+      "get",
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/pour-over/profile/delete/([0-9a-fA-F-]+)",
+    "handler": "DeletePourOverProfileHandler",
+    "module": "api.pour_over_profiles",
+    "methods": [
+      "delete"
+    ]
+  },
+  {
+    "path": "/api/v1/pour-over/profile/get/([0-9a-fA-F-]+)",
+    "handler": "GetPourOverProfileHandler",
+    "module": "api.pour_over_profiles",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/pour-over/profile/image/([0-9a-fA-F-]+)",
+    "handler": "GetPourOverProfileImageHandler",
+    "module": "api.pour_over_profiles",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/pour-over/profile/list",
+    "handler": "ListPourOverProfilesHandler",
+    "module": "api.pour_over_profiles",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/pour-over/profile/schema",
+    "handler": "PourOverProfileSchemaHandler",
+    "module": "api.pour_over_profiles",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/profile/changes",
+    "handler": "ChangesHandler",
+    "module": "api.profiles",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/profile/defaults",
+    "handler": "ListDefaultsHandler",
+    "module": "api.profiles",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/profile/delete/([0-9a-fA-F-]+)",
+    "handler": "DeleteProfileHandler",
+    "module": "api.profiles",
+    "methods": [
+      "delete",
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/profile/from_manual",
+    "handler": "CreateProfileFromManualHandler",
+    "module": "api.profiles",
+    "methods": [
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/profile/get/([0-9a-fA-F-]+)",
+    "handler": "GetProfileHandler",
+    "module": "api.profiles",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/profile/image([/]*)",
+    "handler": "ListImagesHandler",
+    "module": "api.profiles",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/profile/image/(.*)",
+    "handler": "StaticFileHandler",
+    "module": "api.profiles",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/profile/last",
+    "handler": "LastProfileHandler",
+    "module": "api.profiles",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/profile/legacy",
+    "handler": "LegacyProfileHandler",
+    "module": "api.profiles",
+    "methods": [
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/profile/list",
+    "handler": "ListHandler",
+    "module": "api.profiles",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/profile/load",
+    "handler": "LoadProfileHandler",
+    "module": "api.profiles",
+    "methods": [
+      "get",
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/profile/load/([0-9a-fA-F-]+)",
+    "handler": "LoadProfileHandler",
+    "module": "api.profiles",
+    "methods": [
+      "get",
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/profile/save",
+    "handler": "SaveProfileHandler",
+    "module": "api.profiles",
+    "methods": [
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/profile/selected",
+    "handler": "SelectedProfileHandler",
+    "module": "api.profiles",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/reports/create",
+    "handler": "ReportsCreateHandler",
+    "module": "api.bug_report",
+    "methods": [
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/reports/dispatch",
+    "handler": "ReportsDispatchHandler",
+    "module": "api.bug_report",
+    "methods": [
+      "get",
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/reports/draft/([^/]+)",
+    "handler": "ReportDraftHandler",
+    "module": "api.bug_report",
+    "methods": [
+      "delete",
+      "get",
+      "put"
+    ]
+  },
+  {
+    "path": "/api/v1/reports/list",
+    "handler": "ReportsListHandler",
+    "module": "api.bug_report",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/reports/preflight",
+    "handler": "ReportsPreflightHandler",
+    "module": "api.bug_report",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/reports/request",
+    "handler": "ReportsRequestHandler",
+    "module": "api.bug_report",
+    "methods": [
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/reports/submit",
+    "handler": "ReportsSubmitHandler",
+    "module": "api.bug_report",
+    "methods": [
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/scaleCalibrate",
+    "handler": "ScaleCalibrateHandler",
+    "module": "api.serial",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/serial",
+    "handler": "SerialNumberHandler",
+    "module": "api.serial",
+    "methods": [
+      "get",
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/settings[/]*(.*)",
+    "handler": "SettingsHandler",
+    "module": "api.settings",
+    "methods": [
+      "get",
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/smoke-validation",
+    "handler": "SmokeValidationHandler",
+    "module": "api.smoke_validation",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/sounds/list",
+    "handler": "ListSoundsHandler",
+    "module": "api.sounds",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/sounds/play/(.*)",
+    "handler": "PlaySoundHandler",
+    "module": "api.sounds",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/sounds/theme/get",
+    "handler": "GetThemeHandler",
+    "module": "api.sounds",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/sounds/theme/list",
+    "handler": "ListThemesHandler",
+    "module": "api.sounds",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/sounds/theme/set/(.*)",
+    "handler": "SetThemeHandler",
+    "module": "api.sounds",
+    "methods": [
+      "get",
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/sounds/theme/upload",
+    "handler": "UploadThemeHandler",
+    "module": "api.sounds",
+    "methods": [
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/timezones/(.*)",
+    "handler": "TimezoneUIHandler",
+    "module": "api.settings",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/update/firmware",
+    "handler": "UpdateFirmwareWithZipHandler",
+    "module": "api.update",
+    "methods": [
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/wifi/config",
+    "handler": "WiFiConfigHandler",
+    "module": "api.emulation",
+    "methods": [
+      "get",
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/wifi/config",
+    "handler": "WiFiConfigHandler",
+    "module": "api.wifi",
+    "methods": [
+      "get",
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/wifi/config/qr.png",
+    "handler": "WiFiQRHandler",
+    "module": "api.emulation",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/wifi/config/qr.png",
+    "handler": "WiFiQRHandler",
+    "module": "api.wifi",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/wifi/connect",
+    "handler": "WiFiConnectHandler",
+    "module": "api.emulation",
+    "methods": [
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/wifi/connect",
+    "handler": "WiFiConnectHandler",
+    "module": "api.wifi",
+    "methods": [
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/wifi/delete",
+    "handler": "WiFiDeleteHandler",
+    "module": "api.wifi",
+    "methods": [
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/wifi/list",
+    "handler": "WiFiListHandler",
+    "module": "api.emulation",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/wifi/list",
+    "handler": "WiFiListHandler",
+    "module": "api.wifi",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/wifi/repair",
+    "handler": "WiFiRepairHandler",
+    "module": "api.wifi",
+    "methods": [
+      "post"
+    ]
+  }
+]

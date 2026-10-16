@@ -1,4 +1,6 @@
+import functools
 import json
+import re
 from datetime import datetime, timezone
 
 import jsonschema
@@ -11,7 +13,15 @@ from profile_preprocessor import (
     UndefinedVariableException,
     VariableTypeException,
 )
+import manual_mode
 from profiles import IMAGES_PATH, ProfileManager
+from pour_over_profiles import (
+    MAX_POUR_OVER_PROFILE_BYTES,
+    PourOverProfileError,
+    PourOverProfileManager,
+    PourOverProfileTooLargeError,
+)
+from .pour_over_profiles import write_pour_over_profile_error
 from limited_access import is_limited_access
 from simple_profile import SimpleProfile
 
@@ -23,6 +33,8 @@ from .emulation import LEGACY_DUMMY_PROFILE
 
 logger = MeticulousLogger.getLogger(__name__)
 
+POUR_OVER_BREW_TYPE_PATTERN = re.compile(rb'"brew_type"\s*:\s*"pour_over"')
+
 
 class ListHandler(BaseHandler):
     def get(self):
@@ -33,6 +45,11 @@ class ListHandler(BaseHandler):
         profiles = ProfileManager.list_profiles()
         response = []
         for profile in profiles:
+            # Manual profiles are reached from the manual-mode setup flow, not
+            # from the profile list (contract "Manual mode" v5, section 2).
+            # `get`, `load`, `save` and `last` still serve them.
+            if profile.get("manual") is True:
+                continue
             p = profile.copy()
             if not full_profiles:
                 if "stages" in p:
@@ -47,12 +64,48 @@ class ListDefaultsHandler(BaseHandler):
 
 
 class SaveProfileHandler(BaseHandler):
-    def post(self):
+    async def post(self):
+        data = None
         try:
             change_id = self.request.headers.get("X-Change-Id", None)
-            data = json.loads(self.request.body)
-            profile_response = ProfileManager.save_profile(data, change_id=change_id)
+            # Tornado already owns the request bytes, but parsing a very large
+            # JSON object would create another large object graph on a small
+            # machine. Reject recognizable Pour Over payloads at the canonical
+            # stored-profile limit before decoding them. Espresso retains its
+            # existing, separate image limits and behavior.
+            if len(
+                self.request.body
+            ) > MAX_POUR_OVER_PROFILE_BYTES and POUR_OVER_BREW_TYPE_PATTERN.search(
+                self.request.body
+            ):
+                raise PourOverProfileTooLargeError()
+            data = json.loads(
+                self.request.body,
+                parse_constant=lambda value: (_ for _ in ()).throw(
+                    ValueError(f"Invalid number {value}")
+                ),
+            )
+            if isinstance(data, dict) and data.get("brew_type") == "pour_over":
+                loop = asyncio.get_event_loop()
+                profile_response = await loop.run_in_executor(
+                    None,
+                    functools.partial(
+                        PourOverProfileManager.save_profile,
+                        data,
+                        change_id=change_id,
+                    ),
+                )
+            else:
+                profile_response = ProfileManager.save_profile(data, change_id=change_id)
             self.write(profile_response)
+        except PourOverProfileError as error:
+            profile_id = data.get("id") if isinstance(data, dict) else None
+            logger.warning(
+                "Rejected Pour Over profile %s: %s",
+                profile_id,
+                error.__class__.__name__,
+            )
+            write_pour_over_profile_error(self, error)
         except jsonschema.exceptions.ValidationError as err:
             errors = {
                 "status": "error",
@@ -61,12 +114,68 @@ class SaveProfileHandler(BaseHandler):
 
             self.set_status(400)
             self.write(errors)
-            logger.debug(data)
+            profile_id = data.get("id") if isinstance(data, dict) else None
+            logger.warning("Rejected espresso profile %s: %s", profile_id, err.message)
             return
         except Exception as e:
             self.set_status(400)
             self.write({"status": "error", "error": "failed to save profile", "cause": f"{e}"})
             logger.warning("Failed to save profile:", exc_info=e, stack_info=True)
+
+
+class CreateProfileFromManualHandler(BaseHandler):
+    """Save a regular profile built from the targets of a recorded manual brew."""
+
+    async def post(self):
+        try:
+            body = self.request.body
+            data = json.loads(body) if body else {}
+            if not isinstance(data, dict):
+                self.set_status(400)
+                self.write({"status": "error", "error": "body must be a JSON object"})
+                return
+
+            name = data.get("name")
+            if "name" in data and not isinstance(name, str):
+                self.set_status(400)
+                self.write({"status": "error", "error": "name must be a string"})
+                return
+
+            shot_id = data.get("shot_id")
+            if "shot_id" in data and not isinstance(shot_id, str):
+                self.set_status(400)
+                self.write({"status": "error", "error": "shot_id must be a string"})
+                return
+
+            change_id = self.request.headers.get("X-Change-Id", None)
+
+            # Reading the shot decompresses its file, so keep it off the loop.
+            loop = asyncio.get_event_loop()
+            shot = await loop.run_in_executor(None, manual_mode.find_manual_shot, shot_id)
+            profile = await loop.run_in_executor(
+                None, manual_mode.build_profile_from_manual_shot, shot, name
+            )
+
+            self.write(ProfileManager.save_profile(profile, change_id=change_id))
+        except manual_mode.ManualShotNotFound:
+            self.set_status(404)
+            self.write({"status": "error", "error": "no manual brew found"})
+        except manual_mode.ManualShotHasNoTargets:
+            self.set_status(409)
+            self.write({"status": "error", "error": "shot has no target samples"})
+        except jsonschema.exceptions.ValidationError as err:
+            self.set_status(400)
+            self.write({"status": "error", "error": f"JSON validation error: {err.message}"})
+        except Exception as e:
+            self.set_status(400)
+            self.write(
+                {
+                    "status": "error",
+                    "error": "failed to create profile from manual brew",
+                    "cause": f"{e}",
+                }
+            )
+            logger.warning("Failed to create profile from manual brew:", exc_info=e)
 
 
 class LoadProfileHandler(BaseHandler):
@@ -282,6 +391,7 @@ class ListImagesHandler(BaseHandler):
 
 API.register_handler(APIVersion.V1, r"/profile/list", ListHandler),
 API.register_handler(APIVersion.V1, r"/profile/save", SaveProfileHandler),
+API.register_handler(APIVersion.V1, r"/profile/from_manual", CreateProfileFromManualHandler),
 API.register_handler(APIVersion.V1, r"/profile/load", LoadProfileHandler),
 API.register_handler(APIVersion.V1, r"/profile/defaults", ListDefaultsHandler),
 API.register_handler(APIVersion.V1, r"/profile/image([/]*)", ListImagesHandler),
