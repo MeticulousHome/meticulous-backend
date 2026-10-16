@@ -319,6 +319,12 @@ def main():
 
     MeticulousConfig.setSIO(sio)
 
+    # Reports dispatched from the mobile app are announced to the dial over
+    # socket.io, so the report module needs the server too.
+    from api.bug_report import init_socket as init_report_socket
+
+    init_report_socket(sio)
+
     handlers = [
         (r"/socket.io/", socketio.get_tornado_handler(sio)),
     ]
@@ -329,6 +335,24 @@ def main():
     handlers.extend(API.get_routes())
 
     handlers.extend(WEB_UI_HANDLER)
+
+    # Clear expired report artifacts before exposing the report endpoints. The
+    # sweep is also repeated before each collection, so a startup failure is
+    # safe to log and recover from on the next create request.
+    try:
+        from api.bug_report import sweep_reports
+
+        sweep_reports()
+    except Exception:
+        logger.warning("Initial report sweep failed", exc_info=True)
+
+    async def sweep_reports_daily():
+        try:
+            await asyncio.get_running_loop().run_in_executor(None, sweep_reports)
+        except Exception:
+            logger.warning("Daily report sweep failed", exc_info=True)
+
+    tornado.ioloop.PeriodicCallback(sweep_reports_daily, 24 * 60 * 60 * 1000).start()
 
     app = tornado.web.Application(
         handlers,

@@ -30,6 +30,7 @@ from esp_serial.data import (
 )
 from log import MeticulousLogger
 from shot_manager import Shot, ShotManager
+from shot_data_sharing import ShotDataSharing
 import copy
 
 logger = MeticulousLogger.getLogger(__name__)
@@ -123,17 +124,31 @@ class DebugShot(Shot):
 class ShotDebugManager:
     _current_data: DebugShot = None
     clear_current_data_lock = threading.Lock()
+    # Guards only the current shot's log list. ShotLogHandler takes it with the
+    # logging handler's lock held, so it must never be held while logging; the
+    # handler must not take clear_current_data_lock either: code holding that one
+    # logs (building a DebugShot, ingesting data), and the two orders deadlocked.
+    _logs_lock = threading.Lock()
     logging_handler = None
 
     @staticmethod
     def _copy_current_data(clear_current_data: bool = False):
-        current_data_copy = None
         with ShotDebugManager.clear_current_data_lock:
-            if ShotDebugManager._current_data is not None:
-                current_data_copy = copy.deepcopy(ShotDebugManager._current_data)
+            current = ShotDebugManager._current_data
+            if current is None:
+                return None
+            # DebugShot mutates shotData and logs on the serial path. Copy the
+            # containers while protected, then do the expensive deep copy after
+            # releasing the lock so ingestion is not stalled.
+            current_data_copy = copy.copy(current)
+            for attribute in ("logs", "shotData"):
+                value = getattr(current, attribute, None)
+                if isinstance(value, list):
+                    with ShotDebugManager._logs_lock:
+                        setattr(current_data_copy, attribute, list(value))
             if clear_current_data:
                 ShotDebugManager._current_data = None
-        return current_data_copy
+        return copy.deepcopy(current_data_copy)
 
     @staticmethod
     def _prepare_debug_shot_data(current_data_copy: DebugShot, start: datetime) -> str:
@@ -332,6 +347,8 @@ class ShotDebugManager:
         start, file_path = ShotDebugManager._debug_file_path(
             DEBUG_HISTORY_PATH, current_data_copy
         )
+        shot_start = start
+        shot_type = current_data_copy.shottype
         data_json = ShotDebugManager._prepare_debug_shot_data(current_data_copy, start)
 
         async def compress_current_data(data_json):
@@ -350,6 +367,9 @@ class ShotDebugManager:
                 ShotDataBase.link_debug_file(ShotManager.db_history_id, debug_dir_filename)
 
             ShotManager.db_history_id = None
+
+            if ShotDataSharing.should_upload(shot_type):
+                await ShotDataSharing.upload_debug_shot(data_json, shot_start, file_path)
 
             data_json = None
             logger.info("Debug shot data compressed and saved")
@@ -372,14 +392,16 @@ class ShotDebugManager:
 
     @staticmethod
     def handleLog(log_record: logging.LogRecord, formatter):
-        with ShotDebugManager.clear_current_data_lock:
-            if ShotDebugManager._current_data is not None:
-                start_time = ShotDebugManager._current_data.startTime
-                msg = formatter(log_record)
-                log: dict = {
-                    "profile_ms": int((log_record.created - start_time) * 1000.0),
-                    "loglevel": log_record.levelname,
-                    "caller": log_record.name,
-                    "log_message": msg,
-                }
-                ShotDebugManager._current_data.logs.append(log)
+        # Read the reference once instead of locking clear_current_data_lock (see
+        # _logs_lock): a shot cleared meanwhile only loses this record.
+        current = ShotDebugManager._current_data
+        if current is None:
+            return
+        log: dict = {
+            "profile_ms": int((log_record.created - current.startTime) * 1000.0),
+            "loglevel": log_record.levelname,
+            "caller": log_record.name,
+            "log_message": formatter(log_record),
+        }
+        with ShotDebugManager._logs_lock:
+            current.logs.append(log)

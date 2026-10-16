@@ -4,9 +4,6 @@
 [submodule "profile_schema"]
 	path = profile_schema
 	url = https://github.com/MeticulousHome/espresso-profile-schema/
-[submodule "default_profiles"]
-	path = default_profiles
-	url = https://github.com/MeticulousHome/ProfileDefaults
 [submodule "log_redactor"]
 	path = log_redactor
 	url = https://github.com/MeticulousHome/meticulous-log-redactor

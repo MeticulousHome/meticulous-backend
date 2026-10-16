@@ -136,3 +136,20 @@ def test_reportable_config_omits_invalid_types_and_non_mapping_input():
         == {}
     )
     assert get_reportable_config(None) == {}
+
+
+def test_reportable_config_never_includes_the_contact_mail():
+    # The address is PII and get_reportable_config only copies allowlisted keys.
+    reportable = get_reportable_config(
+        {
+            "user": {
+                "report_contact_mail": "user@example.com",
+                "enable_sounds": True,
+            },
+            "system": {"report_contact_mail": "user@example.com"},
+        }
+    )
+
+    assert reportable == {"user": {"enable_sounds": True}}
+    assert "report_contact_mail" not in repr(reportable)
+    assert "user@example.com" not in repr(reportable)

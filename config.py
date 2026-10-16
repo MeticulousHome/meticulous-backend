@@ -68,6 +68,11 @@ MACHINE_DEFAULT_BATCH_NUMBER = None
 MACHINE_COLOR = "color"
 MACHINE_DEFAULT_COLOR = None
 
+# Random identifier used to group anonymously shared shot data. It is generated
+# when the user opts in and is never derived from the serial number.
+SHOT_DATA_SHARING_ID = "shot_data_sharing_id"
+SHOT_DATA_SHARING_ID_DEFAULT = None
+
 MACHINE_BUILD_DATE = "build_date"
 MACHINE_DEFAULT_BUILD_DATE = None
 
@@ -116,6 +121,18 @@ DEBUG_SHOT_DATA_RETENTION_DEFAULT = 31
 
 ALLOW_LEGACY_JSON = "allow_legacy_json"
 ALLOW_LEGACY_JSON_DEFAULT = False
+
+# Anonymous shot data sharing (opt-in upload of debug shot files).
+# None means the user has not answered the prompt yet; the dial asks on boot
+# until the value becomes True (opted in) or False (declined).
+SHOT_DATA_SHARING = "shot_data_sharing"
+SHOT_DATA_SHARING_DEFAULT = None
+
+# Contact email attached to bug reports so support can reach the user back.
+# None means the user never provided one; the dial asks before its first
+# report and the mobile app prefills its email field from it.
+REPORT_CONTACT_MAIL = "report_contact_mail"
+REPORT_CONTACT_MAIL_DEFAULT = None
 
 # Updates
 UPDATE_CHANNEL = "update_channel"
@@ -222,6 +239,7 @@ DefaultConfiguration_V1 = {
         MACHINE_BATCH_NUMBER: MACHINE_DEFAULT_BATCH_NUMBER,
         MACHINE_BUILD_DATE: MACHINE_DEFAULT_BUILD_DATE,
         MACHINE_COLOR: MACHINE_DEFAULT_COLOR,
+        SHOT_DATA_SHARING_ID: SHOT_DATA_SHARING_ID_DEFAULT,
         ROOT_PASSWORD: ROOT_PASSWORD_DEFAULT,
         LAST_SYSTEM_VERSIONS: LAST_SYSTEM_VERSIONS_DEFAULT,
     },
@@ -240,6 +258,8 @@ DefaultConfiguration_V1 = {
         IDLE_SCREEN: IDLE_SCREEN_DEFAULT,
         REVERSE_SCROLLING: REVERSE_SCROLLING_DEFAULT,
         ALLOW_LEGACY_JSON: ALLOW_LEGACY_JSON_DEFAULT,
+        SHOT_DATA_SHARING: SHOT_DATA_SHARING_DEFAULT,
+        REPORT_CONTACT_MAIL: REPORT_CONTACT_MAIL_DEFAULT,
         MACHINE_ALLOW_STAGE_SKIPPING: MACHINE_ALLOW_STAGE_SKIPPING_DEFAULT,
         USB_MODE: USB_MODE_DEFAULT,
         TIMEZONE_SYNC: DEFAULT_TIMEZONE_SYNC,
@@ -292,7 +312,9 @@ class MeticulousConfigDict(dict):
     """
 
     def __init__(self, path, default_dict={}) -> None:
-        super().__init__(default_dict)
+        # A deep copy: the sections are dicts, and sharing them would make every
+        # setting written here, and the merged config file, overwrite the defaults.
+        super().__init__(copy.deepcopy(default_dict))
 
         # Make attributes inheritable
         self.__path = Path(path)

@@ -58,7 +58,7 @@ from device_identity import (
 from log import MeticulousLogger
 from notifications import Notification, NotificationManager, NotificationResponse
 from shot_debug_manager import ShotDebugManager
-from shot_manager import ShotManager
+from shot_manager import PushToBrewTimer, ShotManager
 from smoke_validation import SmokeValidationManager
 from sounds import SoundPlayer, Sounds
 from api.alarms import AlarmManager, AlarmType
@@ -113,6 +113,11 @@ BACKEND = os.getenv("BACKEND", "FIKA").upper()
 # its info. Repeat the read at this interval until it does.
 MILEAGE_RETRY_INTERVAL_SECONDS = 5
 
+# Until the ESP has answered action,info with ESPInfo, ask again at this
+# interval: a request sent while it is still booting, or whose reply is lost,
+# would otherwise leave the firmware version and identity unknown.
+ESP_INFO_RETRY_INTERVAL_SECONDS = 2
+
 
 class esp_nvs_keys(Enum):
     color = "color_key"
@@ -135,6 +140,8 @@ class Machine:
         "scale_master_calibration",
         "preheat",
         "continue",
+        # ends the user stages of a running shot through the normal retract; the dial sends it on a double click inside a user stage
+        "finish",
         "home",
         "purge",
         "continue",
@@ -157,6 +164,8 @@ class Machine:
     # When we last asked the ESP for its mileage, set by every request so a
     # retry never races one already in flight.
     _mileage_last_request = 0.0
+    # When we last sent action,info (time.monotonic()), None when a request is due.
+    _info_requested_at = None
     profileReady = False
     oldProfileReady = False
 
@@ -360,8 +369,7 @@ class Machine:
             case "FIKA" | _:
                 Machine._connection = FikaSerialConnection("/dev/ttymxc0")
 
-        Machine.writeStr("\x03")
-        Machine.action("info")
+        Machine._greet()
 
         if not Machine.emulated:
             som = Machine.get_somrev()
@@ -415,18 +423,29 @@ class Machine:
                     return None
             return self.buf
 
+    @staticmethod
+    def _greet():
+        """Drop what the port buffered before it was opened, then ask the ESP for its info.
+
+        The flush comes first: done after the request, it can throw away the
+        ESP's ESPInfo reply.
+        """
+        Machine._connection.port.reset_input_buffer()
+        # A lone terminator ends whatever partial message the ESP may hold.
+        Machine.writeStr("\x03")
+        Machine.action("info")
+        Machine._info_requested_at = time.monotonic()
+
     async def _read_data():  # noqa: C901
         Machine.shot_start_time = time.time()
-        Machine._connection.port.reset_input_buffer()
-        Machine._connection.port.write(b"32\n")
         uart = Machine.ReadLine(Machine._connection.port)
 
         old_status = MachineStatus.IDLE
         old_ready = False
         time_flag = False
-        info_requested = False
         time_passed = 0
         profile_time = 0
+        push_to_brew_timer = PushToBrewTimer()
         emulated_firmware = False
         previous_preheat_remaining = None
         logger.info("Starting to listen for esp32 messages")
@@ -475,7 +494,7 @@ class Machine:
                     Machine.startTime = time.time()
                     Machine.esp_info = None
                     Machine._pending_tare_behavior_writes = []
-                    info_requested = False
+                    Machine._info_requested_at = None
                     Machine.infoReady = False
                     Machine.profileReady = False
                     Machine._resetDeviceUUIDEnrollment()
@@ -489,12 +508,20 @@ class Machine:
                     Machine.startUpdate()
                     Machine.reset_count = 0
 
-                if Machine.infoReady and not info_requested and Machine.esp_info is None:
+                if (
+                    Machine.infoReady
+                    and Machine.esp_info is None
+                    and (
+                        Machine._info_requested_at is None
+                        or time.monotonic() - Machine._info_requested_at
+                        >= ESP_INFO_RETRY_INTERVAL_SECONDS
+                    )
+                ):
                     logger.info(
                         "Machine has not provided us with a firmware version yet. Requesting now"
                     )
                     Machine.action("info")
-                    info_requested = True
+                    Machine._info_requested_at = time.monotonic()
 
                 match (data_str_sensors):
                     # FIXME: This should be replace in the firmware with an "Event," prefix
@@ -672,12 +699,16 @@ class Machine:
                     is_heating = data.status == MachineStatus.HEATING
                     is_starting = data.status == MachineStatus.STARTING
 
+                    if old_status == MachineStatus.IDLE and not Machine.is_idle:
+                        push_to_brew_timer.reset()
+                    push_to_brew_timer.observe(data.status, time.monotonic())
+
                     # A shot started
                     if was_preparing and data.status != old_status:
                         time_flag = True
                         shot_start_time = time.time()
                         logger.info("shot start_time: {:.1f}".format(shot_start_time))
-                        ShotManager.start()
+                        ShotManager.start(push_to_brew_timer.duration_ms)
                         SoundPlayer.play_event_sound(Sounds.BREWING_START)
                     elif time_flag:
                         # A shot could have ended
@@ -778,7 +809,6 @@ class Machine:
                     Machine.esp_info = info
                     Machine.infoReady = True
                     Machine.requestMileage()
-                    info_requested = False
                     Machine.firmware_running = Machine._parseVersionString(info.firmwareV)
 
                     backend_partial_retraction = float(
@@ -852,14 +882,6 @@ class Machine:
                         logger.debug(f"Button Event recieved: {button_event}")
 
                     await Machine._sio.emit("button", button_event.to_sio())
-
-                # FIXME this should be a callback to the frontends in the future
-                if (
-                    button_event is not None
-                    and button_event.event is ButtonEventEnum.ENCODER_DOUBLE
-                ):
-                    logger.info("DOUBLE ENCODER, Returning to idle")
-                    Machine.end_profile()
 
                 if (
                     not old_ready

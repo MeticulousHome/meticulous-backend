@@ -1,8 +1,9 @@
 # Stage 1: Build the venv with all compiled dependencies
 FROM debian:bookworm AS builder
 
-RUN apt-get update -y && apt-get dist-upgrade -y
-RUN apt-get install -y build-essential libcairo2-dev libxt-dev libgirepository1.0-dev libgstreamer1.0-dev \
+# One layer: with update cached apart from install, a later install asks for
+# package versions the mirror has already replaced and fails with 404.
+RUN apt-get update -y && apt-get dist-upgrade -y && apt-get install -y build-essential libcairo2-dev libxt-dev libgirepository1.0-dev libgstreamer1.0-dev \
     libsystemd-dev libparted-dev libglib2.0-dev libffi-dev python3-dev pkg-config \
     python3 \
     python3-setuptools \
@@ -40,6 +41,7 @@ RUN mkdir -p opt/meticulous-venv \
     opt/meticulous-backend/api \
     opt/meticulous-backend/esp_serial/connection \
     opt/meticulous-backend/monitoring \
+    opt/meticulous-backend/profile_converter \
     opt/meticulous-backend/images/notificationImages \
     opt/meticulous-backend/images/default \
     opt/meticulous-backend/alembic/versions \
@@ -58,12 +60,16 @@ COPY *.py /pkg/opt/meticulous-backend/
 COPY pyproject.toml /pkg/opt/meticulous-backend/
 COPY alembic.ini /pkg/opt/meticulous-backend/
 COPY UI_timezones.json /pkg/opt/meticulous-backend/
+COPY simple_profile.json /pkg/opt/meticulous-backend/
 
 COPY api/*.py /pkg/opt/meticulous-backend/api/
 COPY esp_serial/*.py /pkg/opt/meticulous-backend/esp_serial/
 COPY esp_serial/connection/*.py /pkg/opt/meticulous-backend/esp_serial/connection/
 COPY esp_serial/connection/*.json /pkg/opt/meticulous-backend/esp_serial/connection/
 COPY monitoring/*.py /pkg/opt/meticulous-backend/monitoring/
+# Imported at module load by manual_program.py (via profiles.py), so the backend
+# fails to start without it. Plain package, not a submodule.
+COPY profile_converter/*.py /pkg/opt/meticulous-backend/profile_converter/
 COPY images/notificationImages/*.py /pkg/opt/meticulous-backend/images/notificationImages/
 
 # Alembic migrations
@@ -75,10 +81,9 @@ COPY alembic/versions/*.py /pkg/opt/meticulous-backend/alembic/versions/
 # import time, so a .deb built without this fails at service start.
 COPY log_redactor/*.py /pkg/opt/meticulous-backend/log_redactor/
 
-# Data files (submodules - must be checked out before building)
+# Data files (submodules must be checked out before building)
 COPY profile_schema/ /pkg/opt/meticulous-backend/profile_schema/
 COPY pour_over_profile_schema/ /pkg/opt/meticulous-backend/pour_over_profile_schema/
-COPY default_profiles/ /pkg/opt/meticulous-backend/default_profiles/
 COPY sounds/ /pkg/opt/meticulous-backend/sounds/
 COPY images/default/ /pkg/opt/meticulous-backend/images/default/
 

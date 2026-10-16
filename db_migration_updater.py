@@ -12,7 +12,7 @@ from collections.abc import Sequence
 
 logger = MeticulousLogger.getLogger(__name__)
 
-DB_VERSION_REQUIRED = "b71d84a4c2ef"
+DB_VERSION_REQUIRED = "c4d2e9f1a7b3"
 
 USER_DB_MIGRATION_DIR = os.getenv("USER_DB_MIGRATION_DIR", "/meticulous-user/.dbmigrations")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

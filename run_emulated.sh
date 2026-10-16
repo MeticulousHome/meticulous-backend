@@ -13,7 +13,6 @@ export DEBUG=y
 export USER_SOUNDS=./sounds
 export DEFAULT_IMAGES=./images/default
 export IMAGES_PATH=./images/profile-images
-export DEFAULT_PROFILES=./default_profiles
 export TIMEZONE_JSON_FILE_PATH=./UI_timezones.json
 export USER_DB_MIGRATION_DIR=./db-migrations
 export ALARMS_PATH=./alarms
