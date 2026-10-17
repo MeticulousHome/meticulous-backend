@@ -156,7 +156,7 @@ class SoundPlayer:
             theme_folder = SoundPlayer.availableThemes()[theme_name]
             theme_config_file = open(os.path.join(theme_folder, "config.json"))
             theme_config = json.load(theme_config_file)
-            return theme_config
+            return theme_config if isinstance(theme_config, dict) else {}
         except Exception:
             return {}
 
@@ -190,6 +190,10 @@ class SoundPlayer:
         if file_name in [{}, "", None]:
             logger.info(f"Sound {sound_name} is disabled by the theme")
             return True
+
+        if not isinstance(file_name, str):
+            logger.warning(f"Sound {sound_name} has an invalid file name in the theme")
+            return False
 
         file_path = os.path.join(theme_path, file_name)
         file_path = os.path.abspath(file_path)

@@ -209,6 +209,7 @@ class TestEspressoProfileRoutes(AsyncHTTPTestCase):
             "_loop": self.sio_loop,
             "_known_profiles": {},
             "_known_images": [],
+            "_skipped_profile_files": False,
             "_profile_default_images": [],
             "_profile_default_images_accent_colors": {},
             "_last_profile_changes": [],
@@ -360,6 +361,61 @@ class TestEspressoProfileRoutes(AsyncHTTPTestCase):
         assert self.get_json(f"/profile/get/{profile['id']}") == profile
         assert self.get_json("/profile/list?full=true") == [profile]
         assert self.emitted() == [("profile", {"change": "full_reload"})]
+
+    def test_refresh_skips_malformed_profile_files_and_keeps_the_good_one(self):
+        """A profile file the machine cannot read no longer stops the backend booting.
+
+        Expected value: the good profile is listed and nothing raises (refresh_profile_list
+        in profiles.py skips a file on any exception). Catches: an invalid UTF-8, null,
+        list, null-stages, non-dict-stages or failing-variables file raised out of
+        ProfileManager.init and the machine never came up.
+        """
+        profile = simple_profile()
+        self.save(profile)
+        broken = {
+            "bad_utf8.json": b"\xff\xfe\x00",
+            "null.json": b"null",
+            "list.json": b"[]",
+            "null_stages.json": b'{"name": "x", "stages": null}',
+            "str_stages.json": b'{"name": "x", "stages": "oops"}',
+            "bad_variables.json": b'{"name": "x", "stages": [{"name": "s", "type": "flow"}], '
+            b'"variables": [{"name": "v", "key": "v", "type": "power", "value": "$nope"}]}',
+        }
+        for name, content in broken.items():
+            (self.profile_path / name).write_bytes(content)
+
+        ProfileManager.refresh_profile_list()
+
+        assert self.get_json("/profile/list?full=true") == [profile]
+
+    def test_unreadable_profile_keeps_its_json_and_image_through_the_boot_sequence(self):
+        """A profile skipped at boot keeps its image.
+
+        Expected value: the file and the image named by its display.image are still on
+        disk after refresh_profile_list and _delete_unused_images, the order
+        ProfileManager.init runs them in. Catches: the image garbage collector sees only
+        loaded profiles and deleted the image of every skipped one.
+        """
+        image = self.images_path / "kept.png"
+        image.write_bytes(PNG_BYTES)
+        broken = self.profile_path / "broken.json"
+        broken.write_text(
+            json.dumps(
+                {
+                    "id": "00000000-0000-4000-8000-000000000001",
+                    "name": "x",
+                    "display": {"image": "/api/v1/profile/image/kept.png"},
+                    "stages": None,
+                }
+            )
+        )
+        ProfileManager.refresh_image_list()
+
+        ProfileManager.refresh_profile_list()
+        ProfileManager._delete_unused_images()
+
+        assert broken.exists()
+        assert image.exists()
 
     def test_refresh_stamps_last_changed_on_a_profile_saved_without_one(self):
         profile = example_profile()
