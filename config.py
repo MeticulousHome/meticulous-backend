@@ -3,6 +3,7 @@ import math
 import os
 import random
 import string
+import threading
 from datetime import datetime
 from pathlib import Path
 from enum import Enum
@@ -12,6 +13,7 @@ import yaml
 import copy
 from mergedeep import merge
 
+from atomic_write import atomic_write_text
 from log import MeticulousLogger
 from reportable_config import get_reportable_config
 
@@ -280,6 +282,9 @@ DefaultConfiguration_V1 = {
 }
 
 
+_save_lock = threading.Lock()
+
+
 class MeticulousConfigDict(dict):
     """
     A class that extends the functionality of a standard dictionary to support
@@ -421,8 +426,9 @@ class MeticulousConfigDict(dict):
         MeticulousLogger.invalidate_redaction_values()
 
         Path(self.__path).parent.mkdir(parents=True, exist_ok=True)
-        with open(self.__path, "w") as f:
-            yaml.dump(self.copy(), f, default_flow_style=False, allow_unicode=True)
+        with _save_lock:
+            text = yaml.dump(self.copy(), default_flow_style=False, allow_unicode=True)
+            atomic_write_text(self.__path, text)
 
         if self.__sio:
 
