@@ -193,6 +193,41 @@ class TestPlaySoundRoute(SoundsApiTestCase):
         assert response.code == 404
         assert self.json(response) == {"error": "sound not found", "details": "notification"}
 
+    def test_theme_value_that_is_not_a_file_name_is_reported_as_not_found(self):
+        """A theme sound entry that is not a file name is a missing sound, not an error.
+
+        Expected value: 404 and no playback (play_sound in sounds.py returns False on
+        any other failure). Catches: {"notification": 1} raised TypeError in os.path.join.
+        """
+        self.add_user_theme("odd", {"notification": 1})
+        MeticulousConfig[CONFIG_SYSTEM][SOUNDS_THEME] = "odd"
+
+        response = self.fetch("/api/v1/sounds/play/notification")
+
+        assert response.code == 404
+        self.playsound.assert_not_called()
+
+    def test_theme_config_that_is_not_an_object_does_not_stop_boot(self):
+        """A theme whose config.json is not an object no longer stops boot.
+
+        Expected value: SoundPlayer.init completes and the theme has the default
+        sounds (_load_theme in sounds.py returns {} for a non-object). Catches:
+        dict.update raised in SoundPlayer.init on every boot after such a theme was
+        selected.
+        """
+        folder = self.user_sounds / "odd"
+        folder.mkdir()
+        MeticulousConfig[CONFIG_SYSTEM][SOUNDS_THEME] = "odd"
+
+        for content in ("5", '"x"', "null", "[]"):
+            with self.subTest(content=content):
+                (folder / "config.json").write_text(content)
+
+                SoundPlayer.init(emulation=True, play_startup_sound=False)
+
+                assert SoundPlayer.CURRENT_THEME_NAME == "odd"
+                assert SoundPlayer.CURRENT_THEME_CONFIG == SoundPlayer.DEFAULT_THEME_CONFIG
+
     def test_sound_requested_before_player_init_is_not_found(self):
         SoundPlayer.KNOWN_THEMES = None
 

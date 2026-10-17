@@ -103,6 +103,7 @@ class PROFILE_EVENT(Enum):
 class ProfileManager:
     _known_profiles = dict()
     _known_images = []
+    _skipped_profile_files = False
     _profile_default_images = []
     _profile_default_images_accent_colors = {}
     _sio: socketio.AsyncServer = None
@@ -581,72 +582,82 @@ class ProfileManager:
     def refresh_profile_list():  # noqa: C901
         start = time.time()
         ProfileManager._known_profiles = dict()
+        ProfileManager._skipped_profile_files = False
         for filename in os.listdir(PROFILE_PATH):
             if not filename.endswith(".json"):
                 continue
 
             file_path = os.path.join(PROFILE_PATH, filename)
-            with open(file_path, "r") as f:
-                try:
-                    profile = json.load(f)
-                except json.decoder.JSONDecodeError as error:
-                    logger.warning(f"Could not decode profile {f.name}: {error}")
-                    continue
-
-                profile_changed = False
-
-                if "id" not in profile or profile["id"] == "":
-                    profile["id"] = str(uuid.uuid4())
-                    profile_changed = True
-
-                if "author" not in profile:
-                    profile["author"] = ""
-                    profile_changed = True
-
-                if "author_id" not in profile or profile["author_id"] == "":
-                    profile["author_id"] = str("00000000-0000-0000-0000-000000000000")
-                    profile_changed = True
-
-                if "last_changed" not in profile:
-                    profile_changed = True
-
-                if "stages" not in profile:
-                    profile["stages"] = []
-                    profile_changed = True
-                else:
-                    for stage in profile["stages"]:
-                        if "key" not in stage:
-                            stage["key"] = str(uuid.uuid4())
-                            profile_changed = True
-
-                logger.info(f"Profile {profile['id']} was updated on load")
-
-                errors = ProfileManager.validate_profile(profile)
-                if errors is not None:
-                    logger.warning(f"Profile on disk failed to be loaded: {errors.message}")
-                    continue
-
-                if profile_changed:
+            try:
+                with open(file_path, "r") as f:
                     try:
-                        ProfileManager.save_profile(
-                            profile, set_last_changed=True, skip_validation=True
-                        )
-                    except Exception:
+                        profile = json.load(f)
+                    except json.decoder.JSONDecodeError as error:
+                        logger.warning(f"Could not decode profile {f.name}: {error}")
+                        ProfileManager._skipped_profile_files = True
                         continue
 
-                id = profile["id"]
+                    profile_changed = False
 
-                if (
-                    id in ProfileManager._known_profiles
-                    and ProfileManager._known_profiles[id]["last_changed"]
-                    >= profile["last_changed"]
-                ):
-                    continue
+                    if "id" not in profile or profile["id"] == "":
+                        profile["id"] = str(uuid.uuid4())
+                        profile_changed = True
 
-                ProfileManager._known_profiles[profile["id"]] = profile
-                if profile["id"] not in MeticulousConfig[CONFIG_USER][PROFILE_ORDER]:
-                    MeticulousConfig[CONFIG_USER][PROFILE_ORDER].append(profile["id"])
-                    MeticulousConfig.save()
+                    if "author" not in profile:
+                        profile["author"] = ""
+                        profile_changed = True
+
+                    if "author_id" not in profile or profile["author_id"] == "":
+                        profile["author_id"] = str("00000000-0000-0000-0000-000000000000")
+                        profile_changed = True
+
+                    if "last_changed" not in profile:
+                        profile_changed = True
+
+                    if "stages" not in profile:
+                        profile["stages"] = []
+                        profile_changed = True
+                    else:
+                        for stage in profile["stages"]:
+                            if "key" not in stage:
+                                stage["key"] = str(uuid.uuid4())
+                                profile_changed = True
+
+                    logger.info(f"Profile {profile['id']} was updated on load")
+
+                    errors = ProfileManager.validate_profile(profile)
+                    if errors is not None:
+                        logger.warning(
+                            f"Profile on disk failed to be loaded: {getattr(errors, 'message', errors)}"
+                        )
+                        ProfileManager._skipped_profile_files = True
+                        continue
+
+                    if profile_changed:
+                        try:
+                            ProfileManager.save_profile(
+                                profile, set_last_changed=True, skip_validation=True
+                            )
+                        except Exception:
+                            ProfileManager._skipped_profile_files = True
+                            continue
+
+                    id = profile["id"]
+
+                    if (
+                        id in ProfileManager._known_profiles
+                        and ProfileManager._known_profiles[id]["last_changed"]
+                        >= profile["last_changed"]
+                    ):
+                        continue
+
+                    ProfileManager._known_profiles[profile["id"]] = profile
+                    if profile["id"] not in MeticulousConfig[CONFIG_USER][PROFILE_ORDER]:
+                        MeticulousConfig[CONFIG_USER][PROFILE_ORDER].append(profile["id"])
+                        MeticulousConfig.save()
+            except Exception as error:
+                logger.warning(f"Skipping profile {file_path}: {error!r}", exc_info=True)
+                ProfileManager._skipped_profile_files = True
 
         end = time.time()
         time_ms = (end - start) * 1000
@@ -706,6 +717,9 @@ class ProfileManager:
         ProfileManager._known_images = os.listdir(IMAGES_PATH)
 
     def _delete_unused_images():
+        if ProfileManager._skipped_profile_files:
+            logger.warning("Skipped unreadable profiles, keeping all images")
+            return
         logger.info("Garbage collecting unused images")
 
         referenced_images: Set[str] = set()
