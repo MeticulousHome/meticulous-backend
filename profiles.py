@@ -23,6 +23,7 @@ from config import (
     PROFILE_ORDER,
 )
 import asyncio
+from atomic_write import atomic_write_text
 from log import MeticulousLogger
 from machine import Machine
 from manual_program import build_manual_program
@@ -430,8 +431,7 @@ class ProfileManager:
         is_update = ProfileManager._known_profiles.get(data["id"]) is not None
 
         file_path = os.path.join(PROFILE_PATH, name)
-        with open(file_path, "w") as f:
-            json.dump(data, f, indent=4)
+        atomic_write_text(file_path, json.dumps(data, indent=4))
 
         ProfileManager._known_profiles[data["id"]] = data
         if data["id"] not in MeticulousConfig[CONFIG_USER][PROFILE_ORDER]:
