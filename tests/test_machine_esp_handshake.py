@@ -85,6 +85,17 @@ def esp(monkeypatch):
         monkeypatch.setattr(Machine, name, lambda *args, **kwargs: None)
     monkeypatch.setattr(AlarmManager, "is_alarm_set", lambda _alarm: None)
     monkeypatch.setattr("machine.MeticulousConfig.save", lambda *args, **kwargs: None)
+    for key in (
+        machine_module.MACHINE_SERIAL_NUMBER,
+        machine_module.MACHINE_COLOR,
+        machine_module.MACHINE_BATCH_NUMBER,
+        machine_module.MACHINE_BUILD_DATE,
+    ):
+        monkeypatch.setitem(
+            machine_module.MeticulousConfig[machine_module.CONFIG_SYSTEM],
+            key,
+            machine_module.MeticulousConfig[machine_module.CONFIG_SYSTEM][key],
+        )
 
     def run(lines):
         script = iter(line.encode() for line in lines)
@@ -171,3 +182,21 @@ def test_an_esp_reboot_makes_the_backend_ask_again_at_once(esp):
     assert info_requests(esp.port) == 3
     assert esp.clock["now"] - 102 < ESP_INFO_RETRY_INTERVAL_SECONDS
     assert Machine.esp_info is None
+
+
+def test_a_malformed_line_does_not_stop_the_reader(esp):
+    """A short Data line or a bare Notify used to kill the reader thread, leaving the machine deaf."""
+    esp(["Data,1\n", "Notify\n", ESP_INFO])
+
+    assert Machine.esp_info is not None
+
+
+def test_an_empty_firmware_version_still_starts_the_update(esp, monkeypatch):
+    """The reflash is needed exactly when the ESP cannot report its version."""
+    started = []
+    monkeypatch.setattr(Machine, "startUpdate", lambda: started.append(True))
+    monkeypatch.setattr(Machine, "firmware_available", {"Release": "0.9.10", "ExtraCommits": 0})
+
+    esp([ESP_INFO.replace("0.9.10-sil", "")])
+
+    assert started == [True]
