@@ -249,6 +249,7 @@ class WifiManager:
     _last_connection_error_message = ""
     _auto_connect_suppressed_until = 0
     _last_auto_connect_suppressed_log = 0
+    _auto_connect_ticks = 0
     _repair_in_progress = False
     _health_check_lock = threading.Lock()
     _scan_cache = []
@@ -472,8 +473,21 @@ class WifiManager:
         logger.info("Starting Networking background Thread")
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        failed_tick = None
+        while True:
+            try:
+                WifiManager.autoConnectLoop()
+            except Exception as e:
+                # Re-entering the loop sleeps a full tick first, so a persistent error cannot spin.
+                if failed_tick != WifiManager._auto_connect_ticks - 1:
+                    logger.error("WiFi auto-connect failed, retrying every tick", exc_info=e)
+                failed_tick = WifiManager._auto_connect_ticks
+
+    @staticmethod
+    def autoConnectLoop():
         while True:
             time.sleep(10)
+            WifiManager._auto_connect_ticks += 1
 
             manufacturing_mode = Machine.enable_manufacturing
             if (
