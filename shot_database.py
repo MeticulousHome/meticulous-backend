@@ -403,7 +403,11 @@ class ShotDataBase:
             stmt = stmt.order_by(*[desc(order_column) for order_column in order_by])
 
         if params.max_results > 0:
-            stmt = stmt.limit(params.max_results)
+            limit = params.max_results
+            if params.dump_data and limit > 1:
+                # Unreadable shot files are skipped below; fetch extra rows so a page still fills.
+                limit += 100
+            stmt = stmt.limit(limit)
 
         with ShotDataBase.engine.connect() as connection:
             results = connection.execute(stmt)
@@ -461,6 +465,8 @@ class ShotDataBase:
                 }
 
                 parsed_results.append(history)
+                if len(parsed_results) == params.max_results:
+                    break
 
             logger.info(f"shot database query returned {len(parsed_results)} results")
             return parsed_results
