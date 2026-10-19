@@ -401,6 +401,16 @@ class TestFactoryResetRoute(ApiTestCase):
         }
         self.assert_nothing_wiped()
 
+    def test_reset_from_a_remote_client_addressed_to_localhost_is_forbidden(self):
+        # nginx forwards the client's Host: it does not make the client local.
+        response = self.fetch(
+            "/api/v1/machine/factory_reset?confirm=true",
+            headers={"Host": "localhost", "X-Real-IP": "192.168.1.50"},
+        )
+
+        assert response.code == 403
+        self.assert_nothing_wiped()
+
 
 class TestBacklightRoute(ApiTestCase):
     MAX_BRIGHTNESS = 200

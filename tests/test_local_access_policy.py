@@ -1,10 +1,10 @@
 """Which API routes refuse LAN clients.
 
-LocalAccessHandler answers 403 to a request that neither comes from nor is
-addressed to the machine itself. LOCAL_ONLY lists every route and method that
-does so; everything else serves LAN clients (Community, the mobile app). A
-method refused but not listed fails, and so does a listed one that is served, so
-the list only changes deliberately and the change is visible in review.
+LocalAccessHandler answers 403 to a request that nginx forwarded from another
+address (X-Real-IP), whatever Host it names. LOCAL_ONLY lists every route and
+method that does so; everything else serves LAN clients (Community, the mobile
+app). A method refused but not listed fails, and so does a listed one that is
+served, so the list only changes deliberately and the change is visible in review.
 
 Each handler's methods are replaced by a stub, so only the access check in
 prepare() runs: no request reaches the machine, the database or the disk.
@@ -18,6 +18,8 @@ from tornado.web import Application, RequestHandler
 from api.api import API
 
 LAN_CLIENT = {"Host": "meticulous.local", "X-Real-IP": "192.168.1.42"}
+# nginx forwards the Host the client sends, so a LAN client can name the machine localhost.
+LAN_CLIENT_NAMING_LOCALHOST = {"Host": "localhost", "X-Real-IP": "192.168.1.42"}
 VERBS = ("get", "post", "put", "patch", "delete", "options")
 
 LOCAL_ONLY = {
@@ -59,7 +61,7 @@ class TestLocalAccessPolicy(AsyncHTTPTestCase):
             ]
         )
 
-    def lan_refusals(self):
+    def lan_refusals(self, headers=LAN_CLIENT):
         refused = set()
         for index, (path, handler, _) in enumerate(self.routes):
             for verb in served_methods(handler):
@@ -67,7 +69,7 @@ class TestLocalAccessPolicy(AsyncHTTPTestCase):
                 response = self.fetch(
                     f"/probe/{index}",
                     method=method,
-                    headers=LAN_CLIENT,
+                    headers=headers,
                     body=b"" if method in ("POST", "PUT", "PATCH") else None,
                 )
                 if response.code == 403:
@@ -80,6 +82,9 @@ class TestLocalAccessPolicy(AsyncHTTPTestCase):
         refused = {route for route in self.lan_refusals() if not route.startswith("OPTIONS")}
         assert sorted(refused - LOCAL_ONLY) == [], "refused to LAN clients, not in LOCAL_ONLY"
         assert sorted(LOCAL_ONLY - refused) == [], "in LOCAL_ONLY, served to LAN clients"
+
+    def test_naming_the_machine_localhost_does_not_make_a_lan_client_local(self):
+        assert self.lan_refusals(LAN_CLIENT_NAMING_LOCALHOST) == self.lan_refusals()
 
     def test_a_route_lan_clients_may_call_answers_their_preflight(self):
         refused = self.lan_refusals()
