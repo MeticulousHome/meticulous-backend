@@ -190,13 +190,13 @@ class DelayedLock:
         self.lock.release()
 
 
-@pytest.mark.parametrize("stalled_at", ["parts", "owner_lock"])
+@pytest.mark.parametrize("stalled_at", ["parts", "owner_lock", "admission_lock"])
 def test_old_transaction_cannot_cross_a_successful_recovery(tmp_path, stalled_at):
     """No old hash/profile or actuator request may enter a newly released session.
 
     The one-way command lease contract forbids replay across recovery. The old
     boolean gate passes all previous tests but accepts this stale transaction,
-    whether delayed while building its parts or waiting for owner ownership.
+    whether delayed while building its parts or waiting for either lock.
     A genuinely new command must still work after the second complete handshake.
     """
     session, port, store, sessions = two_cycle_owner(tmp_path)
@@ -206,6 +206,9 @@ def test_old_transaction_cannot_cross_a_successful_recovery(tmp_path, stalled_at
     entered, proceed = threading.Event(), threading.Event()
     if stalled_at == "owner_lock":
         session._lock = delayed_lock
+        entered, proceed = delayed_lock.waiting, delayed_lock.proceed
+    elif stalled_at == "admission_lock":
+        session._admission_lock = delayed_lock
         entered, proceed = delayed_lock.waiting, delayed_lock.proceed
     stale_parts = [b"hash,old\x03", b"json\n{}\x03"]
     stale = b"".join(stale_parts)

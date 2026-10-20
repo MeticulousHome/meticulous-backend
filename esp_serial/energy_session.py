@@ -28,7 +28,7 @@ NUMBER = re.compile(r"0|[1-9][0-9]*\Z")
 
 
 class EnergyError(RuntimeError):
-    """The command gate stays closed; the caller must reconcile or investigate."""
+    """The requested energy operation could not complete safely."""
 
 
 class EnergyPort(SerialWriter, Protocol):
@@ -387,13 +387,16 @@ class EnergySession:
     def write_transaction(self, parts: Iterable[bytes], *, deadline: float) -> bool:
         """Own a whole multipart command under the lease captured at entry.
 
-        Materializing parts and waiting for the owner may both span a complete
-        recovery. Neither can transfer this request to the new command lease.
+        Materializing parts and waiting for either lock may span a complete
+        recovery. None can transfer this request to the new command lease.
         """
+        # Snapshot the monotonic generation before even the admission lock can
+        # wait. Validate it under that lock before capturing the matching writer.
+        generation = self._generation
         with self._admission_state(deadline):
-            if not self._accepting.is_set():
+            if not self._accepting.is_set() or generation != self._generation:
                 return False
-            generation, writer = self._generation, self._writer
+            writer = self._writer
         command = b"".join(parts)
         self._enter(deadline)
         try:
