@@ -243,6 +243,58 @@ def test_old_transaction_cannot_cross_a_successful_recovery(tmp_path, stalled_at
     assert store.load() == complete
 
 
+def test_closed_request_cannot_wait_for_recovery_to_publish(tmp_path):
+    """A request arriving while closed cannot wait its way into a new lease.
+
+    The no-replay contract also applies within one recovery generation, before
+    publication. Capturing only its generation, then checking open state after
+    an admission-lock wait, passes the earlier cases but accepts this request.
+    """
+    session, port, store, _ = owner(tmp_path, prepare_transcript() + recovery_transcript())
+    prepare(session)
+    entered, release = threading.Event(), threading.Event()
+    delayed_lock = DelayedLock()
+    session._admission_lock = delayed_lock
+    expected, released = port.transcript[2]
+    stale = b"action,start\x03"
+
+    def block_release():
+        entered.set()
+        assert release.wait(5)
+        return released
+
+    def request_while_closed():
+        try:
+            return session.write_transaction([stale], deadline=DEADLINE)
+        finally:
+            # The correct owner refuses immediately without waiting on a lock;
+            # the regressed owner signals this event from DelayedLock.acquire.
+            delayed_lock.waiting.set()
+
+    port.transcript[2] = (expected, block_release)
+    with (
+        ThreadPoolExecutor(max_workers=1) as recovery_pool,
+        ThreadPoolExecutor(max_workers=1, thread_name_prefix="delayed") as command_pool,
+    ):
+        recovering = recovery_pool.submit(recover, session)
+        try:
+            assert entered.wait(5)
+            old = command_pool.submit(request_while_closed)
+            assert delayed_lock.waiting.wait(5)
+            port.transcript.append((stale, b""))
+            release.set()
+            recovering.result(timeout=5)
+        finally:
+            release.set()
+            delayed_lock.proceed.set()
+        assert not old.result(timeout=5)
+    assert len(port.writes) == 5 and port.transcript.popleft() == (stale, b"")
+    fresh = b"action,preheat\x03"
+    port.transcript.append((fresh, b""))
+    assert session.write_transaction([fresh], deadline=DEADLINE)
+    assert store.load() == Intent(1, SESSION, 1, "complete") and not port.transcript
+
+
 @pytest.mark.parametrize("transition", ["prepare", "recover"])
 def test_later_transition_cannot_be_undone_by_recovery_publication(tmp_path, transition):
     """Even a timed-out closer revokes an earlier recovery's command admission.

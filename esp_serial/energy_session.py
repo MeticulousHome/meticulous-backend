@@ -148,9 +148,11 @@ class EnergySession:
         # A transition revokes the generation before waiting for the owner.
         self._admission_lock = threading.Lock()
         self._generation = 0
+        # One immutable snapshot represents an open generation and its writer.
+        # Fault paths can revoke it under _lock, which excludes publication.
+        self._admission: tuple[int, EnergyCommandWriter] | None = None
         self._writer: EnergyCommandWriter | None = None
         self._poisoned = False
-        self._accepting = threading.Event()
         self._line = bytearray()
         self._discard = False
         self._intent = store.load()  # Corruption fails construction, never opens commands.
@@ -192,7 +194,7 @@ class EnergySession:
         with self._admission_state(deadline):
             self._generation += 1
             generation = self._generation
-            self._accepting.clear()
+            self._admission = None
         self._enter(deadline)
         try:
             with self._admission_state(deadline):
@@ -219,7 +221,7 @@ class EnergySession:
             # rename/fsync failures may have persisted either record. Only a
             # fresh owner reloading the journal can resolve that uncertainty.
             self._poisoned = True
-            self._accepting.clear()
+            self._admission = None
             raise
         self._intent = intent
 
@@ -380,7 +382,7 @@ class EnergySession:
             with self._admission_state(deadline):
                 self._require_generation(generation)
                 self._writer = writer
-                self._accepting.set()
+                self._admission = (generation, writer)
         finally:
             self._lock.release()
 
@@ -390,23 +392,20 @@ class EnergySession:
         Materializing parts and waiting for either lock may span a complete
         recovery. None can transfer this request to the new command lease.
         """
-        # Snapshot the monotonic generation before even the admission lock can
-        # wait. Validate it under that lock before capturing the matching writer.
-        generation = self._generation
+        # Capture open/closed state, generation and writer together before any
+        # wait. A request arriving while closed cannot wait for publication.
+        admission = self._admission
+        if admission is None:
+            return False
         with self._admission_state(deadline):
-            if not self._accepting.is_set() or generation != self._generation:
+            if admission is not self._admission:
                 return False
-            writer = self._writer
+        _, writer = admission
         command = b"".join(parts)
         self._enter(deadline)
         try:
             with self._admission_state(deadline):
-                if (
-                    not self._accepting.is_set()
-                    or generation != self._generation
-                    or writer is None
-                    or writer is not self._writer
-                ):
+                if admission is not self._admission or writer is not self._writer:
                     return False
             assert self._intent is not None
             # A process crash must not erase an uncertain partial legacy frame.
@@ -417,18 +416,18 @@ class EnergySession:
                 result = writer.write_command(command, deadline=deadline)
             except BaseException:
                 self._poisoned = True
-                self._accepting.clear()
+                self._admission = None
                 self._writer = None
                 raise
             if writer.uncertain:
                 self._poisoned = True
-                self._accepting.clear()
+                self._admission = None
                 self._writer = None
             if result:
                 self._save(Intent(1, self._intent.session, self._intent.sequence, "complete"))
                 self._remaining(deadline)
             else:
-                self._accepting.clear()
+                self._admission = None
             return result
         finally:
             self._lock.release()
