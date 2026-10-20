@@ -362,3 +362,28 @@ def test_transition_closes_admission_for_a_transaction_already_waiting(tmp_path)
         assert not second.result(timeout=5)
     assert port.writes[-1] == b"hash,a\x03json\n{}\x03"
     assert store.load().phase == "complete"
+
+
+@pytest.mark.parametrize(
+    "intent,state,peer,sequence",
+    [
+        (None, "released", SESSION, 1),
+        (Intent(1, SESSION, 1, "complete"), "empty", EMPTY, 0),
+        (Intent(1, SESSION, 1, "complete"), "released", "e" * 32, 1),
+        (Intent(1, SESSION, 1, "complete"), "released", SESSION, 2),
+    ],
+)
+def test_prepare_cannot_replace_a_missing_or_mismatched_completed_journal(
+    tmp_path, intent, state, peer, sequence
+):
+    transcript = [
+        (
+            tx(f"HELLO,{PROBE},{IO}"),
+            rx(f"HELLO,{PROBE},{BOOT},{state},{peer},{sequence},{NEGOTIATION}"),
+        )
+    ]
+    session, port, store, _ = owner(tmp_path, transcript, intent)
+    with pytest.raises(EnergyError):
+        prepare(session)
+    assert store.load() == intent
+    assert len(port.writes) == 1

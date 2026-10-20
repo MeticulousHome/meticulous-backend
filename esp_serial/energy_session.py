@@ -261,9 +261,19 @@ class EnergySession:
             self._close(deadline)
             if self._intent is not None and self._intent.phase == "pending":
                 raise EnergyError("Recover the outstanding intent first")
-            state, _, _ = self._hello(io, deadline)
+            state, peer_session, peer_sequence = self._hello(io, deadline)
             if state == "armed":
                 raise EnergyError("Peer has an unowned outstanding intent")
+            if state == "released" and (
+                self._intent is None
+                or peer_session != self._intent.session
+                or peer_sequence != self._intent.sequence
+            ):
+                raise EnergyError("Peer/host completed sessions disagree")
+            if state == "empty" and self._intent is not None:
+                raise EnergyError(
+                    "Peer lost its durable session; explicit reconciliation required"
+                )
             intent = Intent(1, token(self._nonce()), 0, "pending")
             self._save(intent)
             assert self._boot is not None

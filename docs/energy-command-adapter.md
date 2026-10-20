@@ -22,7 +22,9 @@ it does not prove the target filesystem/media's power-loss behavior.
 
 1. A fresh HELLO probe identifies the peer boot and its durable session. The host
    requires the fresh single-use device negotiation nonce for PREPARE and
-   refuses an unowned armed peer. Missing or mismatched journals require diagnosis.
+   refuses unowned armed/released records. A completed host journal must match
+   the peer session and sequence before another transaction may replace it.
+   Missing or mismatched journals require diagnosis.
 2. The host persists a new pending session before PREPARE. Matching READY proves
    only this experimental protocol's firmware barriers. It does not authorize
    Linux suspend or establish physical wake/power compliance. A matching WAKE
