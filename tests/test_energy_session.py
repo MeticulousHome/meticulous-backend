@@ -10,7 +10,9 @@ neither regression. Failure injections include uncertain fsync and host restart.
 
 import json
 import os
+import threading
 from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -121,6 +123,195 @@ def prepare(session):
 
 def recover(session, deadline=DEADLINE):
     session.recover(lease_ms=LEASE, io_ticks=IO, deadline=deadline)
+
+
+def two_cycle_owner(tmp_path):
+    """Two complete handshakes with fresh identities and matching tombstones."""
+    transcript, nonces, sessions = [], [], []
+    previous = EMPTY
+    for start in (1, 7):
+        probe, current, resume_probe, challenge, negotiation, resume_negotiation = (
+            f"{n:032x}" for n in range(start, start + 6)
+        )
+        nonces.extend((probe, current, resume_probe, challenge))
+        sessions.append(current)
+        state, sequence = ("empty", 0) if previous == EMPTY else ("released", 1)
+        identity = f"{BOOT},{current},1,{challenge}"
+        transcript.extend(
+            [
+                (
+                    tx(f"HELLO,{probe},{IO}"),
+                    rx(f"HELLO,{probe},{BOOT},{state},{previous},{sequence},{negotiation}"),
+                ),
+                (
+                    tx(f"PREPARE,{BOOT},{current},{LEASE},{IO},{negotiation}"),
+                    rx(f"READY,{BOOT},{current}"),
+                ),
+                (
+                    tx(f"HELLO,{resume_probe},{IO}"),
+                    rx(f"HELLO,{resume_probe},{BOOT},armed,{current},0,{resume_negotiation}"),
+                ),
+                (
+                    tx(f"RESUME,{identity},{LEASE},{IO}"),
+                    rx(f"AWAKE,{identity},7") + rx(f"SAMPLE,{identity},8,0.000000"),
+                ),
+                (tx(f"RELEASE,{identity},8,{IO}"), rx(f"RELEASED,{identity}")),
+            ]
+        )
+        previous = current
+    clock = Clock()
+    port = TranscriptPort(clock, transcript)
+    store = IntentStore(tmp_path / "intent.json")
+    values = iter(nonces)
+    session = EnergySession(port, store, clock=clock, nonce=lambda: next(values))
+    return session, port, store, sessions
+
+
+class DelayedLock:
+    """Schedule one caller behind later callers at the OS lock boundary.
+
+    A real lock still serializes all owner work. Events deterministically model
+    an unfavorably scheduled waiter; sleeps or assumptions about lock fairness
+    would not prove that a request can cross a complete close/reopen cycle.
+    """
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.waiting = threading.Event()
+        self.proceed = threading.Event()
+
+    def acquire(self, *, timeout):
+        if threading.current_thread().name.startswith("delayed"):
+            self.waiting.set()
+            assert self.proceed.wait(5)  # Harness deadlock watchdog only.
+        return self.lock.acquire(timeout=timeout)
+
+    def release(self):
+        self.lock.release()
+
+
+@pytest.mark.parametrize("stalled_at", ["parts", "owner_lock"])
+def test_old_transaction_cannot_cross_a_successful_recovery(tmp_path, stalled_at):
+    """No old hash/profile or actuator request may enter a newly released session.
+
+    The one-way command lease contract forbids replay across recovery. The old
+    boolean gate passes all previous tests but accepts this stale transaction,
+    whether delayed while building its parts or waiting for owner ownership.
+    A genuinely new command must still work after the second complete handshake.
+    """
+    session, port, store, sessions = two_cycle_owner(tmp_path)
+    prepare(session)
+    recover(session)
+    delayed_lock = DelayedLock()
+    entered, proceed = threading.Event(), threading.Event()
+    if stalled_at == "owner_lock":
+        session._lock = delayed_lock
+        entered, proceed = delayed_lock.waiting, delayed_lock.proceed
+    stale_parts = [b"hash,old\x03", b"json\n{}\x03"]
+    stale = b"".join(stale_parts)
+
+    def parts():
+        if stalled_at == "parts":
+            entered.set()
+            assert proceed.wait(5)
+        yield from stale_parts
+
+    with ThreadPoolExecutor(max_workers=1, thread_name_prefix="delayed") as pool:
+        old = pool.submit(session.write_transaction, parts(), deadline=DEADLINE)
+        try:
+            assert entered.wait(5)
+            prepare(session)
+            recover(session)
+            complete = Intent(1, sessions[1], 1, "complete")
+            assert store.load() == complete
+            # Permit a buggy send to return so the assertion identifies the
+            # stale acceptance, rather than an unrelated transcript mismatch.
+            port.transcript.append((stale, b""))
+            before = list(port.writes)
+        finally:
+            proceed.set()
+        assert not old.result(timeout=5)
+    assert port.writes == before and store.load() == complete
+    assert port.transcript.popleft() == (stale, b"")
+    fresh = b"action,preheat\x03"
+    port.transcript.append((fresh, b""))
+    assert session.write_transaction([fresh], deadline=DEADLINE)
+    assert port.writes[-1] == fresh and not port.transcript
+    assert store.load() == complete
+
+
+@pytest.mark.parametrize("transition", ["prepare", "recover"])
+def test_later_transition_cannot_be_undone_by_recovery_publication(tmp_path, transition):
+    """Even a timed-out closer revokes an earlier recovery's command admission.
+
+    The complete RELEASED handshake and durable tombstone do not authorize
+    overriding a later close request. The previous boolean implementation
+    reopens here; the next explicit prepare/recover must be able to recover.
+    """
+    session, port, store, sessions = two_cycle_owner(tmp_path)
+    prepare(session)
+    entered, proceed = threading.Event(), threading.Event()
+    expected, released = port.transcript[2]
+
+    def block_release():
+        entered.set()
+        assert proceed.wait(5)
+        return released
+
+    port.transcript[2] = (expected, block_release)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        recovering = pool.submit(recover, session)
+        try:
+            assert entered.wait(5)
+            with pytest.raises(EnergyError, match="busy"):
+                getattr(session, transition)(
+                    lease_ms=LEASE, io_ticks=IO, deadline=port.clock.now + 0.001
+                )
+        finally:
+            proceed.set()
+        with pytest.raises(EnergyError, match="superseded"):
+            recovering.result(timeout=5)
+    assert store.load() == Intent(1, sessions[0], 1, "complete")
+    assert len(port.writes) == 5
+    assert not session.write_transaction([b"action,start\x03"], deadline=DEADLINE)
+    prepare(session)
+    recover(session)
+    port.transcript.append((b"action,preheat\x03", b""))
+    assert session.write_transaction([b"action,preheat\x03"], deadline=DEADLINE)
+    assert store.load() == Intent(1, sessions[1], 1, "complete")
+    assert not port.transcript
+
+
+@pytest.mark.parametrize("transition", ["prepare", "recover"])
+def test_superseded_transition_cannot_close_a_newly_released_session(tmp_path, transition):
+    """An older queued transition cannot act on a newer successful recovery.
+
+    Lock acquisition order is not request order. Generation ownership must be
+    checked before control I/O as well as before publication; otherwise an old
+    waiter consumes/revokes the newer command lease after its release.
+    """
+    session, port, store, sessions = two_cycle_owner(tmp_path)
+    prepare(session)
+    recover(session)
+    delayed_lock = DelayedLock()
+    session._lock = delayed_lock
+    with ThreadPoolExecutor(max_workers=1, thread_name_prefix="delayed") as pool:
+        old = pool.submit(
+            getattr(session, transition), lease_ms=LEASE, io_ticks=IO, deadline=DEADLINE
+        )
+        try:
+            assert delayed_lock.waiting.wait(5)
+            prepare(session)
+            recover(session)
+        finally:
+            delayed_lock.proceed.set()
+        with pytest.raises(EnergyError, match="superseded"):
+            old.result(timeout=5)
+    assert len(port.writes) == 10
+    port.transcript.append((b"action,preheat\x03", b""))
+    assert session.write_transaction([b"action,preheat\x03"], deadline=DEADLINE)
+    assert store.load() == Intent(1, sessions[1], 1, "complete")
+    assert not port.transcript
 
 
 def test_durable_intent_precedes_prepare_and_completion_precedes_commands(tmp_path):

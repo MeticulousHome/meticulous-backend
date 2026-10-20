@@ -12,7 +12,8 @@ import re
 import secrets
 import tempfile
 import threading
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Protocol
@@ -142,6 +143,11 @@ class EnergySession:
         self._clock = clock  # Linux caller must supply CLOCK_BOOTTIME.
         self._nonce = nonce
         self._lock = threading.Lock()
+        # Admission has its own short critical section: never hold it while
+        # iterating caller data, waiting for the owner, or doing serial/file I/O.
+        # A transition revokes the generation before waiting for the owner.
+        self._admission_lock = threading.Lock()
+        self._generation = 0
         self._writer: EnergyCommandWriter | None = None
         self._poisoned = False
         self._accepting = threading.Event()
@@ -165,6 +171,36 @@ class EnergySession:
     def _enter(self, deadline: float) -> None:
         if not self._lock.acquire(timeout=self._remaining(deadline)):
             raise EnergyError("Energy owner is busy")
+
+    @contextmanager
+    def _admission_state(self, deadline: float) -> Iterator[None]:
+        if not self._admission_lock.acquire(timeout=self._remaining(deadline)):
+            raise EnergyError("Energy admission is busy")
+        try:
+            self._remaining(deadline)
+            yield
+        finally:
+            self._admission_lock.release()
+
+    def _require_generation(self, generation: int) -> None:
+        # Caller holds _admission_lock. A later request wins even if it times
+        # out waiting for the owner; an earlier recovery cannot undo its close.
+        if generation != self._generation:
+            raise EnergyError("Energy transition was superseded")
+
+    def _start_transition(self, deadline: float) -> int:
+        with self._admission_state(deadline):
+            self._generation += 1
+            generation = self._generation
+            self._accepting.clear()
+        self._enter(deadline)
+        try:
+            with self._admission_state(deadline):
+                self._require_generation(generation)
+        except BaseException:
+            self._lock.release()
+            raise
+        return generation
 
     def _close(self, deadline: float) -> None:
         if self._writer is not None:
@@ -255,8 +291,7 @@ class EnergySession:
         """
         lease = counter(str(lease_ms))
         io = counter(str(io_ticks))
-        self._accepting.clear()
-        self._enter(deadline)
+        self._start_transition(deadline)
         try:
             self._close(deadline)
             if self._intent is not None and self._intent.phase == "pending":
@@ -299,13 +334,13 @@ class EnergySession:
     def recover(self, *, lease_ms: int, io_ticks: int, deadline: float) -> None:
         """Reconcile persisted intent, prove fresh acquisition, release at zero.
 
-        On success a new one-way command lease is published. Old leases stay
-        closed forever; no queued command or interrupted profile is replayed.
+        On success a new one-way command lease is published, unless a later
+        transition supersedes this recovery. Old leases stay closed forever;
+        no queued command or interrupted profile is replayed.
         """
         lease = counter(str(lease_ms))
         io = counter(str(io_ticks))
-        self._accepting.clear()
-        self._enter(deadline)
+        generation = self._start_transition(deadline)
         try:
             self._close(deadline)
             intent = self._intent
@@ -341,34 +376,48 @@ class EnergySession:
             self._expect(["RELEASED", *identity], 5, deadline)
             complete = Intent(1, intent.session, sequence, "complete")
             self._save(complete)
-            self._remaining(deadline)
-            self._writer = EnergyCommandWriter(self._port, clock=self._clock)
-            self._accepting.set()
+            writer = EnergyCommandWriter(self._port, clock=self._clock)
+            with self._admission_state(deadline):
+                self._require_generation(generation)
+                self._writer = writer
+                self._accepting.set()
         finally:
             self._lock.release()
 
     def write_transaction(self, parts: Iterable[bytes], *, deadline: float) -> bool:
-        """One caller owns the whole multipart legacy command, including its hash."""
-        if not self._accepting.is_set():
-            return False
+        """Own a whole multipart command under the lease captured at entry.
+
+        Materializing parts and waiting for the owner may both span a complete
+        recovery. Neither can transfer this request to the new command lease.
+        """
+        with self._admission_state(deadline):
+            if not self._accepting.is_set():
+                return False
+            generation, writer = self._generation, self._writer
         command = b"".join(parts)
         self._enter(deadline)
         try:
-            if not self._accepting.is_set() or self._writer is None:
-                return False
+            with self._admission_state(deadline):
+                if (
+                    not self._accepting.is_set()
+                    or generation != self._generation
+                    or writer is None
+                    or writer is not self._writer
+                ):
+                    return False
             assert self._intent is not None
             # A process crash must not erase an uncertain partial legacy frame.
             # This offline candidate fsyncs around each complete transaction;
             # performance/wear and external-reset reconciliation are not activated.
             self._save(Intent(1, self._intent.session, self._intent.sequence, "writing"))
             try:
-                result = self._writer.write_command(command, deadline=deadline)
+                result = writer.write_command(command, deadline=deadline)
             except BaseException:
                 self._poisoned = True
                 self._accepting.clear()
                 self._writer = None
                 raise
-            if self._writer.uncertain:
+            if writer.uncertain:
                 self._poisoned = True
                 self._accepting.clear()
                 self._writer = None

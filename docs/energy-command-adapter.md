@@ -12,6 +12,22 @@ only after a matching RELEASED and a durable host completion record; refused
 commands are never queued or replayed. Closing a writer proves software
 ownership, not kernel/FIFO drain or firmware readiness.
 
+Each normal request captures its writer and admission generation before
+materializing multipart input or waiting for ownership. Both must still match
+when it obtains the owner. A complete close/recover cycle cannot admit an older
+request under the new writer. Admission changes and recovery publication share
+a short, deadline-bounded lock that never surrounds caller iteration, owner
+waiting, serial I/O or persistence.
+
+A later transition revokes an earlier recovery's permission to publish, even
+if the later request times out waiting for the owner. The earlier recovery may
+finish the wire handshake and durable completion but raises `EnergyError` and
+keeps commands closed. An explicit new prepare/recover cycle can then establish
+a lease from that completed tombstone. Superseded transition waiters are rejected
+before they can close a newer lease or perform control I/O. A command already
+holding the owner may finish its whole transaction; its completion never reopens
+admission.
+
 ## Durable sequence
 
 An existing private directory and exclusive process ownership are required.
@@ -36,7 +52,8 @@ it does not prove the target filesystem/media's power-loss behavior.
    This is one acquisition witness, not a complete sensor-health validation.
 4. RELEASE binds the boot, session, sequence, challenge and accepted sample.
    Commands reopen only after matching RELEASED, durable host completion and a
-   still-valid caller deadline. A new process starts closed even with a complete
+   still-valid caller deadline, provided no later transition has revoked this
+   recovery's generation. A new process starts closed even with a complete
    journal; it cannot automatically resume an old command lease.
 
 The serial owner uses finite absolute deadlines and scopes both pyserial timeouts.
