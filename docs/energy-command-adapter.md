@@ -12,10 +12,11 @@ only after a matching RELEASED and a durable host completion record; refused
 commands are never queued or replayed. Closing a writer proves software
 ownership, not kernel/FIFO drain or firmware readiness.
 
-Each normal request snapshots its admission generation before any lock wait,
-then validates it under the admission lock before capturing the matching writer.
-Both must still match after materializing multipart input and obtaining the
-owner. A complete close/recover cycle cannot admit an older
+Each normal request captures one immutable snapshot of open/closed state,
+generation and writer before any lock wait. Closed requests are refused
+immediately. The exact snapshot must still be current after the admission wait,
+materializing multipart input and obtaining the owner. A complete close/recover
+cycle cannot admit an older
 request under the new writer. Admission changes and recovery publication share
 a short, deadline-bounded lock that never surrounds caller iteration, owner
 waiting, serial I/O or persistence.
