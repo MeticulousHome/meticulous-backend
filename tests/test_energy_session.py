@@ -18,6 +18,7 @@ from esp_serial.energy_session import EnergyError, EnergySession, Intent, Intent
 
 BOOT, SESSION, CHALLENGE, PROBE = (c * 32 for c in "abcd")
 EMPTY = "0" * 32
+NEGOTIATION = "f" * 32
 # Synthetic budgets exercise ordering only; no machine acceptance threshold.
 LEASE, IO, DEADLINE = 10000, 2000, 20
 
@@ -74,9 +75,9 @@ class TranscriptPort:
 
 def prepare_transcript(ready=None):
     return [
-        (tx(f"HELLO,{PROBE},{IO}"), rx(f"HELLO,{PROBE},{BOOT},empty,{EMPTY},0")),
+        (tx(f"HELLO,{PROBE},{IO}"), rx(f"HELLO,{PROBE},{BOOT},empty,{EMPTY},0,{NEGOTIATION}")),
         (
-            tx(f"PREPARE,{BOOT},{SESSION},{LEASE},{IO}"),
+            tx(f"PREPARE,{BOOT},{SESSION},{LEASE},{IO},{NEGOTIATION}"),
             rx(f"READY,{BOOT},{SESSION}") if ready is None else ready,
         ),
     ]
@@ -85,7 +86,10 @@ def prepare_transcript(ready=None):
 def recovery_transcript(*, boot=BOOT, sequence=1, samples=None, released=None):
     identity = f"{boot},{SESSION},{sequence},{CHALLENGE}"
     return [
-        (tx(f"HELLO,{PROBE},{IO}"), rx(f"HELLO,{PROBE},{boot},armed,{SESSION},{sequence - 1}")),
+        (
+            tx(f"HELLO,{PROBE},{IO}"),
+            rx(f"HELLO,{PROBE},{boot},armed,{SESSION},{sequence - 1},{NEGOTIATION}"),
+        ),
         (
             tx(f"RESUME,{identity},{LEASE},{IO}"),
             rx(f"AWAKE,{identity},7")
@@ -196,7 +200,9 @@ def test_wrong_boot_session_sequence_challenge_and_oversize_lines_do_not_release
     "state,peer", [("empty", EMPTY), ("armed", "e" * 32), ("corrupt", SESSION)]
 )
 def test_missing_or_foreign_peer_intent_cannot_be_adopted(tmp_path, state, peer):
-    transcript = [(tx(f"HELLO,{PROBE},{IO}"), rx(f"HELLO,{PROBE},{BOOT},{state},{peer},0"))]
+    transcript = [
+        (tx(f"HELLO,{PROBE},{IO}"), rx(f"HELLO,{PROBE},{BOOT},{state},{peer},0,{NEGOTIATION}"))
+    ]
     session, port, store, _ = owner(tmp_path, transcript, Intent(1, SESSION, 0, "pending"))
     with pytest.raises(EnergyError):
         recover(session)
@@ -204,7 +210,9 @@ def test_missing_or_foreign_peer_intent_cannot_be_adopted(tmp_path, state, peer)
 
 
 def test_missing_host_intent_does_not_clear_armed_peer(tmp_path):
-    transcript = [(tx(f"HELLO,{PROBE},{IO}"), rx(f"HELLO,{PROBE},{BOOT},armed,{SESSION},0"))]
+    transcript = [
+        (tx(f"HELLO,{PROBE},{IO}"), rx(f"HELLO,{PROBE},{BOOT},armed,{SESSION},0,{NEGOTIATION}"))
+    ]
     session, port, store, _ = owner(tmp_path, transcript)
     with pytest.raises(EnergyError, match="unowned"):
         prepare(session)
@@ -297,4 +305,15 @@ def test_nonfinite_or_malformed_fresh_sample_cannot_release(tmp_path, pressure):
     session, port, _, _ = owner(tmp_path, transcript, Intent(1, SESSION, 0, "pending"))
     with pytest.raises(EnergyError, match="pressure"):
         recover(session)
+    assert len(port.writes) == 2
+
+
+def test_matching_wake_cancels_prepare_without_waiting_for_the_deadline(tmp_path):
+    session, port, store, clock = owner(
+        tmp_path, prepare_transcript(ready=rx(f"WAKE,{BOOT},{SESSION}"))
+    )
+    with pytest.raises(EnergyError, match="Wake"):
+        prepare(session)
+    assert clock.now < DEADLINE
+    assert store.load().phase == "pending"
     assert len(port.writes) == 2

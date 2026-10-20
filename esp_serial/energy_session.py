@@ -150,6 +150,7 @@ class EnergySession:
         self._intent = store.load()  # Corruption fails construction, never opens commands.
         self._poisoned = self._intent is not None and self._intent.phase == "writing"
         self._boot: str | None = None
+        self._negotiation: str | None = None
 
     def _remaining(self, deadline: float) -> float:
         if not math.isfinite(deadline):
@@ -237,8 +238,9 @@ class EnergySession:
     def _hello(self, io_ticks: int, deadline: float) -> tuple[str, str, int]:
         probe = token(self._nonce())
         self._send("HELLO", probe, str(io_ticks), deadline=deadline)
-        fields = self._expect(["HELLO", probe], 6, deadline)
+        fields = self._expect(["HELLO", probe], 7, deadline)
         self._boot = token(fields[2])
+        self._negotiation = token(fields[6])
         state, session, sequence = fields[3], fields[4], counter(fields[5], zero=True)
         if state not in ("empty", "armed", "released"):
             raise EnergyError("Peer journal is unavailable")
@@ -265,10 +267,22 @@ class EnergySession:
             intent = Intent(1, token(self._nonce()), 0, "pending")
             self._save(intent)
             assert self._boot is not None
+            assert self._negotiation is not None
             self._send(
-                "PREPARE", self._boot, intent.session, str(lease), str(io), deadline=deadline
+                "PREPARE",
+                self._boot,
+                intent.session,
+                str(lease),
+                str(io),
+                self._negotiation,
+                deadline=deadline,
             )
-            self._expect(["READY", self._boot, intent.session], 3, deadline)
+            while True:
+                fields = self._receive(deadline)
+                if fields == ["READY", self._boot, intent.session]:
+                    break
+                if fields == ["WAKE", self._boot, intent.session]:
+                    raise EnergyError("Wake canceled preparation; recover the pending session")
         finally:
             self._lock.release()
 
