@@ -64,7 +64,8 @@ class EnergyCommandWriter:
                 return complete
             finally:
                 self._port.write_timeout = previous_timeout
-        except Exception:
+        except BaseException:
+            # An interrupted write is just as uncertain as a serial error.
             self._closed.set()
             raise
         finally:

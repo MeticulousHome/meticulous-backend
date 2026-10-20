@@ -29,7 +29,7 @@ class Port:
     def write(self, data):
         assert self.write_timeout is not None and self.write_timeout > 0
         self.writes.append(data)
-        if isinstance(self.result, Exception):
+        if isinstance(self.result, BaseException):
             raise self.result
         return len(data) if self.result is None else self.result
 
@@ -82,15 +82,18 @@ def test_closed_barrier_outlasts_an_inflight_writer_and_does_not_replay():
     assert port.write_timeout is None
 
 
-@pytest.mark.parametrize("result", [1, serial.SerialTimeoutException("test timeout")])
+@pytest.mark.parametrize(
+    "result", [1, serial.SerialTimeoutException("test timeout"), KeyboardInterrupt()]
+)
 def test_uncertain_partial_write_permanently_blocks_later_commands(result):
     port = Port(result)
     writer = EnergyCommandWriter(port, clock=lambda: 100.0)
-    if isinstance(result, Exception):
-        with pytest.raises(serial.SerialTimeoutException):
+    if isinstance(result, BaseException):
+        with pytest.raises(type(result)):
             writer.write_command(b"command\x03", deadline=105)
     else:
         assert not writer.write_command(b"command\x03", deadline=105)
+    port.result = None  # A recovered OS port cannot clear protocol uncertainty.
     assert not writer.write_command(b"late\x03", deadline=105)
     assert port.writes == [b"command\x03"]
     assert port.write_timeout is None
