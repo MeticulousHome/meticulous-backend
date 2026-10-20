@@ -82,14 +82,9 @@ jobs:
           from pathlib import Path
           p = Path('esp_serial/energy_session.py')
           source = p.read_text()
-          needle = '''if (
-                              not self._accepting.is_set()
-                              or generation != self._generation
-                              or writer is None
-                              or writer is not self._writer
-                          ):'''
+          needle = 'if admission is not self._admission or writer is not self._writer:'
           assert source.count(needle) == 1
-          p.write_text(source.replace(needle, 'if writer is None or writer is not self._writer:'))
+          p.write_text(source.replace(needle, 'if writer is not self._writer:'))
           PY
       - name: Previous tests remain green with the planted escape
         run: uv run pytest -q tests log_redactor/tests/test_redaction_contract.py -k 'not transition_closes_admission_for_a_transaction_already_waiting'
@@ -117,7 +112,7 @@ jobs:
       - name: Previous complete Linux suite remains green
         run: >-
           uv run pytest -q tests log_redactor/tests/test_redaction_contract.py
-          -k 'not old_transaction_cannot_cross and not later_transition_cannot_be_undone and not superseded_transition_cannot_close'
+          -k 'not old_transaction_cannot_cross and not later_transition_cannot_be_undone and not superseded_transition_cannot_close and not closed_request_cannot_wait'
       - name: All six adversarial generation cases must detect the old owner
         run: |
           set +e
@@ -155,11 +150,11 @@ jobs:
           git fetch --depth=1 origin 7a30184fe72c5d3357e0d9352a847bafd57434dc
           git show 7a30184fe72c5d3357e0d9352a847bafd57434dc:esp_serial/energy_session.py > esp_serial/energy_session.py
       - name: Previous complete Linux suite remains green
-        run: uv run pytest -q tests log_redactor/tests/test_redaction_contract.py -k 'not admission_lock'
-      - name: Admission-lock waiter must detect capture after the first wait
+        run: uv run pytest -q tests log_redactor/tests/test_redaction_contract.py -k 'not admission_lock and not closed_request_cannot_wait'
+      - name: Admission waiters must detect capture of eligibility after the first wait
         run: |
           set +e
-          uv run pytest -q 'tests/test_energy_session.py::test_old_transaction_cannot_cross_a_successful_recovery[admission_lock]' \
+          uv run pytest -q tests/test_energy_session.py -k 'admission_lock or closed_request_cannot_wait' \
             --junitxml=admission-lock-regression.xml > admission-lock-regression.log 2>&1
           result=$?
           cat admission-lock-regression.log
@@ -167,7 +162,8 @@ jobs:
           python - <<'PY'
           import xml.etree.ElementTree as ET
           cases = ET.parse('admission-lock-regression.xml').findall('.//testcase')
-          assert len(cases) == 1 and cases[0].find('failure') is not None
+          assert len(cases) == 2
+          assert all(case.find('failure') is not None for case in cases)
           PY
       - uses: actions/upload-artifact@v4
         if: always()
