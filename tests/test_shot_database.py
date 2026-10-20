@@ -430,6 +430,43 @@ class TestSearchHistoryDumpData:
         assert results[0]["data"] is None
 
 
+class TestSearchHistoryBadFiles:
+    """Pages must fill with readable shots when the newest shot files are bad.
+
+    Guards against a short or empty page when the newest shot files are missing
+    or corrupt. Expected values follow from the newest-first default sort and
+    the skip on a read failure, so the newest readable shots are returned.
+    Catches the row limit being applied before bad files are skipped.
+    """
+
+    @staticmethod
+    def _insert_shots(tmp_path):
+        # shot_0..3 are good, shot_5 and shot_7 are corrupt, the rest are missing
+        shot_path = tmp_path / "shots"
+        shot_path.mkdir()
+        for i in range(10):
+            name = f"shot_{i}.json.zst"
+            if i < 4:
+                _write_compressed_shot(shot_path, name, {"data": [{"time": i}]})
+            elif i % 2:
+                (shot_path / name).write_bytes(b"not zstd")
+            ShotDataBase.insert_history(
+                make_history_entry(id=f"h{i}", file=name, time=1000000 + i * 100)
+            )
+
+    def test_page_fills_past_missing_and_corrupt_files(self, tmp_path):
+        self._insert_shots(tmp_path)
+
+        results = ShotDataBase.search_history(SearchParams(max_results=3, dump_data=True))
+
+        assert [r["file"] for r in results] == [f"shot_{i}.json.zst" for i in (3, 2, 1)]
+
+    def test_single_result_lookup_does_not_skip_to_older_shot(self, tmp_path):
+        self._insert_shots(tmp_path)
+
+        assert ShotDataBase.search_history(SearchParams(max_results=1, dump_data=True)) == []
+
+
 class TestSearchHistoryDateFilters:
     def test_start_date_filter(self):
         t_old = 1000000.0
