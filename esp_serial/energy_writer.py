@@ -27,6 +27,7 @@ class EnergyCommandWriter:
         self._clock = clock
         self._writer = threading.Lock()
         self._closed = threading.Event()
+        self._uncertain = threading.Event()
 
     def _remaining(self, deadline: float) -> float:
         if not math.isfinite(deadline):
@@ -60,16 +61,23 @@ class EnergyCommandWriter:
                 count = self._port.write(command)
                 complete = count == len(command) and self._remaining(deadline) > 0
                 if not complete:
+                    self._uncertain.set()
                     self._closed.set()
                 return complete
             finally:
                 self._port.write_timeout = previous_timeout
         except BaseException:
             # An interrupted write is just as uncertain as a serial error.
+            self._uncertain.set()
             self._closed.set()
             raise
         finally:
             self._writer.release()
+
+    @property
+    def uncertain(self) -> bool:
+        """Whether a write may have left a partial command at the peer."""
+        return self._uncertain.is_set()
 
     def close_commands(self, *, deadline: float) -> bool:
         """Latch closed, then wait within budget for an existing writer.
