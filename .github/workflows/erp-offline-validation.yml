@@ -82,9 +82,14 @@ jobs:
           from pathlib import Path
           p = Path('esp_serial/energy_session.py')
           source = p.read_text()
-          needle = 'if not self._accepting.is_set() or self._writer is None:'
+          needle = '''if (
+                              not self._accepting.is_set()
+                              or generation != self._generation
+                              or writer is None
+                              or writer is not self._writer
+                          ):'''
           assert source.count(needle) == 1
-          p.write_text(source.replace(needle, 'if self._writer is None:'))
+          p.write_text(source.replace(needle, 'if writer is None or writer is not self._writer:'))
           PY
       - name: Previous tests remain green with the planted escape
         run: uv run pytest -q tests log_redactor/tests/test_redaction_contract.py -k 'not transition_closes_admission_for_a_transaction_already_waiting'
@@ -95,3 +100,43 @@ jobs:
           result=$?
           cat owner-mutation.log
           test "$result" -eq 1
+
+  generation-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: astral-sh/setup-uv@v5
+      - run: uv python install
+      - run: uv sync --frozen --group dev
+      - name: Restore the owner from before generation admission
+        run: |
+          git fetch --depth=1 origin fe142e9d3df5c760459b0778e91a97952ca9629d
+          git show fe142e9d3df5c760459b0778e91a97952ca9629d:esp_serial/energy_session.py > esp_serial/energy_session.py
+      - name: Previous complete Linux suite remains green
+        run: >-
+          uv run pytest -q tests log_redactor/tests/test_redaction_contract.py
+          -k 'not old_transaction_cannot_cross and not later_transition_cannot_be_undone and not superseded_transition_cannot_close'
+      - name: All six adversarial generation cases must detect the old owner
+        run: |
+          set +e
+          uv run pytest -q tests/test_energy_session.py \
+            -k 'old_transaction_cannot_cross or later_transition_cannot_be_undone or superseded_transition_cannot_close' \
+            --junitxml=generation-regression.xml > generation-regression.log 2>&1
+          result=$?
+          cat generation-regression.log
+          test "$result" -eq 1 || exit 1
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          cases = ET.parse('generation-regression.xml').findall('.//testcase')
+          assert len(cases) == 6
+          assert all(case.find('failure') is not None for case in cases)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: admission-generation-regression
+          path: |
+            generation-regression.log
+            generation-regression.xml
