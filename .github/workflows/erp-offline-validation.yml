@@ -66,3 +66,32 @@ jobs:
           result=$?
           cat freshness-mutation.log
           test "$result" -eq 1
+
+  owner-mutation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: astral-sh/setup-uv@v5
+      - run: uv python install
+      - run: uv sync --frozen --group dev
+      - name: Let a queued whole transaction cross a closing session
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('esp_serial/energy_session.py')
+          source = p.read_text()
+          needle = 'if not self._accepting.is_set() or self._writer is None:'
+          assert source.count(needle) == 1
+          p.write_text(source.replace(needle, 'if self._writer is None:'))
+          PY
+      - name: Previous tests remain green with the planted escape
+        run: uv run pytest -q tests log_redactor/tests/test_redaction_contract.py -k 'not transition_closes_admission_for_a_transaction_already_waiting'
+      - name: Queued transaction regression must be detected
+        run: |
+          set +e
+          uv run pytest -q tests/test_energy_session.py::test_transition_closes_admission_for_a_transaction_already_waiting > owner-mutation.log 2>&1
+          result=$?
+          cat owner-mutation.log
+          test "$result" -eq 1
