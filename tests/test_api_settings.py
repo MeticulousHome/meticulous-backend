@@ -1004,12 +1004,26 @@ class TestRootPasswordAPI(MachineBoundaryTestCase):
             "error": "This endpoint can only be accessed locally",
         }
 
-    def test_remote_ip_is_allowed_when_the_host_is_localhost(self):
-        # The check only refuses when both the forwarded IP and the Host are non-local.
+    def test_remote_request_addressed_to_localhost_returns_403(self):
+        # nginx forwards the client's Host: it does not make the client local.
+        MeticulousConfig[CONFIG_SYSTEM][ROOT_PASSWORD] = "s3cretpw9"
+
+        for host in ("localhost", "127.0.0.1", "localhost:80"):
+            response = self.fetch(
+                "/api/v1/machine/root-password",
+                headers={"X-Real-IP": "192.168.1.42", "Host": host},
+            )
+
+            assert response.code == 403, host
+            assert b"s3cretpw9" not in response.body
+
+    def test_local_request_through_the_proxy_returns_the_password(self):
+        MeticulousConfig[CONFIG_SYSTEM][ROOT_PASSWORD] = "s3cretpw9"
+
         response = self.fetch(
             "/api/v1/machine/root-password",
-            headers={"X-Real-IP": "192.168.1.42", "Host": "localhost"},
+            headers={"X-Real-IP": "127.0.0.1", "Host": "localhost"},
         )
 
         assert response.code == 200
-        assert json.loads(response.body)["root_password"] == "root"
+        assert json.loads(response.body)["root_password"] == "s3cretpw9"
