@@ -1,6 +1,7 @@
 import sentry_sdk
 from sentry_sdk.integrations.asyncio import AsyncioIntegration
 
+import logging
 import os
 
 from sentry_privacy import drop_breadcrumb, sanitize_sentry_event
@@ -82,7 +83,13 @@ def run():
         backend_main()
     except Exception as e:
         logger.exception("main() failed", exc_info=e, stack_info=True)
-        exit(1)
+        try:
+            logging.shutdown()
+            sentry_sdk.flush()
+        finally:
+            # exit() only ends the main thread; the non-daemon threads would keep a
+            # server-less process alive with no HTTP server
+            os._exit(1)
 
 
 if __name__ == "__main__":
