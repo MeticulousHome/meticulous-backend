@@ -38,3 +38,31 @@ jobs:
         with:
           name: command-writer-mutation
           path: mutation.log
+
+  freshness-mutation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: astral-sh/setup-uv@v5
+      - run: uv python install
+      - run: uv sync --frozen --group dev
+      - name: Accept a cached recovery sample
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('esp_serial/energy_session.py')
+          source = p.read_text()
+          assert source.count('if acquired > baseline:') == 1
+          p.write_text(source.replace('if acquired > baseline:', 'if acquired >= baseline:'))
+          PY
+      - name: Previous suite remains green
+        run: uv run pytest -q tests log_redactor/tests/test_redaction_contract.py --ignore=tests/test_energy_session.py
+      - name: Cached sample regression must be detected
+        run: |
+          set +e
+          uv run pytest -q tests/test_energy_session.py::test_cached_or_older_acquisition_never_sends_release > freshness-mutation.log 2>&1
+          result=$?
+          cat freshness-mutation.log
+          test "$result" -eq 1
