@@ -317,3 +317,48 @@ def test_matching_wake_cancels_prepare_without_waiting_for_the_deadline(tmp_path
     assert clock.now < DEADLINE
     assert store.load().phase == "pending"
     assert len(port.writes) == 2
+
+
+def test_transition_closes_admission_for_a_transaction_already_waiting(tmp_path):
+    """Whole hash/profile writes cannot straddle transition ownership.
+
+    A generator signals that a second caller passed the initial admission check
+    while the first owns real serial I/O. The transition times out waiting, yet
+    that queued caller must still be refused. Removing the inside-owner check
+    reproduces the escape; ordinary writer tests do not exercise this owner.
+    """
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    session, port, store, _ = owner(tmp_path, prepare_transcript() + recovery_transcript())
+    prepare(session)
+    recover(session)
+    entered, release, queued = threading.Event(), threading.Event(), threading.Event()
+
+    def block_serial():
+        entered.set()
+        assert release.wait(5)  # Harness deadlock watchdog only.
+        return b""
+
+    port.transcript.extend([(b"hash,a\x03json\n{}\x03", block_serial), (b"late\x03", b"")])
+
+    def queued_parts():
+        queued.set()
+        yield b"late\x03"
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(
+            session.write_transaction, [b"hash,a\x03", b"json\n{}\x03"], deadline=DEADLINE
+        )
+        try:
+            assert entered.wait(5)
+            second = pool.submit(session.write_transaction, queued_parts(), deadline=DEADLINE)
+            assert queued.wait(5)
+            with pytest.raises(EnergyError, match="busy"):
+                session.prepare(lease_ms=LEASE, io_ticks=IO, deadline=port.clock.now + 0.001)
+        finally:
+            release.set()
+        assert first.result(timeout=5)
+        assert not second.result(timeout=5)
+    assert port.writes[-1] == b"hash,a\x03json\n{}\x03"
+    assert store.load().phase == "complete"
