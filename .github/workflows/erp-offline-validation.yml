@@ -122,7 +122,7 @@ jobs:
         run: |
           set +e
           uv run pytest -q tests/test_energy_session.py \
-            -k 'old_transaction_cannot_cross or later_transition_cannot_be_undone or superseded_transition_cannot_close' \
+            -k '(old_transaction_cannot_cross or later_transition_cannot_be_undone or superseded_transition_cannot_close) and not admission_lock' \
             --junitxml=generation-regression.xml > generation-regression.log 2>&1
           result=$?
           cat generation-regression.log
@@ -140,3 +140,39 @@ jobs:
           path: |
             generation-regression.log
             generation-regression.xml
+
+  admission-lock-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: astral-sh/setup-uv@v5
+      - run: uv python install
+      - run: uv sync --frozen --group dev
+      - name: Restore the owner that captures its generation after waiting for admission
+        run: |
+          git fetch --depth=1 origin 7a30184fe72c5d3357e0d9352a847bafd57434dc
+          git show 7a30184fe72c5d3357e0d9352a847bafd57434dc:esp_serial/energy_session.py > esp_serial/energy_session.py
+      - name: Previous complete Linux suite remains green
+        run: uv run pytest -q tests log_redactor/tests/test_redaction_contract.py -k 'not admission_lock'
+      - name: Admission-lock waiter must detect capture after the first wait
+        run: |
+          set +e
+          uv run pytest -q 'tests/test_energy_session.py::test_old_transaction_cannot_cross_a_successful_recovery[admission_lock]' \
+            --junitxml=admission-lock-regression.xml > admission-lock-regression.log 2>&1
+          result=$?
+          cat admission-lock-regression.log
+          test "$result" -eq 1 || exit 1
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          cases = ET.parse('admission-lock-regression.xml').findall('.//testcase')
+          assert len(cases) == 1 and cases[0].find('failure') is not None
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: admission-lock-regression
+          path: |
+            admission-lock-regression.log
+            admission-lock-regression.xml
