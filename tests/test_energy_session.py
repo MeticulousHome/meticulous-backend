@@ -18,6 +18,7 @@ from esp_serial.energy_session import EnergyError, EnergySession, Intent, Intent
 
 BOOT, SESSION, CHALLENGE, PROBE = (c * 32 for c in "abcd")
 EMPTY = "0" * 32
+NEGOTIATION = "f" * 32
 # Synthetic budgets exercise ordering only; no machine acceptance threshold.
 LEASE, IO, DEADLINE = 10000, 2000, 20
 
@@ -74,9 +75,9 @@ class TranscriptPort:
 
 def prepare_transcript(ready=None):
     return [
-        (tx(f"HELLO,{PROBE},{IO}"), rx(f"HELLO,{PROBE},{BOOT},empty,{EMPTY},0")),
+        (tx(f"HELLO,{PROBE},{IO}"), rx(f"HELLO,{PROBE},{BOOT},empty,{EMPTY},0,{NEGOTIATION}")),
         (
-            tx(f"PREPARE,{BOOT},{SESSION},{LEASE},{IO}"),
+            tx(f"PREPARE,{BOOT},{SESSION},{LEASE},{IO},{NEGOTIATION}"),
             rx(f"READY,{BOOT},{SESSION}") if ready is None else ready,
         ),
     ]
@@ -85,7 +86,10 @@ def prepare_transcript(ready=None):
 def recovery_transcript(*, boot=BOOT, sequence=1, samples=None, released=None):
     identity = f"{boot},{SESSION},{sequence},{CHALLENGE}"
     return [
-        (tx(f"HELLO,{PROBE},{IO}"), rx(f"HELLO,{PROBE},{boot},armed,{SESSION},{sequence - 1}")),
+        (
+            tx(f"HELLO,{PROBE},{IO}"),
+            rx(f"HELLO,{PROBE},{boot},armed,{SESSION},{sequence - 1},{NEGOTIATION}"),
+        ),
         (
             tx(f"RESUME,{identity},{LEASE},{IO}"),
             rx(f"AWAKE,{identity},7")
@@ -196,7 +200,9 @@ def test_wrong_boot_session_sequence_challenge_and_oversize_lines_do_not_release
     "state,peer", [("empty", EMPTY), ("armed", "e" * 32), ("corrupt", SESSION)]
 )
 def test_missing_or_foreign_peer_intent_cannot_be_adopted(tmp_path, state, peer):
-    transcript = [(tx(f"HELLO,{PROBE},{IO}"), rx(f"HELLO,{PROBE},{BOOT},{state},{peer},0"))]
+    transcript = [
+        (tx(f"HELLO,{PROBE},{IO}"), rx(f"HELLO,{PROBE},{BOOT},{state},{peer},0,{NEGOTIATION}"))
+    ]
     session, port, store, _ = owner(tmp_path, transcript, Intent(1, SESSION, 0, "pending"))
     with pytest.raises(EnergyError):
         recover(session)
@@ -204,7 +210,9 @@ def test_missing_or_foreign_peer_intent_cannot_be_adopted(tmp_path, state, peer)
 
 
 def test_missing_host_intent_does_not_clear_armed_peer(tmp_path):
-    transcript = [(tx(f"HELLO,{PROBE},{IO}"), rx(f"HELLO,{PROBE},{BOOT},armed,{SESSION},0"))]
+    transcript = [
+        (tx(f"HELLO,{PROBE},{IO}"), rx(f"HELLO,{PROBE},{BOOT},armed,{SESSION},0,{NEGOTIATION}"))
+    ]
     session, port, store, _ = owner(tmp_path, transcript)
     with pytest.raises(EnergyError, match="unowned"):
         prepare(session)
@@ -298,3 +306,84 @@ def test_nonfinite_or_malformed_fresh_sample_cannot_release(tmp_path, pressure):
     with pytest.raises(EnergyError, match="pressure"):
         recover(session)
     assert len(port.writes) == 2
+
+
+def test_matching_wake_cancels_prepare_without_waiting_for_the_deadline(tmp_path):
+    session, port, store, clock = owner(
+        tmp_path, prepare_transcript(ready=rx(f"WAKE,{BOOT},{SESSION}"))
+    )
+    with pytest.raises(EnergyError, match="Wake"):
+        prepare(session)
+    assert clock.now < DEADLINE
+    assert store.load().phase == "pending"
+    assert len(port.writes) == 2
+
+
+def test_transition_closes_admission_for_a_transaction_already_waiting(tmp_path):
+    """Whole hash/profile writes cannot straddle transition ownership.
+
+    A generator signals that a second caller passed the initial admission check
+    while the first owns real serial I/O. The transition times out waiting, yet
+    that queued caller must still be refused. Removing the inside-owner check
+    reproduces the escape; ordinary writer tests do not exercise this owner.
+    """
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    session, port, store, _ = owner(tmp_path, prepare_transcript() + recovery_transcript())
+    prepare(session)
+    recover(session)
+    entered, release, queued = threading.Event(), threading.Event(), threading.Event()
+
+    def block_serial():
+        entered.set()
+        assert release.wait(5)  # Harness deadlock watchdog only.
+        return b""
+
+    port.transcript.extend([(b"hash,a\x03json\n{}\x03", block_serial), (b"late\x03", b"")])
+
+    def queued_parts():
+        queued.set()
+        yield b"late\x03"
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(
+            session.write_transaction, [b"hash,a\x03", b"json\n{}\x03"], deadline=DEADLINE
+        )
+        try:
+            assert entered.wait(5)
+            second = pool.submit(session.write_transaction, queued_parts(), deadline=DEADLINE)
+            assert queued.wait(5)
+            with pytest.raises(EnergyError, match="busy"):
+                session.prepare(lease_ms=LEASE, io_ticks=IO, deadline=port.clock.now + 0.001)
+        finally:
+            release.set()
+        assert first.result(timeout=5)
+        assert not second.result(timeout=5)
+    assert port.writes[-1] == b"hash,a\x03json\n{}\x03"
+    assert store.load().phase == "complete"
+
+
+@pytest.mark.parametrize(
+    "intent,state,peer,sequence",
+    [
+        (None, "released", SESSION, 1),
+        (Intent(1, SESSION, 1, "complete"), "empty", EMPTY, 0),
+        (Intent(1, SESSION, 1, "complete"), "released", "e" * 32, 1),
+        (Intent(1, SESSION, 1, "complete"), "released", SESSION, 2),
+    ],
+)
+def test_prepare_cannot_replace_a_missing_or_mismatched_completed_journal(
+    tmp_path, intent, state, peer, sequence
+):
+    transcript = [
+        (
+            tx(f"HELLO,{PROBE},{IO}"),
+            rx(f"HELLO,{PROBE},{BOOT},{state},{peer},{sequence},{NEGOTIATION}"),
+        )
+    ]
+    session, port, store, _ = owner(tmp_path, transcript, intent)
+    with pytest.raises(EnergyError):
+        prepare(session)
+    assert store.load() == intent
+    assert len(port.writes) == 1
