@@ -230,10 +230,8 @@
 1 machine.py: [attr-defined] "None" has no attribute "buildDate"
 1 machine.py: [attr-defined] "None" has no attribute "color"
 1 machine.py: [attr-defined] "None" has no attribute "espPinout"
-1 machine.py: [attr-defined] "None" has no attribute "get"
 1 machine.py: [attr-defined] "None" has no attribute "serialNumber"
 2 machine.py: [attr-defined] "type[Machine]" has no attribute "_flashingThread"
-1 machine.py: [index] Value of type "None" is not indexable
 16 machine.py: [misc] Method must have at least one argument. Did you forget the "self" argument?
 9 machine.py: [misc] Self argument missing for a non-static method (or an invalid type for self)
 1 machine.py: [operator] Unsupported operand types for + ("str" and "Machine")

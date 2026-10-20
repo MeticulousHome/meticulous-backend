@@ -1,6 +1,7 @@
 from collections import deque
 from esp_serial.data import SensorData, ShotData
 from log import MeticulousLogger
+import math
 import time
 import os
 from named_thread import NamedThread
@@ -79,8 +80,12 @@ class EnergyCalculator:
 
         now = time.monotonic()
 
-        flow = max((shot.flow if shot else 0.0), 0.005)
-        power = abs(sensors.motor_power / 100.0) * abs(sensors.motor_current) / flow
+        sample_ok = not shot or all(
+            isinstance(v, (int, float)) and math.isfinite(v) for v in (shot.flow, shot.pressure)
+        )
+        if sample_ok:
+            flow = max((shot.flow if shot else 0.0), 0.005)
+            power = abs(sensors.motor_power / 100.0) * abs(sensors.motor_current) / flow
         if len(self.history) == 0:
             self.history.append((0, now))
             return float(0.0)
@@ -92,7 +97,10 @@ class EnergyCalculator:
 
             dT = 0.0
 
-        added_energy = power * dT * abs(shot.pressure) if shot else power * dT
+        if not sample_ok:
+            added_energy = 0.0
+        else:
+            added_energy = power * dT * abs(shot.pressure) if shot else power * dT
         self.history.append((added_energy, now))
 
         self.total_energy += added_energy
