@@ -245,16 +245,23 @@ impl App {
 /// mDNS, built when the Wi-Fi manager initializes.
 fn mdns_announcer() -> AnnouncerFactory {
     Arc::new(|wifi| {
-        let responder = MdnsResponder::new().map_err(|e| PyError::new("OSError", e))?;
+        let responder = Arc::new(MdnsResponder::new().map_err(|e| PyError::new("OSError", e))?);
         let source = Box::new(move || match wifi.upgrade() {
             Some(wifi) => wifi.get_current_config(),
             None => Err(PyError::new("RuntimeError", "the Wi-Fi manager is gone")),
         });
-        let announcer: Arc<dyn Announcer> = Arc::new(ZeroConfAnnouncement::new(
+        let announcement = Arc::new(ZeroConfAnnouncement::new(
             source,
-            Arc::new(responder),
+            responder.clone(),
             ZeroConfAnnouncement::port_from_env(),
         ));
+        let weak = Arc::downgrade(&announcement);
+        responder.on_addresses_changed(move || {
+            if let Some(announcement) = weak.upgrade() {
+                announcement.refresh();
+            }
+        });
+        let announcer: Arc<dyn Announcer> = announcement;
         Ok(announcer)
     })
 }

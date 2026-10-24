@@ -99,6 +99,25 @@ impl ZeroConfAnnouncement {
             .and_then(|p| p.parse().ok())
             .unwrap_or(80)
     }
+
+    /// Announce again with the addresses the machine has now, if anything is
+    /// announced. Deliberate fix: the Wi-Fi manager restarts the
+    /// announcement as soon as a connection comes up, which can be before
+    /// NetworkManager has given wlan0 its IPv4 address; the services then
+    /// stayed announced with the old addresses until the next network change
+    /// and the apps could not find the machine.
+    pub fn refresh(&self) {
+        let announced = {
+            let registered = self.registered.lock();
+            registered.0.is_some() || registered.1.is_some()
+        };
+        if announced {
+            tracing::info!("Network addresses changed, announcing zeroconf again");
+            if let Err(error) = self.restart() {
+                tracing::warn!("zeroconf refresh failed: {}", error.message);
+            }
+        }
+    }
 }
 
 impl Announcer for ZeroConfAnnouncement {
@@ -166,13 +185,81 @@ impl Announcer for ZeroConfAnnouncement {
 /// `IPVersion.All`).
 pub struct MdnsResponder {
     daemon: mdns_sd::ServiceDaemon,
+    on_addresses_changed: AddressesChanged,
 }
+
+type AddressesChanged = Arc<Mutex<Option<Arc<dyn Fn() + Send + Sync>>>>;
+
+/// How long the interface addresses must stay still before the services are
+/// announced again: NetworkManager adds the IPv6 and IPv4 addresses of a new
+/// connection a moment apart.
+const ADDRESSES_SETTLE: std::time::Duration = std::time::Duration::from_secs(2);
 
 impl MdnsResponder {
     pub fn new() -> Result<MdnsResponder, String> {
-        mdns_sd::ServiceDaemon::new()
-            .map(|daemon| MdnsResponder { daemon })
-            .map_err(|e| e.to_string())
+        let daemon = mdns_sd::ServiceDaemon::new().map_err(|e| e.to_string())?;
+        let on_addresses_changed: AddressesChanged = Arc::new(Mutex::new(None));
+        if let Ok(events) = daemon.monitor() {
+            let callback = on_addresses_changed.clone();
+            let _ = std::thread::Builder::new()
+                .name("MdnsMonitor".into())
+                .spawn(move || watch_daemon(events, callback));
+        }
+        Ok(MdnsResponder {
+            daemon,
+            on_addresses_changed,
+        })
+    }
+
+    /// Called once the interface addresses changed and settled.
+    pub fn on_addresses_changed(&self, callback: impl Fn() + Send + Sync + 'static) {
+        *self.on_addresses_changed.lock() = Some(Arc::new(callback));
+    }
+}
+
+/// Log what the mDNS daemon does on its own (announcements, interface
+/// changes, renames after a name conflict, errors), which the Python's
+/// zeroconf never reported, and call back once the addresses settle after a
+/// change.
+fn watch_daemon(events: mdns_sd::Receiver<mdns_sd::DaemonEvent>, callback: AddressesChanged) {
+    let mut changed_at: Option<std::time::Instant> = None;
+    loop {
+        let event = match events.recv_timeout(std::time::Duration::from_millis(250)) {
+            Ok(event) => Some(event),
+            Err(mdns_sd::RecvTimeoutError::Timeout) => None,
+            Err(mdns_sd::RecvTimeoutError::Disconnected) => return,
+        };
+        if changed_at.is_some_and(|at| at.elapsed() >= ADDRESSES_SETTLE) {
+            changed_at = None;
+            let notify = callback.lock().clone();
+            if let Some(notify) = notify {
+                notify();
+            }
+        }
+        let Some(event) = event else {
+            continue;
+        };
+        match event {
+            mdns_sd::DaemonEvent::Announce(service, on) => {
+                tracing::debug!("mDNS announced {service} on {on}")
+            }
+            mdns_sd::DaemonEvent::IpAdd(ip) => {
+                tracing::info!("mDNS interface address added: {ip}");
+                changed_at = Some(std::time::Instant::now());
+            }
+            mdns_sd::DaemonEvent::IpDel(ip) => {
+                tracing::info!("mDNS interface address removed: {ip}");
+                changed_at = Some(std::time::Instant::now());
+            }
+            mdns_sd::DaemonEvent::NameChange(change) => tracing::warn!(
+                "mDNS name conflict: {} renamed to {} on {}",
+                change.original,
+                change.new_name,
+                change.intf_name
+            ),
+            mdns_sd::DaemonEvent::Error(error) => tracing::warn!("mDNS daemon error: {error}"),
+            other => tracing::debug!("mDNS {other:?}"),
+        }
     }
 }
 
@@ -288,6 +375,20 @@ mod tests {
         assert_eq!(recorder.registered.lock().len(), 4);
         *connected_now.lock() = false;
         announcement.restart().expect("restart while disconnected");
+        assert_eq!(recorder.registered.lock().len(), 4);
+    }
+
+    /// An address change announces again only what is announced.
+    #[test]
+    fn refresh_announces_again_only_when_announced() {
+        let recorder = Arc::new(Recorder::default());
+        let announcement =
+            ZeroConfAnnouncement::new(Box::new(|| Ok(connected())), recorder.clone(), 80);
+        announcement.refresh();
+        assert!(recorder.registered.lock().is_empty());
+        announcement.start().expect("start");
+        announcement.refresh();
+        assert_eq!(recorder.unregistered.lock().len(), 2);
         assert_eq!(recorder.registered.lock().len(), 4);
     }
 }
