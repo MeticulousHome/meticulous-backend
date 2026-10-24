@@ -1601,11 +1601,9 @@ async fn selected_is_204_without_a_hovered_profile() {
 #[tokio::test]
 async fn selected_returns_the_hovered_profile() {
     let fx = Fx::new();
-    fx.app.profiles.set_hover(Hover {
-        id: UNKNOWN_ID.into(),
-        kind: "hover".into(),
-        from: "app".into(),
-    });
+    fx.app
+        .profiles
+        .set_hover(Hover::new(UNKNOWN_ID, "hover", "app"));
 
     assert_eq!(
         fx.get_json("/profile/selected").await,

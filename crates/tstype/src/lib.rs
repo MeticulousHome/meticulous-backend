@@ -39,6 +39,8 @@ pub enum Ts {
     JsonText(Box<Ts>),
     /// A type exported under its own name.
     Named(Box<Named>),
+    /// Any JSON value: what the backend relays as a client sent it.
+    Unknown,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -265,6 +267,7 @@ fn walk(value: &Value, ty: &Ts, path: &str, seen: &mut BTreeSet<String>) -> Resu
         Ts::String => ok(value.is_string()),
         Ts::Boolean => ok(value.is_boolean()),
         Ts::Null => ok(value.is_null()),
+        Ts::Unknown => Ok(()),
         Ts::StrLit(literal) => ok(value.as_str() == Some(literal.as_str())),
         // `as_i64` is `None` for a float, so `1.0` is not `1`.
         Ts::IntLit(literal) => ok(value.as_i64() == Some(*literal)),
@@ -373,7 +376,13 @@ fn facts(ty: &Ts, path: &str, out: &mut BTreeSet<String>) {
         Ts::Array(inner) => facts(inner, &format!("{path}[]"), out),
         Ts::JsonText(inner) => facts(inner, path, out),
         Ts::Named(named) => facts(&named.ty, path, out),
-        Ts::Number | Ts::String | Ts::Boolean | Ts::Null | Ts::StrLit(_) | Ts::IntLit(_) => {}
+        Ts::Number
+        | Ts::String
+        | Ts::Boolean
+        | Ts::Null
+        | Ts::StrLit(_)
+        | Ts::IntLit(_)
+        | Ts::Unknown => {}
     }
 }
 
@@ -384,6 +393,7 @@ pub fn inline(ty: &Ts) -> String {
         Ts::String | Ts::JsonText(_) => "string".into(),
         Ts::Boolean => "boolean".into(),
         Ts::Null => "null".into(),
+        Ts::Unknown => "unknown".into(),
         // A JSON string is a TypeScript string literal.
         Ts::StrLit(literal) => Value::String(literal.clone()).to_string(),
         Ts::IntLit(literal) => literal.to_string(),
@@ -499,7 +509,13 @@ fn collect<'a>(ty: &'a Ts, named: &mut Vec<&'a Named>) -> Result<(), Conflict> {
             Ok(())
         }
         Ts::Union(members) => members.iter().try_for_each(|m| collect(m, named)),
-        Ts::Number | Ts::String | Ts::Boolean | Ts::Null | Ts::StrLit(_) | Ts::IntLit(_) => Ok(()),
+        Ts::Number
+        | Ts::String
+        | Ts::Boolean
+        | Ts::Null
+        | Ts::StrLit(_)
+        | Ts::IntLit(_)
+        | Ts::Unknown => Ok(()),
     }
 }
 

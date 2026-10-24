@@ -63,13 +63,14 @@ export type ProfileChange = "create" | "update" | "delete" | "full_reload" | "lo
 
 /**
  * The `profileHover` event: the profile a client has in focus, passed on to the other
- * clients as strings (`from` is `backend` in the hover a client gets on connect). Empty
- * strings for keys the client left out, and before any client sent one.
+ * clients as that client sent it, whatever the JSON types (`from` is `backend` in the
+ * hover a client gets on connect). Empty strings for keys the client left out, and
+ * before any client sent one; the backend's own hovers are strings.
  */
 export interface ProfileHoverPayload {
-  id: string;
-  type: string;
-  from: string;
+  id: unknown;
+  type: unknown;
+  from: unknown;
 }
 
 /**

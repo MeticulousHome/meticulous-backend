@@ -106,15 +106,31 @@ pub fn profile_event_type() -> Ts {
     )
 }
 
-/// `ProfileHover`: which profile a client has in focus.
-#[derive(Debug, Clone, Default, PartialEq)]
+/// `ProfileHover`: which profile a client has in focus. The values are kept
+/// as a client sent them (`data.get("id", "")`), whatever their JSON type.
+#[derive(Debug, Clone, PartialEq)]
 pub struct Hover {
-    pub id: String,
-    pub kind: String,
-    pub from: String,
+    pub id: Value,
+    pub kind: Value,
+    pub from: Value,
+}
+
+impl Default for Hover {
+    fn default() -> Hover {
+        Hover::new("", "", "")
+    }
 }
 
 impl Hover {
+    /// A hover the backend sets itself.
+    pub fn new(id: &str, kind: &str, from: &str) -> Hover {
+        Hover {
+            id: json!(id),
+            kind: json!(kind),
+            from: json!(from),
+        }
+    }
+
     pub fn to_value(&self) -> Value {
         json!({"id": self.id, "type": self.kind, "from": self.from})
     }
@@ -124,29 +140,29 @@ impl Hover {
         Ts::named(
             "ProfileHoverPayload",
             "The `profileHover` event: the profile a client has in focus, passed on to the other\n\
-             clients as strings (`from` is `backend` in the hover a client gets on connect). Empty\n\
-             strings for keys the client left out, and before any client sent one.",
+             clients as that client sent it, whatever the JSON types (`from` is `backend` in the\n\
+             hover a client gets on connect). Empty strings for keys the client left out, and\n\
+             before any client sent one; the backend's own hovers are strings.",
             Ts::object([
-                field("id", Ts::String),
-                field("type", Ts::String),
-                field("from", Ts::String),
+                field("id", Ts::Unknown),
+                field("type", Ts::Unknown),
+                field("from", Ts::Unknown),
             ]),
         )
     }
 
     /// `ProfileHover.from_dict`: missing keys become empty strings, other
     /// values pass through as Python would keep them.
-    pub fn from_value(data: &Value) -> Hover {
-        let text = |key: &str| match data.get(key) {
-            None | Some(Value::Null) => String::new(),
-            Some(Value::String(s)) => s.clone(),
-            Some(other) => other.to_string(),
-        };
-        Hover {
-            id: text("id"),
-            kind: text("type"),
-            from: text("from"),
-        }
+    /// `ProfileHover.from_dict`: `None` for a payload that is not an object
+    /// (Python's `data.get` raises there, so nothing is stored or relayed).
+    pub fn from_value(data: &Value) -> Option<Hover> {
+        let map = data.as_object()?;
+        let get = |key: &str| map.get(key).cloned().unwrap_or_else(|| json!(""));
+        Some(Hover {
+            id: get("id"),
+            kind: get("type"),
+            from: get("from"),
+        })
     }
 }
 
@@ -235,11 +251,7 @@ impl ProfileManager {
                 .and_then(Value::as_str)
                 .unwrap_or("")
                 .to_string();
-            self.state.lock().hover = Hover {
-                id,
-                kind: "focus".into(),
-                from: "backend".into(),
-            };
+            self.state.lock().hover = Hover::new(&id, "focus", "backend");
         }
     }
 
@@ -439,11 +451,7 @@ impl ProfileManager {
         self.emit_event(change, Some(&id), Some(&change_id), None);
         if change == ProfileEvent::Create {
             // The Dial selects a new profile: tell every client.
-            self.set_hover(Hover {
-                id: id.clone(),
-                kind: "focus".into(),
-                from: "dial".into(),
-            });
+            self.set_hover(Hover::new(&id, "focus", "dial"));
             self.sio.emit("profileHover", &self.hover().to_value());
         }
         Ok(json!({"profile": data, "change_id": change_id}))
@@ -503,7 +511,7 @@ impl ProfileManager {
         // A deleted profile can no longer be in focus; clear it silently.
         {
             let mut state = self.state.lock();
-            if state.hover.id == id {
+            if state.hover.id == json!(id) {
                 state.hover = Hover::default();
             }
         }
@@ -592,11 +600,7 @@ impl ProfileManager {
             .unwrap_or_default()
             .to_string();
         self.emit_event(ProfileEvent::Load, Some(&id), None, None);
-        self.set_hover(Hover {
-            id,
-            kind: "focus".into(),
-            from: "dial".into(),
-        });
+        self.set_hover(Hover::new(&id, "focus", "dial"));
         self.sio.emit("profileHover", &self.hover().to_value());
         Ok(Some(data))
     }
@@ -830,7 +834,13 @@ impl ProfileManager {
 
     /// `handle_profile_hover`: remember it, tell everyone but the sender.
     pub fn handle_hover(&self, data: &Value, sid: &str) {
-        let hover = Hover::from_value(data);
+        let Some(hover) = Hover::from_value(data) else {
+            tracing::error!(
+                "profileHover: AttributeError: '{}' object has no attribute 'get'",
+                crate::py::type_name(data)
+            );
+            return;
+        };
         tracing::info!(
             "Profile hover updated: {}",
             pyfmt::dumps_default(&hover.to_value())
@@ -1020,4 +1030,30 @@ fn prepare_for_esp32(app: &App, data: &Value) -> Result<Value, ProfileError> {
     };
     let mut ids = app.reference_ids.lock();
     Ok(profile::prepare_for_esp32(data, &settings, &mut ids)?)
+}
+
+#[cfg(test)]
+mod hover_tests {
+    use serde_json::json;
+
+    /// : the values are relayed as the client sent
+    /// them, a missing key is "", and a payload that is not an object is
+    /// neither stored nor relayed (Python raises in the handler).
+    #[test]
+    fn hovers_are_relayed_as_sent() {
+        let (_dir, app) = crate::testing::app();
+        app.sio.clear_emitted();
+        app.profiles
+            .handle_hover(&json!({"id": 5, "type": null, "extra": 1}), "sid-1");
+        let emitted = app.sio.emitted();
+        assert_eq!(emitted.len(), 1);
+        assert_eq!(emitted[0].event, "profileHover");
+        assert_eq!(emitted[0].data, json!({"id": 5, "type": null, "from": ""}));
+        assert_eq!(emitted[0].skip_sid.as_deref(), Some("sid-1"));
+
+        app.sio.clear_emitted();
+        app.profiles.handle_hover(&json!("p-1"), "sid-1");
+        assert!(app.sio.emitted().is_empty());
+        assert_eq!(app.profiles.hover().id, json!(5));
+    }
 }

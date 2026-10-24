@@ -494,7 +494,8 @@ async fn last(app: Arc<App>, _req: Request) -> Reply {
 
 async fn selected(app: Arc<App>, _req: Request) -> Reply {
     let hover = app.profiles.hover();
-    if hover.id.is_empty() {
+    // `if not hover.get("id")`: any falsy id.
+    if !crate::config::python_truthy(&hover.id) {
         return Reply::base().status(204);
     }
     Reply::base().dumps(hover.to_value())
