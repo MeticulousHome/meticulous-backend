@@ -66,6 +66,40 @@ protection:
 Name the Python test a Rust test came from in its doc comment. Expected values
 come from the Python code or its tests, never from what the Rust code returns.
 
+## The backend crate
+
+- **Services** (`crates/backend/src/<name>.rs`) replace the Python's
+  class-level singletons. A service is a struct built in `App::new`
+  (`app.rs`) that holds what it always needs (`Arc<ConfigStore>`, `Arc<Sio>`,
+  `Arc<NotificationManager>`…); methods that need other services take
+  `app: &App`. Start-up work that touches hardware or spawns tasks goes in
+  `start()` in `main.rs`, in the order `backend.main()` does it.
+- **Routes** live in `crates/backend/src/api/<python module>.rs`, each with a
+  `routes() -> Vec<Route>` registered in `api/mod.rs`. Patterns are the
+  Python's `register_handler` patterns, relative to `/api/v1`. A handler is
+  `async fn(Arc<App>, Request) -> Reply`:
+  `Reply::base().json(v)` is tornado's `self.write(dict)`,
+  `Reply::base().dumps(v)` is `self.write(json.dumps(v))` (the content type
+  stays `application/json` without the charset), `.status(code)` is
+  `set_status`, and `Reply::error(Kind::Base, 500, &req)` is what tornado
+  sends for an exception the Python handler does not catch.
+  `api::local_only(&req)` is `LocalAccessHandler`.
+- **Blocking work** (files, SQLite, zstd, subprocesses, D-Bus calls) runs in
+  `tokio::task::spawn_blocking`; the UART has its own threads.
+- **The host**: commands are run with `std::process::Command` with the
+  Python's binaries and arguments (the boot harness stubs them on `PATH`);
+  D-Bus through `zbus`; GPIO through `gpiocdev`. When
+  `app.env.hooks.fake_hardware` is set, leave GPIO, I2C, BlueZ, systemd, the
+  backlight and audio alone, as `tests/boot/boot_harness.py` does.
+- **Clients**: `app.sio.emit(event, &value)` (`emit_to`, `emit_skip`),
+  `app.notifications.add(Notification::new(..))`.
+- **Settings**: `app.config.get(section, key)` and friends, `set`, `save`;
+  key names in `config::keys`.
+- **Tests**: `crate::testing::app()` builds an `App` on temporary
+  directories; `testing::call(&app, Method::GET, "/api/v1/...", body)`
+  sends a request through the real route table, like the Python suite's
+  `AsyncHTTPTestCase`.
+
 ## Conventions
 
 - `cargo fmt`, `cargo clippy --all-targets -- -D warnings`, no `unwrap()` in
