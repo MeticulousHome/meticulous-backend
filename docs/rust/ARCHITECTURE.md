@@ -102,6 +102,24 @@ come from the Python code or its tests, never from what the Rust code returns.
   sends a request through the real route table, like the Python suite's
   `AsyncHTTPTestCase`.
 
+## Packaging
+
+- **Data files**: the .deb installs the read-only data under
+  `/opt/meticulous-backend` (`tests/package/verify_package.py` checks every
+  tracked one ships). The small files the backend parses
+  (`simple_profile.json`, the default sound theme's `config.json`, the default
+  images' `accent_colors.json`) are also built into the binary
+  (`crates/backend/src/bundled.rs`): a file on disk wins, a missing one falls
+  back to the built-in copy with a WARNING. The sounds and the default
+  profile images stay files only.
+- **Debug info**: the release profile keeps debug info without types
+  (`debug = "limited"`); `Dockerfile.deb` and
+  `packaging/build-deb-cross.sh` split them into
+  `meticulous-backend_<version>_<arch>.debug` next to the .deb and ship the
+  binary with its symbol table only. Sentry symbolicates a crash report with
+  that file once it is uploaded (`sentry-cli debug-files upload`, see
+  `.github/workflows/package.yml`); a binary built elsewhere needs its own.
+
 ## Conventions
 
 - `cargo fmt`, `cargo clippy --all-targets -- -D warnings`, no `unwrap()` in
