@@ -11,6 +11,7 @@ use std::sync::Arc;
 use crate::alarms::AlarmManager;
 use crate::backlight::BacklightController;
 use crate::ble::GattServer;
+use crate::bug_report::{BugReports, ReportsConfig};
 use crate::config::{self, ConfigStore};
 use crate::dbus_monitor::DbusMonitor;
 use crate::debug_shots::ShotDebugManager;
@@ -25,12 +26,12 @@ use crate::machine::Machine;
 use crate::notifications::NotificationManager;
 use crate::os_update::OsUpdateStatus;
 use crate::ota::UpdateManager;
-use crate::pending;
 use crate::pour_over::PourOverProfileManager;
 use crate::profiles::ProfileManager;
 use crate::py::{CommandRunner, PyError, SystemRunner};
 use crate::redaction::Redaction;
 use crate::sentry_reporting::Reporting;
+use crate::shot_data_sharing::{SharingTarget, ShotDataSharing};
 use crate::shots::ShotManager;
 use crate::simple_profile::SimpleProfile;
 use crate::sio::Sio;
@@ -60,7 +61,8 @@ pub struct App {
     pub simple_profile: SimpleProfile,
     pub pour_over: PourOverProfileManager,
     pub history: crate::shot_database::History,
-    pub shot_sharing: pending::ShotSharing,
+    pub shot_sharing: ShotDataSharing,
+    pub reports: BugReports,
     /// The node program's reference ids, which never reset (PARITY: the
     /// Python counter lives for the process).
     pub reference_ids: parking_lot::Mutex<profile::ReferenceIds>,
@@ -186,6 +188,16 @@ impl App {
             mdns_announcer(),
         );
         let gatt = GattServer::new(wifi.clone(), hostname.clone(), config.clone(), env.port);
+        // Tests never read the developer's environment.
+        let lookup = |name: &str| {
+            if cfg!(test) {
+                None
+            } else {
+                std::env::var(name).ok()
+            }
+        };
+        let reports = BugReports::new(ReportsConfig::from_lookup(&env.paths, lookup));
+        let shot_sharing = ShotDataSharing::new(SharingTarget::from_lookup(lookup));
         Arc::new(App {
             env,
             log,
@@ -203,7 +215,8 @@ impl App {
             simple_profile,
             pour_over: PourOverProfileManager::new(env_paths_pour_over),
             history,
-            shot_sharing: pending::ShotSharing,
+            shot_sharing,
+            reports,
             reference_ids: parking_lot::Mutex::new(profile::ReferenceIds::default()),
             host,
             os_update,

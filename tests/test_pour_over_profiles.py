@@ -135,15 +135,14 @@ def test_documented_example_matches_the_canonical_contract(profile_directory):
 
 
 def test_debian_package_includes_canonical_pour_over_schema():
-    dockerfile = (
-        Path(__file__).parents[1].joinpath("Dockerfile.deb").read_text(encoding="utf-8")
-    )
+    # The packaged backend is the Rust binary, which compiles the canonical
+    # schema in (crates/profile/src/pour_over.rs) instead of reading a copy
+    # shipped under /opt/meticulous-backend.
+    repo = Path(__file__).parents[1]
+    profile_crate = repo.joinpath("crates/profile/src/pour_over.rs").read_text(encoding="utf-8")
 
-    assert "opt/meticulous-backend/pour_over_profile_schema" in dockerfile
-    assert (
-        "COPY pour_over_profile_schema/ "
-        "/pkg/opt/meticulous-backend/pour_over_profile_schema/"
-    ) in dockerfile
+    assert 'include_str!("../../../pour_over_profile_schema/schema.json")' in profile_crate
+    assert repo.joinpath("pour_over_profile_schema/schema.json").is_file()
 
 
 @pytest.mark.parametrize(

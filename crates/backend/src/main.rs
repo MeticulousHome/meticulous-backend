@@ -12,6 +12,7 @@ mod api;
 mod app;
 mod backlight;
 mod ble;
+mod bug_report;
 mod clock;
 mod config;
 mod contract;
@@ -44,6 +45,7 @@ mod qr;
 mod redaction;
 mod sentry_reporting;
 mod server;
+mod shot_data_sharing;
 mod shot_database;
 mod shots;
 mod simple_profile;
@@ -183,6 +185,7 @@ async fn start(app: &Arc<app::App>) -> Result<(), String> {
     app.pour_over.init();
     app.sounds.init(app.emulated(), true);
     blocking(app, |app| app.timezone.init()).await;
+    blocking(app, bug_report::start).await;
     Ok(())
 }
 

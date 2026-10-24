@@ -30,7 +30,9 @@ MYPY_ARGS = [
     "--no-color-output",
     "--show-error-codes",
     "--exclude",
-    r"^(tests|log_redactor|alembic|\.venv)/",
+    # crates/: the Rust workspace's own tooling (golden generators that
+    # import the Python backend), not the backend.
+    r"^(tests|log_redactor|alembic|crates|target|\.venv)/",
     ".",
 ]
 ERROR = re.compile(r"^(?P<file>[^:]+):\d+: error: (?P<message>.*?)\s+\[(?P<code>[a-z-]+)\]$")

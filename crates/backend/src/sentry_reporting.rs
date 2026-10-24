@@ -110,6 +110,43 @@ impl Reporting {
         }
     }
 
+    /// `sentry_sdk.capture_exception(exc)` inside `sentry_sdk.new_scope()`
+    /// with one tag and one context, to the backend project.
+    pub fn capture_exception_with(
+        &self,
+        exception_type: &str,
+        message: &str,
+        tag: (&str, &str),
+        context: (&str, &Value),
+    ) {
+        if !self.enabled {
+            return;
+        }
+        let map: BTreeMap<String, Value> = match context.1 {
+            Value::Object(o) => o.clone().into_iter().collect(),
+            other => BTreeMap::from([("value".to_string(), other.clone())]),
+        };
+        sentry::with_scope(
+            |scope| {
+                scope.set_tag(tag.0, tag.1);
+                scope.set_context(context.0, sentry::protocol::Context::Other(map));
+            },
+            || {
+                let event = Event {
+                    level: Level::Error,
+                    exception: vec![sentry::protocol::Exception {
+                        ty: exception_type.to_string(),
+                        value: Some(message.to_string()),
+                        ..Default::default()
+                    }]
+                    .into(),
+                    ..Default::default()
+                };
+                sentry::capture_event(event);
+            },
+        );
+    }
+
     /// An event for the ESP32's project with its own tags, context and
     /// release (`espresso-firmware@<version>`).
     pub fn capture_esp_event(

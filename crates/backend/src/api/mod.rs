@@ -2,6 +2,8 @@
 //! tornado's route list.
 
 pub mod action;
+pub mod bug_report;
+pub mod community_upload_diagnostics;
 pub mod emulation;
 pub mod history;
 pub mod machine;
@@ -104,6 +106,7 @@ pub fn contract_routes(app: &App) -> Vec<Route> {
 fn with_prefix(app: &App, wifi: Vec<Route>) -> Vec<Route> {
     let mut routes: Vec<Route> = wifi;
     routes.extend(action::routes());
+    routes.extend(bug_report::routes());
     routes.extend(history::routes());
     routes.extend(machine::routes());
     routes.extend(notifications::routes());
