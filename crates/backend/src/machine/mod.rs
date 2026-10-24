@@ -154,6 +154,11 @@ pub struct Machine {
     /// the Python suite's `RecordingPort`.
     #[cfg(test)]
     recording_port: Mutex<Option<Vec<Vec<u8>>>>,
+    /// Every `write` that would reach the port, link or not: handler tests
+    /// read the bytes the ESP32 would have received (the Python suite swaps
+    /// the port for a recorder).
+    #[cfg(test)]
+    pub(crate) uart_writes: Mutex<Vec<Vec<u8>>>,
 }
 
 impl Machine {
@@ -171,6 +176,7 @@ impl Machine {
             frames: tokio::sync::Notify::new(),
             #[cfg(test)]
             recording_port: Mutex::new(None),
+            uart_writes: Mutex::new(Vec::new()),
         }
     }
 
@@ -424,6 +430,7 @@ impl Machine {
             return;
         }
         #[cfg(test)]
+        self.uart_writes.lock().push(bytes.to_vec());
         if let Some(writes) = self.recording_port.lock().as_mut() {
             writes.push(bytes.to_vec());
             return;

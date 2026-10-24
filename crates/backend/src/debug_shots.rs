@@ -194,6 +194,16 @@ impl ShotDebugManager {
         }
     }
 
+    /// The node program the open (or the next) debug shot records.
+    #[cfg(test)]
+    pub fn node_json(&self) -> Option<Value> {
+        let state = self.state.lock();
+        match state.current.as_ref() {
+            Some(shot) => shot.node_json.clone(),
+            None => state.pending_node_json.clone(),
+        }
+    }
+
     pub fn handle_sensor_data(&self, sensors: &SensorData) {
         if let Some(shot) = self.state.lock().current.as_mut() {
             shot.add_sensor_data(sensors);

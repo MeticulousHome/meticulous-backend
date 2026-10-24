@@ -216,13 +216,13 @@ pub fn parse_python_json(body: &[u8]) -> Result<Value, JsonError> {
     match pyfmt::loads_lenient(text) {
         Ok(value) => Ok(value),
         Err(error) => {
-            if (error.is_eof() || text.trim().is_empty())
-                && let Some((what, at)) = truncated_json(text)
-            {
+            if let Some((what, pos)) = cpython_json_error(text) {
                 return Err(JsonError {
-                    message: python_json_position(what, text, at),
+                    message: decode_error_message(text, what, pos),
                 });
             }
+            // A document CPython would take but serde does not: report
+            // serde's position with the closest CPython wording.
             let line = error.line().max(1);
             let column = error.column().max(1);
             let offset = char_offset(text, line, column);
@@ -248,117 +248,213 @@ pub fn parse_python_json(body: &[u8]) -> Result<Value, JsonError> {
     }
 }
 
-/// What CPython's decoder expected where a document that is valid so far
-/// ends, and the character index it names: `{` wants a property name, `[1`
-/// a `,`, `"ab` is an unterminated string. `None` when the text does not
-/// read as a cut-off document.
-fn truncated_json(text: &str) -> Option<(&'static str, usize)> {
-    #[derive(Clone, Copy, PartialEq)]
-    enum Want {
-        Value,
-        Key,
-        Colon,
-        CommaOrEnd,
-    }
-    let chars: Vec<char> = text.chars().collect();
-    let mut containers: Vec<char> = Vec::new();
-    let mut want = Want::Value;
-    let mut i = 0;
-    while let Some(&c) = chars.get(i) {
-        match (want, c) {
-            (_, ' ' | '\t' | '\n' | '\r') => i += 1,
-            (Want::Value | Want::Key, '"') => {
-                let start = i;
-                i += 1;
-                loop {
-                    match chars.get(i) {
-                        None => return Some(("Unterminated string starting at", start)),
-                        Some('\\') => i += 2,
-                        Some('"') => break,
-                        Some(_) => i += 1,
-                    }
-                }
-                i += 1;
-                want = if want == Want::Key {
-                    Want::Colon
-                } else {
-                    Want::CommaOrEnd
-                };
-            }
-            (Want::Value, '{') => {
-                containers.push('{');
-                want = Want::Key;
-                i += 1;
-            }
-            (Want::Value, '[') => {
-                containers.push('[');
-                i += 1;
-            }
-            (Want::Key | Want::CommaOrEnd, '}') | (Want::Value | Want::CommaOrEnd, ']') => {
-                containers.pop()?;
-                want = Want::CommaOrEnd;
-                i += 1;
-            }
-            (Want::Colon, ':') => {
-                want = Want::Value;
-                i += 1;
-            }
-            (Want::CommaOrEnd, ',') => {
-                want = match containers.last()? {
-                    '{' => Want::Key,
-                    _ => Want::Value,
-                };
-                i += 1;
-            }
-            (Want::Value, _) => {
-                // A number or a literal, up to the next delimiter.
-                let start = i;
-                while chars
-                    .get(i)
-                    .is_some_and(|c| !matches!(c, ',' | ']' | '}' | ':' | ' ' | '\t' | '\n' | '\r'))
-                {
-                    i += 1;
-                }
-                let token: String = chars[start..i].iter().collect();
-                if i == chars.len() && !complete_json_scalar(&token) {
-                    return Some(("Expecting value", start));
-                }
-                want = Want::CommaOrEnd;
-            }
-            _ => return None,
+/// Where CPython's decoder (the `_json` C scanner of Python 3.11) gives up:
+/// the message and the code-point index it reports, or `None` when it would
+/// accept the document.
+type JsonStop = (&'static str, usize);
+
+fn cpython_json_error(text: &str) -> Option<JsonStop> {
+    let s: Vec<char> = text.chars().collect();
+    let start = skip_json_whitespace(&s, 0);
+    match scan_json_value(&s, start) {
+        Err(stop) => Some(stop),
+        Ok(end) => {
+            let end = skip_json_whitespace(&s, end);
+            (end != s.len()).then_some(("Extra data", end))
         }
     }
-    let what = match want {
-        Want::Value => "Expecting value",
-        Want::Key => "Expecting property name enclosed in double quotes",
-        Want::Colon => "Expecting ':' delimiter",
-        Want::CommaOrEnd => "Expecting ',' delimiter",
-    };
-    Some((what, chars.len()))
 }
 
-/// A number or a literal `json.loads` reads in full.
-fn complete_json_scalar(token: &str) -> bool {
-    static NUMBER: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
-    let number = NUMBER.get_or_init(|| {
-        regex::Regex::new(r"^-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][-+]?[0-9]+)?$").expect("valid regex")
-    });
-    matches!(
-        token,
-        "true" | "false" | "null" | "NaN" | "Infinity" | "-Infinity"
-    ) || number.is_match(token)
-}
-
-/// `JSONDecodeError`'s text: the message and where, as line, column and
-/// character index.
-fn python_json_position(what: &str, text: &str, at: usize) -> String {
-    let before: Vec<char> = text.chars().take(at).collect();
+/// `JSONDecodeError.__str__`: `"{msg}: line {lineno} column {colno} (char {pos})"`.
+fn decode_error_message(text: &str, what: &str, pos: usize) -> String {
+    let before: Vec<char> = text.chars().take(pos).collect();
     let line = before.iter().filter(|c| **c == '\n').count() + 1;
     let column = match before.iter().rposition(|c| *c == '\n') {
-        Some(newline) => at - newline,
-        None => at + 1,
+        Some(newline) => pos - newline,
+        None => pos + 1,
     };
-    format!("{what}: line {line} column {column} (char {at})")
+    format!("{what}: line {line} column {column} (char {pos})")
+}
+
+fn skip_json_whitespace(s: &[char], mut idx: usize) -> usize {
+    while idx < s.len() && matches!(s[idx], ' ' | '\t' | '\n' | '\r') {
+        idx += 1;
+    }
+    idx
+}
+
+fn json_word_at(s: &[char], idx: usize, word: &str) -> bool {
+    let word: Vec<char> = word.chars().collect();
+    s.get(idx..idx + word.len()) == Some(word.as_slice())
+}
+
+/// `scan_once_unicode`: the end of the value at `idx`. A value that cannot
+/// start here is `StopIteration(idx)`, which `raw_decode` reports as
+/// "Expecting value".
+fn scan_json_value(s: &[char], idx: usize) -> Result<usize, JsonStop> {
+    let Some(&c) = s.get(idx) else {
+        return Err(("Expecting value", idx));
+    };
+    match c {
+        '"' => scan_json_string(s, idx + 1),
+        '{' => scan_json_object(s, idx + 1),
+        '[' => scan_json_array(s, idx + 1),
+        'n' if json_word_at(s, idx, "null") => Ok(idx + 4),
+        't' if json_word_at(s, idx, "true") => Ok(idx + 4),
+        'f' if json_word_at(s, idx, "false") => Ok(idx + 5),
+        'N' if json_word_at(s, idx, "NaN") => Ok(idx + 3),
+        'I' if json_word_at(s, idx, "Infinity") => Ok(idx + 8),
+        '-' if json_word_at(s, idx, "-Infinity") => Ok(idx + 9),
+        _ => scan_json_number(s, idx),
+    }
+}
+
+/// `_match_number_unicode`: a fraction or exponent without digits is left
+/// for the caller (then "Extra data" or a delimiter error).
+fn scan_json_number(s: &[char], start: usize) -> Result<usize, JsonStop> {
+    let len = s.len();
+    let digit = |i: usize| s.get(i).is_some_and(char::is_ascii_digit);
+    let mut idx = start;
+    if s[idx] == '-' {
+        idx += 1;
+        if idx >= len {
+            return Err(("Expecting value", start));
+        }
+    }
+    match s[idx] {
+        '1'..='9' => {
+            idx += 1;
+            while digit(idx) {
+                idx += 1;
+            }
+        }
+        '0' => idx += 1,
+        _ => return Err(("Expecting value", start)),
+    }
+    if idx + 1 < len && s[idx] == '.' && digit(idx + 1) {
+        idx += 2;
+        while digit(idx) {
+            idx += 1;
+        }
+    }
+    if idx + 1 < len && matches!(s[idx], 'e' | 'E') {
+        let e_start = idx;
+        idx += 1;
+        if idx + 1 < len && matches!(s[idx], '-' | '+') {
+            idx += 1;
+        }
+        while digit(idx) {
+            idx += 1;
+        }
+        if !digit(idx - 1) {
+            idx = e_start;
+        }
+    }
+    Ok(idx)
+}
+
+/// `scanstring_unicode` (strict): `end` is just past the opening quote.
+fn scan_json_string(s: &[char], end: usize) -> Result<usize, JsonStop> {
+    let len = s.len();
+    let begin = end - 1;
+    let hex4 = |from: usize| s[from..from + 4].iter().all(char::is_ascii_hexdigit);
+    let mut next = end;
+    loop {
+        while next < len && s[next] != '"' && s[next] != '\\' {
+            if u32::from(s[next]) <= 0x1f {
+                return Err(("Invalid control character at", next));
+            }
+            next += 1;
+        }
+        if next == len {
+            return Err(("Unterminated string starting at", begin));
+        }
+        if s[next] == '"' {
+            return Ok(next + 1);
+        }
+        next += 1;
+        if next == len {
+            return Err(("Unterminated string starting at", begin));
+        }
+        if s[next] != 'u' {
+            if !matches!(s[next], '"' | '\\' | '/' | 'b' | 'f' | 'n' | 'r' | 't') {
+                return Err(("Invalid \\escape", next - 1));
+            }
+            next += 1;
+            continue;
+        }
+        let u = next;
+        let digits_end = u + 5;
+        if digits_end >= len || !hex4(u + 1) {
+            return Err(("Invalid \\uXXXX escape", u));
+        }
+        next = digits_end;
+        let code = s[u + 1..digits_end]
+            .iter()
+            .fold(0u32, |acc, c| (acc << 4) | c.to_digit(16).unwrap_or(0));
+        // A high surrogate takes the `\uXXXX` after it when one follows.
+        if (0xD800..=0xDBFF).contains(&code)
+            && next + 6 < len
+            && s[next] == '\\'
+            && s[next + 1] == 'u'
+        {
+            if !hex4(next + 2) {
+                return Err(("Invalid \\uXXXX escape", next + 1));
+            }
+            let low = s[next + 2..next + 6]
+                .iter()
+                .fold(0u32, |acc, c| (acc << 4) | c.to_digit(16).unwrap_or(0));
+            if (0xDC00..=0xDFFF).contains(&low) {
+                next += 6;
+            }
+        }
+    }
+}
+
+/// `_parse_object_unicode`: `idx` is just past the `{`.
+fn scan_json_object(s: &[char], idx: usize) -> Result<usize, JsonStop> {
+    let len = s.len();
+    let mut idx = skip_json_whitespace(s, idx);
+    if idx < len && s[idx] == '}' {
+        return Ok(idx + 1);
+    }
+    loop {
+        if idx >= len || s[idx] != '"' {
+            return Err(("Expecting property name enclosed in double quotes", idx));
+        }
+        idx = skip_json_whitespace(s, scan_json_string(s, idx + 1)?);
+        if idx >= len || s[idx] != ':' {
+            return Err(("Expecting ':' delimiter", idx));
+        }
+        idx = skip_json_whitespace(s, idx + 1);
+        idx = skip_json_whitespace(s, scan_json_value(s, idx)?);
+        if idx < len && s[idx] == '}' {
+            return Ok(idx + 1);
+        }
+        if idx >= len || s[idx] != ',' {
+            return Err(("Expecting ',' delimiter", idx));
+        }
+        idx = skip_json_whitespace(s, idx + 1);
+    }
+}
+
+/// `_parse_array_unicode`: `idx` is just past the `[`.
+fn scan_json_array(s: &[char], idx: usize) -> Result<usize, JsonStop> {
+    let len = s.len();
+    let mut idx = skip_json_whitespace(s, idx);
+    if idx < len && s[idx] == ']' {
+        return Ok(idx + 1);
+    }
+    loop {
+        idx = skip_json_whitespace(s, scan_json_value(s, idx)?);
+        if idx < len && s[idx] == ']' {
+            return Ok(idx + 1);
+        }
+        if idx >= len || s[idx] != ',' {
+            return Err(("Expecting ',' delimiter", idx));
+        }
+        idx = skip_json_whitespace(s, idx + 1);
+    }
 }
 
 fn char_offset(text: &str, line: usize, column: usize) -> usize {
@@ -440,55 +536,115 @@ mod tests {
         assert!(parse_python_json(b"{\"a\": 1}").is_ok());
     }
 
-    /// A body cut short names what CPython expected next (the texts are
-    /// CPython 3.12's).
+    /// The messages and positions CPython 3.11's `json.loads` raises
+    /// (printed by Python for each document).
     #[test]
-    fn truncated_json_errors_read_like_cpython() {
-        for (body, message) in [
+    fn json_error_positions_follow_cpythons_scanner() {
+        let cases = [
             ("   ", "Expecting value: line 1 column 4 (char 3)"),
             (
                 "{",
                 "Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
             ),
             (
-                "{ ",
-                "Expecting property name enclosed in double quotes: line 1 column 3 (char 2)",
+                "{not json",
+                "Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
             ),
+            ("[", "Expecting value: line 1 column 2 (char 1)"),
+            ("[1,", "Expecting value: line 1 column 4 (char 3)"),
+            ("[1 2]", "Expecting ',' delimiter: line 1 column 4 (char 3)"),
             (
                 "{\"a\"",
                 "Expecting ':' delimiter: line 1 column 5 (char 4)",
             ),
+            (
+                "{\"a\" 1}",
+                "Expecting ':' delimiter: line 1 column 6 (char 5)",
+            ),
             ("{\"a\":", "Expecting value: line 1 column 6 (char 5)"),
+            ("{\"a\": }", "Expecting value: line 1 column 7 (char 6)"),
             (
                 "{\"a\": 1",
                 "Expecting ',' delimiter: line 1 column 8 (char 7)",
             ),
             (
-                "{\"a\": 1,",
+                "{\"a\": 1 \"b\": 2}",
+                "Expecting ',' delimiter: line 1 column 9 (char 8)",
+            ),
+            (
+                "{\"a\": 1,}",
                 "Expecting property name enclosed in double quotes: line 1 column 9 (char 8)",
             ),
-            ("[", "Expecting value: line 1 column 2 (char 1)"),
-            ("[1", "Expecting ',' delimiter: line 1 column 3 (char 2)"),
-            ("[1,", "Expecting value: line 1 column 4 (char 3)"),
+            ("[1,]", "Expecting value: line 1 column 4 (char 3)"),
+            ("nul", "Expecting value: line 1 column 1 (char 0)"),
+            ("tru", "Expecting value: line 1 column 1 (char 0)"),
+            ("-", "Expecting value: line 1 column 1 (char 0)"),
+            ("-x", "Expecting value: line 1 column 1 (char 0)"),
+            ("01", "Extra data: line 1 column 2 (char 1)"),
+            ("1.", "Extra data: line 1 column 2 (char 1)"),
+            ("1e", "Extra data: line 1 column 2 (char 1)"),
+            ("1.5e+", "Extra data: line 1 column 4 (char 3)"),
             (
                 "\"abc",
                 "Unterminated string starting at: line 1 column 1 (char 0)",
             ),
             (
-                "{\"ab",
-                "Unterminated string starting at: line 1 column 2 (char 1)",
+                "\"a\\",
+                "Unterminated string starting at: line 1 column 1 (char 0)",
             ),
-            ("[tr", "Expecting value: line 1 column 2 (char 1)"),
-            ("[-", "Expecting value: line 1 column 2 (char 1)"),
+            ("\"a\\x\"", "Invalid \\escape: line 1 column 3 (char 2)"),
             (
-                "{\n  \"a\": [1,\n",
-                "Expecting value: line 3 column 1 (char 13)",
+                "\"a\\u12\"",
+                "Invalid \\uXXXX escape: line 1 column 4 (char 3)",
             ),
-        ] {
+            (
+                "\"a\\u12zz\"",
+                "Invalid \\uXXXX escape: line 1 column 4 (char 3)",
+            ),
+            (
+                "\"a\\u1234",
+                "Invalid \\uXXXX escape: line 1 column 4 (char 3)",
+            ),
+            (
+                "\"a\tb\"",
+                "Invalid control character at: line 1 column 3 (char 2)",
+            ),
+            (
+                "\"\\ud800\\uzzzz\"",
+                "Invalid \\uXXXX escape: line 1 column 9 (char 8)",
+            ),
+            (
+                "{\"a\": 1}\n{\"b\": 2}",
+                "Extra data: line 2 column 1 (char 9)",
+            ),
+            (
+                "{\n  \"a\": 1,\n  \"b\": ?\n}",
+                "Expecting value: line 3 column 8 (char 19)",
+            ),
+            (
+                "{\"\u{e9}\": x}",
+                "Expecting value: line 1 column 7 (char 6)",
+            ),
+            (
+                "[NaN, Infinity, -Infinity, x]",
+                "Expecting value: line 1 column 28 (char 27)",
+            ),
+            (
+                "{'a': 1}",
+                "Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
+            ),
+            ("}", "Expecting value: line 1 column 1 (char 0)"),
+            ("[}", "Expecting value: line 1 column 2 (char 1)"),
+            (
+                "{\"a\": [1, 2}",
+                "Expecting ',' delimiter: line 1 column 12 (char 11)",
+            ),
+        ];
+        for (document, expected) in cases {
             assert_eq!(
-                parse_python_json(body.as_bytes()).unwrap_err().message,
-                message,
-                "{body:?}"
+                parse_python_json(document.as_bytes()).unwrap_err().message,
+                expected,
+                "{document:?}"
             );
         }
     }

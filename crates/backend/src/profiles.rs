@@ -147,7 +147,7 @@ impl ProfileManager {
         }
         self.refresh_image_list();
         app.simple_profile.load();
-        self.refresh_profile_list();
+        self.refresh_profile_list(app);
         self.ensure_manual_mode_profile(app);
         self.delete_unused_images();
         if let Some(Value::Object(last)) = self.last_profile()
@@ -231,11 +231,16 @@ impl ProfileManager {
     /// `handle_image`: a random default image when there is none, a data URI
     /// saved as `<md5>.<ext>`, a bare file name turned into the image route.
     pub fn handle_image(&self, data: &mut Value) -> Result<(), ProfileError> {
-        let display = data
+        // PARITY: `data["display"]` raises KeyError('display') for a profile
+        // without one (only save_profile adds it), so loading a schema-valid
+        // profile without display answers "failed to load profile 'display'".
+        let Some(display) = data
             .as_object_mut()
             .ok_or_else(|| ProfileError::Other("profile is not an object".into()))?
-            .entry("display")
-            .or_insert_with(|| Value::Object(Map::new()));
+            .get_mut("display")
+        else {
+            return Err(ProfileError::Other("'display'".into()));
+        };
         let Value::Object(display) = display else {
             return Err(ProfileError::Other("'display' is not an object".into()));
         };
@@ -545,7 +550,7 @@ impl ProfileManager {
 
     /// `refresh_profile_list`: read every profile file, fill in what older
     /// versions left out, drop what fails validation.
-    pub fn refresh_profile_list(&self) {
+    pub fn refresh_profile_list(&self, app: &App) {
         let started = std::time::Instant::now();
         self.state.lock().known.clear();
         let mut entries: Vec<PathBuf> = std::fs::read_dir(&self.profiles_dir)
@@ -578,12 +583,12 @@ impl ProfileManager {
                 continue;
             }
             if changed {
-                if let Some(map) = profile.as_object_mut() {
-                    map.insert("last_changed".into(), json!(now_seconds()));
-                }
-                let text = pyfmt::dumps(&profile, &pyfmt::DumpOpts::indented(4));
-                if std::fs::write(self.profiles_dir.join(format!("{id}.json")), text).is_err() {
-                    continue;
+                // `save_profile(profile, set_last_changed=True,
+                // skip_validation=True)`: the image and accent color an older
+                // profile lacks, the stamp, and the change and its event.
+                match self.save_profile(app, profile, true, None, true) {
+                    Ok(mut saved) => profile = saved["profile"].take(),
+                    Err(_) => continue,
                 }
             }
             let newer_known = {
