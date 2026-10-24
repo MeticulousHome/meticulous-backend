@@ -98,10 +98,14 @@ EXPECTED_BOOT_ERRORS = {
 # fail the boot. A listed route that stops answering 500 does fail it, so the
 # entry is removed together with the fix.
 KNOWN_ISSUES = {}
-_KNOWN_ERROR_PREFIXES = [prefix for issue in KNOWN_ISSUES.values() for prefix in issue["errors"]]
+_KNOWN_ERROR_PREFIXES = [
+    prefix for issue in KNOWN_ISSUES.values() for prefix in issue["errors"]
+]
 
 # `<date> <time>,<ms> <logger> <LEVEL> <message>`, the backend's log lines.
-LOG_LINE = re.compile(r"^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d,\d{3} (\S+) (DEBUG|INFO|WARNING|ERROR|CRITICAL) (.*)$")
+LOG_LINE = re.compile(
+    r"^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d,\d{3} (\S+) (DEBUG|INFO|WARNING|ERROR|CRITICAL) (.*)$"
+)
 
 # Host commands the machine image provides, replaced by recording stubs on
 # PATH. Keyed by the first argument, each prints what the real tool prints for
@@ -155,7 +159,11 @@ def _environment(data_dir: Path, code_root: Path, port: int) -> dict:
         "SMOKE_VALIDATION_STATE_FILE": user / "smoke-validation.json",
         "SMOKE_VALIDATION_VERSION_FILE": data_dir / "opt" / "image-build-version",
         "REDACTION_KEY_PATH": data_dir / "root" / ".redaction_key",
-        "TIMEZONE_JSON_FILE_PATH": data_dir / "usr" / "share" / "zoneinfo" / "UI_timezones.json",
+        "TIMEZONE_JSON_FILE_PATH": data_dir
+        / "usr"
+        / "share"
+        / "zoneinfo"
+        / "UI_timezones.json",
         "UPDATE_PATH": data_dir / "opt" / "meticulous-firmware",
         "ISSUE_PATH": data_dir / "etc-issue",
         "METICULOUS_PACKAGE_ROOT": code_root,
@@ -183,7 +191,8 @@ def _install_host_commands(data_dir: Path, boot_index: int, env: dict) -> Path:
     log = data_dir / f"host-commands-{boot_index}.log"
     for name, outputs in HOST_COMMANDS.items():
         cases = "".join(
-            f"    {argument}) printf '%s\\n' '{output}' ;;\n" for argument, output in outputs.items()
+            f"    {argument}) printf '%s\\n' '{output}' ;;\n"
+            for argument, output in outputs.items()
         )
         stub = bin_dir / name
         stub.write_text(
@@ -300,7 +309,9 @@ def _wait_until_serving(base: str, backend: Backend, report: dict) -> bool:
 
 
 def _contract_routes(binary: Path) -> list:
-    output = subprocess.run([str(binary), "contract"], capture_output=True, text=True, check=True).stdout
+    output = subprocess.run(
+        [str(binary), "contract"], capture_output=True, text=True, check=True
+    ).stdout
     return json.loads(output)["http_routes.json"]
 
 
@@ -327,7 +338,9 @@ def _http_checks(base: str, binary: Path, report: dict):
         elif failed:
             report["failures"].append(f"GET {path} answered {code}")
     report["routes"] = swept
-    report["known_issues"] = {path: issue["bug"] for path, issue in KNOWN_ISSUES.items() if path in swept}
+    report["known_issues"] = {
+        path: issue["bug"] for path, issue in KNOWN_ISSUES.items() if path in swept
+    }
     for path in KNOWN_ISSUES.keys() - swept.keys():
         report["failures"].append(f"KNOWN_ISSUES lists {path}, which is no longer a GET route")
 
@@ -410,7 +423,12 @@ async def _socketio_inbound_checks(base: str, esp: FakeEsp, report: dict):
     await asyncio.sleep(0.5)
     leaked = [
         command
-        for command in (b"action,reset", b"action,not-an-action", b"action,stop", b"action,home")
+        for command in (
+            b"action,reset",
+            b"action,not-an-action",
+            b"action,stop",
+            b"action,home",
+        )
         if command in written_since(mark)
     ]
     if leaked:
@@ -479,13 +497,19 @@ def _database_checks(data_dir: Path, report: dict):
         revision = f"unreadable: {error}"
     report["db_revision"] = revision
     if revision != DB_VERSION_REQUIRED:
-        report["failures"].append(f"history DB is at {revision}, the backend requires {DB_VERSION_REQUIRED}")
+        report["failures"].append(
+            f"history DB is at {revision}, the backend requires {DB_VERSION_REQUIRED}"
+        )
 
 
-def _finish(report: dict, backend: Backend | None, report_path: str, host_log: Path | None) -> int:
+def _finish(
+    report: dict, backend: Backend | None, report_path: str, host_log: Path | None
+) -> int:
     errors = backend.errors() if backend else []
     report["errors_logged"] = errors
-    report["host_commands"] = host_log.read_text().splitlines() if host_log and host_log.exists() else []
+    report["host_commands"] = (
+        host_log.read_text().splitlines() if host_log and host_log.exists() else []
+    )
     if errors:
         report["failures"].append(f"{len(errors)} record(s) logged at ERROR while booting")
     Path(report_path).write_text(json.dumps(report, indent=2, default=str))
@@ -510,7 +534,11 @@ def run(args) -> int:
     report = {"failures": [], "boot": args.boot_index}
     data_dir = Path(args.data_dir).resolve()
     code_root = Path(args.package_root).resolve() if args.package_root else REPO_ROOT
-    binary = Path(args.binary).resolve() if args.binary else _default_binary(args.package_root and code_root)
+    binary = (
+        Path(args.binary).resolve()
+        if args.binary
+        else _default_binary(args.package_root and code_root)
+    )
     report["binary"] = str(binary)
     port = _free_port()
     base = f"http://127.0.0.1:{port}"
@@ -533,7 +561,9 @@ def run(args) -> int:
         signal.signal(signal.SIGTERM, lambda *_: stop.set())
         signal.signal(signal.SIGINT, lambda *_: stop.set())
         if _wait_until_serving(base, backend, report):
-            Path(args.serve).write_text(json.dumps({"port": port, "pid": os.getpid(), "data_dir": str(data_dir)}))
+            Path(args.serve).write_text(
+                json.dumps({"port": port, "pid": os.getpid(), "data_dir": str(data_dir)})
+            )
             while not stop.is_set() and backend.process.poll() is None:
                 stop.wait(0.5)
         backend.stop()
@@ -570,7 +600,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--data-dir", required=True, help="throwaway root for user data")
     parser.add_argument("--report", required=True, help="where to write the JSON report")
-    parser.add_argument("--binary", help="the backend binary (default: the installed one, else target/)")
+    parser.add_argument(
+        "--binary", help="the backend binary (default: the installed one, else target/)"
+    )
     parser.add_argument(
         "--package-root",
         help="the package's read-only data, e.g. /opt/meticulous-backend (default: this checkout)",
