@@ -37,7 +37,6 @@ mod metconfig;
 mod notifications;
 mod os_update;
 mod ota;
-mod pending;
 mod pour_over;
 mod profiles;
 mod py;
