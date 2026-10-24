@@ -1,14 +1,13 @@
 //! `sounds.py`: event sounds from a theme folder, played with gst-play.
 
-use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
 
 use parking_lot::Mutex;
 use serde_json::{Map, Value};
 
 use crate::config::{ConfigStore, keys};
+use crate::host::{Host, Process};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SoundEvent {
@@ -41,20 +40,28 @@ impl SoundEvent {
 pub const DEFAULT_THEME: &str = "default";
 const AUDIO_ENABLE_GPIO_CHIP: &str = "/dev/gpiochip4";
 const AUDIO_ENABLE_GPIO_LINE: u32 = 25;
+/// playsound3's `gst_play` backend: what `playsound(path, block=False)` runs.
+const PLAYER: [&str; 3] = ["gst-play-1.0", "--no-interactive", "--quiet"];
+
+/// `KNOWN_THEMES`: theme name to folder, in the order of the Python dict
+/// (user themes first, then system themes; a system theme with a user
+/// theme's name takes its folder and keeps its place).
+type Themes = Vec<(String, PathBuf)>;
 
 #[derive(Default)]
 struct State {
     /// `None` until `init` ran (`KNOWN_THEMES is None`).
-    known_themes: Option<BTreeMap<String, PathBuf>>,
+    known_themes: Option<Themes>,
     /// PARITY: Python's CURRENT_THEME_CONFIG is DEFAULT_THEME_CONFIG, updated
     /// in place by every theme set, so keys of earlier themes linger.
     theme_config: Map<String, Value>,
     current_theme: Option<String>,
-    playing: Option<Child>,
+    playing: Option<Box<dyn Process>>,
 }
 
 pub struct SoundPlayer {
     config: Arc<ConfigStore>,
+    host: Arc<Host>,
     system_sounds: PathBuf,
     user_sounds: PathBuf,
     fake_hardware: bool,
@@ -69,12 +76,14 @@ pub struct SoundPlayer {
 impl SoundPlayer {
     pub fn new(
         config: Arc<ConfigStore>,
+        host: Arc<Host>,
         system_sounds: PathBuf,
         user_sounds: PathBuf,
         fake_hardware: bool,
     ) -> SoundPlayer {
         SoundPlayer {
             config,
+            host,
             system_sounds,
             user_sounds,
             fake_hardware,
@@ -101,8 +110,13 @@ impl SoundPlayer {
             }
         }
 
-        let mut themes = scan_folder(&self.user_sounds);
-        themes.extend(scan_folder(&self.system_sounds));
+        let mut themes = Themes::new();
+        for (name, folder) in scan_folder(&self.user_sounds)
+            .into_iter()
+            .chain(scan_folder(&self.system_sounds))
+        {
+            insert(&mut themes, name, folder);
+        }
         {
             let mut state = self.state.lock();
             state.theme_config = load_theme(&themes, DEFAULT_THEME).unwrap_or_default();
@@ -110,9 +124,9 @@ impl SoundPlayer {
         }
 
         if !self.fake_hardware
-            && let Err(error) = Command::new("pactl")
-                .args(["--", "set-sink-volume", "0", "40%"])
-                .status()
+            && let Err(error) = self
+                .host
+                .run(&["pactl", "--", "set-sink-volume", "0", "40%"])
         {
             tracing::error!("failed to set audio volume: {error}");
         }
@@ -129,7 +143,7 @@ impl SoundPlayer {
             .lock()
             .known_themes
             .as_ref()
-            .map(|t| t.keys().cloned().collect())
+            .map(|t| t.iter().map(|(name, _)| name.clone()).collect())
             .unwrap_or_default()
     }
 
@@ -149,7 +163,7 @@ impl SoundPlayer {
                     );
                     return false;
                 }
-                Some(themes) => name.is_none_or(|n| themes.contains_key(n)),
+                Some(themes) => name.is_none_or(|n| folder(themes, n).is_some()),
             }
         };
         if known {
@@ -160,6 +174,9 @@ impl SoundPlayer {
             );
             let mut state = self.state.lock();
             let themes = state.known_themes.clone().unwrap_or_default();
+            // Deliberate fix: for a cleared theme (`None`) Python runs
+            // `update(_load_theme(None))`, i.e. `update(False)`, a TypeError
+            // out of init or play_sound; the merged config stays as it is.
             if let Some(config) = name.and_then(|n| load_theme(&themes, n)) {
                 for (k, v) in config {
                     state.theme_config.insert(k, v);
@@ -228,10 +245,10 @@ impl SoundPlayer {
         let theme_path = state
             .current_theme
             .as_ref()
-            .and_then(|t| state.known_themes.as_ref().and_then(|k| k.get(t)))
+            .and_then(|t| state.known_themes.as_ref().and_then(|k| folder(k, t)))
             .cloned()
             .unwrap_or_default();
-        let file_path = theme_path.join(&file_name);
+        let file_path = crate::http::absolute(&theme_path.join(&file_name));
         tracing::info!("Playing {name} from {}", file_path.display());
         if !file_path.exists() {
             tracing::warn!("Sound file not found: {}", file_path.display());
@@ -241,19 +258,14 @@ impl SoundPlayer {
             return true;
         }
         if let Some(mut previous) = state.playing.take() {
-            let _ = previous.kill();
-            let _ = previous.wait();
+            previous.stop();
         }
-        match Command::new("gst-play-1.0")
-            .args(["--no-interactive", "--quiet"])
-            .arg(&file_path)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-        {
-            Ok(child) => {
-                state.playing = Some(child);
+        let file = file_path.to_string_lossy();
+        let mut argv = PLAYER.to_vec();
+        argv.push(&file);
+        match self.host.start(&argv) {
+            Ok(process) => {
+                state.playing = Some(process);
                 true
             }
             Err(error) => {
@@ -264,30 +276,52 @@ impl SoundPlayer {
     }
 }
 
-fn scan_folder(folder: &Path) -> BTreeMap<String, PathBuf> {
-    let mut themes = BTreeMap::new();
+fn folder<'a>(themes: &'a Themes, name: &str) -> Option<&'a PathBuf> {
+    themes.iter().find(|(n, _)| n == name).map(|(_, f)| f)
+}
+
+/// `dict[name] = folder`: a known name keeps its place.
+fn insert(themes: &mut Themes, name: String, folder: PathBuf) {
+    match themes.iter_mut().find(|(n, _)| *n == name) {
+        Some(entry) => entry.1 = folder,
+        None => themes.push((name, folder)),
+    }
+}
+
+/// `scan_folder`: every directory below `folder` with a readable config.json,
+/// in `os.walk` order (top-down; each directory's subdirectories in listing
+/// order before any of theirs; symlinked directories listed, not entered).
+fn scan_folder(folder: &Path) -> Themes {
     tracing::info!("Scanning Theme folder {}", folder.display());
-    let mut stack = vec![folder.to_path_buf()];
-    while let Some(dir) = stack.pop() {
-        let Ok(entries) = std::fs::read_dir(&dir) else {
-            continue;
-        };
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.is_dir() {
-                if has_config(&path) {
-                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                        tracing::info!("Found sound theme '{}'", path.display());
-                        themes.insert(name.to_string(), path.clone());
-                    }
-                } else {
-                    tracing::info!("'{}' has no config.json", path.display());
-                }
-                stack.push(path);
+    let mut themes = Themes::new();
+    walk(folder, &mut themes);
+    themes
+}
+
+fn walk(dir: &Path, themes: &mut Themes) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    let subdirs: Vec<PathBuf> = entries
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.is_dir())
+        .collect();
+    for path in &subdirs {
+        if has_config(path) {
+            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                tracing::info!("Found sound theme '{}'", path.display());
+                insert(themes, name.to_string(), path.clone());
             }
+        } else {
+            tracing::info!("'{}' has no config.json", path.display());
         }
     }
-    themes
+    for path in subdirs {
+        if !path.is_symlink() {
+            walk(&path, themes);
+        }
+    }
 }
 
 fn has_config(dir: &Path) -> bool {
@@ -297,8 +331,8 @@ fn has_config(dir: &Path) -> bool {
         .is_some()
 }
 
-fn load_theme(themes: &BTreeMap<String, PathBuf>, name: &str) -> Option<Map<String, Value>> {
-    let folder = themes.get(name)?;
+fn load_theme(themes: &Themes, name: &str) -> Option<Map<String, Value>> {
+    let folder = folder(themes, name)?;
     let text = std::fs::read_to_string(folder.join("config.json")).ok()?;
     match serde_json::from_str::<Value>(&text) {
         Ok(Value::Object(map)) => Some(map),

@@ -27,6 +27,7 @@ pub fn routes() -> Vec<Route> {
             m,
             "UploadHistoryIndexHandler",
         )
+        .prepare(super::local_only)
         .get(upload_index),
         Route::new("/history/stats", Kind::Base, m, "StatisticsHandler").get(stats),
         Route::new("/history", Kind::Base, m, "HistoryHandler")
@@ -119,9 +120,6 @@ async fn last(app: Arc<App>, req: Request) -> Reply {
 }
 
 async fn upload_index(app: Arc<App>, req: Request) -> Reply {
-    if let Some(refused) = super::local_only(&req) {
-        return refused;
-    }
     let Some(max_results) = py_int(
         &req.get_query_argument("max_results")
             .unwrap_or("200".into()),

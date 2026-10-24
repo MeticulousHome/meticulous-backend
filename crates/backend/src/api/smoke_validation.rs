@@ -7,6 +7,7 @@ use serde_json::json;
 use crate::api::local_only;
 use crate::app::App;
 use crate::http::{Kind, Reply, Request, Route};
+use crate::smoke_validation::MachineSnapshot;
 
 pub fn routes() -> Vec<Route> {
     vec![
@@ -16,19 +17,17 @@ pub fn routes() -> Vec<Route> {
             "api.smoke_validation",
             "SmokeValidationHandler",
         )
+        .prepare(local_only)
         .get(get),
     ]
 }
 
 /// `SmokeValidationHandler.get` (a `LocalAccessHandler`).
 async fn get(app: Arc<App>, req: Request) -> Reply {
-    if let Some(refused) = local_only(&req) {
-        return refused;
-    }
     let status = {
         let app = app.clone();
         tokio::task::spawn_blocking(move || {
-            let machine = app.smoke.machine_snapshot();
+            let machine = MachineSnapshot::of(&app.machine);
             app.smoke.status(&machine)
         })
         .await

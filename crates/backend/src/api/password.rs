@@ -17,14 +17,12 @@ pub fn routes() -> Vec<Route> {
             "api.password_handler",
             "RootPasswordHandler",
         )
+        .prepare(local_only)
         .get(get),
     ]
 }
 
-async fn get(app: Arc<App>, req: Request) -> Reply {
-    if let Some(refused) = local_only(&req) {
-        return refused;
-    }
+async fn get(app: Arc<App>, _req: Request) -> Reply {
     let password = match app.config.get(keys::SYSTEM, keys::ROOT_PASSWORD) {
         Value::Null => Value::String("root".into()),
         other => other,

@@ -57,23 +57,22 @@ pub struct MachineSnapshot {
     pub machine_status: Option<String>,
 }
 
-impl Default for MachineSnapshot {
-    /// `Machine`'s class attributes before the ESP32 has said anything.
-    fn default() -> MachineSnapshot {
+impl MachineSnapshot {
+    /// What `get_status(Machine)` reads now.
+    pub fn of(machine: &crate::machine::Machine) -> MachineSnapshot {
+        let esp_info = machine.esp_info();
+        let data = machine.data_sensors();
         MachineSnapshot {
-            info_ready: false,
-            esp_info_present: false,
-            firmware_version: None,
-            machine_state: Some(status::IDLE.to_string()),
-            machine_status: Some(status::IDLE.to_string()),
+            info_ready: machine.info_ready(),
+            esp_info_present: esp_info.is_some(),
+            firmware_version: esp_info.map(|info| info.firmware_v),
+            machine_state: Some(data.state),
+            machine_status: data.status,
         }
     }
 }
 
-type MachineView = Box<dyn Fn() -> MachineSnapshot + Send + Sync>;
-
 pub struct SmokeValidationManager {
-    machine_view: parking_lot::RwLock<Option<MachineView>>,
     state_file: PathBuf,
     version_file: PathBuf,
     publish_command: PathBuf,
@@ -93,28 +92,12 @@ impl SmokeValidationManager {
         host: Arc<Host>,
     ) -> SmokeValidationManager {
         SmokeValidationManager {
-            machine_view: parking_lot::RwLock::new(None),
             state_file,
             version_file,
             publish_command,
             host,
             lock: Mutex::new(()),
             sequence: Mutex::new(ShotSequence::default()),
-        }
-    }
-
-    /// The machine runtime registers how to read `Machine` for
-    /// `GET /smoke-validation`.
-    pub fn set_machine_view(&self, view: impl Fn() -> MachineSnapshot + Send + Sync + 'static) {
-        *self.machine_view.write() = Some(Box::new(view));
-    }
-
-    /// What the machine looks like now; `Machine`'s initial state until the
-    /// runtime registers itself.
-    pub fn machine_snapshot(&self) -> MachineSnapshot {
-        match self.machine_view.read().as_ref() {
-            Some(view) => view(),
-            None => MachineSnapshot::default(),
         }
     }
 

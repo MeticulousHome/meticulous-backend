@@ -30,7 +30,8 @@ use crate::http::{Reply, Request, Route, Router};
 /// `LocalAccessHandler.prepare`: the backend only listens on loopback, so a
 /// request either comes from the machine itself (no `X-Real-IP`) or through
 /// nginx, which sets `X-Real-IP` to the client. Only that address decides.
-/// `Some(reply)` when the request must be refused.
+/// `Some(reply)` when the request must be refused. A `LocalAccessHandler`'s
+/// route sets it as its [`Route::prepare`].
 pub fn local_only(req: &Request) -> Option<Reply> {
     let remote = req.header("X-Real-IP")?;
     if is_loopback(remote) {

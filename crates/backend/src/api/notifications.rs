@@ -41,6 +41,9 @@ async fn acknowledge(app: Arc<App>, req: Request) -> Reply {
             return Reply::error(Kind::Base, 500, &req);
         }
     };
+    // Deliberate fix: Python's `data.get` raises AttributeError on a body
+    // that is JSON but not an object, which tornado answers 500; here such
+    // a body has no id and gets the 404.
     let id = data.get("id").map(value_text);
     tracing::info!("acknowledge {}", id.as_deref().unwrap_or("None"));
     let response = data.get("response").and_then(|r| match r {
