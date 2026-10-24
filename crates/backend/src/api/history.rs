@@ -418,7 +418,9 @@ async fn zstd_history(app: Arc<App>, req: Request, root: PathBuf) -> Reply {
                         "Content-Disposition",
                         format!("attachment; filename=\"{name}\""),
                     );
-                    content_type = Some("application/octet-stream");
+                    // PARITY: the handler sets application/octet-stream, then
+                    // StaticFileHandler replaces it with mimetypes' guess.
+                    content_type = Some("application/zstd");
                 }
                 serve_file(&file, &req, reply, !is_zst, content_type)
             }
@@ -626,10 +628,7 @@ mod tests {
         assert_eq!(body(&reply)["id"], json!("shot-1"));
         let reply = get(&app, &format!("/api/v1/history/files/{first}?compressed")).await;
         assert_eq!(reply.status_code(), 200);
-        assert_eq!(
-            reply.header("Content-Type"),
-            Some("application/octet-stream")
-        );
+        assert_eq!(reply.header("Content-Type"), Some("application/zstd"));
         // The machine has no name yet: "".join([]) leads the file name.
         let (day, name) = first.split_once("/").expect("day");
         let expected = format!("attachment; filename=\"_{}_{name}\"", day.replace("-", "_"));
