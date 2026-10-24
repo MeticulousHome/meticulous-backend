@@ -19,13 +19,15 @@ crates/pyfmt/              CPython-compatible float repr, json.dumps, float()/in
 crates/esp/                ESP32 UART protocol, ESP observability, motor energy, firmware versions (pure)
 crates/profile/            profile variables, the manual-mode node program, schema validation (pure)
 crates/redactor/           log redaction, sentry event scrubbing, reportable config (pure)
+crates/history/            the SQLite history store, its alembic-compatible migrations, shot and Pour Over files (sync IO)
 crates/backend/            the `meticulous-backend` binary: HTTP, Socket.IO, the machine, storage, OS
 tests/                     black-box tests that drive the binary over HTTP, Socket.IO and a pty
 ```
 
 Pure crates have no IO, no globals, no async and no clocks: time comes in as
 an argument. Everything that touches the network, the disk, D-Bus, GPIO or the
-UART lives in `crates/backend`.
+UART lives in `crates/backend`, except `crates/history`: synchronous disk IO
+with its paths passed in, which the backend calls from `spawn_blocking`.
 
 ## Parity rules
 
