@@ -79,7 +79,18 @@ fn assert_api_error(reply: &Reply, status: u16, code: &str) {
     assert_eq!(body_json(reply)["data"]["code"], code);
 }
 
+/// `fake_sio.uploads()`: the `upload_report` hand-offs, without the
+/// `report_progress` updates.
 fn emitted(app: &App) -> Vec<Value> {
+    events(app)
+        .into_iter()
+        .filter(|(event, _)| *event == UPLOAD_REPORT_EVENT)
+        .map(|(_, payload)| payload)
+        .collect()
+}
+
+/// `fake_sio.calls`: every emit, by event.
+fn events(app: &App) -> Vec<(&'static str, Value)> {
     app.reports.hooks.emitted.lock().clone()
 }
 
@@ -1048,7 +1059,14 @@ async fn dispatch_post_queues_the_report_and_emits_upload_report() {
             .collect::<Vec<_>>(),
         expected.as_object().unwrap().keys().collect::<Vec<_>>()
     );
-    assert_eq!(emitted(&app), [expected]);
+    // The progress bar of both apps starts at `queued` before the Dial is told.
+    let calls = events(&app);
+    assert_eq!(
+        calls.iter().map(|(event, _)| *event).collect::<Vec<_>>(),
+        ["report_progress", "upload_report"]
+    );
+    assert_eq!(calls[1], (UPLOAD_REPORT_EVENT, expected));
+    assert_eq!(calls[0].1["stage"], "queued");
     assert_eq!(UPLOAD_REPORT_EVENT, "upload_report");
     let rows = all_rows(&app);
     assert_eq!(rows.len(), 1);
@@ -1868,6 +1886,479 @@ fn api_errors_carry_internal_codes() {
     assert_eq!(
         reply.header("Content-Type"),
         Some("application/json; charset=UTF-8")
+    );
+}
+
+// Report progress, contract v1: the `report_progress` event, GET
+// /reports/progress, POST /reports/<localID>/progress and POST
+// /reports/<localID>/cancel. Every expected value comes from that contract
+// (stage names, codes) or from the constants of `api/bug_report.py`.
+
+const DIAL_STAGES: [&str; 9] = [
+    "preparing",
+    "fetching_machine_info",
+    "fetching_logs",
+    "fetching_machine_status",
+    "collecting_debug_shots",
+    "ticketing",
+    "compressing",
+    "uploading",
+    "finishing",
+];
+
+fn mobile_stages() -> Vec<&'static str> {
+    let mut stages = vec!["queued"];
+    stages.extend(DIAL_STAGES.iter().filter(|stage| **stage != "ticketing"));
+    stages
+}
+
+/// The `report_progress` payloads, of one report or all.
+fn progress_events(app: &App, local_id: Option<&str>) -> Vec<Value> {
+    events(app)
+        .into_iter()
+        .filter(|(event, data)| {
+            *event == "report_progress" && local_id.is_none_or(|id| data["localID"] == id)
+        })
+        .map(|(_, data)| data)
+        .collect()
+}
+
+/// `_stage_trail`: each stage once, in the order the bar went through it.
+fn stage_trail(events: &[Value]) -> Vec<String> {
+    let mut trail: Vec<String> = Vec::new();
+    for event in events {
+        let stage = event["stage"].as_str().unwrap().to_string();
+        if trail.last() != Some(&stage) {
+            trail.push(stage);
+        }
+    }
+    trail
+}
+
+/// `_post_quick_report`: the Dial's own quick report, a create with no body.
+async fn post_quick_report(app: &Arc<App>) -> Option<Reply> {
+    create_report(app, &request_with(b""), CancellationToken::new()).await
+}
+
+async fn quick_report_id(app: &Arc<App>) -> String {
+    let reply = post_quick_report(app).await.unwrap();
+    body_json(&reply)["localID"].as_str().unwrap().to_string()
+}
+
+async fn post_progress(app: &Arc<App>, local_id: &str, body: Value) -> Reply {
+    call(
+        app,
+        Method::POST,
+        &format!("/api/v1/reports/{local_id}/progress"),
+        pyfmt::dumps_default(&body),
+    )
+    .await
+}
+
+async fn post_cancel(app: &Arc<App>, local_id: &str) -> Reply {
+    call(
+        app,
+        Method::POST,
+        &format!("/api/v1/reports/{local_id}/cancel"),
+        "",
+    )
+    .await
+}
+
+async fn get_progress(app: &Arc<App>) -> Vec<Value> {
+    let reply = call(app, Method::GET, "/api/v1/reports/progress", "").await;
+    assert_eq!(reply.status_code(), 200);
+    body_json(&reply)["content"].as_array().unwrap().clone()
+}
+
+async fn get_draft(app: &Arc<App>, local_id: &str) -> Reply {
+    call(
+        app,
+        Method::GET,
+        &format!("/api/v1/reports/draft/{local_id}"),
+        "",
+    )
+    .await
+}
+
+/// `_submit(report_module, local_id, ticket)`.
+async fn submit_report(app: &Arc<App>, local_id: &str, ticket: Option<i64>) -> Reply {
+    let mut body = json!({"localID": local_id, "eventID": "event-1"});
+    if let Some(ticket) = ticket {
+        body["ticket"] = json!(ticket);
+    }
+    call(
+        app,
+        Method::POST,
+        "/api/v1/reports/submit",
+        pyfmt::dumps_default(&body),
+    )
+    .await
+}
+
+/// The `watcher` fixture: the real `_fetch_report_files` (the emulator
+/// answers for the watcher, no shot is running) and two debug shots.
+fn collecting_app() -> (tempfile::TempDir, Arc<App>) {
+    let (dir, app) = dispatch_app();
+    for clock_time in ["08:00:00", "09:00:00"] {
+        debug_file(
+            &app.reports.cfg().debug_history,
+            "2026-05-18",
+            &format!("{clock_time}.shot.json.zst"),
+        );
+    }
+    (dir, app)
+}
+
+/// tests/test_bug_report_api.py::test_a_dial_quick_report_walks_every_stage_to_submitted
+#[tokio::test]
+async fn a_dial_quick_report_walks_every_stage_to_submitted() {
+    let (_dir, app) = collecting_app();
+    let local_id = quick_report_id(&app).await;
+    let ticketing = post_progress(&app, &local_id, json!({"stage": "ticketing"})).await;
+    assert_eq!(ticketing.status_code(), 200);
+    let draft = get_draft(&app, &local_id).await;
+    assert_eq!(draft.status_code(), 200);
+    assert!(!draft.body().is_empty());
+    let uploading = post_progress(&app, &local_id, json!({"stage": "uploading"})).await;
+    assert_eq!(uploading.status_code(), 200);
+    assert_eq!(
+        submit_report(&app, &local_id, Some(77)).await.status_code(),
+        200
+    );
+
+    let events = progress_events(&app, Some(&local_id));
+    let mut expected: Vec<&str> = DIAL_STAGES.to_vec();
+    expected.push("submitted");
+    assert_eq!(stage_trail(&events), expected);
+    assert!(
+        events
+            .iter()
+            .all(|event| event["stages"] == json!(DIAL_STAGES))
+    );
+    assert!(
+        events
+            .iter()
+            .all(|event| event["v"] == 1 && event["origin"] == "dial")
+    );
+    let debug: Vec<Value> = events
+        .iter()
+        .filter(|event| event["stage"] == "collecting_debug_shots")
+        .map(|event| event["detail"].clone())
+        .collect();
+    assert_eq!(
+        debug,
+        [
+            Value::Null,
+            json!({"current": 0, "total": 2}),
+            json!({"current": 1, "total": 2}),
+            json!({"current": 2, "total": 2}),
+        ]
+    );
+    let by_stage = |stage: &str| {
+        events
+            .iter()
+            .rfind(|event| event["stage"] == stage)
+            .unwrap()
+            .clone()
+    };
+    assert_eq!(by_stage("compressing")["cancellable"], true);
+    assert_eq!(by_stage("uploading")["cancellable"], false);
+    let submitted = by_stage("submitted");
+    let mut expected = submitted.clone();
+    expected["final"] = json!(true);
+    expected["cancellable"] = json!(false);
+    expected["ticket"] = json!(77);
+    assert_eq!(submitted, expected);
+}
+
+/// tests/test_bug_report_api.py::test_a_mobile_dispatch_starts_queued_and_carries_its_ticket
+#[tokio::test]
+async fn a_mobile_dispatch_starts_queued_and_carries_its_ticket() {
+    let (_dir, app) = collecting_app();
+    dispatch(&app, json!({})).await;
+    post_create(&app, json!({"localID": QUEUED_ID})).await;
+
+    let events = progress_events(&app, Some(QUEUED_ID));
+    assert_eq!(
+        stage_trail(&events)[..3],
+        ["queued", "preparing", "fetching_machine_info"]
+    );
+    assert!(
+        events
+            .iter()
+            .all(|event| event["stages"] == json!(mobile_stages()))
+    );
+    assert!(
+        events
+            .iter()
+            .all(|event| event["origin"] == "mobile" && event["ticket"] == 4242)
+    );
+}
+
+/// tests/test_bug_report_api.py::test_progress_lists_reports_in_flight_queued_rows_and_recent_endings
+#[tokio::test]
+async fn progress_lists_reports_in_flight_queued_rows_and_recent_endings() {
+    let (_dir, app) = collecting_app();
+    insert_row(
+        &app,
+        SECOND_ID,
+        "queued",
+        DISPATCHED_AT,
+        BugReportValues {
+            ticket_number: Some(json!(9)),
+            ..Default::default()
+        },
+    );
+    let listed = get_progress(&app).await;
+    assert_eq!(listed.len(), 1);
+    assert_eq!(
+        (
+            &listed[0]["localID"],
+            &listed[0]["stage"],
+            &listed[0]["ticket"]
+        ),
+        (&json!(SECOND_ID), &json!("queued"), &json!(9))
+    );
+
+    let local_id = quick_report_id(&app).await;
+    get_draft(&app, &local_id).await;
+    submit_report(&app, &local_id, None).await;
+    let stages: std::collections::HashMap<String, Value> = get_progress(&app)
+        .await
+        .into_iter()
+        .map(|item| {
+            (
+                item["localID"].as_str().unwrap().to_string(),
+                item["stage"].clone(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        stages,
+        std::collections::HashMap::from([
+            (SECOND_ID.to_string(), json!("queued")),
+            (local_id, json!("submitted")),
+        ])
+    );
+
+    app.reports.set_now(Some(
+        DISPATCHED_AT + reports::progress::REPORT_PROGRESS_FINAL_RETENTION_SECONDS + 1,
+    ));
+    let ids: Vec<Value> = get_progress(&app)
+        .await
+        .iter()
+        .map(|item| item["localID"].clone())
+        .collect();
+    assert_eq!(ids, [json!(SECOND_ID)]);
+}
+
+/// tests/test_bug_report_api.py::test_progress_update_accepts_only_the_uploader_stages
+#[tokio::test]
+async fn progress_update_accepts_only_the_uploader_stages() {
+    for body in [
+        json!({"stage": "compressing"}),
+        json!({"stage": "ticketing", "extra": 1}),
+        json!({"failed": "x"}),
+        json!({}),
+    ] {
+        let (_dir, app) = dispatch_app();
+        dispatch(&app, json!({})).await;
+        let reply = post_progress(&app, QUEUED_ID, body.clone()).await;
+        assert_eq!(body_json(&reply)["data"]["code"], "INVALID_BODY", "{body}");
+        assert_eq!(reply.status_code(), 400, "{body}");
+    }
+}
+
+/// tests/test_bug_report_api.py::test_progress_update_failure_ends_the_report_and_unknown_ids_are_404
+#[tokio::test]
+async fn progress_update_failure_ends_the_report_and_unknown_ids_are_404() {
+    let (_dir, app) = dispatch_app();
+    dispatch(&app, json!({})).await;
+    let failed = json!({"failed": {"code": "BR-05", "message": "Sentry did not answer"}});
+    let response = body_json(&post_progress(&app, QUEUED_ID, failed.clone()).await);
+    assert_eq!(
+        (&response["stage"], &response["final"]),
+        (&json!("failed"), &json!(true))
+    );
+    assert_eq!(response["failure"], failed["failed"]);
+    app.reports.set_now(Some(
+        DISPATCHED_AT + reports::progress::REPORT_PROGRESS_FINAL_RETENTION_SECONDS + 1,
+    ));
+    assert_eq!(get_progress(&app).await, Vec::<Value>::new());
+    assert_api_error(
+        &post_cancel(&app, QUEUED_ID).await,
+        409,
+        "TOO_LATE_TO_CANCEL",
+    );
+    assert_api_error(
+        &post_progress(&app, THIRD_ID, json!({"stage": "uploading"})).await,
+        404,
+        "UNKNOWN_LOCAL_ID",
+    );
+}
+
+/// tests/test_bug_report_api.py::test_cancelling_a_queued_report_stops_the_dial_from_collecting_it
+#[tokio::test]
+async fn cancelling_a_queued_report_stops_the_dial_from_collecting_it() {
+    let (_dir, app) = dispatch_app();
+    let calls = install_collector(&app, &[AUTOMATIC_DEBUG_FILE]);
+    dispatch(&app, json!({})).await;
+
+    let first = post_cancel(&app, QUEUED_ID).await;
+    let again = post_cancel(&app, QUEUED_ID).await;
+
+    assert_eq!(first.status_code(), 200);
+    assert_eq!(again.status_code(), 200);
+    assert_eq!(body_json(&first)["stage"], "cancelled");
+    assert_eq!(body_json(&again)["stage"], "cancelled");
+    assert_eq!(REPORT_STATUS_CANCELLED, "cancelled");
+    assert_eq!(report_row(&app, QUEUED_ID).unwrap().status, "cancelled");
+    let (create, _) = post_create(&app, json!({"localID": QUEUED_ID})).await;
+    assert_api_error(&create.unwrap(), 409, "REPORT_CANCELLED");
+    assert_api_error(
+        &post_progress(&app, QUEUED_ID, json!({"stage": "ticketing"})).await,
+        409,
+        "REPORT_CANCELLED",
+    );
+    assert!(calls.lock().is_empty());
+}
+
+/// tests/test_bug_report_api.py::test_cancelling_during_collection_answers_the_dial_and_leaves_nothing
+#[tokio::test]
+async fn cancelling_during_collection_answers_the_dial_and_leaves_nothing() {
+    let (_dir, app) = dispatch_app();
+    dispatch(&app, json!({})).await;
+    // The collection cancels its own report from the phone halfway through.
+    let weak = Arc::downgrade(&app);
+    *app.reports.hooks.fetch.lock() =
+        Some(Arc::new(move |draft_dir, _, _, cancellation, progress| {
+            let weak = weak.clone();
+            Box::pin(async move {
+                std::fs::create_dir_all(&draft_dir).unwrap();
+                std::fs::write(draft_dir.join("partial.txt"), "partial").unwrap();
+                progress.unwrap()(reports::progress::Stage::FetchingLogs, None);
+                let app = weak.upgrade().unwrap();
+                let cancel = post_cancel(&app, QUEUED_ID).await;
+                assert_eq!(body_json(&cancel)["stage"], "cancelled");
+                if cancellation.unwrap().is_cancelled() {
+                    return Err(reports::FetchFailure::Cancelled);
+                }
+                Ok(reports::FetchResult::default())
+            })
+        }));
+
+    let (reply, _) = post_create(&app, json!({"localID": QUEUED_ID})).await;
+
+    assert_api_error(&reply.unwrap(), 409, "REPORT_CANCELLED");
+    assert!(
+        !reports::draft_path(&app.reports.cfg(), QUEUED_ID)
+            .unwrap()
+            .exists()
+    );
+    assert_eq!(report_row(&app, QUEUED_ID).unwrap().status, "cancelled");
+    assert_eq!(
+        stage_trail(&progress_events(&app, Some(QUEUED_ID))).last(),
+        Some(&"cancelled".to_string())
+    );
+    assert_eq!(app.reports.collection_count(), 0);
+}
+
+/// tests/test_bug_report_api.py::test_cancelling_before_the_upload_blocks_every_later_step
+#[tokio::test]
+async fn cancelling_before_the_upload_blocks_every_later_step() {
+    let (_dir, app) = collecting_app();
+    let local_id = quick_report_id(&app).await;
+    post_progress(&app, &local_id, json!({"stage": "ticketing"})).await;
+
+    assert_eq!(
+        body_json(&post_cancel(&app, &local_id).await)["final"],
+        true
+    );
+    assert!(
+        !reports::draft_path(&app.reports.cfg(), &local_id)
+            .unwrap()
+            .exists()
+    );
+    assert_api_error(&get_draft(&app, &local_id).await, 409, "REPORT_CANCELLED");
+    assert_api_error(
+        &submit_report(&app, &local_id, None).await,
+        409,
+        "REPORT_CANCELLED",
+    );
+    let put = call(
+        &app,
+        Method::PUT,
+        &format!("/api/v1/reports/draft/{local_id}"),
+        "{\"ticket\": 1}",
+    )
+    .await;
+    assert_api_error(&put, 409, "REPORT_CANCELLED");
+}
+
+/// tests/test_bug_report_api.py::test_a_report_on_its_way_to_sentry_cannot_be_cancelled
+#[tokio::test]
+async fn a_report_on_its_way_to_sentry_cannot_be_cancelled() {
+    let (_dir, app) = collecting_app();
+    let local_id = quick_report_id(&app).await;
+    get_draft(&app, &local_id).await;
+
+    assert_api_error(
+        &post_cancel(&app, &local_id).await,
+        409,
+        "TOO_LATE_TO_CANCEL",
+    );
+    assert_api_error(&post_cancel(&app, THIRD_ID).await, 404, "UNKNOWN_LOCAL_ID");
+    assert_eq!(report_row(&app, &local_id).unwrap().status, "draft");
+}
+
+/// tests/test_bug_report_api.py::test_a_dropped_create_rewinds_mobile_reports_and_cancels_dial_ones
+#[tokio::test]
+async fn a_dropped_create_rewinds_mobile_reports_and_cancels_dial_ones() {
+    let (_dir, app) = dispatch_app();
+    dispatch(&app, json!({})).await;
+    // The Dial hangs up halfway through each collection.
+    *app.reports.hooks.fetch.lock() = Some(Arc::new(|_, _, _, cancellation, progress| {
+        Box::pin(async move {
+            progress.unwrap()(reports::progress::Stage::FetchingLogs, None);
+            cancellation.unwrap().cancel();
+            Err(reports::FetchFailure::Cancelled)
+        })
+    }));
+
+    let (mobile, _) = post_create(&app, json!({"localID": QUEUED_ID})).await;
+    let dial = post_quick_report(&app).await;
+
+    assert!(mobile.is_none() && dial.is_none());
+    assert_eq!(
+        stage_trail(&progress_events(&app, Some(QUEUED_ID))).last(),
+        Some(&"queued".to_string())
+    );
+    let others: std::collections::BTreeSet<String> = progress_events(&app, None)
+        .iter()
+        .map(|event| event["localID"].as_str().unwrap().to_string())
+        .filter(|id| id != QUEUED_ID)
+        .collect();
+    assert_eq!(others.len(), 1);
+    let dial_events = progress_events(&app, others.first().map(String::as_str));
+    assert_eq!(
+        stage_trail(&dial_events).last(),
+        Some(&"cancelled".to_string())
+    );
+}
+
+/// tests/test_bug_report_api.py::test_the_bar_never_moves_back_when_a_draft_is_fetched_again
+#[tokio::test]
+async fn the_bar_never_moves_back_when_a_draft_is_fetched_again() {
+    let (_dir, app) = collecting_app();
+    let local_id = quick_report_id(&app).await;
+    get_draft(&app, &local_id).await;
+    get_draft(&app, &local_id).await;
+    let trail = stage_trail(&progress_events(&app, Some(&local_id)));
+    assert_eq!(trail[trail.len() - 2..], ["compressing", "uploading"]);
+    assert_eq!(
+        trail.iter().filter(|stage| *stage == "compressing").count(),
+        1
     );
 }
 

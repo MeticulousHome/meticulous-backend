@@ -12,7 +12,7 @@ import uuid_utils as uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Awaitable, Callable
 from urllib.parse import unquote_plus, urlsplit
 
 import aiohttp
@@ -76,6 +76,30 @@ ALLOWED_DRAFT_UPDATE_KEYS = {
 # restart) and runs the collection by creating the draft with this localID.
 REPORT_STATUS_QUEUED = "queued"
 UPLOAD_REPORT_EVENT = "upload_report"
+REPORT_STATUS_CANCELLED = "cancelled"
+# Report progress, contract v1: one `report_progress` event per change, broadcast
+# to the Dial and the mobile app, and GET /reports/progress for late joiners.
+REPORT_PROGRESS_EVENT = "report_progress"
+REPORT_PROGRESS_VERSION = 1
+REPORT_PROGRESS_FINAL_RETENTION_SECONDS = 60
+REPORT_STAGES = (
+    "queued",
+    "preparing",
+    "fetching_machine_info",
+    "fetching_logs",
+    "fetching_machine_status",
+    "collecting_debug_shots",
+    "ticketing",
+    "compressing",
+    "uploading",
+    "finishing",
+)
+REPORT_FINAL_STAGES = ("submitted", "failed", "cancelled")
+# Once the archive is on its way to Sentry the feedback cannot be recalled.
+REPORT_UNCANCELLABLE_STAGES = ("uploading", "finishing")
+# Stages only the uploader (the Dial) knows about, reported through
+# POST /reports/<localID>/progress.
+REPORT_UPLOADER_STAGES = ("ticketing", "uploading")
 CREATE_KEYS = {"issueTime", "localID"}
 DISPATCH_KEYS = {"localID", "ticket", "issueTime", "description", "name", "email"}
 DISPATCH_TEXT_LIMITS = {"description": 10_000, "name": 200, "email": 254}
@@ -104,8 +128,12 @@ class CollectionCancellation:
 
     disconnected: bool = False
     active_task: asyncio.Task[Any] | None = None
+    # True when POST /reports/<localID>/cancel stopped the collection: the
+    # client is still connected and gets REPORT_CANCELLED instead of silence.
+    requested: bool = False
 
-    def cancel(self) -> None:
+    def cancel(self, requested: bool = False) -> None:
+        self.requested = self.requested or requested
         self.disconnected = True
         task = self.active_task
         if task is not None and not task.done():
@@ -143,7 +171,77 @@ class DuplicateLocalID(ReportRequestError):
         super().__init__(409, "DUPLICATE_LOCAL_ID", message)
 
 
+class ReportCancelled(ReportRequestError):
+    def __init__(self):
+        super().__init__(409, "REPORT_CANCELLED", "This report was cancelled")
+
+
+class TooLateToCancel(ReportRequestError):
+    def __init__(self):
+        super().__init__(
+            409,
+            "TOO_LATE_TO_CANCEL",
+            "The report is already being uploaded and cannot be cancelled",
+        )
+
+
+class UnknownLocalID(ReportRequestError):
+    def __init__(self):
+        super().__init__(404, "UNKNOWN_LOCAL_ID", "Unknown localID")
+
+
+@dataclass
+class ReportProgress:
+    """Where one report stands, as the Dial and the mobile app draw it."""
+
+    local_id: str
+    origin: str
+    ticket: int | None
+    stage: str
+    started_at: int
+    updated_at: int
+    detail: dict[str, int] | None = None
+    failure: dict[str, str] | None = None
+
+    @property
+    def final(self) -> bool:
+        return self.stage in REPORT_FINAL_STAGES
+
+    @property
+    def cancellable(self) -> bool:
+        return not self.final and self.stage not in REPORT_UNCANCELLABLE_STAGES
+
+    def stages(self) -> list[str]:
+        skipped = "ticketing" if self.origin == "mobile" else "queued"
+        return [stage for stage in REPORT_STAGES if stage != skipped]
+
+    def payload(self) -> dict[str, Any]:
+        return {
+            "v": REPORT_PROGRESS_VERSION,
+            "localID": self.local_id,
+            "origin": self.origin,
+            "ticket": self.ticket,
+            "stage": self.stage,
+            "stages": self.stages(),
+            "detail": dict(self.detail) if self.detail is not None else None,
+            "cancellable": self.cancellable,
+            "final": self.final,
+            "failure": dict(self.failure) if self.failure is not None else None,
+            "startedAt": self.started_at,
+            "updatedAt": self.updated_at,
+        }
+
+
 _collection_lock = asyncio.Lock()
+# In-memory on purpose: progress describes reports in flight, and a restart
+# ends every collection anyway. Queued rows are rebuilt from the database.
+# Ended reports stay here (GET /reports/progress hides them after a minute):
+# a queued row the Dial gave up on keeps its status, and must not come back
+# as `queued`.
+_progress: dict[str, ReportProgress] = {}
+# The cancellation of each create still collecting, so a cancel from either
+# app can stop it.
+_collections: dict[str, CollectionCancellation] = {}
 
 _sio = None
 
@@ -166,6 +264,118 @@ async def _emit_upload_report(payload: dict[str, Any]) -> None:
         logger.warning(
             f"[{payload['localID']}] failed to emit {UPLOAD_REPORT_EVENT}", exc_info=True
         )
+
+
+async def _emit_report_progress(payload: dict[str, Any]) -> None:
+    if _sio is None:
+        return
+    try:
+        await _sio.emit(REPORT_PROGRESS_EVENT, payload)
+    except Exception:
+        logger.warning(
+            f"[{payload['localID']}] failed to emit {REPORT_PROGRESS_EVENT}", exc_info=True
+        )
+
+
+async def _report_progress(
+    local_id: str,
+    stage: str,
+    *,
+    origin: str | None = None,
+    ticket: int | None = None,
+    detail: dict[str, int] | None = None,
+    failure: dict[str, str] | None = None,
+    rewind: bool = False,
+) -> ReportProgress | None:
+    """Move a report to `stage` and broadcast it when something changed.
+
+    Stages only move forward and a final stage is never left, so a retried
+    request (a second GET of the draft, a repeated `uploading`) cannot drag
+    the bar back. `rewind` is the one exception: a dispatched report whose
+    collection stopped without a cancel goes back to `queued` for the Dial
+    to retry.
+    """
+    now = _now_seconds()
+    entry = _progress.get(local_id)
+    if entry is None:
+        if origin is None:
+            return None
+        entry = ReportProgress(local_id, origin, ticket, stage, now, now, detail, failure)
+        _progress[local_id] = entry
+    else:
+        if entry.final:
+            return entry
+        if stage not in REPORT_FINAL_STAGES and not rewind:
+            if REPORT_STAGES.index(stage) < REPORT_STAGES.index(entry.stage):
+                return entry
+            if (
+                stage == entry.stage
+                and detail == entry.detail
+                and ticket in (None, entry.ticket)
+            ):
+                return entry
+        entry.stage = stage
+        entry.detail = detail
+        entry.failure = failure
+        if ticket is not None:
+            entry.ticket = ticket
+        entry.updated_at = now
+    await _emit_report_progress(entry.payload())
+    return entry
+
+
+def _progress_entries() -> list[dict[str, Any]]:
+    """Every report in flight, the queued ones from the database included, and
+    the ones that ended in the last minute."""
+    now = _now_seconds()
+    for row in _queued_report_rows():
+        if row.localID not in _progress:
+            _progress[row.localID] = ReportProgress(
+                row.localID,
+                "mobile",
+                row.ticketNumber,
+                "queued",
+                row.creationTime,
+                row.creationTime,
+            )
+    shown_since = now - REPORT_PROGRESS_FINAL_RETENTION_SECONDS
+    entries = [
+        entry
+        for entry in _progress.values()
+        if not entry.final or entry.updated_at >= shown_since
+    ]
+    entries.sort(key=lambda entry: (entry.started_at, entry.local_id))
+    return [entry.payload() for entry in entries]
+
+
+def _progress_for_row(local_id: str) -> ReportProgress | None:
+    """The entry of a known report, rebuilt from its row after a restart."""
+    entry = _progress.get(local_id)
+    if entry is not None:
+        return entry
+    row = _get_report_row(local_id)
+    if row is None:
+        return None
+    stages = {
+        REPORT_STATUS_QUEUED: "queued",
+        "draft": "compressing",
+        "submitted": "submitted",
+        REPORT_STATUS_CANCELLED: "cancelled",
+    }
+    # A row only carries contact details when the mobile app dispatched it.
+    origin = "mobile" if row.contactName or row.contactEmail else "dial"
+    if row.status == REPORT_STATUS_QUEUED:
+        origin = "mobile"
+    entry = ReportProgress(
+        local_id,
+        origin,
+        row.ticketNumber,
+        stages.get(row.status, "compressing"),
+        row.creationTime,
+        _now_seconds(),
+    )
+    _progress[local_id] = entry
+    return entry
 
 
 def _ensure_database_initialized():
@@ -754,10 +964,16 @@ async def _fetch_report_files(
     end_time: int | None = None,
     capture_active_debug_shot: bool = True,
     cancellation: CollectionCancellation | None = None,
+    progress: Callable[[str, dict[str, int] | None], Awaitable[Any]] | None = None,
 ) -> FetchResult:
+    async def stage(name: str, detail: dict[str, int] | None = None) -> None:
+        if progress is not None:
+            await progress(name, detail)
+
     result = FetchResult()
     draft_dir.mkdir(parents=True, exist_ok=True)
 
+    await stage("fetching_machine_info")
     _record_machine_info(result, draft_dir)
     try:
         upload_path = draft_dir / community_upload_diagnostics.NAME
@@ -770,17 +986,22 @@ async def _fetch_report_files(
 
     if cancellation is not None:
         cancellation.raise_if_disconnected()
+    await stage("fetching_logs")
     await _record_machine_logs(result, draft_dir, start_time, end_time, cancellation)
 
     if cancellation is not None:
         cancellation.raise_if_disconnected()
+    await stage("fetching_machine_status")
     await _record_machine_status(result, draft_dir, cancellation)
 
     if cancellation is not None:
         cancellation.raise_if_disconnected()
+    await stage("collecting_debug_shots")
     debug_limit = MAX_DEBUG_SHOTS
+    captured = 0
     if capture_active_debug_shot:
-        debug_limit -= await _record_active_debug_shot(result, draft_dir)
+        captured = await _record_active_debug_shot(result, draft_dir)
+        debug_limit -= captured
 
     if cancellation is not None:
         cancellation.raise_if_disconnected()
@@ -793,7 +1014,11 @@ async def _fetch_report_files(
         # a short debug-file count on every single report. That is expected, and
         # warning-level would train everyone to ignore the channel.
         logger.info(f"[{draft_dir.name}] {message}")
-    _copy_selected_debug_files(result, draft_dir, debug_files, cancellation)
+    total = captured + len(debug_files)
+    await stage("collecting_debug_shots", {"current": captured, "total": total})
+    for index, path in enumerate(debug_files, start=1):
+        _copy_selected_debug_files(result, draft_dir, [path], cancellation)
+        await stage("collecting_debug_shots", {"current": captured + index, "total": total})
 
     _append_reporting_log_to_dir(draft_dir, result.errors)
     if draft_dir.joinpath(REPORT_LOG_NAME).exists():
@@ -1168,6 +1393,10 @@ def _sweep_draft_dir(path: Path, local_id: str, row, now: int, stats: dict[str, 
             stats["finalized"] += 1
         except Exception:
             logger.warning(f"[{local_id}] retry of archive finalization failed", exc_info=True)
+    elif row.status == REPORT_STATUS_CANCELLED:
+        # A cancelled report never uploads: what was collected is of no use.
+        shutil.rmtree(path, ignore_errors=True)
+        stats["drafts"] += 1
     elif now - int(row.creationTime or 0) > DRAFT_MAX_AGE_SECONDS:
         if _delete_report(local_id):
             stats["drafts"] += 1
@@ -1176,9 +1405,10 @@ def _sweep_draft_dir(path: Path, local_id: str, row, now: int, stats: dict[str, 
 
 def _sweep_orphan_rows(rows: dict, now: int, stats: dict[str, int]) -> None:
     for local_id, row in rows.items():
-        if row.status == REPORT_STATUS_QUEUED:
+        if row.status in (REPORT_STATUS_QUEUED, REPORT_STATUS_CANCELLED):
             # Nothing on disk yet by design; only give up on a dispatch the
-            # dial never collected within the draft retention window.
+            # dial never collected within the draft retention window. A
+            # cancelled row is kept as long, so both apps list it.
             if now - int(row.creationTime or 0) > DRAFT_MAX_AGE_SECONDS:
                 if _delete_report(local_id):
                     stats["rows"] += 1
@@ -1318,6 +1548,8 @@ def _queued_report_for_create(local_id: str) -> tuple[Any, bool]:
         return row, True
     if row.status == "submitted":
         raise DuplicateLocalID("This report was already submitted")
+    if row.status == REPORT_STATUS_CANCELLED:
+        raise ReportCancelled()
     raise ReportRequestError(404, "UNKNOWN_LOCAL_ID", "Unknown localID")
 
 
@@ -1325,6 +1557,106 @@ def _collection_range(issue_time: int, now: int) -> tuple[int, int]:
     if now >= issue_time + (12 * 60 * 60):
         return issue_time - (12 * 60 * 60), issue_time + (12 * 60 * 60)
     return now - (24 * 60 * 60), now
+
+
+async def _collection_stopped(
+    handler, local_id: str, queued_row, failure: dict[str, str] | None
+) -> None:
+    """Progress of a collection that ended without a draft."""
+    if handler._cancellation.requested:
+        await _report_progress(local_id, "cancelled")
+    elif queued_row is not None:
+        # A dispatched report stays queued: the Dial retries it, and
+        # reports `failed` itself when it gives up.
+        await _report_progress(local_id, "queued", rewind=True)
+    elif failure is None:
+        await _report_progress(local_id, "cancelled")
+    else:
+        await _report_progress(local_id, "failed", failure=failure)
+
+
+async def _collect_report(
+    handler, local_id: str, queued_row, requested_issue_time: int | None, now: int, draft_dir
+) -> None:
+    origin = "mobile" if queued_row is not None else "dial"
+    ticket = queued_row.ticketNumber if queued_row is not None else None
+    await _report_progress(local_id, "preparing", origin=origin, ticket=ticket)
+    try:
+        await asyncio.get_running_loop().run_in_executor(None, sweep_reports)
+    except Exception:
+        logger.warning("Report sweep failed", exc_info=True)
+    try:
+        _check_disk_space()
+    except ReportRequestError as exc:
+        failure = {"code": exc.data["code"], "message": str(exc)}
+        await _collection_stopped(handler, local_id, queued_row, failure)
+        _reply_error(handler, exc)
+        return
+    issue_time = requested_issue_time if requested_issue_time is not None else now
+    collection_range = (
+        _collection_range(issue_time, now) if requested_issue_time is not None else None
+    )
+
+    async def progress(stage: str, detail: dict[str, int] | None) -> None:
+        await _report_progress(local_id, stage, detail=detail)
+
+    try:
+        handler._cancellation.raise_if_disconnected()
+        db_statistics = ShotDataBase.statistics()
+        db_statistics["mileage"] = _machine_mileage()
+        start_time, end_time = collection_range or (None, None)
+        fetched = await _fetch_report_files(
+            draft_dir,
+            start_time,
+            end_time,
+            capture_active_debug_shot=(collection_range is None or collection_range[1] == now),
+            cancellation=handler._cancellation,
+            progress=progress,
+        )
+        # A cancel that lands after the last checkpoint still wins.
+        handler._cancellation.raise_if_disconnected()
+        attachments = {
+            "debugFiles": {"automatic": fetched.automatic_debug_files},
+            "machineInfo": fetched.machine_info,
+            "machineLogs": fetched.machine_logs,
+            "machineStatus": fetched.machine_status,
+            "DBStatistics": db_statistics,
+        }
+        report_info = {
+            "description": queued_row.description if queued_row is not None else None,
+            "dateAndTime": queued_row.creationTime if queued_row is not None else now,
+            "issueTime": issue_time,
+            "attachments": attachments,
+            "multimedia": None,
+            "machineID": MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER],
+            "eventID": None,
+            "baseEventID": None,
+            "ticket": queued_row.ticketNumber if queued_row is not None else None,
+            "localID": local_id,
+        }
+        _write_draft_report_info(draft_dir, report_info)
+        _write_draft_machine_stats(draft_dir, db_statistics)
+        if queued_row is not None:
+            _update_report_db(local_id, _collected_db_values(report_info))
+        else:
+            _insert_report(report_info)
+        handler.write({"localID": local_id, "machineID": report_info["machineID"]})
+    except asyncio.CancelledError:
+        shutil.rmtree(draft_dir, ignore_errors=True)
+        await _collection_stopped(handler, local_id, queued_row, None)
+        if handler._cancellation.requested:
+            # Cancelled from either app while the Dial still waits on this
+            # request: tell it, so it does not retry.
+            _reply_error(handler, ReportCancelled())
+        # Otherwise the client disconnected. This is not an error: no Sentry
+        # report, no error-level log, no response. Leave the system exactly
+        # as if this create had never run.
+    except Exception as exc:
+        shutil.rmtree(draft_dir, ignore_errors=True)
+        logger.exception("Failed to create bug report draft")
+        failure = {"code": "INTERNAL", "message": str(exc)}
+        await _collection_stopped(handler, local_id, queued_row, failure)
+        _api_error(handler, 500, "Failed to create report draft", {"message": str(exc)})
 
 
 class ReportsCreateHandler(BaseHandler):
@@ -1368,67 +1700,14 @@ class ReportsCreateHandler(BaseHandler):
             return
 
         async with _collection_lock:
-            try:
-                await asyncio.get_running_loop().run_in_executor(None, sweep_reports)
-            except Exception:
-                logger.warning("Report sweep failed", exc_info=True)
-            try:
-                _check_disk_space()
-            except ReportRequestError as exc:
-                _reply_error(self, exc)
-                return
             local_id = queued_local_id if queued_local_id is not None else _new_local_id()
-            issue_time = requested_issue_time if requested_issue_time is not None else now
-            collection_range = (
-                _collection_range(issue_time, now) if requested_issue_time is not None else None
-            )
-            draft_dir = _draft_path(local_id)
+            _collections[local_id] = self._cancellation
             try:
-                db_statistics = ShotDataBase.statistics()
-                db_statistics["mileage"] = _machine_mileage()
-                fetched = await _fetch_report_files(
-                    draft_dir,
-                    *(collection_range or (None, None)),
-                    capture_active_debug_shot=(
-                        collection_range is None or collection_range[1] == now
-                    ),
-                    cancellation=self._cancellation,
+                await _collect_report(
+                    self, local_id, queued_row, requested_issue_time, now, _draft_path(local_id)
                 )
-                attachments = {
-                    "debugFiles": {"automatic": fetched.automatic_debug_files},
-                    "machineInfo": fetched.machine_info,
-                    "machineLogs": fetched.machine_logs,
-                    "machineStatus": fetched.machine_status,
-                    "DBStatistics": db_statistics,
-                }
-                report_info = {
-                    "description": queued_row.description if queued_row is not None else None,
-                    "dateAndTime": queued_row.creationTime if queued_row is not None else now,
-                    "issueTime": issue_time,
-                    "attachments": attachments,
-                    "multimedia": None,
-                    "machineID": MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER],
-                    "eventID": None,
-                    "baseEventID": None,
-                    "ticket": queued_row.ticketNumber if queued_row is not None else None,
-                    "localID": local_id,
-                }
-                _write_draft_report_info(draft_dir, report_info)
-                _write_draft_machine_stats(draft_dir, db_statistics)
-                if queued_row is not None:
-                    _update_report_db(local_id, _collected_db_values(report_info))
-                else:
-                    _insert_report(report_info)
-                self.write({"localID": local_id, "machineID": report_info["machineID"]})
-            except asyncio.CancelledError:
-                # The client disconnected. This is not an error: no Sentry
-                # report, no error-level log, no response. Leave the system
-                # exactly as if this create had never run.
-                shutil.rmtree(draft_dir, ignore_errors=True)
-            except Exception as exc:
-                shutil.rmtree(draft_dir, ignore_errors=True)
-                logger.exception("Failed to create bug report draft")
-                _api_error(self, 500, "Failed to create report draft", {"message": str(exc)})
+            finally:
+                _collections.pop(local_id, None)
 
 
 class ReportDraftHandler(BaseHandler):
@@ -1447,6 +1726,9 @@ class ReportDraftHandler(BaseHandler):
         except ReportRequestError as exc:
             _reply_error(self, exc)
             return
+        if _is_cancelled(local_id):
+            _reply_error(self, ReportCancelled())
+            return
         draft_dir = _draft_path(local_id)
         finalized_archive_path = _finalized_draft_path(local_id)
         if draft_dir.is_dir():
@@ -1463,12 +1745,15 @@ class ReportDraftHandler(BaseHandler):
             if archive_path is not None:
                 await ReportDraftHandler._stream_file(self, archive_path)
             else:
+                await _report_progress(local_id, "compressing")
                 with tempfile.TemporaryDirectory(dir=DRAFT_REPORTS_DIR) as temp_dir:
                     temp_archive_path = Path(temp_dir).joinpath(f"{local_id}.zstd")
                     await asyncio.get_running_loop().run_in_executor(
                         None, _write_tar_zstd_from_draft, temp_archive_path, draft_dir
                     )
                     await ReportDraftHandler._stream_file(self, temp_archive_path)
+                # The uploader has the archive; next it goes to Sentry.
+                await _report_progress(local_id, "uploading")
         except Exception as exc:
             logger.exception("Failed to read bug report draft")
             _api_error(self, 500, "Failed to read report draft", {"message": str(exc)})
@@ -1489,12 +1774,21 @@ class ReportDraftHandler(BaseHandler):
             _api_error(self, 400, str(exc), {"code": "INVALID_BODY"})
             return
 
-        if _get_report_row(local_id) is None:
+        row = _get_report_row(local_id)
+        if row is None:
             _api_error(self, 404, "Unknown localID", {"code": "UNKNOWN_LOCAL_ID"})
+            return
+        if row.status == REPORT_STATUS_CANCELLED:
+            _reply_error(self, ReportCancelled())
             return
 
         try:
             report_info = await _apply_draft_patch(local_id, data)
+            if isinstance(report_info.get("ticket"), int) and local_id in _progress:
+                entry = _progress[local_id]
+                await _report_progress(
+                    local_id, entry.stage, ticket=report_info["ticket"], detail=entry.detail
+                )
             self.write(report_info)
         except FileNotFoundError:
             _api_error(self, 404, "Unknown localID", {"code": "UNKNOWN_LOCAL_ID"})
@@ -1644,6 +1938,7 @@ class ReportsDispatchHandler(BaseHandler):
             return
 
         payload = _dispatch_payload(row)
+        await _report_progress(row.localID, "queued", origin="mobile", ticket=row.ticketNumber)
         await _emit_upload_report(payload)
         self.set_status(202)
         self.write(payload)
@@ -1659,6 +1954,10 @@ class ReportsSubmitHandler(BaseHandler):
             _reply_error(self, exc)
             return
 
+        if _is_cancelled(local_id):
+            _reply_error(self, ReportCancelled())
+            return
+        await _report_progress(local_id, "finishing")
         try:
             updated = _mark_report_submitted(
                 local_id, event_id, submission_time, ticket_provided, ticket
@@ -1674,6 +1973,9 @@ class ReportsSubmitHandler(BaseHandler):
         if not updated:
             _api_error(self, 404, "Unknown localID", {"code": "UNKNOWN_LOCAL_ID"})
             return
+        await _report_progress(
+            local_id, "submitted", ticket=ticket if ticket_provided else None
+        )
         self.set_status(200)
         self.finish()
 
@@ -1709,6 +2011,97 @@ def _parse_submit_body(body: bytes) -> tuple[str, str, int, bool, int | None]:
     ):
         raise ReportRequestError(400, "INVALID_BODY", "ticket must be an integer or null")
     return local_id, event_id, submission_time, ticket_provided, ticket
+
+
+def _is_cancelled(local_id: str) -> bool:
+    row = _get_report_row(local_id)
+    return row is not None and row.status == REPORT_STATUS_CANCELLED
+
+
+def _parse_progress_update(body: bytes) -> tuple[str, dict[str, str] | None]:
+    """Return `(stage, failure)` from a ReportProgressUpdate body."""
+    try:
+        data = _json_loads_body(body)
+    except ValueError as exc:
+        raise ReportRequestError(400, "INVALID_BODY", str(exc)) from exc
+    if set(data) == {"stage"}:
+        if data["stage"] not in REPORT_UPLOADER_STAGES:
+            raise ReportRequestError(
+                400, "INVALID_BODY", f"stage must be one of {', '.join(REPORT_UPLOADER_STAGES)}"
+            )
+        return data["stage"], None
+    if set(data) == {"failed"}:
+        failed = data["failed"]
+        if (
+            not isinstance(failed, dict)
+            or set(failed) != {"code", "message"}
+            or not all(isinstance(failed[key], str) for key in ("code", "message"))
+        ):
+            raise ReportRequestError(
+                400, "INVALID_BODY", "failed must be an object with string code and message"
+            )
+        return "failed", {"code": failed["code"][:64], "message": failed["message"][:1000]}
+    raise ReportRequestError(400, "INVALID_BODY", "Body must be {stage} or {failed}")
+
+
+class ReportsProgressHandler(BaseHandler):
+    """Reports in flight and the ones that ended in the last minute."""
+
+    async def get(self):
+        self.write({"content": _progress_entries()})
+
+
+class ReportProgressUpdateHandler(BaseHandler):
+    """The uploader's own stages: asking for the ticket, sending to Sentry, failing."""
+
+    async def post(self, local_id: str):
+        try:
+            _validate_local_id(local_id)
+            stage, failure = _parse_progress_update(self.request.body)
+            if _is_cancelled(local_id):
+                raise ReportCancelled()
+            if _progress_for_row(local_id) is None:
+                raise UnknownLocalID()
+        except ReportRequestError as exc:
+            _reply_error(self, exc)
+            return
+        entry = await _report_progress(local_id, stage, failure=failure)
+        assert entry is not None  # _progress_for_row created it
+        self.write(entry.payload())
+
+
+class ReportCancelHandler(BaseHandler):
+    """Cancel a report from either app, until it is being uploaded."""
+
+    async def post(self, local_id: str):
+        try:
+            _validate_local_id(local_id)
+            if self.request.body:
+                raise ReportRequestError(400, "INVALID_BODY", "Cancel takes no body")
+            entry = _progress_for_row(local_id)
+            if entry is None:
+                raise UnknownLocalID()
+            if entry.stage == "cancelled":
+                # Cancelling twice is not an error; both apps may press it.
+                self.write(entry.payload())
+                return
+            if not entry.cancellable:
+                raise TooLateToCancel()
+        except ReportRequestError as exc:
+            _reply_error(self, exc)
+            return
+
+        collection = _collections.get(local_id)
+        if collection is not None:
+            # The create handler removes the draft and answers the Dial.
+            collection.cancel(requested=True)
+        else:
+            _remove_report_representation(_draft_path(local_id))
+        if _get_report_row(local_id) is not None:
+            _update_report_db(local_id, {"status": REPORT_STATUS_CANCELLED})
+        entry = await _report_progress(local_id, "cancelled")
+        assert entry is not None  # _progress_for_row created it
+        self.write(entry.payload())
 
 
 async def _probe_url(url: str) -> dict[str, Any]:
@@ -1776,3 +2169,6 @@ API.register_handler(APIVersion.V1, r"/reports/preflight", ReportsPreflightHandl
 API.register_handler(APIVersion.V1, r"/reports/draft/([^/]+)", ReportDraftHandler)
 API.register_handler(APIVersion.V1, r"/reports/list", ReportsListHandler)
 API.register_handler(APIVersion.V1, r"/reports/submit", ReportsSubmitHandler)
+API.register_handler(APIVersion.V1, r"/reports/progress", ReportsProgressHandler)
+API.register_handler(APIVersion.V1, r"/reports/([^/]+)/progress", ReportProgressUpdateHandler)
+API.register_handler(APIVersion.V1, r"/reports/([^/]+)/cancel", ReportCancelHandler)

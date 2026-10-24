@@ -12,6 +12,7 @@ use serde_json::{Map, Value, json};
 
 use crate::api;
 use crate::app::App;
+use crate::bug_report::progress::{Origin, ReportProgress, Stage};
 use crate::config::{self, keys};
 
 /// The events the server handles (`backend.py`).
@@ -25,13 +26,14 @@ pub const LISTENS: [&str; 6] = [
 ];
 
 /// Every event the server emits.
-pub const EMITS: [&str; 10] = [
+pub const EMITS: [&str; 11] = [
     "OSUpdate",
     "button",
     "heater_status",
     "notification",
     "profile",
     "profileHover",
+    "report_progress",
     "sensors",
     "settings",
     "status",
@@ -88,11 +90,22 @@ pub fn payload_keys() -> Value {
     let button = esp::ButtonEventData::from_args(&["CW"])
         .map(|b| b.to_sio())
         .unwrap_or(Value::Null);
+    let report_progress = ReportProgress::new(
+        "localID",
+        Origin::Dial,
+        Value::Null,
+        Stage::Preparing,
+        json!(0),
+        json!(0),
+    )
+    .payload();
     json!({
         "status": status_keys.into_iter().collect::<Vec<_>>(),
         "status.sensors": sorted_keys(&status["sensors"]),
         "sensors": sorted_keys(&esp::SensorData::default().to_sio_sensors()),
         "button": sorted_keys(&button),
+        // Report progress contract v1, read by the Dial and the mobile app.
+        "report_progress": sorted_keys(&report_progress),
     })
 }
 

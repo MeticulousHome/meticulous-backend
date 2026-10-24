@@ -356,8 +356,8 @@ pub fn install_collector(
     let calls = Arc::new(parking_lot::Mutex::new(Vec::new()));
     let recorded = calls.clone();
     let automatic: Vec<String> = automatic.iter().map(|s| s.to_string()).collect();
-    *app.reports.hooks.fetch.lock() =
-        Some(Arc::new(move |draft_dir, range, capture, cancellation| {
+    *app.reports.hooks.fetch.lock() = Some(Arc::new(
+        move |draft_dir, range, capture, cancellation, _| {
             recorded.lock().push(FetchCall {
                 range,
                 capture_active_debug_shot: capture,
@@ -378,14 +378,15 @@ pub fn install_collector(
                     ..Default::default()
                 })
             })
-        }));
+        },
+    ));
     calls
 }
 
 /// A replaced `_fetch_report_files` that leaves a partial file and then
 /// sees the client disconnect.
 pub fn install_cancelling_collector(app: &crate::app::App) {
-    *app.reports.hooks.fetch.lock() = Some(Arc::new(|draft_dir, _, _, _| {
+    *app.reports.hooks.fetch.lock() = Some(Arc::new(|draft_dir, _, _, _, _| {
         Box::pin(async move {
             std::fs::create_dir_all(&draft_dir).unwrap();
             std::fs::write(draft_dir.join("partial.txt"), "partial").unwrap();

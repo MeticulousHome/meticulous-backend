@@ -386,6 +386,22 @@
     ]
   },
   {
+    "path": "/api/v1/reports/([^/]+)/cancel",
+    "handler": "ReportCancelHandler",
+    "module": "api.bug_report",
+    "methods": [
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/reports/([^/]+)/progress",
+    "handler": "ReportProgressUpdateHandler",
+    "module": "api.bug_report",
+    "methods": [
+      "post"
+    ]
+  },
+  {
     "path": "/api/v1/reports/create",
     "handler": "ReportsCreateHandler",
     "module": "api.bug_report",
@@ -423,6 +439,14 @@
   {
     "path": "/api/v1/reports/preflight",
     "handler": "ReportsPreflightHandler",
+    "module": "api.bug_report",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/reports/progress",
+    "handler": "ReportsProgressHandler",
     "module": "api.bug_report",
     "methods": [
       "get"

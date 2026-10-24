@@ -120,7 +120,7 @@ async fn fetch_report_files_uses_parent_debug_file_names() {
     );
 
     let draft_dir = draft_path(&app.reports.cfg(), "local-test-id").unwrap();
-    let fetched = fetch_report_files(&app, &draft_dir, None, true, None)
+    let fetched = fetch_report_files(&app, &draft_dir, None, true, None, None)
         .await
         .unwrap();
 
@@ -271,7 +271,7 @@ async fn fetch_report_files_raises_cancelled_at_next_boundary_after_disconnect()
     cancellation.cancel();
 
     let draft_dir = draft_path(&app.reports.cfg(), "boundary-test-id").unwrap();
-    let fetched = fetch_report_files(&app, &draft_dir, None, true, Some(&cancellation)).await;
+    let fetched = fetch_report_files(&app, &draft_dir, None, true, Some(&cancellation), None).await;
 
     assert_eq!(fetched, Err(FetchFailure::Cancelled));
     assert!(
@@ -289,7 +289,7 @@ async fn fetch_report_files_logs_stage_error_as_it_happens() {
     let logs = capture_logs();
 
     let draft_dir = draft_path(&app.reports.cfg(), "logged-error-id").unwrap();
-    let fetched = fetch_report_files(&app, &draft_dir, None, true, None)
+    let fetched = fetch_report_files(&app, &draft_dir, None, true, None, None)
         .await
         .unwrap();
 
@@ -321,7 +321,9 @@ async fn cancelled_stage_is_never_logged_as_a_collection_error() {
     let draft_dir = draft_path(&app.reports.cfg(), "cancelled-stage-id").unwrap();
     let (a, dir) = (app.clone(), draft_dir.clone());
     let fetch =
-        tokio::spawn(async move { fetch_report_files(&a, &dir, None, true, Some(&token)).await });
+        tokio::spawn(
+            async move { fetch_report_files(&a, &dir, None, true, Some(&token), None).await },
+        );
     eventually(|| !server.requests().is_empty()).await;
 
     cancellation.cancel();
@@ -340,7 +342,7 @@ async fn short_debug_file_count_logs_at_info_not_warning() {
     let logs = capture_logs();
 
     let draft_dir = draft_path(&app.reports.cfg(), "few-shots-id").unwrap();
-    let fetched = fetch_report_files(&app, &draft_dir, None, true, None)
+    let fetched = fetch_report_files(&app, &draft_dir, None, true, None, None)
         .await
         .unwrap();
 
@@ -371,7 +373,7 @@ async fn fetch_report_files_includes_active_incomplete_debug_shot_first() {
     app.debug_shots.start(&app);
 
     let draft_dir = draft_path(&app.reports.cfg(), "local-test-id").unwrap();
-    let fetched = fetch_report_files(&app, &draft_dir, None, true, None)
+    let fetched = fetch_report_files(&app, &draft_dir, None, true, None, None)
         .await
         .unwrap();
 
@@ -428,7 +430,7 @@ async fn fetch_report_files_skips_active_debug_shot_for_historical_range() {
     app.debug_shots.start(&app);
 
     let draft_dir = draft_path(&app.reports.cfg(), "historic").unwrap();
-    let fetched = fetch_report_files(&app, &draft_dir, Some((1, 2)), false, None)
+    let fetched = fetch_report_files(&app, &draft_dir, Some((1, 2)), false, None, None)
         .await
         .unwrap();
 
@@ -840,7 +842,7 @@ async fn upload_diagnostics_survive_report_archive() {
     .unwrap();
 
     let draft = draft_path(&app.reports.cfg(), "upload-diagnostics-test").unwrap();
-    let fetched = fetch_report_files(&app, &draft, None, false, None)
+    let fetched = fetch_report_files(&app, &draft, None, false, None, None)
         .await
         .unwrap();
     let name = crate::api::community_upload_diagnostics::NAME;

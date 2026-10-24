@@ -3,13 +3,15 @@
 
 use std::sync::Arc;
 
-use history::bug_reports::{self as rows, BugReportRow, QueuedReport};
+use history::bug_reports::{self as rows, BugReportRow, BugReportValues, QueuedReport};
 use serde_json::{Map, Value, json};
 use tokio_util::sync::CancellationToken;
 
 use crate::app::App;
+use crate::bug_report::progress::{Failure, Origin, Stage, StageUpdate};
 use crate::bug_report::{
-    self as reports, Fail, FetchFailure, REPORT_STATUS_QUEUED, RequestError, blocking, py,
+    self as reports, CollectionCancellation, Fail, FetchFailure, REPORT_STATUS_CANCELLED,
+    REPORT_STATUS_QUEUED, RequestError, StageReporter, blocking, py,
 };
 use crate::http::{Kind, Reply, Request, Route};
 
@@ -60,6 +62,21 @@ pub fn routes() -> Vec<Route> {
         .delete(draft_delete),
         Route::new("/reports/list", Kind::Base, m, "ReportsListHandler").get(list),
         Route::new("/reports/submit", Kind::Base, m, "ReportsSubmitHandler").post(submit),
+        Route::new("/reports/progress", Kind::Base, m, "ReportsProgressHandler").get(progress),
+        Route::new(
+            "/reports/([^/]+)/progress",
+            Kind::Base,
+            m,
+            "ReportProgressUpdateHandler",
+        )
+        .post(progress_update),
+        Route::new(
+            "/reports/([^/]+)/cancel",
+            Kind::Base,
+            m,
+            "ReportCancelHandler",
+        )
+        .post(cancel),
     ]
 }
 
@@ -220,6 +237,7 @@ pub fn queued_report_for_create(app: &App, local_id: &str) -> Result<(BugReportR
         Some("submitted") => {
             Err(RequestError::duplicate_local_id("This report was already submitted").into())
         }
+        Some(REPORT_STATUS_CANCELLED) => Err(RequestError::report_cancelled().into()),
         _ => Err(RequestError::unknown_local_id().into()),
     }
 }
@@ -236,17 +254,26 @@ impl From<Fail> for CollectError {
     }
 }
 
-/// The part of `ReportsCreateHandler.post` under the collection lock.
-#[allow(clippy::too_many_arguments)]
-async fn collect(
-    app: &Arc<App>,
-    req: &Request,
-    now: i64,
-    requested_issue_time: Option<i64>,
-    queued_local_id: Option<String>,
+/// What a create collects, settled before the collection starts.
+struct Collection {
+    local_id: String,
     queued_row: Option<BugReportRow>,
-    cancellation: CancellationToken,
-) -> Option<Reply> {
+    requested_issue_time: Option<i64>,
+    now: i64,
+    cancellation: CollectionCancellation,
+}
+
+/// `_collect_report`: the part of `ReportsCreateHandler.post` under the
+/// collection lock, from the sweep on.
+async fn collect(app: &Arc<App>, req: &Request, job: Collection) -> Option<Reply> {
+    let Collection {
+        local_id,
+        queued_row,
+        requested_issue_time,
+        now,
+        cancellation,
+    } = job;
+    let queued = queued_row.is_some();
     let a = app.clone();
     match tokio::task::spawn_blocking(move || reports::sweep_reports(&a, None)).await {
         Ok(Ok(_)) => {}
@@ -257,16 +284,44 @@ async fn collect(
     let check_cfg = cfg.clone();
     match blocking(move || reports::check_disk_space(&check_cfg)).await {
         Ok(()) => {}
-        Err(Fail::Request(error)) => return Some(request_error(&error)),
+        Err(Fail::Request(error)) => {
+            let failure = Failure {
+                code: error.code.to_string(),
+                message: error.message.clone(),
+            };
+            let _state = app.reports.hold_state().await;
+            reports::collection_stopped(
+                app,
+                &local_id,
+                queued,
+                cancellation.requested(),
+                Some(failure),
+            );
+            app.reports.end_collection(&local_id);
+            return Some(request_error(&error));
+        }
+        // PARITY: a failure to read the disk usage escapes the handler (a
+        // 500) and leaves the report at `preparing`.
         Err(_) => return Some(uncaught(req)),
     }
-    let local_id = queued_local_id.unwrap_or_else(reports::new_local_id);
     let issue_time = requested_issue_time.unwrap_or(now);
     let range = requested_issue_time.map(|t| reports::collection_range(t, now));
     let Ok(draft_dir) = reports::draft_path(&cfg, &local_id) else {
         return Some(uncaught(req));
     };
+    let (a, id) = (app.clone(), local_id.clone());
+    let progress: StageReporter = Arc::new(move |stage, detail| {
+        let update = StageUpdate {
+            detail,
+            ..StageUpdate::default()
+        };
+        reports::report_progress(&a, &id, stage, update);
+    });
+    let mut state = None;
     let outcome: Result<Reply, CollectError> = async {
+        if cancellation.token.is_cancelled() {
+            return Err(CollectError::Cancelled);
+        }
         let a = app.clone();
         let mut statistics = blocking(move || reports::statistics(&a)).await?;
         if let Value::Object(map) = &mut statistics {
@@ -281,7 +336,8 @@ async fn collect(
             &draft_dir,
             range,
             capture_active,
-            Some(&cancellation),
+            Some(&cancellation.token),
+            Some(progress),
         )
         .await
         .map_err(|failure| match failure {
@@ -320,6 +376,13 @@ async fn collect(
             ("ticket", field(|r| &r.ticket_number)),
             ("localID", json!(local_id)),
         ]);
+        // From here to the answer nothing awaits in the Python: a cancel that
+        // lands after the last checkpoint still wins, and one that comes
+        // after the draft is written finds no collection to stop.
+        state = Some(app.reports.hold_state().await);
+        if cancellation.token.is_cancelled() {
+            return Err(CollectError::Cancelled);
+        }
         let a = app.clone();
         let (dir, info, queued, id) = (
             draft_dir.clone(),
@@ -338,29 +401,45 @@ async fn collect(
             Ok(())
         })
         .await?;
+        app.reports.end_collection(&local_id);
         Ok(Reply::base().json(json!({"localID": local_id, "machineID": report_info["machineID"]})))
     }
     .await;
-    match outcome {
-        Ok(reply) => Some(reply),
-        Err(CollectError::Cancelled) => {
-            // The client left. Not an error: no log, no response, nothing
-            // left behind.
-            let dir = draft_dir.clone();
-            blocking(move || std::fs::remove_dir_all(dir)).await.ok();
-            None
+    let error = match outcome {
+        Ok(reply) => return Some(reply),
+        Err(error) => error,
+    };
+    let _state = match state {
+        Some(state) => state,
+        None => app.reports.hold_state().await,
+    };
+    let dir = draft_dir.clone();
+    blocking(move || std::fs::remove_dir_all(dir)).await.ok();
+    let requested = cancellation.requested();
+    let reply = match error {
+        CollectError::Cancelled => {
+            reports::collection_stopped(app, &local_id, queued, requested, None);
+            // Cancelled from either app while the Dial still waits on this
+            // request: tell it, so it does not retry. Otherwise the client
+            // left: not an error, no log, no response, nothing left behind.
+            requested.then(|| request_error(&RequestError::report_cancelled()))
         }
-        Err(CollectError::Failed(error)) => {
-            let dir = draft_dir.clone();
-            blocking(move || std::fs::remove_dir_all(dir)).await.ok();
+        CollectError::Failed(error) => {
             tracing::error!("Failed to create bug report draft: {error}");
+            let failure = Failure {
+                code: "INTERNAL".into(),
+                message: error.clone(),
+            };
+            reports::collection_stopped(app, &local_id, queued, requested, Some(failure));
             Some(api_error(
                 500,
                 "Failed to create report draft",
                 message(&error),
             ))
         }
-    }
+    };
+    app.reports.end_collection(&local_id);
+    reply
 }
 
 /// `ReportsCreateHandler.post`. `None` when the client disconnected
@@ -378,6 +457,9 @@ pub async fn create_report(
         }
         Err(CreateBodyError::Request(error)) => return Some(request_error(&error)),
     };
+    // From the lookup of a queued row to `preparing` nothing awaits in the
+    // Python, so a cancel cannot slip in between.
+    let state = app.reports.hold_state().await;
     let mut queued_row = None;
     if let Some(local_id) = &queued_local_id {
         let (a, id) = (app.clone(), local_id.clone());
@@ -401,22 +483,36 @@ pub async fn create_report(
     let Some(guard) = app.reports.try_begin_collection() else {
         return Some(request_error(&RequestError::collection_in_progress()));
     };
+    let local_id = queued_local_id.unwrap_or_else(reports::new_local_id);
+    let cancellation = CollectionCancellation::new(cancellation);
+    let registration = app
+        .reports
+        .register_collection(&local_id, cancellation.clone(), guard);
+    let (origin, ticket) = match &queued_row {
+        Some(row) => (Origin::Mobile, row.ticket_number.clone()),
+        None => (Origin::Dial, Value::Null),
+    };
+    let preparing = StageUpdate {
+        origin: Some(origin),
+        ticket,
+        ..StageUpdate::default()
+    };
+    reports::report_progress(app, &local_id, Stage::Preparing, preparing);
+    drop(state);
+    let job = Collection {
+        local_id,
+        queued_row,
+        requested_issue_time,
+        now,
+        cancellation,
+    };
     // The collection runs on its own task so that a disconnect stops it only
     // where the Python checks (stage boundaries and watcher requests), and
     // its cleanup always runs.
     let (a, r) = (app.clone(), req.clone());
     let task = tokio::spawn(async move {
-        let _guard = guard;
-        collect(
-            &a,
-            &r,
-            now,
-            requested_issue_time,
-            queued_local_id,
-            queued_row,
-            cancellation,
-        )
-        .await
+        let _registration = registration;
+        collect(&a, &r, job).await
     });
     match task.await {
         Ok(reply) => reply,
@@ -454,23 +550,47 @@ async fn draft_get(app: Arc<App>, req: Request) -> Reply {
         return uncaught(&req);
     };
     let disposition = format!("attachment; filename=\"{local_id}.zstd\"");
-    let read = blocking(move || -> Result<Option<Vec<u8>>, String> {
-        if draft_dir.is_dir() {
-            reports::archive::archive_bytes(&draft_dir)
-                .map(Some)
-                .map_err(|e| e.message)
-        } else if finalized.is_file() {
-            std::fs::read(&finalized)
-                .map(Some)
-                .map_err(|e| py::os_error(&e, &finalized))
+    // The cancel check and `compressing` happen at once, as in the Python.
+    let state = app.reports.hold_state().await;
+    let (a, id, dir, archive) = (
+        app.clone(),
+        local_id.clone(),
+        draft_dir.clone(),
+        finalized.clone(),
+    );
+    let found = blocking(move || -> Result<Option<bool>, Fail> {
+        if reports::is_cancelled(&a, &id)? {
+            return Err(RequestError::report_cancelled().into());
+        }
+        Ok(if dir.is_dir() {
+            Some(true)
+        } else if archive.is_file() {
+            Some(false)
         } else {
-            Ok(None)
+            None
+        })
+    })
+    .await;
+    let open = match found {
+        Ok(Some(open)) => open,
+        Ok(None) => return api_error(404, "Unknown localID", code("UNKNOWN_LOCAL_ID")),
+        Err(Fail::Request(error)) => return request_error(&error),
+        Err(_) => return uncaught(&req),
+    };
+    if open {
+        reports::report_progress(&app, &local_id, Stage::Compressing, StageUpdate::default());
+    }
+    drop(state);
+    let read = blocking(move || -> Result<Vec<u8>, String> {
+        if open {
+            reports::archive::archive_bytes(&draft_dir).map_err(|e| e.message)
+        } else {
+            std::fs::read(&finalized).map_err(|e| py::os_error(&e, &finalized))
         }
     })
     .await;
     match read {
-        Ok(None) => api_error(404, "Unknown localID", code("UNKNOWN_LOCAL_ID")),
-        Ok(Some(bytes)) => {
+        Ok(bytes) => {
             let mut reply = Reply::base()
                 .with_header("Content-Type", "application/octet-stream")
                 .with_header("Content-Disposition", disposition)
@@ -480,6 +600,12 @@ async fn draft_get(app: Arc<App>, req: Request) -> Reply {
             // tornado adds no Etag.
             if !bytes.is_empty() {
                 reply.disable_etag();
+            }
+            if open {
+                // The uploader has the archive; next it goes to Sentry. The
+                // Python moves on once the last chunk is flushed, this once
+                // the archive is handed to the server.
+                reports::report_progress(&app, &local_id, Stage::Uploading, StageUpdate::default());
             }
             reply
         }
@@ -568,13 +694,24 @@ async fn draft_put(app: Arc<App>, req: Request) -> Reply {
     }
     let (a, id) = (app.clone(), local_id.clone());
     match blocking(move || reports::get_report_row(&a, &id)).await {
+        Ok(Some(row)) if row.status_str() == Some(REPORT_STATUS_CANCELLED) => {
+            return request_error(&RequestError::report_cancelled());
+        }
         Ok(Some(_)) => {}
         Ok(None) => return api_error(404, "Unknown localID", code("UNKNOWN_LOCAL_ID")),
         Err(_) => return uncaught(&req),
     }
-    let a = app.clone();
-    match blocking(move || reports::apply_draft_patch(&a, &local_id, &data)).await {
-        Ok(report_info) => Reply::base().json(report_info),
+    let (a, id) = (app.clone(), local_id.clone());
+    match blocking(move || reports::apply_draft_patch(&a, &id, &data)).await {
+        Ok(report_info) => {
+            // `isinstance(ticket, int)`, which a bool passes.
+            let ticket = &report_info["ticket"];
+            if matches!(ticket, Value::Bool(_)) || matches!(ticket, Value::Number(n) if !n.is_f64())
+            {
+                reports::report_ticket(&app, &local_id, ticket.clone());
+            }
+            Reply::base().json(report_info)
+        }
         Err(Fail::NotFound(_)) => api_error(404, "Unknown localID", code("UNKNOWN_LOCAL_ID")),
         Err(Fail::Value(text)) => api_error(400, &text, code("INVALID_BODY")),
         Err(other) => {
@@ -754,6 +891,8 @@ async fn dispatch_post(app: Arc<App>, req: Request) -> Reply {
     };
     let a = app.clone();
     let now = app.reports.now();
+    let local_id = dispatch.local_id.clone();
+    let state = app.reports.hold_state().await;
     let row = match blocking(move || reports::insert_queued_report(&a, &dispatch, now)).await {
         Ok(row) => row,
         Err(Fail::Request(error)) => return request_error(&error),
@@ -764,6 +903,14 @@ async fn dispatch_post(app: Arc<App>, req: Request) -> Reply {
         }
     };
     let payload = row.dispatch_payload();
+    // Both apps' bars start at `queued` before the Dial is told.
+    let queued = StageUpdate {
+        origin: Some(Origin::Mobile),
+        ticket: row.ticket_number.clone(),
+        ..StageUpdate::default()
+    };
+    reports::report_progress(&app, &local_id, Stage::Queued, queued);
+    drop(state);
     reports::emit_upload_report(&app, &payload);
     Reply::base().status(202).json(payload)
 }
@@ -829,6 +976,17 @@ async fn submit(app: Arc<App>, req: Request) -> Reply {
         Ok(body) => body,
         Err(error) => return request_error(&error),
     };
+    // From the cancel check to `submitted` nothing awaits in the Python.
+    let _state = app.reports.hold_state().await;
+    let (a, id) = (app.clone(), body.local_id.clone());
+    match blocking(move || reports::is_cancelled(&a, &id)).await {
+        Ok(true) => return request_error(&RequestError::report_cancelled()),
+        Ok(false) => {}
+        Err(_) => return uncaught(&req),
+    }
+    let local_id = body.local_id.clone();
+    reports::report_progress(&app, &local_id, Stage::Finishing, StageUpdate::default());
+    let ticket = body.ticket.clone().unwrap_or(Value::Null);
     let a = app.clone();
     let updated = blocking(move || {
         reports::mark_report_submitted(
@@ -841,7 +999,14 @@ async fn submit(app: Arc<App>, req: Request) -> Reply {
     })
     .await;
     match updated {
-        Ok(true) => Reply::base().status(200),
+        Ok(true) => {
+            let submitted = StageUpdate {
+                ticket,
+                ..StageUpdate::default()
+            };
+            reports::report_progress(&app, &local_id, Stage::Submitted, submitted);
+            Reply::base().status(200)
+        }
         Ok(false) | Err(Fail::NotFound(_)) => {
             api_error(404, "Unknown localID", code("UNKNOWN_LOCAL_ID"))
         }
@@ -850,6 +1015,142 @@ async fn submit(app: Arc<App>, req: Request) -> Reply {
             tracing::error!("Failed to submit bug report draft: {text}");
             api_error(500, "Failed to submit report draft", message(&text))
         }
+    }
+}
+
+/// `_parse_progress_update(body)`: `(stage, failure)` from a
+/// ReportProgressUpdate body, `{stage}` or `{failed}`.
+pub fn parse_progress_update(body: &[u8]) -> Result<(Stage, Option<Failure>), RequestError> {
+    let data = py::json_loads_body(body).map_err(RequestError::invalid_body)?;
+    let only = |key: &str| data.len() == 1 && data.contains_key(key);
+    if only("stage") {
+        let stages = Stage::UPLOADER.map(Stage::as_str).join(", ");
+        return data["stage"]
+            .as_str()
+            .and_then(Stage::uploader)
+            .map(|stage| (stage, None))
+            .ok_or_else(|| RequestError::invalid_body(format!("stage must be one of {stages}")));
+    }
+    if only("failed") {
+        let failure = data["failed"]
+            .as_object()
+            .filter(|failed| failed.len() == 2)
+            .and_then(|failed| match (failed.get("code"), failed.get("message")) {
+                (Some(Value::String(code)), Some(Value::String(message))) => Some(Failure {
+                    code: code.chars().take(64).collect(),
+                    message: message.chars().take(1000).collect(),
+                }),
+                _ => None,
+            });
+        return failure
+            .map(|failure| (Stage::Failed, Some(failure)))
+            .ok_or_else(|| {
+                RequestError::invalid_body("failed must be an object with string code and message")
+            });
+    }
+    Err(RequestError::invalid_body(
+        "Body must be {stage} or {failed}",
+    ))
+}
+
+/// `ReportsProgressHandler.get`: the reports in flight and the ones that
+/// ended in the last minute.
+async fn progress(app: Arc<App>, req: Request) -> Reply {
+    let _state = app.reports.hold_state().await;
+    let a = app.clone();
+    match blocking(move || reports::progress_entries(&a)).await {
+        Ok(content) => Reply::base().json(json!({"content": content})),
+        Err(_) => uncaught(&req),
+    }
+}
+
+/// `ReportProgressUpdateHandler.post`: the uploader's own stages (asking for
+/// the ticket, sending to Sentry) and its failure.
+async fn progress_update(app: Arc<App>, req: Request) -> Reply {
+    let local_id = match validated_path_id(&req) {
+        Ok(id) => id,
+        Err(reply) => return reply,
+    };
+    let (stage, failure) = match parse_progress_update(&req.body) {
+        Ok(update) => update,
+        Err(error) => return request_error(&error),
+    };
+    let _state = app.reports.hold_state().await;
+    let (a, id) = (app.clone(), local_id.clone());
+    let known = blocking(move || -> Result<bool, Fail> {
+        if reports::is_cancelled(&a, &id)? {
+            return Err(RequestError::report_cancelled().into());
+        }
+        Ok(reports::progress_for_row(&a, &id)?.is_some())
+    })
+    .await;
+    match known {
+        Ok(true) => {}
+        Ok(false) => return request_error(&RequestError::unknown_local_id()),
+        Err(Fail::Request(error)) => return request_error(&error),
+        Err(_) => return uncaught(&req),
+    }
+    let update = StageUpdate {
+        failure,
+        ..StageUpdate::default()
+    };
+    match reports::report_progress(&app, &local_id, stage, update) {
+        Some(entry) => Reply::base().json(entry.payload()),
+        None => uncaught(&req),
+    }
+}
+
+/// `ReportCancelHandler.post`: cancel a report from either app, until it is
+/// being uploaded.
+async fn cancel(app: Arc<App>, req: Request) -> Reply {
+    let local_id = match validated_path_id(&req) {
+        Ok(id) => id,
+        Err(reply) => return reply,
+    };
+    if !req.body.is_empty() {
+        return request_error(&RequestError::invalid_body("Cancel takes no body"));
+    }
+    let _state = app.reports.hold_state().await;
+    let (a, id) = (app.clone(), local_id.clone());
+    let entry = match blocking(move || reports::progress_for_row(&a, &id)).await {
+        Ok(Some(entry)) => entry,
+        Ok(None) => return request_error(&RequestError::unknown_local_id()),
+        Err(_) => return uncaught(&req),
+    };
+    if entry.stage == Stage::Cancelled {
+        // Cancelling twice is not an error; both apps may press it.
+        return Reply::base().json(entry.payload());
+    }
+    if !entry.cancellable() {
+        return request_error(&RequestError::too_late_to_cancel());
+    }
+    // A create still collecting removes the draft and answers the Dial.
+    let collection = app.reports.collection(&local_id);
+    let collecting = collection.is_some();
+    if let Some(collection) = collection {
+        collection.cancel(true);
+    }
+    let (a, id) = (app.clone(), local_id.clone());
+    let stored = blocking(move || -> Result<(), Fail> {
+        if !collecting {
+            reports::remove_report_representation(&reports::draft_path(&a.reports.cfg(), &id)?)?;
+        }
+        if reports::get_report_row(&a, &id)?.is_some() {
+            let cancelled = BugReportValues {
+                status: Some(json!(REPORT_STATUS_CANCELLED)),
+                ..BugReportValues::default()
+            };
+            reports::update_report_db(&a, &id, &cancelled)?;
+        }
+        Ok(())
+    })
+    .await;
+    if stored.is_err() {
+        return uncaught(&req);
+    }
+    match reports::report_progress(&app, &local_id, Stage::Cancelled, StageUpdate::default()) {
+        Some(entry) => Reply::base().json(entry.payload()),
+        None => uncaught(&req),
     }
 }
 

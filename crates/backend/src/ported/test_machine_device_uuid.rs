@@ -75,7 +75,9 @@ impl CommandRunner for Systemctl {
     }
 
     fn start(&self, _argv: &[&str]) -> std::io::Result<Box<dyn crate::host::Process>> {
-        Err(std::io::Error::other("no programs are started in these tests"))
+        Err(std::io::Error::other(
+            "no programs are started in these tests",
+        ))
     }
 
     fn which(&self, _name: &str) -> Option<std::path::PathBuf> {
