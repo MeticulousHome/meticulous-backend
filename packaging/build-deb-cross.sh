@@ -5,7 +5,7 @@
 # debug file out/meticulous-backend_<version>_arm64.debug (see Dockerfile.deb).
 set -euo pipefail
 cd /src
-version=$(grep '^version' pyproject.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+version=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
 
 cargo build --release --locked --target aarch64-unknown-linux-gnu -p meticulous-backend
 

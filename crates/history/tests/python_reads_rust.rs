@@ -7,9 +7,10 @@
 //! database back a revision as an older image does, finding the downgrade
 //! script only in the backup directory Rust filled; Rust then updates it again.
 //!
-//! The test needs the repository's virtualenv (`uv sync --group dev`) and an
-//! importable `log_redactor` (the submodule, or `PYTHONPATH`). Without them it
-//! prints why and passes, unless `HISTORY_REQUIRE_PYTHON=1`.
+//! The test needs a checkout of the last Python backend in
+//! `PYTHON_BACKEND_DIR`, with its virtualenv (`uv sync --group dev`) and its
+//! `log_redactor` submodule: CI's `rollback-compat` job sets it up. Without
+//! them it prints why and passes, unless `HISTORY_REQUIRE_PYTHON=1`.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 mod common;
@@ -30,7 +31,10 @@ fn repo_root() -> PathBuf {
 
 /// The command that runs a Python file of tests/data with the repo's venv.
 fn python(work: &Path) -> Option<Command> {
-    let interpreter = repo_root().join(".venv/bin/python");
+    let backend = std::env::var_os("PYTHON_BACKEND_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(repo_root);
+    let interpreter = backend.join(".venv/bin/python");
     let skip = |reason: String| -> Option<Command> {
         if std::env::var("HISTORY_REQUIRE_PYTHON").as_deref() == Ok("1") {
             panic!("the Python cross-check cannot run: {reason}");
@@ -47,8 +51,9 @@ fn python(work: &Path) -> Option<Command> {
     let make = || {
         let mut command = Command::new(&interpreter);
         command
-            .current_dir(repo_root())
+            .current_dir(&backend)
             .env("TZ", "UTC")
+            .env("PYTHON_BACKEND_DIR", &backend)
             .env("PYTHONDONTWRITEBYTECODE", "1")
             .env("CONFIG_PATH", work.join("config"))
             .env("LOG_PATH", work.join("logs"))

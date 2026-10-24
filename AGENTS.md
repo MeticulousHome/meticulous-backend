@@ -4,8 +4,8 @@ Rust backend of the Meticulous espresso machine: the HTTP API and Socket.IO
 for the Dial and the mobile app, the SQLite history, and the UART link to the
 ESP32 firmware. It ships as a .deb that meticulous-machine installs in the
 image, a drop-in replacement for the Python backend: the same routes, events,
-UART bytes and files. The Python sources stay in the tree as the reference
-until they are removed. Read [`docs/rust/ARCHITECTURE.md`](docs/rust/ARCHITECTURE.md)
+UART bytes and files. The Python sources are in the history up to beta
+`f403168`. Read [`docs/rust/ARCHITECTURE.md`](docs/rust/ARCHITECTURE.md)
 first: the crates, the backend's services and routes, the parity rules and the
 conventions. Pull requests target `beta`; fixes reach `stable` and `nightly`
 through the backport flow.
@@ -33,9 +33,10 @@ pull request (beta with beta, nightly with nightly, stable with stable).
 | `integration/firmware` | the backend against the real firmware of the same branch, the firmware's own fika-sil simulator (identity and version, the status stream, an espresso shot); a firmware branch with this PR's name is used when it exists | runs in meticulous-integration (private); the status links to the run. Locally: its `ci/local.sh` |
 
 The Rust gates are `.github/workflows/rust.yml`; the package, `package.yml`.
-`build.yml` still runs the Python suite against the Python sources (lint, test,
-coverage, mypy) and goes with them; its `client-contract` and `redactor-pin`
-stay. `./run_tests.sh` runs lint and test, and black on the Python harnesses.
+`build.yml` lints the Python that stays (the harnesses under `tests/`) and
+runs `client-contract` and `redactor-pin`; `rust.yml`'s `rollback-compat` runs
+the last Python backend (beta `f403168`) against a Rust-written history.
+`./run_tests.sh` runs lint and test, and black on the Python harnesses.
 
 Never weaken a gate to get green: no lower coverage threshold, no `#[ignore]`,
 no `#[allow(clippy::...)]` to silence a finding, no widened assert.

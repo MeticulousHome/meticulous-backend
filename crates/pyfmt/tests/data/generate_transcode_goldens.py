@@ -26,9 +26,22 @@ from pathlib import Path
 OUT = Path(__file__).resolve().parent / "transcode_goldens.json"
 rng = random.Random(20261024)
 
-KEY_WORDS = ["data", "shot", "pressure", "flow", "time", "a", "b", "</x>", "é", "push_to_brew_time"]
+KEY_WORDS = [
+    "data",
+    "shot",
+    "pressure",
+    "flow",
+    "time",
+    "a",
+    "b",
+    "</x>",
+    "é",
+    "push_to_brew_time",
+]
 TEXT_CHARS = (
-    list("abcxyz ABC 019") + list("\"\\/<>") + ["</", "\n", "\t", "\r", "\b", "\f", "\x00", "\x1f", "\x7f"]
+    list("abcxyz ABC 019")
+    + list('"\\/<>')
+    + ["</", "\n", "\t", "\r", "\b", "\f", "\x00", "\x1f", "\x7f"]
     + ["é", "ü", "ñ", "\u2028", "\u2615", "\ufeff", "\uffff", "😀", "𝄞"]
 )
 
@@ -40,7 +53,20 @@ def random_float():
     if kind < 0.5:
         return rng.uniform(-1, 1) * 10 ** rng.randint(-8, 20)
     if kind < 0.6:
-        return rng.choice([0.0, -0.0, 0.1, 0.30000000000000004, 1e16, 1e15, 1e-5, 1e-4, 5e-324, 1.7976931348623157e308])
+        return rng.choice(
+            [
+                0.0,
+                -0.0,
+                0.1,
+                0.30000000000000004,
+                1e16,
+                1e15,
+                1e-5,
+                1e-4,
+                5e-324,
+                1.7976931348623157e308,
+            ]
+        )
     if kind < 0.7:
         return rng.choice([math.nan, math.inf, -math.inf])
     bits = rng.getrandbits(64)
@@ -86,7 +112,15 @@ def ws():
     return "".join(rng.choice(" \t\n\r") for _ in range(rng.randint(1, 3)))
 
 
-SHORT = {'"': '\\"', "\\": "\\\\", "\n": "\\n", "\r": "\\r", "\t": "\\t", "\b": "\\b", "\f": "\\f"}
+SHORT = {
+    '"': '\\"',
+    "\\": "\\\\",
+    "\n": "\\n",
+    "\r": "\\r",
+    "\t": "\\t",
+    "\b": "\\b",
+    "\f": "\\f",
+}
 
 
 def u_escape(unit):
@@ -114,7 +148,9 @@ def write_string(s):
             parts.append(c)
     # Escapes CPython reads into lone surrogates.
     if rng.random() < 0.05:
-        parts.append(rng.choice(["\\ud800", "\\udfff", "\\ud83d\\u0041", "\\udc00\\ud800", "\\uDBFF"]))
+        parts.append(
+            rng.choice(["\\ud800", "\\udfff", "\\ud83d\\u0041", "\\udc00\\ud800", "\\uDBFF"])
+        )
     parts.append('"')
     return "".join(parts)
 
@@ -135,7 +171,9 @@ def write_float(x):
     if r < 0.9:
         text = repr(x)
         return text + "0" * rng.randint(1, 3) if "e" not in text else text
-    return rng.choice(["1e400", "-1e400", "1e-400", "0e99999999999", "1E+2", "0.5e-3", "-0.0", "1.0E0"])
+    return rng.choice(
+        ["1e400", "-1e400", "1e-400", "0e99999999999", "1E+2", "0.5e-3", "-0.0", "1.0E0"]
+    )
 
 
 def write_value(v):
@@ -157,8 +195,11 @@ def write_value(v):
     if not items:
         return "{" + ws() + "}"
     return (
-        "{" + ws()
-        + ("," + ws()).join(write_string(k) + ws() + ":" + ws() + write_value(x) + ws() for k, x in items)
+        "{"
+        + ws()
+        + ("," + ws()).join(
+            write_string(k) + ws() + ":" + ws() + write_value(x) + ws() for k, x in items
+        )
         + "}"
     )
 
@@ -173,29 +214,97 @@ def mutate(text):
         i = rng.randrange(len(text))
         r = rng.random()
         if r < 0.4:
-            text = text[:i] + text[i + 1:]
+            text = text[:i] + text[i + 1 :]
         elif r < 0.8:
             text = text[:i] + rng.choice(MUTATION_CHARS) + text[i:]
         elif r < 0.9:
-            text = text[:i] + rng.choice(MUTATION_CHARS) + text[i + 1:]
+            text = text[:i] + rng.choice(MUTATION_CHARS) + text[i + 1 :]
         else:
             text = text[:i]
     return text
 
 
 FIXED = [
-    "", " ", "-0", "-0.0", "1E5", "1e+5", "1e400", "-1e400", "1e-400", "1e99999999999999999999",
-    "0e99999999999", "12345678901234567890", "[NaN, Infinity, -Infinity]", '{"a": NaN}',
-    '{"a": -Infinity}', '"\\ud800"', '"\\ud83d\\ude00"', '"\\ud83d\\u0041"', '"\\udc00\\ud800"',
-    '"\\ud83d\\ude0"', '"\\ud83d\\ude0"x', '"\\ud83d\\u"', '"\\u12"', '{"a": 1, "b": 2, "a": 3}',
-    '{"data": 1, "d\\u0061ta": 2}', '{"data": [1, 2], "x": [1,]}', "\ufeff{}", '"\\u00e9\u00e9</x>"',
-    "1.", ".5", "01", "-", "- 1", "1e", "[1e]", "1e+", '"\x7f"', '"a\x1fb"', "[1,]", '{"a":1,}',
-    " \t\n\r1 \t\n\r", '"\\/"', '"<\\/"', '"\\u003c/"', "nul", "NaNx", "[NaN1]", "-NaN", "-Inf",
-    "infinity", "[-]", "[--1]", "[+1]", "[1.5.5]", "[0x10]", '{"a" 1}', '{1: 2}', "[true false]",
-    '"abc', '"\\x"', '"\\', "[", "{", '{"a"', '{"a":', "[1 2]", "1 2", "[]]", "{}}", "\x00",
-    "1" * 4300, "1" * 4301, "-" + "1" * 4300, "-" + "1" * 4301, "0." + "1" * 400,
-    "[" * 127 + "]" * 127, '{"a": ' * 127 + "1" + "}" * 127,
-    '"\\ud800\\udc00\\udbff\\udfff"', '"😀𝄞"', '{"\\ud800": 1, "data": "\\udfff"}',
+    "",
+    " ",
+    "-0",
+    "-0.0",
+    "1E5",
+    "1e+5",
+    "1e400",
+    "-1e400",
+    "1e-400",
+    "1e99999999999999999999",
+    "0e99999999999",
+    "12345678901234567890",
+    "[NaN, Infinity, -Infinity]",
+    '{"a": NaN}',
+    '{"a": -Infinity}',
+    '"\\ud800"',
+    '"\\ud83d\\ude00"',
+    '"\\ud83d\\u0041"',
+    '"\\udc00\\ud800"',
+    '"\\ud83d\\ude0"',
+    '"\\ud83d\\ude0"x',
+    '"\\ud83d\\u"',
+    '"\\u12"',
+    '{"a": 1, "b": 2, "a": 3}',
+    '{"data": 1, "d\\u0061ta": 2}',
+    '{"data": [1, 2], "x": [1,]}',
+    "\ufeff{}",
+    '"\\u00e9\u00e9</x>"',
+    "1.",
+    ".5",
+    "01",
+    "-",
+    "- 1",
+    "1e",
+    "[1e]",
+    "1e+",
+    '"\x7f"',
+    '"a\x1fb"',
+    "[1,]",
+    '{"a":1,}',
+    " \t\n\r1 \t\n\r",
+    '"\\/"',
+    '"<\\/"',
+    '"\\u003c/"',
+    "nul",
+    "NaNx",
+    "[NaN1]",
+    "-NaN",
+    "-Inf",
+    "infinity",
+    "[-]",
+    "[--1]",
+    "[+1]",
+    "[1.5.5]",
+    "[0x10]",
+    '{"a" 1}',
+    "{1: 2}",
+    "[true false]",
+    '"abc',
+    '"\\x"',
+    '"\\',
+    "[",
+    "{",
+    '{"a"',
+    '{"a":',
+    "[1 2]",
+    "1 2",
+    "[]]",
+    "{}}",
+    "\x00",
+    "1" * 4300,
+    "1" * 4301,
+    "-" + "1" * 4300,
+    "-" + "1" * 4301,
+    "0." + "1" * 400,
+    "[" * 127 + "]" * 127,
+    '{"a": ' * 127 + "1" + "}" * 127,
+    '"\\ud800\\udc00\\udbff\\udfff"',
+    '"😀𝄞"',
+    '{"\\ud800": 1, "data": "\\udfff"}',
     '{"x": {"a": [1], "\\u0061": {"b": 1, "b": 2}}, "y": 0, "x": 5}',
 ]
 
@@ -235,7 +344,9 @@ def main():
         text = ws() + write_value(value) + ws()
         texts.append(mutate(text) if rng.random() < 0.3 else text)
     cases = [record(text) for text in texts]
-    OUT.write_text(json.dumps({"python": sys.version.split()[0], "cases": cases}, indent=0) + "\n")
+    OUT.write_text(
+        json.dumps({"python": sys.version.split()[0], "cases": cases}, indent=0) + "\n"
+    )
     errors = sum("error" in c for c in cases)
     print(f"{len(cases)} cases, {errors} refused, {OUT.stat().st_size} bytes")
 

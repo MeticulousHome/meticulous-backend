@@ -80,3 +80,31 @@ jobs:
     - name: Coverage of the change
       if: always() && github.event_name == 'pull_request'
       run: cat diff-cover.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+
+
+  # A machine that rolls back to an image with the Python backend (RAUC's
+  # other slot) must read the history the Rust backend wrote and downgrade
+  # it. The Python reads it here, from a checkout of the beta the Rust
+  # backend replaced; HISTORY_REQUIRE_PYTHON makes a missing setup a failure.
+  rollback-compat:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'true'
+    - name: Check out the last Python backend
+      uses: actions/checkout@v4
+      with:
+        path: python-backend
+        ref: f4031680ffca0acec49b24c1d3948c6b88deed92
+        submodules: 'true'
+    - uses: astral-sh/setup-uv@v5
+    - name: Its virtualenv
+      working-directory: python-backend
+      run: uv python install && uv sync --frozen --group dev
+    - uses: Swatinem/rust-cache@v2
+    - name: The Python backend reads and rolls back a Rust-written history
+      env:
+        PYTHON_BACKEND_DIR: ${{ github.workspace }}/python-backend
+        HISTORY_REQUIRE_PYTHON: "1"
+      run: cargo test -p history --locked --test python_reads_rust

@@ -5,7 +5,7 @@
 This repository is used to run the backend of **meticulous**.
 It handles ESP32 serial communication, shot management, profiles, sounds, OTA updates, and exposes a REST + Socket.IO API.
 
-The backend is written in Rust: a Cargo workspace whose `meticulous-backend` binary is what the `.deb` ships. It is a drop-in replacement for the Python backend, whose sources are still in the tree as the reference until they are removed. [`docs/rust/ARCHITECTURE.md`](docs/rust/ARCHITECTURE.md) describes the crates, where things live and the parity rules.
+The backend is written in Rust: a Cargo workspace whose `meticulous-backend` binary is what the `.deb` ships. It is a drop-in replacement for the Python backend it replaced; the Python sources are in the history up to beta `f403168`, the commit CI's `rollback-compat` job checks Rust-written histories against. [`docs/rust/ARCHITECTURE.md`](docs/rust/ARCHITECTURE.md) describes the crates, where things live and the parity rules.
 
 ## Dependencies
 

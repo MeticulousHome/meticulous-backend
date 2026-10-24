@@ -15,7 +15,9 @@ import tempfile
 from pathlib import Path
 
 DATA_DIR = Path(__file__).resolve().parent
-REPO_ROOT = DATA_DIR.parents[3]
+# The Python backend these scripts import: a checkout of the last release
+# that shipped it (the Rust backend replaced it in this repository).
+REPO_ROOT = Path(os.environ.get("PYTHON_BACKEND_DIR", DATA_DIR.parents[3]))
 WORK = Path(tempfile.mkdtemp(prefix="history-reference-"))
 
 for _key in ("CONFIG_PATH", "LOG_PATH", "ALARMS_PATH", "USER_SOUNDS", "DEBUG_HISTORY_PATH"):

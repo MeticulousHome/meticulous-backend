@@ -2,7 +2,7 @@
 
 Dockerfile.deb stages the package from an explicit COPY list, so a data file
 added to the repository is left out silently until the service fails on a
-machine (#418: profile_converter/ was missing). This compares the extracted
+machine (#418: the Python package once shipped without profile_converter/). This compares the extracted
 package against the files git tracks and the paths other components rely on:
 
 * the backend binary, and met-config, which meticulous-machine's hawkbit
