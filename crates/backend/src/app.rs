@@ -102,6 +102,12 @@ impl App {
             config::defaults(),
         ));
         let sio = Arc::new(Sio::default());
+        // MeticulousConfig.setSIO(sio): every save tells the clients to
+        // reload the settings. Saves before the server runs reach nobody.
+        {
+            let sio = sio.clone();
+            config.on_save(move || sio.emit("settings", &serde_json::json!({})));
+        }
         let sounds = Arc::new(SoundPlayer::new(
             config.clone(),
             env.paths.system_sounds.clone(),
