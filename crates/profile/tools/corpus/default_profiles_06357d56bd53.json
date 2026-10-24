@@ -1,0 +1,117 @@
+{
+  "id": "977c1eeb-f4b7-41b5-ab4b-d8a05bae6003",
+  "name": "Medium Contact",
+  "author": "John Barry",
+  "stages": [
+    {
+      "key": "fill_1",
+      "name": "Fill",
+      "type": "power",
+      "limits": [],
+      "dynamics": {
+        "over": "time",
+        "points": [
+          [
+            0,
+            100
+          ]
+        ],
+        "interpolation": "linear"
+      },
+      "exit_triggers": [
+        {
+          "type": "pressure",
+          "value": "$pressure_1",
+          "relative": false,
+          "comparison": ">="
+        }
+      ]
+    },
+    {
+      "key": "blooming_1",
+      "name": "Dynamic Bloom",
+      "type": "flow",
+      "limits": [],
+      "dynamics": {
+        "over": "time",
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            0
+          ]
+        ],
+        "interpolation": "linear"
+      },
+      "exit_triggers": [
+        {
+          "type": "time",
+          "value": 1,
+          "relative": true,
+          "comparison": ">="
+        },
+        {
+          "type": "pressure",
+          "value": 2,
+          "relative": false,
+          "comparison": "<="
+        }
+      ]
+    },
+    {
+      "key": "extract_1",
+      "name": "Extraction",
+      "type": "pressure",
+      "limits": [
+        {
+          "type": "flow",
+          "value": 4
+        }
+      ],
+      "dynamics": {
+        "over": "time",
+        "points": [
+          [
+            0,
+            "$pressure_2"
+          ]
+        ],
+        "interpolation": "linear"
+      },
+      "exit_triggers": []
+    }
+  ],
+  "display": {},
+  "author_id": "d9123a0a-d3d7-40fd-a548-b81376e43f23",
+  "variables": [
+    {
+      "key": "pressure_1",
+      "name": "Fill Pressure",
+      "type": "pressure",
+      "value": 4
+    },
+    {
+      "key": "pressure_2",
+      "name": "Extract Pressure",
+      "type": "pressure",
+      "value": 6
+    }
+  ],
+  "temperature": 88,
+  "final_weight": 36,
+  "previous_authors": [
+    {
+      "name": "Steve Rhinehart",
+      "author_id": "d9123a0a-d3d7-40fd-a548-b81376e43f23",
+      "profile_id": "0cdf18ca-d72e-4776-8e25-7b3279907dce"
+    },
+    {
+      "name": "Long",
+      "author_id": "d9123a0a-d3d7-40fd-a548-b81376e43f23",
+      "profile_id": "0cdf18ca-d72e-4776-8e25-7b3279907dce"
+    }
+  ]
+}

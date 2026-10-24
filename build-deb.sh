@@ -2,7 +2,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VERSION=$(grep '^version' "$SCRIPT_DIR/pyproject.toml" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+# The workspace version ([workspace.package]), which the binary reports too.
+VERSION=$(grep '^version' "$SCRIPT_DIR/Cargo.toml" | head -1 | sed 's/.*"\(.*\)".*/\1/')
 ARCH="${1:-arm64}"
 OUTPUT_DIR="${2:-$SCRIPT_DIR/out}"
 

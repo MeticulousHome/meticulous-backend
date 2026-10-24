@@ -1,0 +1,19 @@
+[package]
+name = "redactor"
+description = "Log redaction, Sentry event scrubbing and reportable config (pure)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+aho-corasick = "1"
+hmac = "0.12"
+pyfmt = { path = "../pyfmt" }
+regex = "1"
+serde_json.workspace = true
+sha2 = "0.10"
+thiserror.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,57 @@
+#!/bin/bash
+# Install the built .deb on a clean Debian bookworm (the machine image's base)
+# and boot it twice with tests/boot/boot_harness.py: once as a fresh machine,
+# once as a restart that finds its own config, profiles and history. Then a
+# third time on a copy of the package's data without the files the binary
+# also carries (crates/backend/src/bundled.rs), as a package missing them.
+#
+# Runs inside the container:
+#   docker run --rm -v "$PWD:/src:ro" -v "$PWD/out:/deb:ro" -v "$PWD/boot-reports:/reports" \
+#       debian:bookworm bash /src/tests/package/install_and_boot.sh
+set -euo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -qq
+# apt resolves the control file's Depends, so a dependency missing from the
+# Debian archive fails here instead of on a machine.
+apt-get install -y -qq --no-install-recommends /deb/*.deb >/dev/null
+
+# The harness is a Socket.IO client: give it its own environment, apart from
+# what the package installed.
+apt-get install -y -qq --no-install-recommends python3-venv >/dev/null
+python3 -m venv /tmp/harness
+# python-socketio 5.16 has no asyncio_client extra: its websocket
+# transport needs aiohttp installed alongside.
+/tmp/harness/bin/pip install -q "python-socketio==5.16.1" "aiohttp==3.13.3"
+
+# The machine has a system bus and the backend connects to it.
+mkdir -p /run/dbus
+dbus-daemon --system --fork
+
+# The image's own met-config wrapper goes through Python: it must still work.
+/opt/meticulous-venv/bin/python3 /opt/meticulous-backend/met-config.py --help >/dev/null
+
+data_dir=$(mktemp -d)
+for boot in 1 2; do
+    echo "== boot ${boot}"
+    /tmp/harness/bin/python /src/tests/boot/boot_harness.py \
+        --binary /usr/bin/meticulous-backend \
+        --package-root /opt/meticulous-backend \
+        --data-dir "${data_dir}" \
+        --report "/reports/boot-${boot}.json" \
+        --boot-index "${boot}"
+done
+echo "installed package booted twice"
+
+echo "== boot 3 (package without the built-in data files)"
+stripped=$(mktemp -d)
+cp -a /opt/meticulous-backend/. "${stripped}/"
+rm -r "${stripped}/simple_profile.json" "${stripped}/sounds" \
+    "${stripped}/images/default/accent_colors.json"
+/tmp/harness/bin/python /src/tests/boot/boot_harness.py \
+    --binary /usr/bin/meticulous-backend \
+    --package-root "${stripped}" \
+    --data-dir "$(mktemp -d)" \
+    --report "/reports/boot-3-without-data-files.json" \
+    --boot-index 3
+echo "installed binary booted without its data files"
