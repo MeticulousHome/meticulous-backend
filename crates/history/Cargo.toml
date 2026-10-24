@@ -8,6 +8,7 @@ rust-version.workspace = true
 
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+memchr = "2"
 pyfmt = { path = "../pyfmt" }
 regex = "1"
 rusqlite = { version = "0.40", features = ["bundled"] }

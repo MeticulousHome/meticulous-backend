@@ -9,6 +9,9 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error("json error: {0}")]
     Json(#[from] serde_json::Error),
+    /// A document `json.loads` refuses, found while transcoding it.
+    #[error("{0}")]
+    Decode(#[from] pyfmt::TranscodeError),
     /// A value the Python code would have rejected with an exception
     /// (`KeyError`, `TypeError`, `ValueError`) before touching the database.
     #[error("invalid value: {0}")]

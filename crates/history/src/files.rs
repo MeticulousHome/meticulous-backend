@@ -49,7 +49,7 @@ pub fn decompress_file(path: &Path, limit: Option<u64>) -> Result<Vec<u8>> {
 /// Returns whether anything was patched.
 pub fn patch_non_finite(raw: &mut Vec<u8>) -> bool {
     fn contains(haystack: &[u8], needle: &[u8]) -> bool {
-        haystack.windows(needle.len()).any(|w| w == needle)
+        memchr::memmem::find(haystack, needle).is_some()
     }
     fn replace(haystack: &[u8], needle: &[u8], with: &[u8]) -> Vec<u8> {
         let mut out = Vec::with_capacity(haystack.len());
@@ -96,6 +96,26 @@ pub fn read_shot_json(path: &Path) -> Result<Value> {
     let text = String::from_utf8(raw)
         .map_err(|e| Error::InvalidValue(format!("shot file is not UTF-8: {e}")))?;
     Ok(pyfmt::loads_lenient(&text)?)
+}
+
+/// What `search_history()` takes from a shot file, `data` and
+/// `push_to_brew_time`, as JSON text in `style`: the file read like
+/// [`read_shot_json`] reads it (patched, then `json.loads`), but transcoded
+/// instead of parsed into values. The whole file is checked; nothing but
+/// these two members is written.
+///
+/// PARITY: tokens the patch does not reach (`: -Infinity`, `[NaN`) are
+/// written back as bare tokens, as Python's json.dumps writes them, where
+/// [`read_shot_json`] reads `null`.
+pub fn read_shot_members(path: &Path, style: pyfmt::JsonStyle) -> Result<pyfmt::Members<2>> {
+    let raw = read_patched(path)?;
+    let text = std::str::from_utf8(&raw)
+        .map_err(|e| Error::InvalidValue(format!("shot file is not UTF-8: {e}")))?;
+    Ok(pyfmt::transcode_members(
+        text,
+        ["data", "push_to_brew_time"],
+        style,
+    )?)
 }
 
 /// Compress like the zstd CLI at `level` (one frame, with a checksum).

@@ -15,6 +15,17 @@ use crate::http::{Kind, Reply, Request, Route, serve_file};
 
 const LAST_VERSION_PATH: &str = "/api/v1";
 
+/// How the shot listing is written: tornado's `json_encode`, and
+/// non-finite numbers as `0.0`. Deliberate fix: Python patches `: NaN` and
+/// `: Infinity` in shot files to `0.0` so clients can parse the listing, but
+/// misses `: -Infinity` and `[NaN`, which it writes as bare tokens that
+/// `JSON.parse` rejects: one such shot made the whole listing unreadable in
+/// the Dial and the app.
+const HISTORY_STYLE: pyfmt::JsonStyle = pyfmt::JsonStyle {
+    finite_only: true,
+    ..pyfmt::JsonStyle::TORNADO
+};
+
 pub fn routes() -> Vec<Route> {
     let m = "api.history";
     vec![
@@ -155,9 +166,21 @@ async fn stats(app: Arc<App>, req: Request) -> Reply {
     }
 }
 
+/// `self.write({"history": ShotDataBase.search_history(params)})`, with the
+/// shot samples transcoded from the files rather than parsed and encoded.
 async fn search(app: Arc<App>, req: &Request, params: SearchParams) -> Reply {
-    match tokio::task::spawn_blocking(move || app.history.search(&params)).await {
-        Ok(Ok(results)) => Reply::base().json(json!({"history": results})),
+    let result = tokio::task::spawn_blocking(move || {
+        let mut body = String::from("{\"history\": ");
+        app.history
+            .search_json(&params, HISTORY_STYLE, &mut body)
+            .map(|()| {
+                body.push('}');
+                body
+            })
+    })
+    .await;
+    match result {
+        Ok(Ok(body)) => Reply::base().json_encoded(body),
         _ => Reply::error(Kind::Base, 500, req),
     }
 }
@@ -471,6 +494,31 @@ mod tests {
         shot["file"] = json!(file);
         db.insert_history(&shot).expect("insert");
         file
+    }
+
+    /// Deliberate fix: a shot file with a non-finite token Python's patch
+    /// misses (`: -Infinity`) is listed with `0.0` there, so the listing is
+    /// strict JSON a browser's `JSON.parse` takes.
+    #[tokio::test]
+    async fn listing_stays_strict_json_with_non_finite_samples() {
+        let (_dir, app) = app();
+        let file = record_shot(&app, "shot-1", 1791534600.0, "Classic");
+        let db = app.history.db().expect("db");
+        let path = db.paths().shot_dir().join(&file);
+        let raw = files::read_patched(&path).expect("read");
+        let text = String::from_utf8(raw).expect("utf-8").replacen(
+            "\"pressure\": 9.0}",
+            "\"pressure\": -Infinity}",
+            1,
+        );
+        assert!(text.contains("-Infinity"));
+        files::write_compressed(&path, text.as_bytes()).expect("rewrite");
+
+        let reply = get(&app, "/api/v1/history").await;
+        assert_eq!(reply.status_code(), 200);
+        let listing: Value = serde_json::from_slice(reply.body()).expect("strict JSON");
+        let shot = &listing["history"][0]["data"][0]["shot"];
+        assert_eq!(shot["setpoints"]["pressure"], json!(0.0));
     }
 
     async fn get(app: &Arc<App>, uri: &str) -> Reply {
@@ -977,6 +1025,27 @@ mod tests {
 
         assert_eq!(current["profile"], json!({"db_key": null}));
         assert_eq!(current["profile_name"], json!("Classic"));
+    }
+
+    /// The search answers with the shots' samples transcoded from their
+    /// files: the same bytes as tornado encoding `search_history`'s values.
+    #[tokio::test]
+    async fn search_body_is_tornados_encoding_of_the_shots() {
+        let (_dir, app) = app();
+        brew_three_shots(&app).await;
+        let params = SearchParams::from_json(&Map::new()).expect("defaults");
+        let shots = app.history.search(&params).expect("search");
+        assert_eq!(shots.len(), 3);
+        let expected = pyfmt::tornado_json_encode(&json!({"history": shots}));
+
+        let reply = post(&app, "/api/v1/history", "{}").await;
+
+        assert_eq!(reply.status_code(), 200);
+        assert_eq!(
+            reply.header("Content-Type"),
+            Some("application/json; charset=UTF-8")
+        );
+        assert_eq!(std::str::from_utf8(reply.body()), Ok(expected.as_str()));
     }
 
     /// tests/test_api_history.py::TestStatistics::test_counts_shots_and_profile_versions_and_reports_esp_mileage
