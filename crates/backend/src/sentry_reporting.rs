@@ -31,20 +31,25 @@ pub struct Reporting {
 }
 
 impl Reporting {
+    /// Reporting off, quietly (tools that only build the app).
+    pub fn disabled() -> Arc<Reporting> {
+        Arc::new(Reporting {
+            enabled: false,
+            paused: AtomicBool::new(false),
+            scrubber: RwLock::new(None),
+            esp: None,
+            _guard: None,
+        })
+    }
+
     /// `sentry_sdk.init(...)` when `BACKEND` is FIKA or `SENTRY` is set; a
     /// fake-hardware run never sends anything.
     pub fn init(enabled: bool) -> Arc<Reporting> {
+        if !enabled {
+            println!("Skipping Sentry initialization");
+            return Reporting::disabled();
+        }
         Arc::new_cyclic(|weak: &std::sync::Weak<Reporting>| {
-            if !enabled {
-                println!("Skipping Sentry initialization");
-                return Reporting {
-                    enabled: false,
-                    paused: AtomicBool::new(false),
-                    scrubber: RwLock::new(None),
-                    esp: None,
-                    _guard: None,
-                };
-            }
             println!("Initializing sentry");
             let backend_weak = weak.clone();
             let guard = sentry::init((

@@ -519,8 +519,10 @@ pub fn read_compressed_record(path: &Path) -> Result<Vec<u8>> {
 /// What `PourOverFileHandler.get` finds for a request path.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PourOverFile {
-    /// 404 (outside the root, or no such record).
+    /// 404 with the path: no such record.
     NotFound,
+    /// 404 without the path: the request leaves the root.
+    Outside,
     /// The directory listing: newest first by mtime, at most 200 entries,
     /// `name` without the `.zst` suffix.
     Directory(Vec<DirectoryEntry>),
@@ -548,7 +550,7 @@ pub fn resolve_pour_over_file(root: &Path, relative: &str) -> Result<PourOverFil
     let root = resolve(root);
     let requested = resolve(&root.join(relative));
     if !requested.starts_with(&root) {
-        return Ok(PourOverFile::NotFound);
+        return Ok(PourOverFile::Outside);
     }
     if requested.is_dir() {
         let mut entries: Vec<(f64, String)> = Vec::new();

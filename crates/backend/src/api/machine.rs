@@ -17,6 +17,7 @@ use crate::limited_access;
 pub fn routes() -> Vec<Route> {
     let m = "api.machine";
     vec![
+        Route::new("/machine", Kind::Base, m, "MachineInfoHandler").get(info),
         Route::new("/machine/unlock", Kind::Base, m, "MachineUnlockHandler").post(unlock),
         Route::new(
             "/machine/backlight",
@@ -36,6 +37,11 @@ pub fn routes() -> Vec<Route> {
             .get(os_update_status),
         Route::new("/machine/time", Kind::Base, m, "MachineTimeHandler").post(set_time),
     ]
+}
+
+/// `MachineInfoHandler`: `self.write(json.dumps(get_machine_info()))`.
+async fn info(app: Arc<App>, _req: Request) -> Reply {
+    Reply::base().dumps(crate::machine_info::machine_info(&app))
 }
 
 /// `cleanup_factory_reset_data`: remove every non-hidden entry of the user
@@ -374,7 +380,9 @@ mod tests {
             .expect("dir")
             .map(|e| e.expect("entry").file_name().to_string_lossy().into_owned())
             .collect();
-        assert_eq!(left, vec![".device-identity".to_string()]);
+        // Only hidden entries survive (.device-identity, .dbmigrations).
+        assert!(left.contains(&".device-identity".to_string()));
+        assert!(left.iter().all(|name| name.starts_with('.')), "{left:?}");
     }
 
     /// tests/test_api_machine.py::test_confirmed_reset_is_only_simulated_on_an_emulated_machine

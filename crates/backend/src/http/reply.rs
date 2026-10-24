@@ -26,6 +26,8 @@ pub struct Reply {
     status: u16,
     headers: Vec<(String, String)>,
     body: Vec<u8>,
+    /// False when the handler's `compute_etag` returns `None`.
+    auto_etag: bool,
 }
 
 impl Reply {
@@ -40,6 +42,7 @@ impl Reply {
                 ("Date".into(), http_date(chrono::Utc::now())),
             ],
             body: Vec::new(),
+            auto_etag: true,
         };
         if kind == Kind::Base {
             reply.base_handler_headers();
@@ -158,11 +161,17 @@ impl Reply {
             .json(serde_json::json!({"error": error, "details": details}))
     }
 
+    /// No automatic `Etag` (a `compute_etag` that returns `None`).
+    pub fn disable_etag(&mut self) {
+        self.auto_etag = false;
+    }
+
     /// `RequestHandler.finish()`: the automatic `Etag`/`304`, no
     /// representation headers on bodiless statuses, `Content-Length`.
     pub fn finish(mut self, req: &Request) -> Reply {
         let method = req.method.as_str();
         if self.status == 200
+            && self.auto_etag
             && (method == "GET" || method == "HEAD")
             && self.header("Etag").is_none()
         {

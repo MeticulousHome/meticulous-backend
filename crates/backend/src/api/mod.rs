@@ -2,9 +2,11 @@
 //! tornado's route list.
 
 pub mod action;
+pub mod history;
 pub mod machine;
 pub mod notifications;
 pub mod password;
+pub mod pour_over_history;
 pub mod pour_over_profiles;
 pub mod profiles;
 pub mod serial;
@@ -69,17 +71,18 @@ pub fn redact_ip(ip: &str) -> String {
         .join(&separator.to_string())
 }
 
-/// `API.get_routes()` plus `WEB_UI_HANDLER`, in the order tornado tries them:
-/// the API routes sorted by pattern, then the web UI.
-pub fn router(app: &App) -> Router {
+/// `API.get_routes()`: every API route under `/api/v1`, sorted by pattern.
+pub fn api_routes(app: &App) -> Vec<Route> {
     let mut routes: Vec<Route> = Vec::new();
     routes.extend(action::routes());
+    routes.extend(history::routes());
     routes.extend(machine::routes());
     routes.extend(notifications::routes());
     routes.extend(serial::routes());
     routes.extend(settings::routes());
     routes.extend(update::routes());
     routes.extend(password::routes());
+    routes.extend(pour_over_history::routes());
     routes.extend(pour_over_profiles::routes());
     routes.extend(profiles::routes(app));
     routes.extend(smoke_validation::routes());
@@ -90,6 +93,18 @@ pub fn router(app: &App) -> Router {
             .unwrap_or_else(|e| panic!("bad route {}: {e}", route.pattern));
     }
     routes.sort_by(|a, b| a.pattern.cmp(&b.pattern));
+    routes
+}
+
+/// The routes the contract snapshot records: the API, whatever the mode.
+pub fn contract_routes(app: &App) -> Vec<Route> {
+    api_routes(app)
+}
+
+/// `API.get_routes()` plus `WEB_UI_HANDLER`, in the order tornado tries them:
+/// the API routes sorted by pattern, then the web UI.
+pub fn router(app: &App) -> Router {
+    let mut routes = api_routes(app);
     tracing::info!("API Routes registered:");
     tracing::info!("  /api/v1");
     for route in &routes {

@@ -13,6 +13,7 @@ mod app;
 mod backlight;
 mod clock;
 mod config;
+mod contract;
 mod dbus_monitor;
 mod debug_shots;
 mod device_identity;
@@ -26,6 +27,7 @@ mod images;
 mod limited_access;
 mod logging;
 mod machine;
+mod machine_info;
 mod manual_mode;
 mod metconfig;
 mod notifications;
@@ -36,6 +38,7 @@ mod pour_over;
 mod profiles;
 mod redaction;
 mod sentry_reporting;
+mod shot_database;
 mod server;
 mod shots;
 mod simple_profile;
@@ -69,6 +72,9 @@ enum Command {
     Serve,
     /// Inspect and modify the configuration (met-config.py).
     MetConfig(metconfig::Args),
+    /// Print the HTTP routes, Socket.IO events, payload keys and default
+    /// settings as the contract snapshots record them.
+    Contract,
 }
 
 fn main() -> std::process::ExitCode {
@@ -80,6 +86,7 @@ fn main() -> std::process::ExitCode {
             logging::init(&level.to_uppercase());
             metconfig::run(args)
         }
+        Command::Contract => contract(),
     }
 }
 
@@ -104,6 +111,9 @@ fn serve() -> std::process::ExitCode {
     let reporting = sentry_reporting::Reporting::init(env.sentry && !env.hooks.fake_hardware);
     runtime.block_on(async move {
         let app = app::App::new(env, log, reporting);
+        // back.run(): the history database opens and migrates before main().
+        let history_app = app.clone();
+        let _ = tokio::task::spawn_blocking(move || history_app.history.init()).await;
         if let Err(error) = start(&app).await {
             tracing::error!("main() failed: {error}");
             return std::process::ExitCode::from(1);
@@ -119,6 +129,20 @@ fn serve() -> std::process::ExitCode {
             }
         }
     })
+}
+
+/// `meticulous-backend contract`: built from a throwaway environment so it
+/// touches nothing of the machine's.
+fn contract() -> std::process::ExitCode {
+    let Ok(dir) = tempfile::tempdir() else {
+        return std::process::ExitCode::from(1);
+    };
+    let package_root = env::Env::from_process().paths.package_root;
+    let env = env::Env::isolated(dir.path(), package_root, env::BackendMode::Emulator);
+    let log = std::sync::Arc::new(logging::LogHooks::default());
+    let app = app::App::new(env, log, sentry_reporting::Reporting::disabled());
+    contract::print(&app);
+    std::process::ExitCode::SUCCESS
 }
 
 /// `backend.main()` before the server listens, in the Python's order.

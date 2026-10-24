@@ -20,7 +20,11 @@ pub fn routes(app: &App) -> Vec<Route> {
             "CreateProfileFromManualHandler",
         )
         .post(from_manual),
-        Route::new("/profile/load", Kind::Base, m, "LoadProfileHandler").post(load_posted),
+        // LoadProfileHandler defines get and post for both of its routes;
+        // each route serves one (the other was a 500, now a 405).
+        Route::new("/profile/load", Kind::Base, m, "LoadProfileHandler")
+            .post(load_posted)
+            .class_methods(&["get", "post"]),
         Route::new("/profile/defaults", Kind::Base, m, "ListDefaultsHandler").get(defaults),
         Route::new("/profile/image([/]*)", Kind::Base, m, "ListImagesHandler").get(list_images),
         Route::new(
@@ -38,7 +42,8 @@ pub fn routes(app: &App) -> Vec<Route> {
             m,
             "LoadProfileHandler",
         )
-        .get(load_by_id),
+        .get(load_by_id)
+        .class_methods(&["get", "post"]),
         Route::new(
             "/profile/get/([0-9a-fA-F-]+)",
             Kind::Base,

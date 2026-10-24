@@ -427,6 +427,6 @@ fn record_files_resolve_like_the_file_handler() {
     );
     assert_eq!(
         resolve_pour_over_file(&root, "../history.sqlite").unwrap(),
-        PourOverFile::NotFound
+        PourOverFile::Outside
     );
 }

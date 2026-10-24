@@ -46,7 +46,7 @@ impl DebugShot {
             map.insert(keys::WIFI.into(), json!({}));
         }
         let esp_info = app.machine.esp_info().unwrap_or_default().to_sio();
-        let mut machine = crate::pending::machine_identity::identity(app);
+        let mut machine = crate::machine_info::identity(app);
         machine.insert(
             "manufacturing".into(),
             json!(app.machine.enable_manufacturing()),
@@ -340,7 +340,7 @@ impl ShotDebugManager {
         let text = Self::prepare(app, &shot, start);
         tracing::info!("Writing incomplete debug shot snapshot");
         tracing::info!("Writing debug json to {}", path.display());
-        if let Err(error) = crate::pending::shot_files::write_compressed(&path, text.as_bytes()) {
+        if let Err(error) = history::files::write_compressed(&path, text.as_bytes()) {
             tracing::error!("Failed to write the debug shot snapshot: {error}");
             return None;
         }
@@ -366,7 +366,7 @@ impl ShotDebugManager {
                 let started = std::time::Instant::now();
                 tracing::info!("Writing debug json to {}", path.display());
                 if let Err(error) =
-                    crate::pending::shot_files::write_compressed(&path, text.as_bytes())
+                    history::files::write_compressed(&path, text.as_bytes())
                 {
                     tracing::error!("Failed to write the debug shot: {error}");
                     return;

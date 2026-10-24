@@ -33,16 +33,18 @@ pub const EMITS: [&str; 10] = [
 
 /// `http_routes()`: every route with its handler, module and methods.
 pub fn http_routes(app: &App) -> Value {
-    let mut routes: Vec<(String, String, String, Vec<&'static str>)> = api::contract_routes(app)
+    let mut routes: Vec<(String, String, String, Vec<String>)> = api::contract_routes(app)
         .iter()
         .map(|route| {
-            let mut methods: Vec<&str> = route
-                .contract_methods
-                .clone()
-                .unwrap_or_else(|| route.method_names().into_iter().map(|m| m.to_ascii_lowercase().leak() as &str).collect());
+            let mut methods = route.contract_methods();
             methods.sort_unstable();
             methods.dedup();
-            (route.pattern.clone(), route.handler.to_string(), route.module.to_string(), methods)
+            (
+                route.pattern.clone(),
+                route.handler.to_string(),
+                route.module.to_string(),
+                methods,
+            )
         })
         .filter(|(pattern, ..)| pattern.starts_with("/api/"))
         .collect();
@@ -50,7 +52,9 @@ pub fn http_routes(app: &App) -> Value {
     Value::Array(
         routes
             .into_iter()
-            .map(|(path, handler, module, methods)| json!({"path": path, "handler": handler, "module": module, "methods": methods}))
+            .map(|(path, handler, module, methods)| {
+                json!({"path": path, "handler": handler, "module": module, "methods": methods})
+            })
             .collect(),
     )
 }

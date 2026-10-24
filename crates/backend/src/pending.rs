@@ -38,55 +38,33 @@ impl ShotSharing {
     pub fn on_setting_changed(&self, _app: &App, _value: &Value) {}
 }
 
-pub struct History;
-impl History {
-    pub fn statistics(&self) -> Result<Value, String> {
-        Ok(json!({"totalSavedShots": 0}))
-    }
-    pub fn last_shot(&self) -> Result<Option<Value>, String> {
-        Ok(None)
-    }
-    pub fn insert_history(&self, _shot: &Value) -> Result<i64, String> {
-        Ok(0)
-    }
-    pub fn link_debug_file(&self, _history_id: i64, _file: &str) -> Result<(), String> {
-        Ok(())
-    }
-    pub fn unlink_debug_file(&self, _file: &str) -> Result<(), String> {
-        Ok(())
-    }
-    pub fn search_manual_shots(&self, _ids: &[String]) -> Result<Vec<Value>, String> {
-        Ok(Vec::new())
-    }
-}
-
-pub mod shot_files {
-    use std::path::Path;
-
-    /// The shot file: JSON compressed at zstd level 10, like `zstd -10`.
-    pub fn write_compressed(path: &Path, json: &[u8]) -> std::io::Result<()> {
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        let compressed = zstd::encode_all(json, 10)?;
-        std::fs::write(path, compressed)
-    }
-}
-
-pub mod machine_identity {
-    use serde_json::{Map, Value, json};
+pub mod network {
+    use serde_json::Value;
 
     use crate::app::App;
+    use crate::config::keys;
 
-    /// The identity part of `get_machine_info` shared with debug shots.
-    pub fn identity(_app: &App) -> Map<String, Value> {
-        let mut machine = Map::new();
-        machine.insert("name".into(), json!(""));
-        machine.insert("hostname".into(), json!(""));
-        machine.insert("software_version".into(), Value::Null);
-        machine.insert("image_build_channel".into(), Value::Null);
-        machine.insert("image_version".into(), Value::Null);
-        machine.insert("repository_info".into(), json!({}));
-        machine
+    /// `HostnameManager.generateDeviceName()`.
+    pub fn device_name(app: &App) -> String {
+        let ident = match app.config.get(keys::SYSTEM, keys::DEVICE_IDENTIFIER) {
+            Value::Array(parts) if parts.len() == 2 => {
+                let first = parts[0].as_str().unwrap_or_default();
+                let mut chars = first.chars();
+                let capitalized: String = chars
+                    .next()
+                    .map(|c| c.to_uppercase().chain(chars.flat_map(char::to_lowercase)).collect())
+                    .unwrap_or_default();
+                format!("{capitalized}{}", parts[1].as_str().unwrap_or_default())
+            }
+            _ => "Espresso".into(),
+        };
+        format!("Meticulous{ident}")
+    }
+
+    /// `WifiManager.getCurrentConfig().hostname`.
+    pub fn hostname(_app: &App) -> String {
+        nix::unistd::gethostname()
+            .map(|h| h.to_string_lossy().into_owned())
+            .unwrap_or_default()
     }
 }

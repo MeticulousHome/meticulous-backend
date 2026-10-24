@@ -11,6 +11,7 @@ name = "meticulous-backend"
 path = "src/main.rs"
 
 [dependencies]
+history = { path = "../history" }
 axum = { version = "0.8.9", default-features = false, features = ["tokio", "http1", "query"] }
 base64 = "0.23.1"
 bytes = "1.12.1"

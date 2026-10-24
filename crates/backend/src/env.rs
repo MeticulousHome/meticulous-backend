@@ -107,8 +107,7 @@ impl SystemPaths {
         }
     }
 
-    #[cfg(test)]
-    pub fn under(root: &std::path::Path) -> SystemPaths {
+        pub fn under(root: &std::path::Path) -> SystemPaths {
         SystemPaths {
             image_build_date: root.join("opt/ROOTFS_BUILD_DATE"),
             image_summary: root.join("opt/summary.txt"),
@@ -275,6 +274,12 @@ impl Env {
     #[cfg(test)]
     pub fn for_tests(root: &std::path::Path, backend: BackendMode) -> Env {
         let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        Env::isolated(root, repo, backend)
+    }
+
+    /// Every writable path under `root`, read-only data from `repo` (a
+    /// checkout or the package root), no hardware.
+    pub fn isolated(root: &std::path::Path, repo: PathBuf, backend: BackendMode) -> Env {
         let user = root.join("meticulous-user");
         Env {
             backend,

@@ -25,6 +25,7 @@ pub fn app_with(backend: BackendMode, prepare: impl FnOnce(&Env)) -> (tempfile::
     prepare(&env);
     let log = Arc::new(crate::logging::LogHooks::default());
     let app = App::new(env, log, crate::sentry_reporting::Reporting::init(false));
+    app.history.init();
     (dir, app)
 }
 
@@ -39,6 +40,7 @@ pub fn app_custom(
     configure(&mut env);
     let log = Arc::new(crate::logging::LogHooks::default());
     let app = App::new(env, log, crate::sentry_reporting::Reporting::init(false));
+    app.history.init();
     (dir, app)
 }
 

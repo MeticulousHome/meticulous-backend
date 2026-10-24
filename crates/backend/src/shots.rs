@@ -339,7 +339,7 @@ impl ShotManager {
                 tracing::info!("Writing and compressing shot file");
                 let started = std::time::Instant::now();
                 let text = pyfmt::dumps(&Value::Object(data.clone()), &pyfmt::DumpOpts::unicode());
-                if let Err(error) = crate::pending::shot_files::write_compressed(
+                if let Err(error) = history::files::write_compressed(
                     &shots_dir.join(&file),
                     text.as_bytes(),
                 ) {

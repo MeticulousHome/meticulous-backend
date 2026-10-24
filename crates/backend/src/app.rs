@@ -52,7 +52,7 @@ pub struct App {
     pub profiles: ProfileManager,
     pub simple_profile: SimpleProfile,
     pub pour_over: PourOverProfileManager,
-    pub history: pending::History,
+    pub history: crate::shot_database::History,
     pub timezone: pending::Timezone,
     pub shot_sharing: pending::ShotSharing,
     /// The node program's reference ids, which never reset (PARITY: the
@@ -108,6 +108,10 @@ impl App {
         let machine = Machine::new(env.backend);
         let shots = ShotManager::new(env.paths.shots());
         let debug_shots = ShotDebugManager::new(env.paths.debug_history.clone());
+        let history = crate::shot_database::History::new(history::HistoryPaths::new(
+            env.paths.history.clone(),
+            env.paths.user_db_migrations.clone(),
+        ));
         let profiles = ProfileManager::new(
             env.paths.profiles.clone(),
             env.paths.images.clone(),
@@ -170,7 +174,7 @@ impl App {
             profiles,
             simple_profile,
             pour_over: PourOverProfileManager::new(env_paths_pour_over),
-            history: pending::History,
+            history,
             timezone: pending::Timezone,
             shot_sharing: pending::ShotSharing,
             reference_ids: parking_lot::Mutex::new(profile::ReferenceIds::default()),
