@@ -21,18 +21,37 @@ fn object_paths_like_bless() {
     assert_eq!(format!("char{:04}", 1), "char0001");
 }
 
-/// A private bus, when `dbus-daemon` is installed.
-fn private_bus() -> Option<(std::process::Child, String)> {
-    let mut child = std::process::Command::new("dbus-daemon")
-        .args(["--session", "--print-address", "--nofork", "--nopidfile"])
-        .stdout(std::process::Stdio::piped())
-        .spawn()
-        .ok()?;
-    let mut line = String::new();
-    std::io::BufReader::new(child.stdout.take()?)
-        .read_line(&mut line)
-        .ok()?;
-    Some((child, line.trim().to_string()))
+/// A `dbus-daemon` that is killed when dropped, also when a test panics.
+struct Daemon(std::process::Child);
+
+impl Drop for Daemon {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
+    }
+}
+
+/// A private bus, when `dbus-daemon` is installed and prints its address
+/// within 10 s.
+fn private_bus() -> Option<(Daemon, String)> {
+    let mut daemon = Daemon(
+        std::process::Command::new("dbus-daemon")
+            .args(["--session", "--print-address", "--nofork", "--nopidfile"])
+            .stdout(std::process::Stdio::piped())
+            .spawn()
+            .ok()?,
+    );
+    let stdout = daemon.0.stdout.take()?;
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let mut line = String::new();
+        let read = std::io::BufReader::new(stdout).read_line(&mut line);
+        let _ = sender.send(read.map(|_| line));
+    });
+    match receiver.recv_timeout(std::time::Duration::from_secs(10)) {
+        Ok(Ok(line)) if !line.trim().is_empty() => Some((daemon, line.trim().to_string())),
+        _ => None,
+    }
 }
 
 fn path(text: &str) -> OwnedObjectPath {
@@ -47,12 +66,24 @@ fn sorted_keys(map: &HashMap<String, OwnedVariant>) -> Vec<String> {
     keys
 }
 
-#[tokio::test]
+/// On the multi-threaded runtime the backend serves these objects on, and
+/// bounded: a hang fails the test instead of the CI job.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn objects_on_a_private_bus() {
-    let Some((mut daemon, address)) = private_bus() else {
+    let Some((daemon, address)) = private_bus() else {
         eprintln!("dbus-daemon not available; skipped");
         return;
     };
+    tokio::time::timeout(
+        std::time::Duration::from_secs(60),
+        exported_objects(address),
+    )
+    .await
+    .expect("the D-Bus exchange did not finish within 60 s");
+    drop(daemon);
+}
+
+async fn exported_objects(address: String) {
     let (_dir, app) = crate::testing::app();
     let gatt = GattServer::new(
         FakeWifi::new(),
@@ -218,7 +249,4 @@ async fn objects_on_a_private_bus() {
         .await
         .expect("subscribe");
     assert_eq!(*gatt.subscribed.lock(), vec![STATUS_UUID.to_string()]);
-
-    let _ = daemon.kill();
-    let _ = daemon.wait();
 }
