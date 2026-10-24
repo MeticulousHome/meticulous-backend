@@ -31,6 +31,7 @@ NOT_PACKAGED = {
     "log_redactor/*/*": "only log_redactor/*.py is the runtime module",
     "profile_schema/*": "JSON schema repository; only its data files ship",
     "images/default/*": "image repository; only its images ship",
+    "crates/*": "the Rust backend's sources and their test tools",
 }
 
 # Tracked non-Python files the backend reads at run time.

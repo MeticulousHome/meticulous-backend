@@ -1,0 +1,18 @@
+[package]
+name = "esp"
+description = "The ESP32 UART protocol, ESP observability, motor energy and firmware versions of the Meticulous backend (pure)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+indexmap = "2"
+md-5 = "0.10"
+pyfmt = { path = "../pyfmt" }
+regex = "1"
+serde_json.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true
