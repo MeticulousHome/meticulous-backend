@@ -73,7 +73,16 @@ impl BluezApp {
     /// `BlessServerBlueZDBus.setup()`, the pairing agent, powering the
     /// adapter and `add_gatt`.
     pub async fn setup(name: &str, server: Weak<GattServer>) -> Result<BluezApp, SetupError> {
-        let conn = match Connection::system().await {
+        // `serve_at` has zbus's object server listening before the
+        // connection reads its first message. Started later, by
+        // `object_server()`, it subscribes in a task of its own, and a
+        // method call that arrives first (BlueZ's GetManagedObjects after
+        // RegisterApplication) is dropped and never answered.
+        let conn = match zbus::connection::Builder::system()
+            .serve_at("/", zbus::fdo::ObjectManager)
+            .build()
+            .await
+        {
             Ok(conn) => conn,
             Err(zbus::Error::InputOutput(error))
                 if error.kind() == std::io::ErrorKind::NotFound =>
@@ -93,10 +102,6 @@ impl BluezApp {
 
         let base_path = base_path(name);
         let object_server = conn.object_server();
-        object_server
-            .at("/", zbus::fdo::ObjectManager)
-            .await
-            .map_err(|e| SetupError::Failed(failed(e)))?;
         let service_path = format!("{base_path}/service0001");
         object_server
             .at(
@@ -461,8 +466,11 @@ async fn power_on(conn: &Connection, adapter: &OwnedObjectPath) -> Result<(), St
 /// pairing request with "Pairing not supported" and drops the connection.
 async fn register_pairing_agent() -> Option<Connection> {
     let result = async {
-        let conn = Connection::system().await?;
-        conn.object_server().at(AGENT_PATH, Agent).await?;
+        // Served from the start, as the GATT application is (see `setup`).
+        let conn = zbus::connection::Builder::system()
+            .serve_at(AGENT_PATH, Agent)
+            .build()
+            .await?;
         let path = OwnedObjectPath::try_from(AGENT_PATH)?;
         conn.call_method(
             Some(BLUEZ),

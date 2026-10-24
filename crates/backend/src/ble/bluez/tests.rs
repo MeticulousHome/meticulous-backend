@@ -91,7 +91,11 @@ async fn exported_objects(address: String) {
         app.config.clone(),
         8080,
     );
+    // Built as `BluezApp::setup` builds it: with `object_server().at("/")`
+    // after `build()`, GetManagedObjects below was lost about once in 150
+    // runs on two loaded cores and the test hung.
     let server = zbus::connection::Builder::address(address.as_str())
+        .serve_at("/", zbus::fdo::ObjectManager)
         .build()
         .await
         .expect("server connection");
@@ -100,7 +104,6 @@ async fn exported_objects(address: String) {
         .await
         .expect("client connection");
     let objects = server.object_server();
-    objects.at("/", zbus::fdo::ObjectManager).await.expect("om");
     let base = base_path("MeticulousEspresso");
     let service_path = format!("{base}/service0001");
     objects
