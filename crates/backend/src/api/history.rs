@@ -761,6 +761,347 @@ mod tests {
         );
     }
 
+    // -- Shots brewed through the ShotManager, the production write path. --
+
+    const DAY: &str = "2026-10-09";
+    const FIRST_SHOT_FILE: &str = "2026-10-09/08:30:00.shot.json.zst";
+
+    /// `datetime(...).timestamp()`: a wall time on this machine.
+    fn local(day: u32, hour: u32, minute: u32) -> f64 {
+        use chrono::TimeZone;
+        chrono::Local
+            .with_ymd_and_hms(2026, 10, day, hour, minute, 0)
+            .single()
+            .expect("unambiguous local time")
+            .timestamp() as f64
+    }
+
+    fn make_profile(id: &str, name: &str, stages: &[&str], temperature: f64) -> Value {
+        let stages: Vec<Value> = stages
+            .iter()
+            .enumerate()
+            .map(|(index, stage)| {
+                json!({"key": format!("{id}-stage-{index}"), "name": stage, "type": "pressure"})
+            })
+            .collect();
+        json!({
+            "id": id,
+            "author": "Meticulous",
+            "author_id": "author-0001",
+            "display": {"accentColor": "#FF7A00"},
+            "final_weight": 36.0,
+            "last_changed": 1760000000.0,
+            "name": name,
+            "temperature": temperature,
+            "stages": stages,
+            "variables": [],
+            "previous_authors": [],
+        })
+    }
+
+    fn classic() -> Value {
+        make_profile("p-classic", "Classic", &["Preinfusion", "Extraction"], 93.0)
+    }
+
+    fn classic_v2() -> Value {
+        make_profile(
+            "p-classic-v2",
+            "Classic",
+            &["Preinfusion", "Extraction"],
+            94.0,
+        )
+    }
+
+    fn bloom() -> Value {
+        make_profile("p-bloom", "Bloom", &["Bloom", "Pour"], 93.0)
+    }
+
+    fn brewing_point(profile: &Value, time_ms: i64, pressure: f64, weight: f64) -> esp::ShotData {
+        esp::ShotData {
+            pressure: esp::PyNum::Float(pressure),
+            flow: esp::PyNum::Float(2.0),
+            weight: esp::PyNum::Float(weight),
+            temperature: esp::PyNum::Float(92.5),
+            status: Some("brewing".into()),
+            profile: profile["name"].as_str().map(str::to_string),
+            time: time_ms,
+            profile_time: time_ms - 200,
+            state: "brewing".into(),
+            is_extracting: true,
+            gravimetric_flow: esp::PyNum::Float(1.5),
+            main_controller_kind: Some("Pressure".into()),
+            main_setpoint: esp::PyNum::Float(9.0),
+            ..esp::ShotData::default()
+        }
+    }
+
+    /// The data point layout `Shot.addShotData` writes and the Dial graphs.
+    fn stored_point(time_ms: i64, pressure: f64, weight: f64) -> Value {
+        json!({
+            "shot": {
+                "pressure": pressure,
+                "flow": 2.0,
+                "weight": weight,
+                "gravimetric_flow": 1.5,
+                "setpoints": {"active": "pressure", "pressure": 9.0},
+            },
+            "time": time_ms,
+            "profile_time": time_ms - 200,
+            "status": "brewing",
+        })
+    }
+
+    fn saved_shots(app: &App) -> i64 {
+        app.history
+            .statistics()
+            .ok()
+            .and_then(|stats| stats["totalSavedShots"].as_i64())
+            .unwrap_or(0)
+    }
+
+    /// Brew a shot through the ShotManager as the machine does and return
+    /// its id, once it is saved.
+    async fn brew(
+        app: &Arc<App>,
+        profile: &Value,
+        start: f64,
+        points: &[esp::ShotData],
+        push_to_brew_time: i64,
+    ) -> String {
+        app.config.set(
+            keys::PROFILES,
+            keys::PROFILE_LAST,
+            json!({"load_time": start, "profile": profile}),
+        );
+        let saved = saved_shots(app);
+        app.shots.start(push_to_brew_time);
+        // The shot file name is derived from the start time: pin it.
+        app.shots.set_current_start_time(start);
+        let id = app.shots.current_shot()["id"]
+            .as_str()
+            .expect("id")
+            .to_string();
+        for point in points {
+            app.shots.handle_shot_data(app, point);
+        }
+        app.shots.stop(app);
+        for _ in 0..1000 {
+            if saved_shots(app) > saved {
+                return id;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+        panic!("the shot was not saved");
+    }
+
+    async fn brew_three_shots(app: &Arc<App>) -> (String, String, String) {
+        let classic = classic();
+        let first = brew(
+            app,
+            &classic,
+            local(9, 8, 30),
+            &[
+                brewing_point(&classic, 1000, 9.0, 0.0),
+                brewing_point(&classic, 1100, 8.5, 0.4),
+            ],
+            1500,
+        )
+        .await;
+        let bloom = bloom();
+        let second = brew(
+            app,
+            &bloom,
+            local(9, 8, 31),
+            &[brewing_point(&bloom, 1000, 2.0, 1.0)],
+            0,
+        )
+        .await;
+        let classic_v2 = classic_v2();
+        let third = brew(
+            app,
+            &classic_v2,
+            local(9, 8, 32),
+            &[brewing_point(&classic_v2, 1000, 9.1, 0.0)],
+            0,
+        )
+        .await;
+        (first, second, third)
+    }
+
+    /// tests/test_api_history.py::TestCurrentShot::test_current_shot_reports_live_data_in_history_entry_shape
+    #[tokio::test]
+    async fn current_shot_reports_live_data_in_history_entry_shape() {
+        let (_dir, app) = app();
+        let first_shot_time = local(9, 8, 30);
+        app.config.set(
+            keys::PROFILES,
+            keys::PROFILE_LAST,
+            json!({"load_time": first_shot_time, "profile": classic()}),
+        );
+        app.shots.start(1200);
+        app.shots.set_current_start_time(first_shot_time);
+        app.shots
+            .handle_shot_data(&app, &brewing_point(&classic(), 1000, 9.0, 0.0));
+        let shot_id = app.shots.current_shot()["id"].clone();
+
+        let reply = get(&app, "/api/v1/history/current").await;
+
+        assert_eq!(reply.status_code(), 200);
+        let mut profile = json!({"db_key": null});
+        for (key, value) in classic().as_object().expect("profile") {
+            profile[key] = value.clone();
+        }
+        assert_eq!(
+            body(&reply),
+            json!({
+                "db_key": null,
+                "file": FIRST_SHOT_FILE,
+                "time": first_shot_time,
+                "profile_name": "Classic",
+                "data": [stored_point(1000, 9.0, 0.0)],
+                "id": shot_id,
+                "push_to_brew_time": 1200,
+                "profile": profile,
+            })
+        );
+    }
+
+    /// tests/test_api_history.py::TestCurrentShot::test_current_shot_without_known_profile_reports_only_db_key
+    #[tokio::test]
+    async fn current_shot_without_known_profile_reports_only_db_key() {
+        let (_dir, app) = app();
+        app.shots.start(0);
+        app.shots.set_current_start_time(local(9, 8, 30));
+        app.shots
+            .handle_shot_data(&app, &brewing_point(&classic(), 1000, 9.0, 0.0));
+
+        let current = body(&get(&app, "/api/v1/history/current").await);
+
+        assert_eq!(current["profile"], json!({"db_key": null}));
+        assert_eq!(current["profile_name"], json!("Classic"));
+    }
+
+    /// tests/test_api_history.py::TestStatistics::test_counts_shots_and_profile_versions_and_reports_esp_mileage
+    #[tokio::test]
+    async fn counts_shots_and_profile_versions_and_reports_esp_mileage() {
+        let (_dir, app) = app();
+        brew_three_shots(&app).await;
+        let classic = classic();
+        brew(
+            &app,
+            &classic,
+            local(9, 9, 0),
+            &[brewing_point(&classic, 1, 1.0, 0.0)],
+            0,
+        )
+        .await;
+        // `Machine.mileage`: the ESP's lifetime shot count.
+        app.machine.state.lock().mileage = Some(1234);
+
+        let stats = body(&get(&app, "/api/v1/history/stats").await);
+
+        assert_eq!(
+            stats,
+            json!({
+                "totalSavedShots": 4,
+                "byProfile": [
+                    {"name": "Classic", "count": 3, "profileVersions": 2},
+                    {"name": "Bloom", "count": 1, "profileVersions": 1},
+                ],
+                "mileage": 1234,
+            })
+        );
+    }
+
+    /// tests/test_api_history.py::TestShotFiles::test_compressed_query_serves_raw_file_as_named_attachment
+    #[tokio::test]
+    async fn compressed_query_serves_raw_file_as_named_attachment() {
+        let (_dir, app) = app();
+        app.config.set(
+            keys::SYSTEM,
+            keys::DEVICE_IDENTIFIER,
+            json!(["Meticulous42"]),
+        );
+        brew_three_shots(&app).await;
+        let on_disk = std::fs::read(app.env.paths.shots().join(FIRST_SHOT_FILE)).expect("shot");
+
+        let reply = get(
+            &app,
+            &format!("/api/v1/history/files/{FIRST_SHOT_FILE}?compressed"),
+        )
+        .await;
+
+        assert_eq!(reply.status_code(), 200);
+        assert_eq!(reply.body(), on_disk.as_slice());
+        // StaticFileHandler replaces the handler's octet-stream with the
+        // file's mimetype.
+        assert_eq!(reply.header("Content-Type"), Some("application/zstd"));
+        assert_eq!(
+            reply.header("Content-Disposition"),
+            Some("attachment; filename=\"Meticulous42_2026_10_09_08:30:00.shot.json.zst\"")
+        );
+        assert!(reply.header("Etag").is_none());
+    }
+
+    /// tests/test_api_history.py::TestDebugFiles::test_debug_zip_bundles_all_debug_shots_and_redirects_to_it
+    #[tokio::test]
+    async fn debug_zip_bundles_all_debug_shots_and_redirects_to_it() {
+        let (_dir, app) = app();
+        let debug_dir = app.env.paths.debug_history.clone();
+        let first = debug_dir.join(format!("{DAY}/08:30:00.shot.json.zst"));
+        let second = debug_dir.join("2026-10-08/23:00:00.purge.json.zst");
+        files::write_compressed(&first, br#"{"a": 1}"#).expect("first");
+        files::write_compressed(&second, br#"{"b": 2}"#).expect("second");
+        let stale = "debug-2026-10-01-10:00:00.zip";
+        std::fs::write(debug_dir.join(stale), b"old").expect("stale zip");
+
+        let reply = get(&app, "/api/v1/history/debug.zip").await;
+
+        assert_eq!(reply.status_code(), 302);
+        let zips: Vec<String> = std::fs::read_dir(&debug_dir)
+            .expect("debug dir")
+            .map(|e| e.expect("entry").file_name().to_string_lossy().into_owned())
+            .filter(|name| name.ends_with(".zip"))
+            .collect();
+        assert_eq!(zips.len(), 1, "{zips:?}");
+        let zip_name = &zips[0];
+        assert!(zip_name.starts_with("debug-") && zip_name != stale);
+        let location = format!("/api/v1/history/debug/{zip_name}");
+        assert_eq!(reply.header("Location"), Some(location.as_str()));
+        let zip_path = debug_dir.join(zip_name);
+        let mut archive =
+            zip::ZipArchive::new(std::fs::File::open(&zip_path).expect("zip")).expect("archive");
+        let mut names: Vec<String> = archive
+            .file_names()
+            .map(|name| name.expect("entry name").into_owned())
+            .collect();
+        names.sort();
+        assert_eq!(
+            names,
+            [
+                "2026-10-08/23:00:00.purge.json.zst".to_string(),
+                format!("{DAY}/08:30:00.shot.json.zst"),
+            ]
+        );
+        for (name, file) in [
+            (format!("{DAY}/08:30:00.shot.json.zst"), &first),
+            ("2026-10-08/23:00:00.purge.json.zst".to_string(), &second),
+        ] {
+            let mut stored = Vec::new();
+            std::io::Read::read_to_end(&mut archive.by_name(&name).expect("entry"), &mut stored)
+                .expect("read");
+            assert_eq!(stored, std::fs::read(file).expect("debug shot"), "{name}");
+        }
+
+        let download = get(&app, &location).await;
+        assert_eq!(download.status_code(), 200);
+        assert_eq!(
+            download.body(),
+            std::fs::read(&zip_path).expect("zip").as_slice()
+        );
+        assert_eq!(download.header("Content-Type"), Some("application/zip"));
+    }
+
     #[test]
     fn py_int_like_python() {
         assert_eq!(py_int("200"), Some(200));

@@ -318,6 +318,57 @@ mod tests {
         assert_eq!(body(&reply)["data"]["code"], json!("UNLOCK_THROTTLED"));
     }
 
+    /// tests/test_limited_access.py::LimitedAccessApiTests::test_limited_list_defaults_and_get:
+    /// a factory machine lists, offers and serves only the bundled Simple
+    /// profile, whatever profiles the user has.
+    #[tokio::test]
+    async fn limited_list_defaults_and_get() {
+        const SIMPLE: &str = "f5db85cc-ab0d-4c81-aee8-bcac7da77141";
+        let (_dir, app) = app();
+        let bundled = std::fs::read_to_string(&app.env.paths.simple_profile).expect("bundled");
+        let mut user: Value = serde_json::from_str(&bundled).expect("JSON");
+        user["id"] = json!("0d6f3a52-7c1e-4b8e-9a51-3f2b6c9d1e47");
+        user["name"] = json!("User");
+        std::fs::create_dir_all(&app.env.paths.profiles).expect("profiles");
+        std::fs::write(
+            app.env
+                .paths
+                .profiles
+                .join("0d6f3a52-7c1e-4b8e-9a51-3f2b6c9d1e47.json"),
+            user.to_string(),
+        )
+        .expect("user profile");
+        app.profiles.refresh_profile_list();
+        let get = |uri: &'static str| call(&app, http::Method::GET, uri, "");
+        let listed = body(&get("/api/v1/profile/list").await);
+        assert_eq!(listed[0]["name"], json!("User"), "{listed}");
+
+        app.config
+            .set(keys::USER, keys::UPDATE_CHANNEL, json!("factory"));
+
+        let profiles = body(&get("/api/v1/profile/list?full=true").await);
+        assert_eq!(profiles.as_array().map(Vec::len), Some(1), "{profiles}");
+        assert_eq!(profiles[0]["id"], json!(SIMPLE));
+        assert!(
+            profiles[0]["stages"]
+                .as_array()
+                .is_some_and(|s| !s.is_empty())
+        );
+        let summaries = body(&get("/api/v1/profile/list").await);
+        assert!(summaries[0].get("stages").is_none(), "{summaries}");
+        let defaults = body(&get("/api/v1/profile/defaults").await);
+        assert_eq!(defaults["default"].as_array().map(Vec::len), Some(1));
+        assert_eq!(defaults["community"], json!([]));
+        let reply = call(
+            &app,
+            http::Method::GET,
+            &format!("/api/v1/profile/get/{SIMPLE}"),
+            "",
+        )
+        .await;
+        assert_eq!(reply.status_code(), 200);
+    }
+
     /// An empty or non-object body, a blank code: 400 before the throttle.
     #[tokio::test]
     async fn unlock_rejects_bodies_without_a_code() {

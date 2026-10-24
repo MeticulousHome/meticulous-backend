@@ -239,6 +239,15 @@ impl ShotManager {
         self.state.lock().current = Some(Shot::new(push_to_brew_time));
     }
 
+    /// `ShotManager._current_shot.startTime = ...`: the start time names the
+    /// shot file.
+    #[cfg(test)]
+    pub fn set_current_start_time(&self, start_time: f64) {
+        if let Some(shot) = self.state.lock().current.as_mut() {
+            shot.start_time = start_time;
+        }
+    }
+
     pub fn handle_sensor_data(&self, sensors: &SensorData) {
         if let Some(shot) = self.state.lock().current.as_mut() {
             shot.add_sensor_data(sensors);
