@@ -1,13 +1,15 @@
 //! The report side of `api/bug_report.py`: draft directories under
 //! `REPORTS_DIR`, their archives, what a report collects (machine info, the
 //! watcher's logs and status, debug shots), the `bug_reports` rows (through
-//! the history crate), the sweep of expired artifacts and the
-//! `upload_report` event. The HTTP handlers are in `api/bug_report.rs`.
+//! the history crate), the sweep of expired artifacts, the `upload_report`
+//! event and report progress (`progress`). The HTTP handlers are in
+//! `api/bug_report.rs`.
 //!
 //! The dial submits a report to Sentry itself; the backend only records the
 //! Sentry event id it is given (`POST /reports/submit`).
 
 pub mod archive;
+pub mod progress;
 pub mod py;
 #[cfg(test)]
 pub mod test_support;
@@ -31,6 +33,9 @@ use tokio_util::sync::CancellationToken;
 use crate::app::App;
 use crate::config::keys;
 use crate::env::Paths;
+use progress::{
+    Failure, ProgressBook, REPORT_PROGRESS_EVENT, ReportProgress, Stage, StageDetail, StageUpdate,
+};
 use watcher::{FetchError, HttpError};
 
 pub const REPORT_INFO_NAME: &str = "report_info.json";
@@ -44,6 +49,7 @@ pub const MAX_DEBUG_SHOTS: usize = 10;
 /// A report handed over by the mobile app: the row exists with its ticket
 /// and contact details, nothing is collected yet.
 pub const REPORT_STATUS_QUEUED: &str = rows::REPORT_STATUS_QUEUED;
+pub const REPORT_STATUS_CANCELLED: &str = "cancelled";
 pub const UPLOAD_REPORT_EVENT: &str = "upload_report";
 const TRUNCATION_BANNER: &str = "[meticulous-backend] machine logs truncated:";
 const WATCHER_LOGS_TIMEOUT: Duration = Duration::from_secs(600);
@@ -154,6 +160,20 @@ impl RequestError {
             409,
             "COLLECTION_IN_PROGRESS",
             "A report is already being collected",
+        )
+    }
+
+    /// `ReportCancelled`.
+    pub fn report_cancelled() -> RequestError {
+        RequestError::new(409, "REPORT_CANCELLED", "This report was cancelled")
+    }
+
+    /// `TooLateToCancel`.
+    pub fn too_late_to_cancel() -> RequestError {
+        RequestError::new(
+            409,
+            "TOO_LATE_TO_CANCEL",
+            "The report is already being uploaded and cannot be cancelled",
         )
     }
 
@@ -288,6 +308,55 @@ impl Drop for CollectionGuard {
     }
 }
 
+/// `CollectionCancellation`: the token a disconnect or a cancel trips, and
+/// whether it was POST /reports/<localID>/cancel (the client is then still
+/// connected and gets `REPORT_CANCELLED` instead of silence).
+#[derive(Clone)]
+pub struct CollectionCancellation {
+    pub token: CancellationToken,
+    requested: Arc<AtomicBool>,
+}
+
+impl CollectionCancellation {
+    pub fn new(token: CancellationToken) -> CollectionCancellation {
+        CollectionCancellation {
+            token,
+            requested: Arc::default(),
+        }
+    }
+
+    /// `cancel(requested)`.
+    pub fn cancel(&self, requested: bool) {
+        if requested {
+            self.requested.store(true, Ordering::Release);
+        }
+        self.token.cancel();
+    }
+
+    pub fn requested(&self) -> bool {
+        self.requested.load(Ordering::Acquire)
+    }
+}
+
+type Collections = Arc<Mutex<HashMap<String, CollectionCancellation>>>;
+
+/// A create's entry in `_collections` and its hold on `_collection_lock`:
+/// dropping it is the handler's `finally`.
+pub struct CollectionRegistration {
+    collections: Collections,
+    local_id: String,
+    _guard: CollectionGuard,
+}
+
+impl Drop for CollectionRegistration {
+    fn drop(&mut self) {
+        self.collections.lock().remove(&self.local_id);
+    }
+}
+
+/// The `progress` callback `_fetch_report_files` reports its stages to.
+pub type StageReporter = Arc<dyn Fn(Stage, Option<StageDetail>) + Send + Sync>;
+
 #[cfg(test)]
 pub type FetchOverride = Arc<
     dyn Fn(
@@ -295,6 +364,7 @@ pub type FetchOverride = Arc<
             Option<(i64, i64)>,
             bool,
             Option<CancellationToken>,
+            Option<StageReporter>,
         ) -> futures::future::BoxFuture<'static, Result<FetchResult, FetchFailure>>
         + Send
         + Sync,
@@ -308,8 +378,8 @@ pub struct TestHooks {
     pub fetch: Mutex<Option<FetchOverride>>,
     /// Runs after each automatic debug file is copied.
     pub after_debug_copy: Mutex<Option<Arc<dyn Fn() + Send + Sync>>>,
-    /// Every `upload_report` payload.
-    pub emitted: Mutex<Vec<Value>>,
+    /// Every `upload_report` and `report_progress` emit, by event.
+    pub emitted: Mutex<Vec<(&'static str, Value)>>,
 }
 
 /// The report service (the module's globals in the Python).
@@ -319,6 +389,13 @@ pub struct BugReports {
     watcher_client: OnceLock<reqwest::Client>,
     probe_client: OnceLock<reqwest::Client>,
     clock: Mutex<Option<i64>>,
+    progress: Mutex<ProgressBook>,
+    collections: Collections,
+    /// The Python's handlers share one event loop, so what one does between
+    /// two awaits happens at once: a cancel cannot land between a report's
+    /// state being checked and what follows from it. The stretches that read
+    /// a report's state and change it hold this lock to keep that.
+    state: tokio::sync::Mutex<()>,
     #[cfg(test)]
     pub hooks: TestHooks,
 }
@@ -331,9 +408,49 @@ impl BugReports {
             watcher_client: OnceLock::new(),
             probe_client: OnceLock::new(),
             clock: Mutex::new(None),
+            progress: Mutex::new(ProgressBook::default()),
+            collections: Collections::default(),
+            state: tokio::sync::Mutex::new(()),
             #[cfg(test)]
             hooks: TestHooks::default(),
         }
+    }
+
+    /// Hold the report state still (see `state`).
+    pub async fn hold_state(&self) -> tokio::sync::MutexGuard<'_, ()> {
+        self.state.lock().await
+    }
+
+    /// `_collections[local_id] = cancellation`, until the registration drops.
+    pub fn register_collection(
+        &self,
+        local_id: &str,
+        cancellation: CollectionCancellation,
+        guard: CollectionGuard,
+    ) -> CollectionRegistration {
+        self.collections
+            .lock()
+            .insert(local_id.to_string(), cancellation);
+        CollectionRegistration {
+            collections: self.collections.clone(),
+            local_id: local_id.to_string(),
+            _guard: guard,
+        }
+    }
+
+    /// `_collections.get(local_id)`.
+    pub fn collection(&self, local_id: &str) -> Option<CollectionCancellation> {
+        self.collections.lock().get(local_id).cloned()
+    }
+
+    /// `_collections.pop(local_id, None)`.
+    pub fn end_collection(&self, local_id: &str) {
+        self.collections.lock().remove(local_id);
+    }
+
+    #[cfg(test)]
+    pub fn collection_count(&self) -> usize {
+        self.collections.lock().len()
     }
 
     pub fn cfg(&self) -> ReportsConfig {
@@ -925,56 +1042,57 @@ async fn record_active_debug_shot(
     }
 }
 
-/// `_copy_selected_debug_files`: a disconnect stops before the next copy.
-async fn copy_selected_debug_files(
+/// `_copy_selected_debug_files` of one file: a disconnect stops before the
+/// copy.
+async fn copy_selected_debug_file(
     app: &App,
     result: &mut FetchResult,
     draft_dir: &Path,
-    debug_files: Vec<PathBuf>,
+    path: PathBuf,
     cancellation: Option<&CancellationToken>,
 ) -> Result<(), FetchFailure> {
     #[cfg(not(test))]
     let _ = app;
-    let tag = draft_tag(draft_dir);
-    for path in debug_files {
-        raise_if_disconnected(cancellation)?;
-        let archive_name = debug_archive_name(&safe_archive_name(&path));
-        let (dir, name, source) = (draft_dir.to_path_buf(), archive_name.clone(), path.clone());
-        let copied = blocking(move || copy_draft_file(&dir, &name, &source)).await;
-        #[cfg(test)]
-        {
-            let hook = app.reports.hooks.after_debug_copy.lock().clone();
-            if let Some(hook) = hook {
-                hook();
-            }
+    raise_if_disconnected(cancellation)?;
+    let archive_name = debug_archive_name(&safe_archive_name(&path));
+    let (dir, name, source) = (draft_dir.to_path_buf(), archive_name.clone(), path.clone());
+    let copied = blocking(move || copy_draft_file(&dir, &name, &source)).await;
+    #[cfg(test)]
+    {
+        let hook = app.reports.hooks.after_debug_copy.lock().clone();
+        if let Some(hook) = hook {
+            hook();
         }
-        match copied {
-            Ok(target) => {
-                result.files.insert(archive_name, target);
-                result.automatic_debug_files.push(safe_archive_name(&path));
-            }
-            Err(error) => {
-                // No traceback here: this runs once per file, and the line
-                // has to name which file.
-                let message = format!("Failed to copy debug file {}: {error}", path.display());
-                tracing::warn!("[{tag}] {message}");
-                result.errors.push(message);
-            }
+    }
+    match copied {
+        Ok(target) => {
+            result.files.insert(archive_name, target);
+            result.automatic_debug_files.push(safe_archive_name(&path));
+        }
+        Err(error) => {
+            // No traceback here: this runs once per file, and the line has to
+            // name which file.
+            let message = format!("Failed to copy debug file {}: {error}", path.display());
+            tracing::warn!("[{}] {message}", draft_tag(draft_dir));
+            result.errors.push(message);
         }
     }
     Ok(())
 }
 
 /// `_fetch_report_files(draft_dir, start_time, end_time,
-/// capture_active_debug_shot, cancellation)`: everything a report bundles,
-/// each failure recorded in the bundle and the journal; a disconnect is
-/// noticed at each stage boundary and during a watcher request.
+/// capture_active_debug_shot, cancellation, progress)`: everything a report
+/// bundles, each failure recorded in the bundle and the journal; a
+/// disconnect is noticed at each stage boundary and during a watcher
+/// request. Each stage is reported to `progress` as it starts, and each debug
+/// shot copied.
 pub async fn fetch_report_files(
     app: &Arc<App>,
     draft_dir: &Path,
     range: Option<(i64, i64)>,
     capture_active_debug_shot: bool,
     cancellation: Option<&CancellationToken>,
+    progress: Option<StageReporter>,
 ) -> Result<FetchResult, FetchFailure> {
     #[cfg(test)]
     let fetch_override = app.reports.hooks.fetch.lock().clone();
@@ -985,9 +1103,15 @@ pub async fn fetch_report_files(
             range,
             capture_active_debug_shot,
             cancellation.cloned(),
+            progress,
         )
         .await;
     }
+    let stage = |name: Stage, detail: Option<StageDetail>| {
+        if let Some(progress) = &progress {
+            progress(name, detail);
+        }
+    };
     let mut result = FetchResult::default();
     let tag = draft_tag(draft_dir);
     let dir = draft_dir.to_path_buf();
@@ -995,10 +1119,12 @@ pub async fn fetch_report_files(
         .await
         .map_err(FetchFailure::Failed)?;
 
+    stage(Stage::FetchingMachineInfo, None);
     record_machine_info(app, &mut result, draft_dir).await;
     record_upload_diagnostics(app, &mut result, draft_dir).await;
 
     raise_if_disconnected(cancellation)?;
+    stage(Stage::FetchingLogs, None);
     let max_bytes = app.reports.cfg().max_machine_logs_bytes;
     let logs = fetch_machine_logs(app, range, cancellation).await;
     result.machine_logs = record_watcher_text(
@@ -1012,6 +1138,7 @@ pub async fn fetch_report_files(
     .await?;
 
     raise_if_disconnected(cancellation)?;
+    stage(Stage::FetchingMachineStatus, None);
     let status = fetch_machine_status(app, cancellation).await;
     result.machine_status = record_watcher_text(
         &mut result,
@@ -1024,9 +1151,12 @@ pub async fn fetch_report_files(
     .await?;
 
     raise_if_disconnected(cancellation)?;
+    stage(Stage::CollectingDebugShots, None);
     let mut debug_limit = MAX_DEBUG_SHOTS;
+    let mut captured = 0;
     if capture_active_debug_shot {
-        debug_limit -= record_active_debug_shot(app, &mut result, draft_dir).await;
+        captured = record_active_debug_shot(app, &mut result, draft_dir).await;
+        debug_limit -= captured;
     }
 
     raise_if_disconnected(cancellation)?;
@@ -1041,7 +1171,13 @@ pub async fn fetch_report_files(
         tracing::info!("[{tag}] {message}");
     }
     result.errors.extend(debug_errors);
-    copy_selected_debug_files(app, &mut result, draft_dir, debug_files, cancellation).await?;
+    let total = captured + debug_files.len();
+    let copied = |current| Some(StageDetail { current, total });
+    stage(Stage::CollectingDebugShots, copied(captured));
+    for (index, path) in debug_files.into_iter().enumerate() {
+        copy_selected_debug_file(app, &mut result, draft_dir, path, cancellation).await?;
+        stage(Stage::CollectingDebugShots, copied(captured + index + 1));
+    }
 
     let dir = draft_dir.to_path_buf();
     let errors = result.errors.clone();
@@ -1123,7 +1259,7 @@ fn sweep_rows(app: &App) -> Result<Vec<SweepRow>, Fail> {
 }
 
 /// `_remove_report_representation(path)`.
-fn remove_report_representation(path: &Path) -> Result<(), Fail> {
+pub fn remove_report_representation(path: &Path) -> Result<(), Fail> {
     if path.is_dir() {
         std::fs::remove_dir_all(path).map_err(|e| Fail::io(&e, path))
     } else if path.exists() || path.is_symlink() {
@@ -1405,6 +1541,10 @@ fn sweep_draft_dir(
                 tracing::warn!("[{local_id}] retry of archive finalization failed: {error}")
             }
         }
+    } else if row.status.as_str() == Some(REPORT_STATUS_CANCELLED) {
+        // A cancelled report never uploads: what was collected is of no use.
+        let _ = std::fs::remove_dir_all(path);
+        stats.drafts += 1;
     } else if now - py::int_of(&row.creation_time).unwrap_or(0) > cfg.draft_max_age
         && delete_report(app, local_id)?
     {
@@ -1469,9 +1609,10 @@ fn sweep_orphan_rows(
             continue;
         };
         let status = row.status.as_str();
-        if status == Some(REPORT_STATUS_QUEUED) {
+        if matches!(status, Some(REPORT_STATUS_QUEUED | REPORT_STATUS_CANCELLED)) {
             // Nothing on disk yet by design; give up on a dispatch the dial
-            // never collected within the draft retention.
+            // never collected within the draft retention. A cancelled row is
+            // kept as long, so both apps list it.
             if now - py::int_of(&row.creation_time).unwrap_or(0) > cfg.draft_max_age
                 && delete_report(app, local_id)?
             {
@@ -1526,13 +1667,141 @@ pub fn sweep_reports(app: &App, now: Option<i64>) -> Result<SweepStats, Fail> {
 /// `_emit_upload_report(payload)`: announce a dispatched report to the dial.
 pub fn emit_upload_report(app: &App, payload: &Value) {
     #[cfg(test)]
-    app.reports.hooks.emitted.lock().push(payload.clone());
+    app.reports
+        .hooks
+        .emitted
+        .lock()
+        .push((UPLOAD_REPORT_EVENT, payload.clone()));
     let local_id = payload.get("localID").and_then(Value::as_str).unwrap_or("");
     if !app.sio.attached() {
         tracing::warn!("[{local_id}] no socket server, {UPLOAD_REPORT_EVENT} not sent");
         return;
     }
     app.sio.emit(UPLOAD_REPORT_EVENT, payload);
+}
+
+/// `_emit_report_progress(payload)`: to both apps; without a socket server
+/// it goes nowhere, silently.
+fn emit_report_progress(app: &App, payload: &Value) {
+    #[cfg(test)]
+    app.reports
+        .hooks
+        .emitted
+        .lock()
+        .push((REPORT_PROGRESS_EVENT, payload.clone()));
+    app.sio.emit(REPORT_PROGRESS_EVENT, payload);
+}
+
+fn advance_and_emit(
+    app: &App,
+    book: &mut ProgressBook,
+    local_id: &str,
+    stage: Stage,
+    update: StageUpdate,
+) -> Option<ReportProgress> {
+    let (entry, changed) = book.advance(local_id, stage, update, app.reports.now())?;
+    if changed {
+        // Still under the lock, so the events leave in the order the
+        // stages changed.
+        emit_report_progress(app, &entry.payload());
+    }
+    Some(entry)
+}
+
+/// `_report_progress(local_id, stage, ...)`: move a report to `stage` and
+/// broadcast it when something changed; `None` for a report without an
+/// entry when `update` brings no origin.
+pub fn report_progress(
+    app: &App,
+    local_id: &str,
+    stage: Stage,
+    update: StageUpdate,
+) -> Option<ReportProgress> {
+    advance_and_emit(
+        app,
+        &mut app.reports.progress.lock(),
+        local_id,
+        stage,
+        update,
+    )
+}
+
+/// A ticket a draft PUT stored, onto the report's entry if it has one; the
+/// stage and its detail stay.
+pub fn report_ticket(app: &App, local_id: &str, ticket: Value) {
+    let mut book = app.reports.progress.lock();
+    let Some(entry) = book.get(local_id) else {
+        return;
+    };
+    let (stage, detail) = (entry.stage, entry.detail);
+    let update = StageUpdate {
+        ticket,
+        detail,
+        ..StageUpdate::default()
+    };
+    advance_and_emit(app, &mut book, local_id, stage, update);
+}
+
+/// `_progress_entries()`.
+pub fn progress_entries(app: &App) -> Result<Vec<Value>, Fail> {
+    let queued = queued_report_rows(app)?;
+    Ok(app
+        .reports
+        .progress
+        .lock()
+        .listed(&queued, app.reports.now()))
+}
+
+/// `_progress_for_row(local_id)`: the entry of a known report, rebuilt from
+/// its row after a restart.
+pub fn progress_for_row(app: &App, local_id: &str) -> Result<Option<ReportProgress>, Fail> {
+    if let Some(entry) = app.reports.progress.lock().get(local_id) {
+        return Ok(Some(entry.clone()));
+    }
+    let Some(row) = get_report_row(app, local_id)? else {
+        return Ok(None);
+    };
+    let now = app.reports.now();
+    Ok(Some(
+        app.reports.progress.lock().track_row(local_id, &row, now),
+    ))
+}
+
+/// `_is_cancelled(local_id)`.
+pub fn is_cancelled(app: &App, local_id: &str) -> Result<bool, Fail> {
+    Ok(get_report_row(app, local_id)?
+        .is_some_and(|row| row.status_str() == Some(REPORT_STATUS_CANCELLED)))
+}
+
+/// `_collection_stopped`: the progress of a collection that ended without a
+/// draft.
+pub fn collection_stopped(
+    app: &App,
+    local_id: &str,
+    queued: bool,
+    requested: bool,
+    failure: Option<Failure>,
+) {
+    let (stage, update) = if requested {
+        (Stage::Cancelled, StageUpdate::default())
+    } else if queued {
+        // A dispatched report stays queued: the Dial retries it, and reports
+        // `failed` itself when it gives up.
+        let rewind = StageUpdate {
+            rewind: true,
+            ..StageUpdate::default()
+        };
+        (Stage::Queued, rewind)
+    } else if let Some(failure) = failure {
+        let failed = StageUpdate {
+            failure: Some(failure),
+            ..StageUpdate::default()
+        };
+        (Stage::Failed, failed)
+    } else {
+        (Stage::Cancelled, StageUpdate::default())
+    };
+    report_progress(app, local_id, stage, update);
 }
 
 /// What `backend.main()` does for reports before serving: sweep once, then

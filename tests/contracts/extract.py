@@ -159,13 +159,18 @@ def payload_keys() -> dict:
         ShotData,
     )
 
+    from api.bug_report import ReportProgress
+
     status = ShotData().to_sio()
+    report_progress = ReportProgress("localID", "dial", None, "preparing", 0, 0).payload()
     return {
         # backend.live() adds the loaded profile's name and id to every status.
         "status": sorted(set(status) | {"loaded_profile", "id"}),
         "status.sensors": sorted(status["sensors"]),
         "sensors": sorted(SensorData().to_sio_sensors()),
         "button": sorted(ButtonEventData(event=next(iter(ButtonEventEnum))).to_sio()),
+        # Report progress contract v1, read by the Dial and the mobile app.
+        "report_progress": sorted(report_progress),
     }
 
 

@@ -22,8 +22,6 @@
 1 api/bug_report.py: [arg-type] Argument 2 to "setdefault" of "MutableMapping" has incompatible type "dict[Never, Never]"; expected "str"
 1 api/bug_report.py: [assignment] Incompatible types in assignment (expression has type "dict[Any, Any]", target has type "str")
 1 api/bug_report.py: [attr-defined] "str" has no attribute "setdefault"
-1 api/bug_report.py: [misc] "_fetch_report_files" gets multiple values for keyword argument "cancellation"
-1 api/bug_report.py: [misc] "_fetch_report_files" gets multiple values for keyword argument "capture_active_debug_shot"
 8 api/bug_report.py: [union-attr] Item "None" of "Engine | None" has no attribute "connect"
 1 api/bug_report.py: [var-annotated] Need type annotation for "db_values" (hint: "db_values: dict[<type>, <type>] = ...")
 1 api/bug_report.py: [var-annotated] Need type annotation for "errors" (hint: "errors: list[<type>] = ...")

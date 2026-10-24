@@ -33,6 +33,9 @@ def report_module(tmp_path, monkeypatch):
     monkeypatch.setattr(bug_report, "DEBUG_HISTORY_ROOT", debug_root)
     monkeypatch.setattr(bug_report, "REPORTS_DIR", draft_root.parent)
     monkeypatch.setattr(bug_report, "DRAFT_REPORTS_DIR", draft_root)
+    # Progress lives in memory for the life of the process; each test starts empty.
+    monkeypatch.setattr(bug_report, "_progress", {})
+    monkeypatch.setattr(bug_report, "_collections", {})
     return bug_report
 
 
@@ -1496,6 +1499,10 @@ class _FakeSio:
     async def emit(self, event, data):
         self.calls.append((event, data))
 
+    def uploads(self):
+        """The `upload_report` hand-offs, without the `report_progress` updates."""
+        return [call for call in self.calls if call[0] == "upload_report"]
+
 
 class _FailingSio:
     async def emit(self, event, data):
@@ -1864,7 +1871,10 @@ def test_dispatch_post_queues_the_report_and_emits_upload_report(
     }
     assert handler.status == 202
     assert handler.response == expected
-    assert fake_sio.calls == [(report_module.UPLOAD_REPORT_EVENT, expected)]
+    # The progress bar of both apps starts at `queued` before the Dial is told.
+    assert [event for event, _ in fake_sio.calls] == ["report_progress", "upload_report"]
+    assert fake_sio.calls[1] == (report_module.UPLOAD_REPORT_EVENT, expected)
+    assert fake_sio.calls[0][1]["stage"] == "queued"
     assert report_module.UPLOAD_REPORT_EVENT == "upload_report"
     (row,) = _all_report_rows()
     assert row.localID == QUEUED_ID
@@ -1898,7 +1908,7 @@ def test_dispatch_post_defaults_issue_time_to_now_and_contact_to_none(
         "name": None,
         "email": None,
     }
-    assert fake_sio.calls == [("upload_report", handler.response)]
+    assert fake_sio.uploads() == [("upload_report", handler.response)]
     (row,) = _all_report_rows()
     assert row.issueTime == DISPATCHED_AT
     assert row.creationTime == DISPATCHED_AT
@@ -1918,7 +1928,7 @@ def test_dispatch_post_with_the_same_local_id_is_a_conflict(
 
     assert first.status == 202
     _assert_api_error(second, 409, "DUPLICATE_LOCAL_ID")
-    assert len(fake_sio.calls) == 1
+    assert len(fake_sio.uploads()) == 1
     (row,) = _all_report_rows()
     assert row.ticketNumber == 4242
     assert row.description == "first"
@@ -1975,7 +1985,7 @@ def test_init_socket_registers_the_server_used_for_emits(
     _post_dispatch(report_module, _dispatch_body())
 
     assert report_module._sio is sio
-    assert [event for event, _ in sio.calls] == ["upload_report"]
+    assert [event for event, _ in sio.uploads()] == ["upload_report"]
 
 
 @pytest.mark.parametrize(
@@ -2322,3 +2332,347 @@ def test_list_report_page_includes_queued_reports_with_their_ticket(
     assert listed["localID"] == QUEUED_ID
     assert listed["ticket"] == 4242
     assert listed["dateAndTime"] == DISPATCHED_AT
+
+
+# Report progress, contract v1: the `report_progress` event, GET /reports/progress,
+# POST /reports/<localID>/progress and POST /reports/<localID>/cancel. The Dial and the
+# mobile app draw their progress bars and offer Cancel from these; every expected value
+# comes from that contract (stage names, codes) or from constants in api/bug_report.py.
+
+DIAL_STAGES = [
+    "preparing",
+    "fetching_machine_info",
+    "fetching_logs",
+    "fetching_machine_status",
+    "collecting_debug_shots",
+    "ticketing",
+    "compressing",
+    "uploading",
+    "finishing",
+]
+MOBILE_STAGES = ["queued"] + [stage for stage in DIAL_STAGES if stage != "ticketing"]
+
+
+class _DraftHandler(_ApiHandler):
+    """Also takes the headers and chunks the draft GET streams."""
+
+    def __init__(self, report_module, body=b""):
+        super().__init__(report_module, body)
+        self.headers = {}
+        self.chunks = b""
+
+    def set_header(self, name, value):
+        self.headers[name] = value
+
+    def write(self, body):
+        if isinstance(body, bytes):
+            self.chunks += body
+        else:
+            super().write(body)
+
+
+def _progress_events(fake_sio, local_id=None):
+    return [
+        data
+        for event, data in fake_sio.calls
+        if event == "report_progress" and (local_id is None or data["localID"] == local_id)
+    ]
+
+
+def _stage_trail(events):
+    """Each stage once, in the order the bar went through it."""
+    trail = []
+    for event in events:
+        if not trail or trail[-1] != event["stage"]:
+            trail.append(event["stage"])
+    return trail
+
+
+def _post_quick_report(report_module):
+    """The Dial's own quick report: create with no body."""
+    handler = _ApiHandler(report_module)
+    asyncio.run(report_module.ReportsCreateHandler.post(handler))
+    return handler
+
+
+def _post_progress(report_module, local_id, body):
+    handler = _ApiHandler(report_module, json.dumps(body).encode())
+    asyncio.run(report_module.ReportProgressUpdateHandler.post(handler, local_id))
+    return handler
+
+
+def _post_cancel(report_module, local_id):
+    handler = _ApiHandler(report_module)
+    asyncio.run(report_module.ReportCancelHandler.post(handler, local_id))
+    return handler
+
+
+def _get_progress(report_module):
+    handler = _ApiHandler(report_module)
+    asyncio.run(report_module.ReportsProgressHandler.get(handler))
+    return handler.response["content"]
+
+
+def _get_draft(report_module, local_id):
+    handler = _DraftHandler(report_module)
+    asyncio.run(report_module.ReportDraftHandler.get(handler, local_id))
+    return handler
+
+
+def _submit(report_module, local_id, ticket=None):
+    body = {"localID": local_id, "eventID": "event-1"}
+    if ticket is not None:
+        body["ticket"] = ticket
+    handler = _ApiHandler(report_module, json.dumps(body).encode())
+    handler.finish = lambda: None
+    asyncio.run(report_module.ReportsSubmitHandler.post(handler))
+    return handler
+
+
+@pytest.fixture
+def watcher(report_module, monkeypatch):
+    """The real `_fetch_report_files` with the watcher and machine info faked."""
+
+    async def machine_logs(start_time=None, end_time=None, cancellation=None):
+        return "logs"
+
+    async def machine_status(cancellation=None):
+        return '{"ok": true}'
+
+    async def no_active_shot(draft_dir):
+        return None
+
+    monkeypatch.setattr(report_module, "_get_machine_info", lambda: {"machine": "info"})
+    monkeypatch.setattr(report_module, "_fetch_machine_logs", machine_logs)
+    monkeypatch.setattr(report_module, "_fetch_machine_status", machine_status)
+    monkeypatch.setattr(report_module, "_capture_incomplete_debug_shot", no_active_shot)
+    monkeypatch.setattr(report_module, "_machine_mileage", lambda: 0)
+    for clock_time in ("08:00:00", "09:00:00"):
+        _debug_file(
+            report_module.DEBUG_HISTORY_ROOT, "2026-05-18", f"{clock_time}.shot.json.zst"
+        )
+
+
+def test_a_dial_quick_report_walks_every_stage_to_submitted(
+    report_module, machine_serial, clock, fake_sio, watcher
+):
+    """Without this, the phone's bar for a quick report started at the machine would
+    stall or skip: the stages and their order are the contract's, and the Dial's own
+    report never shows `queued`."""
+    created = _post_quick_report(report_module)
+    local_id = created.response["localID"]
+    assert _post_progress(report_module, local_id, {"stage": "ticketing"}).status is None
+    draft = _get_draft(report_module, local_id)
+    assert draft.chunks
+    assert _post_progress(report_module, local_id, {"stage": "uploading"}).status is None
+    _submit(report_module, local_id, ticket=77)
+
+    events = _progress_events(fake_sio, local_id)
+    assert _stage_trail(events) == DIAL_STAGES + ["submitted"]
+    assert all(event["stages"] == DIAL_STAGES for event in events)
+    assert all(event["v"] == 1 and event["origin"] == "dial" for event in events)
+    debug = [event["detail"] for event in events if event["stage"] == "collecting_debug_shots"]
+    assert debug == [
+        None,
+        {"current": 0, "total": 2},
+        {"current": 1, "total": 2},
+        {"current": 2, "total": 2},
+    ]
+    by_stage = {event["stage"]: event for event in events}
+    assert by_stage["compressing"]["cancellable"] is True
+    assert by_stage["uploading"]["cancellable"] is False
+    assert by_stage["submitted"] | {"updatedAt": 0} == {
+        **by_stage["submitted"],
+        "updatedAt": 0,
+        "final": True,
+        "cancellable": False,
+        "ticket": 77,
+    }
+
+
+def test_a_mobile_dispatch_starts_queued_and_carries_its_ticket(
+    report_module, machine_serial, clock, fake_sio, watcher
+):
+    """Without this, the phone could not show the ticket it was given, and the Dial's
+    progress view would draw a `ticketing` step that never happens for mobile reports."""
+    _post_dispatch(report_module, _dispatch_body())
+    _post_create(report_module, {"localID": QUEUED_ID})
+
+    events = _progress_events(fake_sio, QUEUED_ID)
+    assert _stage_trail(events)[:3] == ["queued", "preparing", "fetching_machine_info"]
+    assert all(event["stages"] == MOBILE_STAGES for event in events)
+    assert all(event["origin"] == "mobile" and event["ticket"] == 4242 for event in events)
+
+
+def test_progress_lists_reports_in_flight_queued_rows_and_recent_endings(
+    report_module, machine_serial, clock, fake_sio, watcher
+):
+    """Without this, an app that connects mid-report (or after a backend restart) shows
+    no bar; and a finished report would linger forever instead of 60 s."""
+    _insert_report_row(SECOND_ID, "queued", ticketNumber=9)
+    (entry,) = _get_progress(report_module)
+    assert (entry["localID"], entry["stage"], entry["ticket"]) == (SECOND_ID, "queued", 9)
+
+    created = _post_quick_report(report_module)
+    local_id = created.response["localID"]
+    _get_draft(report_module, local_id)
+    _submit(report_module, local_id)
+    stages = {item["localID"]: item["stage"] for item in _get_progress(report_module)}
+    assert stages == {SECOND_ID: "queued", local_id: "submitted"}
+
+    clock.now += report_module.REPORT_PROGRESS_FINAL_RETENTION_SECONDS + 1
+    assert [item["localID"] for item in _get_progress(report_module)] == [SECOND_ID]
+
+
+@pytest.mark.parametrize(
+    "body",
+    [{"stage": "compressing"}, {"stage": "ticketing", "extra": 1}, {"failed": "x"}, {}],
+)
+def test_progress_update_accepts_only_the_uploader_stages(
+    report_module, machine_serial, clock, fake_sio, body
+):
+    """Without this, a client could move a report to a stage only the backend owns."""
+    _post_dispatch(report_module, _dispatch_body())
+    _assert_api_error(_post_progress(report_module, QUEUED_ID, body), 400, "INVALID_BODY")
+
+
+def test_progress_update_failure_ends_the_report_and_unknown_ids_are_404(
+    report_module, machine_serial, clock, fake_sio
+):
+    """Without this, a Dial that gives up on a report leaves both bars spinning, or
+    the report comes back as `queued` once its minute in the list is over (its row
+    is still queued) although a final stage is never left."""
+    _post_dispatch(report_module, _dispatch_body())
+    failed = {"failed": {"code": "BR-05", "message": "Sentry did not answer"}}
+    response = _post_progress(report_module, QUEUED_ID, failed).response
+    assert (response["stage"], response["final"]) == ("failed", True)
+    assert response["failure"] == failed["failed"]
+    clock.now += report_module.REPORT_PROGRESS_FINAL_RETENTION_SECONDS + 1
+    assert _get_progress(report_module) == []
+    _assert_api_error(_post_cancel(report_module, QUEUED_ID), 409, "TOO_LATE_TO_CANCEL")
+    _assert_api_error(
+        _post_progress(report_module, THIRD_ID, {"stage": "uploading"}), 404, "UNKNOWN_LOCAL_ID"
+    )
+
+
+def test_cancelling_a_queued_report_stops_the_dial_from_collecting_it(
+    report_module, machine_serial, clock, fake_sio, collector
+):
+    """Without this, a report cancelled on the phone is still collected and uploaded
+    when the Dial gets to it; a second press of Cancel is not an error."""
+    _post_dispatch(report_module, _dispatch_body())
+
+    first = _post_cancel(report_module, QUEUED_ID)
+    again = _post_cancel(report_module, QUEUED_ID)
+
+    assert first.status is None and again.status is None
+    assert first.response["stage"] == again.response["stage"] == "cancelled"
+    assert _report_row(QUEUED_ID).status == report_module.REPORT_STATUS_CANCELLED == "cancelled"
+    _assert_api_error(
+        _post_create(report_module, {"localID": QUEUED_ID}), 409, "REPORT_CANCELLED"
+    )
+    _assert_api_error(
+        _post_progress(report_module, QUEUED_ID, {"stage": "ticketing"}),
+        409,
+        "REPORT_CANCELLED",
+    )
+    assert collector.calls == []
+
+
+def test_cancelling_during_collection_answers_the_dial_and_leaves_nothing(
+    report_module, machine_serial, clock, fake_sio, monkeypatch
+):
+    """Without this, the Dial waiting on create gets no answer after a cancel from the
+    phone (it only expects silence when it hung up itself) and retries the report."""
+    _post_dispatch(report_module, _dispatch_body())
+
+    async def collect_until_cancelled(draft_dir, *args, cancellation=None, progress=None, **kw):
+        draft_dir.mkdir(parents=True, exist_ok=True)
+        draft_dir.joinpath("partial.txt").write_text("partial", encoding="utf-8")
+        await progress("fetching_logs", None)
+        cancel = _post_cancel_in_loop(report_module, QUEUED_ID)
+        assert (await cancel).response["stage"] == "cancelled"
+        cancellation.raise_if_disconnected()
+
+    monkeypatch.setattr(report_module, "_fetch_report_files", collect_until_cancelled)
+    handler = _post_create(report_module, {"localID": QUEUED_ID})
+
+    _assert_api_error(handler, 409, "REPORT_CANCELLED")
+    assert not report_module._draft_path(QUEUED_ID).exists()
+    assert _report_row(QUEUED_ID).status == "cancelled"
+    assert _stage_trail(_progress_events(fake_sio, QUEUED_ID))[-1] == "cancelled"
+    assert report_module._collections == {}
+
+
+async def _post_cancel_in_loop(report_module, local_id):
+    handler = _ApiHandler(report_module)
+    await report_module.ReportCancelHandler.post(handler, local_id)
+    return handler
+
+
+def test_cancelling_before_the_upload_blocks_every_later_step(
+    report_module, machine_serial, clock, fake_sio, watcher
+):
+    """Without this, a report cancelled while the Dial asks for its ticket would still
+    be compressed, uploaded and marked submitted."""
+    local_id = _post_quick_report(report_module).response["localID"]
+    _post_progress(report_module, local_id, {"stage": "ticketing"})
+
+    assert _post_cancel(report_module, local_id).response["final"] is True
+    assert not report_module._draft_path(local_id).exists()
+    _assert_api_error(_get_draft(report_module, local_id), 409, "REPORT_CANCELLED")
+    _assert_api_error(_submit(report_module, local_id), 409, "REPORT_CANCELLED")
+    put = _ApiHandler(report_module, json.dumps({"ticket": 1}).encode())
+    asyncio.run(report_module.ReportDraftHandler.put(put, local_id))
+    _assert_api_error(put, 409, "REPORT_CANCELLED")
+
+
+def test_a_report_on_its_way_to_sentry_cannot_be_cancelled(
+    report_module, machine_serial, clock, fake_sio, watcher
+):
+    """Without this, the apps would promise a cancel the feedback already sent to
+    Sentry cannot honour."""
+    local_id = _post_quick_report(report_module).response["localID"]
+    _get_draft(report_module, local_id)
+
+    _assert_api_error(_post_cancel(report_module, local_id), 409, "TOO_LATE_TO_CANCEL")
+    _assert_api_error(_post_cancel(report_module, THIRD_ID), 404, "UNKNOWN_LOCAL_ID")
+    assert _report_row(local_id).status == "draft"
+
+
+def test_a_dropped_create_rewinds_mobile_reports_and_cancels_dial_ones(
+    report_module, machine_serial, clock, fake_sio, monkeypatch
+):
+    """Without this, a Dial that restarts mid-collection leaves the phone showing a
+    report as collecting forever, while the Dial will in fact retry it from `queued`."""
+    _post_dispatch(report_module, _dispatch_body())
+
+    async def hang_up(draft_dir, *args, cancellation=None, progress=None, **kwargs):
+        await progress("fetching_logs", None)
+        cancellation.cancel()
+        cancellation.raise_if_disconnected()
+
+    monkeypatch.setattr(report_module, "_fetch_report_files", hang_up)
+    mobile = _post_create(report_module, {"localID": QUEUED_ID})
+    dial = _post_quick_report(report_module)
+
+    assert mobile.writes == dial.writes == 0
+    assert _stage_trail(_progress_events(fake_sio, QUEUED_ID))[-1] == "queued"
+    (dial_events,) = [
+        [event for event in _progress_events(fake_sio, local_id)]
+        for local_id in {event["localID"] for event in _progress_events(fake_sio)}
+        if local_id != QUEUED_ID
+    ]
+    assert _stage_trail(dial_events)[-1] == "cancelled"
+
+
+def test_the_bar_never_moves_back_when_a_draft_is_fetched_again(
+    report_module, machine_serial, clock, fake_sio, watcher
+):
+    """Without this, an uploader retrying the draft download drags the bar back."""
+    local_id = _post_quick_report(report_module).response["localID"]
+    _get_draft(report_module, local_id)
+    _get_draft(report_module, local_id)
+    trail = _stage_trail(_progress_events(fake_sio, local_id))
+    assert trail[-2:] == ["compressing", "uploading"]
+    assert trail.count("compressing") == 1

@@ -46,5 +46,19 @@
   "button": [
     "time_since_last_event",
     "type"
+  ],
+  "report_progress": [
+    "cancellable",
+    "detail",
+    "failure",
+    "final",
+    "localID",
+    "origin",
+    "stage",
+    "stages",
+    "startedAt",
+    "ticket",
+    "updatedAt",
+    "v"
   ]
 }
