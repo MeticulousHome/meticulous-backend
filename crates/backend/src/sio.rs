@@ -39,10 +39,10 @@ impl Sio {
         let Some(io) = self.io.get() else { return };
         let Some(ns) = io.of("/") else { return };
         for socket in ns.sockets() {
-            if select(&socket.id.to_string()) {
-                if let Err(error) = socket.emit(event, data) {
-                    tracing::debug!("emit {event} to {} failed: {error}", socket.id);
-                }
+            if select(&socket.id.to_string())
+                && let Err(error) = socket.emit(event, data)
+            {
+                tracing::debug!("emit {event} to {} failed: {error}", socket.id);
             }
         }
     }

@@ -42,6 +42,87 @@ pub struct Paths {
     pub simple_profile: PathBuf,
     /// Where the package's read-only data lives (`/opt/meticulous-backend`).
     pub package_root: PathBuf,
+    /// The host OS files the system services read and write.
+    pub system: SystemPaths,
+}
+
+/// Fixed paths of the machine image the Python hardcodes (no environment
+/// variable), gathered so tests can point them into a temporary directory.
+#[derive(Debug, Clone)]
+pub struct SystemPaths {
+    /// `ota.BUILD_DATE_FILE`.
+    pub image_build_date: PathBuf,
+    /// `ota.REPO_INFO_FILE`.
+    pub image_summary: PathBuf,
+    /// `ota.BUILD_CHANNEL_FILE`.
+    pub image_build_channel: PathBuf,
+    /// `ota.BUILD_VERSION_FILE`.
+    pub image_build_version: PathBuf,
+    /// `ota.HAWKBIT_CONFIG_DIR`: rauc-hawkbit-updater reads `channel` there.
+    pub hawkbit_dir: PathBuf,
+    /// `SSHManager.ISSUE_PATH`: the console banner that shows the root password.
+    pub ssh_issue: PathBuf,
+    /// `api.machine.FACTORY_RESET_ROOT`.
+    pub factory_reset_root: PathBuf,
+    /// The sysfs backlight device (`brightness`, `max_brightness`).
+    pub backlight: PathBuf,
+    /// `imager.PROVISION_DIR`.
+    pub provisioning: PathBuf,
+    /// `smoke_validation.PUBLISH_COMMAND`.
+    pub smoke_publish_command: PathBuf,
+    /// Where `DBusMonitor.notify_usb_test` mounts a USB stick.
+    pub usb_test_mount: PathBuf,
+}
+
+impl SystemPaths {
+    /// The machine's paths. `METICULOUS_ISSUE_PATH` is a test hook; with the
+    /// hardware faked and no hook the banner goes next to the user data
+    /// directory, where `tests/boot/boot_harness.py` puts it (`etc-issue`),
+    /// and a factory reset wipes the user directory `CONFIG_PATH` is in
+    /// rather than the host's `/meticulous-user`.
+    fn machine(config_dir: &std::path::Path, fake_hardware: bool) -> SystemPaths {
+        let user_dir = config_dir.parent().unwrap_or(config_dir);
+        let ssh_issue = match var("METICULOUS_ISSUE_PATH") {
+            Some(path) => PathBuf::from(path),
+            None if fake_hardware => user_dir.parent().unwrap_or(user_dir).join("etc-issue"),
+            None => PathBuf::from("/etc/issue"),
+        };
+        let factory_reset_root = if fake_hardware {
+            user_dir.to_path_buf()
+        } else {
+            PathBuf::from("/meticulous-user")
+        };
+        SystemPaths {
+            image_build_date: "/opt/ROOTFS_BUILD_DATE".into(),
+            image_summary: "/opt/summary.txt".into(),
+            image_build_channel: "/opt/image-build-channel".into(),
+            image_build_version: "/opt/image-build-version".into(),
+            hawkbit_dir: "/etc/hawkbit/".into(),
+            ssh_issue,
+            factory_reset_root,
+            backlight: "/sys/class/backlight/backlight".into(),
+            provisioning: "/meticulous-user/provisioning/".into(),
+            smoke_publish_command: "/usr/local/bin/meticulous-smoke-report".into(),
+            usb_test_mount: "/tmp/test_device".into(),
+        }
+    }
+
+    #[cfg(test)]
+    pub fn under(root: &std::path::Path) -> SystemPaths {
+        SystemPaths {
+            image_build_date: root.join("opt/ROOTFS_BUILD_DATE"),
+            image_summary: root.join("opt/summary.txt"),
+            image_build_channel: root.join("opt/image-build-channel"),
+            image_build_version: root.join("opt/image-build-version"),
+            hawkbit_dir: root.join("etc/hawkbit"),
+            ssh_issue: root.join("etc/issue"),
+            factory_reset_root: root.join("meticulous-user"),
+            backlight: root.join("sys/class/backlight/backlight"),
+            provisioning: root.join("meticulous-user/provisioning"),
+            smoke_publish_command: root.join("usr/local/bin/meticulous-smoke-report"),
+            usb_test_mount: root.join("tmp/test_device"),
+        }
+    }
 }
 
 impl Paths {
@@ -116,8 +197,15 @@ impl Env {
         };
         let package_root = path("METICULOUS_PACKAGE_ROOT", "/opt/meticulous-backend");
         let history = path("HISTORY_PATH", "/meticulous-user/history");
+        let config_dir = path("CONFIG_PATH", "/meticulous-user/config");
+        let fake_hardware = truthy("METICULOUS_FAKE_HARDWARE");
         let paths = Paths {
-            config_dir: path("CONFIG_PATH", "/meticulous-user/config"),
+            system: SystemPaths::machine(&config_dir, fake_hardware),
+            // smoke_validation.DEFAULT_STATE_FILE is CONFIG_PATH/smoke-validation.json.
+            smoke_validation_state: var("SMOKE_VALIDATION_STATE_FILE")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| config_dir.join("smoke-validation.json")),
+            config_dir,
             log_dir: path("LOG_PATH", "/meticulous-user/logs"),
             debug_history: path("DEBUG_HISTORY_PATH", "/meticulous-user/history/debug"),
             history,
@@ -142,10 +230,6 @@ impl Env {
                 "DEVICE_UUID_CACHE_PATH",
                 "/meticulous-user/.device-identity/device-uuid",
             ),
-            smoke_validation_state: path(
-                "SMOKE_VALIDATION_STATE_FILE",
-                "/meticulous-user/smoke-validation.json",
-            ),
             smoke_validation_version: path(
                 "SMOKE_VALIDATION_VERSION_FILE",
                 "/opt/image-build-version",
@@ -163,7 +247,7 @@ impl Env {
         };
         let hooks = TestHooks {
             esp_uart: var("METICULOUS_ESP_UART").map(PathBuf::from),
-            fake_hardware: truthy("METICULOUS_FAKE_HARDWARE"),
+            fake_hardware,
         };
         Env {
             backend,
@@ -223,6 +307,7 @@ impl Env {
                 firmware: root.join("opt/meticulous-firmware"),
                 simple_profile: repo.join("simple_profile.json"),
                 package_root: repo,
+                system: SystemPaths::under(root),
             },
             hooks: TestHooks {
                 esp_uart: None,

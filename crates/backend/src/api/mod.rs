@@ -1,8 +1,10 @@
 //! The HTTP API (`api/*.py`): one module per Python module, assembled into
 //! tornado's route list.
 
+pub mod machine;
 pub mod notifications;
 pub mod password;
+pub mod smoke_validation;
 pub mod sounds;
 pub mod web_ui;
 
@@ -65,8 +67,10 @@ pub fn redact_ip(ip: &str) -> String {
 /// the API routes sorted by pattern, then the web UI.
 pub fn router(app: &App) -> Router {
     let mut routes: Vec<Route> = Vec::new();
+    routes.extend(machine::routes());
     routes.extend(notifications::routes());
     routes.extend(password::routes());
+    routes.extend(smoke_validation::routes());
     routes.extend(sounds::routes());
     for route in &mut routes {
         route.pattern = format!("/api/v1{}", route.pattern);
