@@ -150,19 +150,19 @@ impl ProfileManager {
         self.refresh_profile_list();
         self.ensure_manual_mode_profile(app);
         self.delete_unused_images();
-        if let Some(Value::Object(last)) = self.last_profile() {
-            if let Some(profile) = last.get("profile") {
-                let id = profile
-                    .get("id")
-                    .and_then(Value::as_str)
-                    .unwrap_or("")
-                    .to_string();
-                self.state.lock().hover = Hover {
-                    id,
-                    kind: "focus".into(),
-                    from: "backend".into(),
-                };
-            }
+        if let Some(Value::Object(last)) = self.last_profile()
+            && let Some(profile) = last.get("profile")
+        {
+            let id = profile
+                .get("id")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
+            self.state.lock().hover = Hover {
+                id,
+                kind: "focus".into(),
+                from: "backend".into(),
+            };
         }
     }
 
@@ -341,10 +341,8 @@ impl ProfileManager {
             validate_profile(app, &data)?;
         }
         let now = now_seconds();
-        if set_last_changed {
-            if let Some(map) = data.as_object_mut() {
-                map.insert("last_changed".into(), json!(now));
-            }
+        if set_last_changed && let Some(map) = data.as_object_mut() {
+            map.insert("last_changed".into(), json!(now));
         }
         let id = data
             .get("id")
@@ -411,12 +409,12 @@ impl ProfileManager {
             .map_err(|e| ProfileError::Other(e.to_string()))?;
         self.state.lock().known.remove(&pid);
         let mut order = self.config.get(keys::USER, keys::PROFILE_ORDER);
-        if let Value::Array(ids) = &mut order {
-            if let Some(index) = ids.iter().position(|v| v.as_str() == Some(pid.as_str())) {
-                ids.remove(index);
-                self.config.set(keys::USER, keys::PROFILE_ORDER, order);
-                self.config.save();
-            }
+        if let Value::Array(ids) = &mut order
+            && let Some(index) = ids.iter().position(|v| v.as_str() == Some(pid.as_str()))
+        {
+            ids.remove(index);
+            self.config.set(keys::USER, keys::PROFILE_ORDER, order);
+            self.config.save();
         }
         // PARITY: Python passes change_id as the timestamp argument here, so the
         // entry's change_id is fresh and its timestamp is the client's id.

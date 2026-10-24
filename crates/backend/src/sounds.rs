@@ -103,13 +103,12 @@ impl SoundPlayer {
             state.known_themes = Some(themes);
         }
 
-        if !self.fake_hardware {
-            if let Err(error) = Command::new("pactl")
+        if !self.fake_hardware
+            && let Err(error) = Command::new("pactl")
                 .args(["--", "set-sink-volume", "0", "40%"])
                 .status()
-            {
-                tracing::error!("failed to set audio volume: {error}");
-            }
+        {
+            tracing::error!("failed to set audio volume: {error}");
         }
 
         let theme = self.config.get(keys::SYSTEM, keys::SOUNDS_THEME);

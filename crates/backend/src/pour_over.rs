@@ -110,13 +110,14 @@ impl PourOverProfileManager {
                 .file_name()
                 .and_then(|n| n.to_str())
                 .unwrap_or_default();
-            if name.starts_with('.') && name.ends_with(".tmp") {
-                if let Err(error) = std::fs::remove_file(path) {
-                    tracing::warn!(
-                        "Could not remove stale Pour Over temporary file {name}: {}",
-                        error.kind()
-                    );
-                }
+            if name.starts_with('.')
+                && name.ends_with(".tmp")
+                && let Err(error) = std::fs::remove_file(path)
+            {
+                tracing::warn!(
+                    "Could not remove stale Pour Over temporary file {name}: {}",
+                    error.kind()
+                );
             }
         }
         let mut valid = BTreeMap::new();
@@ -243,7 +244,7 @@ impl PourOverProfileManager {
             return Err(PourOverProfileError::Limit);
         }
         let free = nix::sys::statvfs::statvfs(&self.dir)
-            .map(|s| u64::from(s.blocks_available()) * s.fragment_size())
+            .map(|s| s.blocks_available() * s.fragment_size())
             .unwrap_or(u64::MAX);
         if free < MIN_FREE_PROFILE_BYTES + serialized.len() as u64 {
             return Err(PourOverProfileError::Storage(

@@ -9,23 +9,40 @@
 use std::sync::Arc;
 
 use crate::alarms::AlarmManager;
+use crate::backlight::BacklightController;
+use crate::ble::GattServer;
 use crate::bug_report::{BugReports, ReportsConfig};
 use crate::config::{self, ConfigStore};
+use crate::dbus_monitor::DbusMonitor;
 use crate::debug_shots::ShotDebugManager;
 use crate::env::Env;
+use crate::host::Host;
+use crate::hostname::HostnameManager;
+use crate::http_client::{HttpClient, ReqwestClient};
+use crate::imager::DiscImager;
+use crate::limited_access::UnlockThrottle;
 use crate::logging::LogHooks;
 use crate::machine::Machine;
 use crate::notifications::NotificationManager;
-use crate::pending;
+use crate::os_update::OsUpdateStatus;
+use crate::ota::UpdateManager;
 use crate::pour_over::PourOverProfileManager;
 use crate::profiles::ProfileManager;
+use crate::py::{CommandRunner, PyError, SystemRunner};
 use crate::redaction::Redaction;
 use crate::sentry_reporting::Reporting;
 use crate::shot_data_sharing::{SharingTarget, ShotDataSharing};
 use crate::shots::ShotManager;
 use crate::simple_profile::SimpleProfile;
 use crate::sio::Sio;
+use crate::smoke_validation::SmokeValidationManager;
 use crate::sounds::SoundPlayer;
+use crate::ssh_manager::SshManager;
+use crate::system_services::SystemServices;
+use crate::timezone::TimezoneManager;
+use crate::usb::UsbManager;
+use crate::wifi::{AnnouncerFactory, SystemWifiHost, WifiManager};
+use crate::zeroconf::{Announcer, MdnsResponder, ZeroConfAnnouncement};
 
 pub struct App {
     pub env: Env,
@@ -43,17 +60,36 @@ pub struct App {
     pub profiles: ProfileManager,
     pub simple_profile: SimpleProfile,
     pub pour_over: PourOverProfileManager,
-    pub history: pending::History,
-    pub ssh: pending::Ssh,
-    pub smoke: pending::Smoke,
-    pub ota: pending::Ota,
-    pub usb: pending::Usb,
-    pub timezone: pending::Timezone,
+    pub history: crate::shot_database::History,
     pub shot_sharing: ShotDataSharing,
     pub reports: BugReports,
     /// The node program's reference ids, which never reset (PARITY: the
     /// Python counter lives for the process).
     pub reference_ids: parking_lot::Mutex<profile::ReferenceIds>,
+    /// The commands of the machine image (`subprocess`).
+    pub host: Arc<Host>,
+    /// `UpdateOSStatus` (`api/machine.py`).
+    pub os_update: Arc<OsUpdateStatus>,
+    /// `UpdateManager` (`ota.py`).
+    pub ota: Arc<UpdateManager>,
+    /// `DBusMonitor`.
+    pub dbus: Arc<DbusMonitor>,
+    pub system_services: Arc<SystemServices>,
+    /// `SSHManager`.
+    pub ssh: Arc<SshManager>,
+    /// `USBManager`.
+    pub usb: Arc<UsbManager>,
+    pub backlight: Arc<BacklightController>,
+    /// `DiscImager`.
+    pub imager: Arc<DiscImager>,
+    /// `limited_access.UnlockThrottle`.
+    pub unlock_throttle: Arc<UnlockThrottle>,
+    /// `SmokeValidationManager`.
+    pub smoke: Arc<SmokeValidationManager>,
+    pub hostname: Arc<HostnameManager>,
+    pub timezone: Arc<TimezoneManager>,
+    pub wifi: Arc<WifiManager>,
+    pub gatt: Arc<GattServer>,
 }
 
 impl App {
@@ -84,6 +120,10 @@ impl App {
         let machine = Machine::new(env.backend);
         let shots = ShotManager::new(env.paths.shots());
         let debug_shots = ShotDebugManager::new(env.paths.debug_history.clone());
+        let history = crate::shot_database::History::new(history::HistoryPaths::new(
+            env.paths.history.clone(),
+            env.paths.user_db_migrations.clone(),
+        ));
         let profiles = ProfileManager::new(
             env.paths.profiles.clone(),
             env.paths.images.clone(),
@@ -93,6 +133,61 @@ impl App {
         );
         let simple_profile = SimpleProfile::new(env.paths.simple_profile.clone());
         let env_paths_pour_over = env.paths.pour_over_profiles.clone();
+        let host = Arc::new(Host::default());
+        let system = &env.paths.system;
+        let os_update = Arc::new(OsUpdateStatus::new(sio.clone()));
+        let ota = Arc::new(UpdateManager::new(config.clone(), system));
+        let dbus = Arc::new(DbusMonitor::new(
+            config.clone(),
+            notifications.clone(),
+            os_update.clone(),
+            host.clone(),
+            system.usb_test_mount.clone(),
+        ));
+        let system_services =
+            Arc::new(SystemServices::new(config.clone(), env.hooks.fake_hardware));
+        let ssh = Arc::new(SshManager::new(
+            config.clone(),
+            host.clone(),
+            system_services.clone(),
+            system.ssh_issue.clone(),
+        ));
+        let usb = Arc::new(UsbManager::new(
+            config.clone(),
+            host.clone(),
+            env.hooks.fake_hardware,
+        ));
+        let backlight = Arc::new(BacklightController::new(system.backlight.clone()));
+        let imager = Arc::new(DiscImager::new(
+            notifications.clone(),
+            host.clone(),
+            system.provisioning.clone(),
+            env.hooks.fake_hardware,
+        ));
+        let smoke = Arc::new(SmokeValidationManager::new(
+            env.paths.smoke_validation_state.clone(),
+            env.paths.smoke_validation_version.clone(),
+            system.smoke_publish_command.clone(),
+            host.clone(),
+        ));
+        let runner: Arc<dyn CommandRunner> = Arc::new(SystemRunner);
+        let http: Arc<dyn HttpClient> = Arc::new(ReqwestClient::new());
+        let hostname = Arc::new(HostnameManager::new(config.clone(), runner.clone()));
+        let timezone = Arc::new(TimezoneManager::new(
+            config.clone(),
+            env.paths.timezone_json.clone(),
+            runner,
+            http.clone(),
+        ));
+        let wifi = WifiManager::new(
+            config.clone(),
+            hostname.clone(),
+            timezone.clone(),
+            Arc::new(SystemWifiHost::new(http)),
+            env.paths.redaction_key.clone(),
+            mdns_announcer(),
+        );
+        let gatt = GattServer::new(wifi.clone(), hostname.clone(), config.clone(), env.port);
         // Tests never read the developer's environment.
         let lookup = |name: &str| {
             if cfg!(test) {
@@ -119,19 +214,47 @@ impl App {
             profiles,
             simple_profile,
             pour_over: PourOverProfileManager::new(env_paths_pour_over),
-            history: pending::History,
-            ssh: pending::Ssh,
-            smoke: pending::Smoke,
-            ota: pending::Ota,
-            usb: pending::Usb,
-            timezone: pending::Timezone,
+            history,
             shot_sharing,
             reports,
             reference_ids: parking_lot::Mutex::new(profile::ReferenceIds::default()),
+            host,
+            os_update,
+            ota,
+            dbus,
+            system_services,
+            ssh,
+            usb,
+            backlight,
+            imager,
+            unlock_throttle: Arc::new(UnlockThrottle::default()),
+            smoke,
+            hostname,
+            timezone,
+            wifi,
+            gatt,
         })
     }
 
     pub fn emulated(&self) -> bool {
         self.env.emulated()
     }
+}
+
+/// `ZeroConfAnnouncement(config_function=WifiManager.getCurrentConfig)` on
+/// mDNS, built when the Wi-Fi manager initializes.
+fn mdns_announcer() -> AnnouncerFactory {
+    Arc::new(|wifi| {
+        let responder = MdnsResponder::new().map_err(|e| PyError::new("OSError", e))?;
+        let source = Box::new(move || match wifi.upgrade() {
+            Some(wifi) => wifi.get_current_config(),
+            None => Err(PyError::new("RuntimeError", "the Wi-Fi manager is gone")),
+        });
+        let announcer: Arc<dyn Announcer> = Arc::new(ZeroConfAnnouncement::new(
+            source,
+            Arc::new(responder),
+            ZeroConfAnnouncement::port_from_env(),
+        ));
+        Ok(announcer)
+    })
 }

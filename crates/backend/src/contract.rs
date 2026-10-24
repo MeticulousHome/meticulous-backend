@@ -15,7 +15,14 @@ use crate::app::App;
 use crate::config::{self, keys};
 
 /// The events the server handles (`backend.py`).
-pub const LISTENS: [&str; 6] = ["action", "calibrate", "connect", "disconnect", "notification", "profileHover"];
+pub const LISTENS: [&str; 6] = [
+    "action",
+    "calibrate",
+    "connect",
+    "disconnect",
+    "notification",
+    "profileHover",
+];
 
 /// Every event the server emits.
 pub const EMITS: [&str; 10] = [
@@ -33,16 +40,18 @@ pub const EMITS: [&str; 10] = [
 
 /// `http_routes()`: every route with its handler, module and methods.
 pub fn http_routes(app: &App) -> Value {
-    let mut routes: Vec<(String, String, String, Vec<&'static str>)> = api::contract_routes(app)
+    let mut routes: Vec<(String, String, String, Vec<String>)> = api::contract_routes(app)
         .iter()
         .map(|route| {
-            let mut methods: Vec<&str> = route
-                .contract_methods
-                .clone()
-                .unwrap_or_else(|| route.method_names().into_iter().map(|m| m.to_ascii_lowercase().leak() as &str).collect());
+            let mut methods = route.contract_methods();
             methods.sort_unstable();
             methods.dedup();
-            (route.pattern.clone(), route.handler.to_string(), route.module.to_string(), methods)
+            (
+                route.pattern.clone(),
+                route.handler.to_string(),
+                route.module.to_string(),
+                methods,
+            )
         })
         .filter(|(pattern, ..)| pattern.starts_with("/api/"))
         .collect();
@@ -50,7 +59,9 @@ pub fn http_routes(app: &App) -> Value {
     Value::Array(
         routes
             .into_iter()
-            .map(|(path, handler, module, methods)| json!({"path": path, "handler": handler, "module": module, "methods": methods}))
+            .map(|(path, handler, module, methods)| {
+                json!({"path": path, "handler": handler, "module": module, "methods": methods})
+            })
             .collect(),
     )
 }
@@ -60,7 +71,10 @@ pub fn socketio_events() -> Value {
 }
 
 fn sorted_keys(value: &Value) -> Vec<String> {
-    let set: BTreeSet<String> = value.as_object().map(|m| m.keys().cloned().collect()).unwrap_or_default();
+    let set: BTreeSet<String> = value
+        .as_object()
+        .map(|m| m.keys().cloned().collect())
+        .unwrap_or_default();
     set.into_iter().collect()
 }
 
@@ -71,7 +85,9 @@ pub fn payload_keys() -> Value {
     // live() adds the loaded profile's name and id to every status.
     status_keys.insert("loaded_profile".into());
     status_keys.insert("id".into());
-    let button = esp::ButtonEventData::from_args(&["CW"]).map(|b| b.to_sio()).unwrap_or(Value::Null);
+    let button = esp::ButtonEventData::from_args(&["CW"])
+        .map(|b| b.to_sio())
+        .unwrap_or(Value::Null);
     json!({
         "status": status_keys.into_iter().collect::<Vec<_>>(),
         "status.sensors": sorted_keys(&status["sensors"]),
@@ -89,7 +105,15 @@ pub fn settings_defaults() -> Value {
             Value::Object(map) if section == keys::USER => {
                 let mut sorted: Vec<(&String, &Value)> = map.iter().collect();
                 sorted.sort_by(|a, b| a.0.cmp(b.0));
-                contract.insert(section.clone(), Value::Object(sorted.into_iter().map(|(k, v)| (k.clone(), v.clone())).collect()));
+                contract.insert(
+                    section.clone(),
+                    Value::Object(
+                        sorted
+                            .into_iter()
+                            .map(|(k, v)| (k.clone(), v.clone()))
+                            .collect(),
+                    ),
+                );
             }
             Value::Object(_) => {
                 contract.insert(section.clone(), json!(sorted_keys(values)));
@@ -123,7 +147,10 @@ pub fn print(app: &App) {
     for (name, value) in snapshots(app) {
         all.insert(name.to_string(), value);
     }
-    println!("{}", pyfmt::dumps(&Value::Object(all), &pyfmt::DumpOpts::indented(2)));
+    println!(
+        "{}",
+        pyfmt::dumps(&Value::Object(all), &pyfmt::DumpOpts::indented(2))
+    );
 }
 
 #[cfg(test)]
@@ -136,7 +163,8 @@ mod tests {
     #[test]
     fn contracts_match_their_snapshots() {
         let (_dir, app) = crate::testing::app();
-        let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/contracts");
+        let dir =
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/contracts");
         let update = std::env::var("UPDATE_CONTRACTS").as_deref() == Ok("1");
         let mut differences = Vec::new();
         for (name, value) in snapshots(&app) {
@@ -148,7 +176,9 @@ mod tests {
             }
             let expected = std::fs::read_to_string(&path).unwrap_or_default();
             if current != expected {
-                differences.push(format!("{name} changed:\n--- snapshot\n{expected}\n+++ backend\n{current}"));
+                differences.push(format!(
+                    "{name} changed:\n--- snapshot\n{expected}\n+++ backend\n{current}"
+                ));
             }
         }
         assert!(
@@ -178,7 +208,8 @@ mod tests {
     fn every_emitted_event_is_listed() {
         let src = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src");
         let mut found = BTreeSet::new();
-        let pattern = regex::Regex::new(r#"\.emit(?:_to|_skip)?\((?:[^,()]+,\s*)?"([A-Za-z_]+)""#).expect("regex");
+        let pattern = regex::Regex::new(r#"\.emit(?:_to|_skip)?\((?:[^,()]+,\s*)?"([A-Za-z_]+)""#)
+            .expect("regex");
         let mut stack = vec![src];
         while let Some(dir) = stack.pop() {
             for entry in std::fs::read_dir(&dir).expect("src").flatten() {

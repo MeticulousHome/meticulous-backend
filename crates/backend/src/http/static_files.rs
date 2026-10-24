@@ -28,7 +28,6 @@ pub async fn serve_static(opts: &StaticOptions, req: &Request) -> Reply {
 }
 
 fn serve_blocking(opts: &StaticOptions, req: &Request) -> Reply {
-    let include_body = req.method == http::Method::GET;
     let relative = req.arg(0).unwrap_or("");
     let root = absolute(&opts.root);
     let mut path = absolute(&root.join(relative));
@@ -55,24 +54,43 @@ fn serve_blocking(opts: &StaticOptions, req: &Request) -> Reply {
     if !path.is_file() {
         return Reply::error(Kind::Plain, 403, req);
     }
-    let Ok(content) = std::fs::read(&path) else {
+    serve_file(&path, req, Reply::new(Kind::Plain), true, None)
+}
+
+/// `StaticFileHandler.get` once the path is resolved to a file: `reply`
+/// carries the handler class's default headers, and `with_etag` is false
+/// where the handler's `compute_etag` returns `None`. `content_type`
+/// replaces the type guessed from the extension.
+pub fn serve_file(
+    path: &Path,
+    req: &Request,
+    mut reply: Reply,
+    with_etag: bool,
+    content_type: Option<&str>,
+) -> Reply {
+    let include_body = req.method == http::Method::GET;
+    let Ok(content) = std::fs::read(path) else {
         return Reply::error(Kind::Plain, 404, req);
     };
-    let modified = std::fs::metadata(&path)
+    let modified = std::fs::metadata(path)
         .and_then(|m| m.modified())
         .ok()
-        .map(|t| chrono::DateTime::<chrono::Utc>::from(t));
+        .map(chrono::DateTime::<chrono::Utc>::from);
 
-    let mut reply = Reply::new(Kind::Plain);
     reply.set_header("Accept-Ranges", "bytes");
-    let etag = format!("\"{}\"", hex::encode(Sha512::digest(&content)));
-    reply.set_header("Etag", etag.clone());
+    let etag = with_etag.then(|| format!("\"{}\"", hex::encode(Sha512::digest(&content))));
+    match &etag {
+        Some(etag) => reply.set_header("Etag", etag.clone()),
+        None => reply.disable_etag(),
+    }
     if let Some(modified) = modified {
         reply.set_header("Last-Modified", http_date(modified));
     }
-    let content_type = mime_guess::from_path(&path)
-        .first_raw()
-        .unwrap_or("application/octet-stream");
+    let content_type = content_type.unwrap_or_else(|| {
+        mime_guess::from_path(path)
+            .first_raw()
+            .unwrap_or("application/octet-stream")
+    });
     reply.set_header("Content-Type", content_type);
     if req.query_arguments().iter().any(|(k, _)| k == "v") {
         let in_a_year = chrono::Utc::now() + chrono::Duration::days(365);
@@ -80,7 +98,7 @@ fn serve_blocking(opts: &StaticOptions, req: &Request) -> Reply {
         reply.set_header("Cache-Control", "max-age=31536000");
     }
 
-    if not_modified(req, &etag, modified) {
+    if not_modified(req, etag.as_deref(), modified) {
         return reply.status(304).finish(req);
     }
 
@@ -111,19 +129,23 @@ fn serve_blocking(opts: &StaticOptions, req: &Request) -> Reply {
 /// `StaticFileHandler.should_return_304`.
 fn not_modified(
     req: &Request,
-    etag: &str,
+    etag: Option<&str>,
     modified: Option<chrono::DateTime<chrono::Utc>>,
 ) -> bool {
     if let Some(tags) = req.header("If-None-Match") {
+        // check_etag_header: nothing matches a response without an Etag.
+        let Some(etag) = etag else {
+            return false;
+        };
         let strip = |t: &str| t.trim().trim_start_matches("W/").to_string();
         return tags
             .split(',')
             .any(|t| t.trim() == "*" || strip(t) == strip(etag));
     }
-    if let (Some(since), Some(modified)) = (req.header("If-Modified-Since"), modified) {
-        if let Ok(since) = chrono::DateTime::parse_from_rfc2822(since) {
-            return since.timestamp() >= modified.timestamp();
-        }
+    if let (Some(since), Some(modified)) = (req.header("If-Modified-Since"), modified)
+        && let Ok(since) = chrono::DateTime::parse_from_rfc2822(since)
+    {
+        return since.timestamp() >= modified.timestamp();
     }
     false
 }

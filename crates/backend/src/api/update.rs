@@ -36,12 +36,12 @@ async fn upload(app: Arc<App>, req: Request) -> Reply {
         return text(400, "Missing 'chip' parameter");
     };
     tracing::info!("Flash request for an {chip}");
-    let Some(chip) = crate::firmware::SupportedChip::from_name(&chip) else {
+    let Some(chip) = crate::esp_tool::FikaSupportedEsp32::from_string(&chip) else {
         return text(
             400,
             &format!(
                 "Invalid 'chip' parameter. Allowed (case-insensitive): {}",
-                crate::firmware::SupportedChip::python_names_list()
+                "['ESP32S1', 'ESP32S3']"
             ),
         );
     };
@@ -54,7 +54,7 @@ async fn upload(app: Arc<App>, req: Request) -> Reply {
     if files.is_empty() {
         return text(400, "No file uploaded.");
     }
-    let target = crate::firmware::firmware_path(&app.env.paths.firmware, chip);
+    let target = crate::esp_tool::firmware_path(&app.env.paths.firmware, chip);
     let mut reply = Reply::base();
     let mut failed = false;
     for file in files {

@@ -459,13 +459,13 @@ fn check_to_firmware(contract: &Value, report: &mut Report) {
                 "action {action}: sent by the backend, not in the contract"
             )),
             Some(spec) => {
-                if let Some(note) = spec.get("note").and_then(Value::as_str) {
-                    if note.contains("deprecated") {
-                        report.findings.push(format!(
-                            "action {action}: the backend sends it (ALLOWED_ESP_ACTIONS), the \
+                if let Some(note) = spec.get("note").and_then(Value::as_str)
+                    && note.contains("deprecated")
+                {
+                    report.findings.push(format!(
+                        "action {action}: the backend sends it (ALLOWED_ESP_ACTIONS), the \
                              contract says {note:?}"
-                        ));
-                    }
+                    ));
                 }
             }
         }

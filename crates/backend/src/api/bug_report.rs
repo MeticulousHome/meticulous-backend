@@ -462,12 +462,12 @@ async fn draft_get(app: Arc<App>, req: Request) -> Reply {
                 .with_header("Content-Disposition", disposition)
                 .with_header("Content-Length", bytes.len().to_string());
             reply.write_bytes(&bytes);
-            // The Python streams with flush(), so tornado adds no Etag.
-            if bytes.is_empty() {
-                reply
-            } else {
-                reply.flushed()
+            // The Python streams with flush(): the headers go out first, so
+            // tornado adds no Etag.
+            if !bytes.is_empty() {
+                reply.disable_etag();
             }
+            reply
         }
         Err(error) => {
             tracing::error!("Failed to read bug report draft: {error}");

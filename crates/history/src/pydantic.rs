@@ -515,7 +515,7 @@ impl AwareTime {
                 offset / 3600,
                 offset % 3600 / 60
             ));
-            if offset % 60 != 0 {
+            if !offset.is_multiple_of(60) {
                 text.push_str(&format!(":{:02}", offset % 60));
             }
         }
@@ -546,7 +546,9 @@ fn days_in_month(year: u32, month: u32) -> u32 {
     match month {
         1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
         4 | 6 | 9 | 11 => 30,
-        _ if (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 => 29,
+        _ if (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400) => {
+            29
+        }
         _ => 28,
     }
 }
@@ -685,10 +687,11 @@ pub fn validate_aware_datetime(value: &Value, loc: &[Value]) -> Outcome<AwareTim
         Value::Number(n) => from_timestamp(n.as_f64().unwrap_or(f64::NAN)),
         Value::String(text) => {
             let bytes = text.as_bytes();
-            if !bytes.is_empty() && bytes.iter().all(u8::is_ascii_digit) {
-                if let Ok(seconds) = text.parse::<f64>() {
-                    return from_timestamp(seconds);
-                }
+            if !bytes.is_empty()
+                && bytes.iter().all(u8::is_ascii_digit)
+                && let Ok(seconds) = text.parse::<f64>()
+            {
+                return from_timestamp(seconds);
             }
             if let Some(ParsedDatetime {
                 date: (year, month, day),

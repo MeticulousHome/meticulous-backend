@@ -401,13 +401,12 @@ impl LogRedactor {
         } = self;
         let key = key_source.key()?;
         record.msg = redact_record_text(rules, state, seeds, key, &record.msg, now)?;
-        if record.exc_text.as_deref().is_none_or(str::is_empty) {
-            if let Some(rendered) = record.exc_info.as_deref() {
-                // Rendered here so a formatter reuses the redacted exc_text.
-                let rendered = rendered.strip_suffix('\n').unwrap_or(rendered);
-                record.exc_text =
-                    Some(redact_record_text(rules, state, seeds, key, rendered, now)?);
-            }
+        if record.exc_text.as_deref().is_none_or(str::is_empty)
+            && let Some(rendered) = record.exc_info.as_deref()
+        {
+            // Rendered here so a formatter reuses the redacted exc_text.
+            let rendered = rendered.strip_suffix('\n').unwrap_or(rendered);
+            record.exc_text = Some(redact_record_text(rules, state, seeds, key, rendered, now)?);
         }
         if let Some(stack) = record.stack_info.as_deref().filter(|s| !s.is_empty()) {
             record.stack_info = Some(redact_record_text(rules, state, seeds, key, stack, now)?);

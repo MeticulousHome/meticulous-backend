@@ -22,7 +22,7 @@ use std::sync::{Arc, LazyLock, OnceLock};
 use std::time::Duration;
 
 use history::bug_reports::{self as rows, BugReportRow, BugReportValues, ReportFilter, SweepRow};
-use history::{HistoryDb, HistoryPaths, LocalZone};
+use history::{HistoryDb, LocalZone};
 use parking_lot::{Mutex, RwLock};
 use regex::Regex;
 use serde_json::{Map, Value, json};
@@ -313,7 +313,6 @@ pub struct TestHooks {
 pub struct BugReports {
     config: RwLock<ReportsConfig>,
     collecting: Arc<AtomicBool>,
-    db: Mutex<Option<Arc<HistoryDb>>>,
     watcher_client: OnceLock<reqwest::Client>,
     probe_client: OnceLock<reqwest::Client>,
     clock: Mutex<Option<i64>>,
@@ -326,7 +325,6 @@ impl BugReports {
         BugReports {
             config: RwLock::new(config),
             collecting: Arc::new(AtomicBool::new(false)),
-            db: Mutex::new(None),
             watcher_client: OnceLock::new(),
             probe_client: OnceLock::new(),
             clock: Mutex::new(None),
@@ -389,35 +387,12 @@ impl BugReports {
     pub fn probe_client(&self) -> Result<reqwest::Client, HttpError> {
         Self::client(&self.probe_client, false)
     }
+}
 
-    /// `_ensure_database_initialized()`: the history database, opened on
-    /// first use.
-    ///
-    /// TEMPORARY until the history store hangs off `App`: this opens the
-    /// database itself and brings it to the required revision, which
-    /// `backend.main()` (`ShotDataBase.init()`, `update_db_migrations()`)
-    /// has done before any request in the Python.
-    fn db(&self, app: &App) -> Result<Arc<HistoryDb>, Fail> {
-        let mut slot = self.db.lock();
-        if let Some(db) = slot.as_ref() {
-            return Ok(db.clone());
-        }
-        let paths = HistoryPaths::new(
-            app.env.paths.history.clone(),
-            app.env.paths.user_db_migrations.clone(),
-        );
-        let db = HistoryDb::open(paths, LocalZone::System)?;
-        db.migrate()?;
-        let db = Arc::new(db);
-        *slot = Some(db.clone());
-        Ok(db)
-    }
-
-    /// The database, for tests that seed rows the way the Python suite does.
-    #[cfg(test)]
-    pub fn database(&self, app: &App) -> Arc<HistoryDb> {
-        self.db(app).expect("history database")
-    }
+/// `_ensure_database_initialized()`: the history database `backend.main()`
+/// opened and migrated.
+fn db(app: &App) -> Result<&HistoryDb, Fail> {
+    app.history.db().map_err(Fail::Other)
 }
 
 /// Run blocking work off the event loop; a panic there is a panic here.
@@ -832,7 +807,7 @@ async fn record_machine_info(app: &Arc<App>, result: &mut FetchResult, draft_dir
     let app2 = app.clone();
     let target = path.clone();
     let written = blocking(move || -> Result<(), String> {
-        let info = crate::pending::machine_info::get_machine_info(&app2)?;
+        let info = crate::machine_info::machine_info(&app2);
         std::fs::write(&target, pyfmt::dumps(&info, &pyfmt::DumpOpts::unicode()))
             .map_err(|e| py::os_error(&e, &target))
     })
@@ -1097,17 +1072,17 @@ pub fn machine_serial(app: &App) -> Value {
 
 /// `ShotDataBase.statistics()`.
 pub fn statistics(app: &App) -> Result<Value, Fail> {
-    Ok(app.reports.db(app)?.statistics()?)
+    Ok(db(app)?.statistics()?)
 }
 
 /// `_get_report_row(local_id)`.
 pub fn get_report_row(app: &App, local_id: &str) -> Result<Option<BugReportRow>, Fail> {
-    Ok(app.reports.db(app)?.get_report_row(local_id)?)
+    Ok(db(app)?.get_report_row(local_id)?)
 }
 
 /// `_insert_report(report_info)`.
 pub fn insert_report(app: &App, report_info: &Value) -> Result<(), Fail> {
-    Ok(app.reports.db(app)?.insert_report(report_info)?)
+    Ok(db(app)?.insert_report(report_info)?)
 }
 
 /// `_insert_queued_report(dispatch, now)`.
@@ -1117,20 +1092,17 @@ pub fn insert_queued_report(
     now: i64,
 ) -> Result<BugReportRow, Fail> {
     let machine_id = machine_serial(app);
-    Ok(app
-        .reports
-        .db(app)?
-        .insert_queued_report(dispatch, now, &machine_id)?)
+    Ok(db(app)?.insert_queued_report(dispatch, now, &machine_id)?)
 }
 
 /// `_queued_report_rows()`.
 pub fn queued_report_rows(app: &App) -> Result<Vec<BugReportRow>, Fail> {
-    Ok(app.reports.db(app)?.queued_report_rows()?)
+    Ok(db(app)?.queued_report_rows()?)
 }
 
 /// `_update_report_db(local_id, values)`.
 pub fn update_report_db(app: &App, local_id: &str, values: &BugReportValues) -> Result<bool, Fail> {
-    Ok(app.reports.db(app)?.update_report(local_id, values)?)
+    Ok(db(app)?.update_report(local_id, values)?)
 }
 
 /// `_list_report_page(page, size, condition)`.
@@ -1140,11 +1112,11 @@ pub fn list_report_page(
     size: i64,
     filter: Option<&ReportFilter>,
 ) -> Result<Value, Fail> {
-    Ok(app.reports.db(app)?.list_report_page(page, size, filter)?)
+    Ok(db(app)?.list_report_page(page, size, filter)?)
 }
 
 fn sweep_rows(app: &App) -> Result<Vec<SweepRow>, Fail> {
-    Ok(app.reports.db(app)?.sweep_rows()?)
+    Ok(db(app)?.sweep_rows()?)
 }
 
 /// `_remove_report_representation(path)`.
@@ -1172,7 +1144,7 @@ pub fn delete_report(app: &App, local_id: &str) -> Result<bool, Fail> {
     let cfg = app.reports.cfg();
     remove_report_representation(&draft_path(&cfg, local_id)?)?;
     remove_report_representation(&finalized_draft_path(&cfg, local_id)?)?;
-    Ok(app.reports.db(app)?.delete_report_row(local_id)?)
+    Ok(db(app)?.delete_report_row(local_id)?)
 }
 
 /// `str(name)` of a debug file name from a patch.

@@ -20,7 +20,7 @@ use regex::Regex;
 
 pub use reply::{Kind, Reply, http_date};
 pub use request::{Request, parse_python_json};
-pub use static_files::{StaticOptions, serve_static};
+pub use static_files::{StaticOptions, serve_file, serve_static};
 
 use crate::app::App;
 
@@ -77,6 +77,9 @@ pub struct Route {
     /// The Python module the handler lives in, for the contract snapshot.
     pub module: &'static str,
     pub methods: Vec<(Method, HandlerFn)>,
+    /// The methods the Python handler class defines, when they differ from
+    /// what the route serves (see [`Route::contract_methods`]).
+    class_methods: Option<Vec<&'static str>>,
 }
 
 impl Route {
@@ -94,6 +97,7 @@ impl Route {
             handler,
             module,
             methods: Vec::new(),
+            class_methods: None,
         }
     }
 
@@ -149,6 +153,28 @@ impl Route {
 
     pub fn method_names(&self) -> Vec<&'static str> {
         self.methods.iter().map(|(m, _)| m.as_str()).collect()
+    }
+
+    /// Record the methods the Python handler class defines.
+    pub fn class_methods(mut self, methods: &[&'static str]) -> Route {
+        self.class_methods = Some(methods.to_vec());
+        self
+    }
+
+    /// The methods the handler class defines, as `extract.py` lists them:
+    /// tornado's redirect and static file handlers serve `get`.
+    pub fn contract_methods(&self) -> Vec<String> {
+        if let Some(methods) = &self.class_methods {
+            return methods.iter().map(|m| m.to_string()).collect();
+        }
+        match self.kind {
+            Kind::Redirect(_) | Kind::Static(_) => vec!["get".to_string()],
+            _ => self
+                .method_names()
+                .into_iter()
+                .map(str::to_ascii_lowercase)
+                .collect(),
+        }
     }
 }
 

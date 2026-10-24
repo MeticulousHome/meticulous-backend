@@ -110,11 +110,17 @@ pub fn compress(raw: &[u8], level: i32) -> Result<Vec<u8>> {
 /// compressed at level 10, creating the day directory. The file is written
 /// in place, as `zstd -f -o` does.
 pub fn write_shot_file(path: &Path, shot: &Value) -> Result<()> {
+    let json = pyfmt::dumps(shot, &pyfmt::DumpOpts::unicode());
+    write_compressed(path, json.as_bytes())
+}
+
+/// `mkdir -p` then `zstd -10 -f -q -o path`: how shots and debug shots are
+/// written.
+pub fn write_compressed(path: &Path, raw: &[u8]) -> Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
-    let json = pyfmt::dumps(shot, &pyfmt::DumpOpts::unicode());
-    let compressed = compress(json.as_bytes(), SHOT_COMPRESSION_LEVEL)?;
+    let compressed = compress(raw, SHOT_COMPRESSION_LEVEL)?;
     fs::write(path, compressed)?;
     Ok(())
 }

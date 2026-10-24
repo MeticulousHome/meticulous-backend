@@ -46,7 +46,7 @@ impl DebugShot {
             map.insert(keys::WIFI.into(), json!({}));
         }
         let esp_info = app.machine.esp_info().unwrap_or_default().to_sio();
-        let mut machine = crate::pending::machine_identity::identity(app);
+        let mut machine = crate::machine_info::identity(app);
         machine.insert(
             "manufacturing".into(),
             json!(app.machine.enable_manufacturing()),
@@ -297,34 +297,35 @@ impl ShotDebugManager {
         let has_profile = data
             .get("profile")
             .is_some_and(crate::config::python_truthy);
-        if !has_profile && data.get("type").and_then(Value::as_str) == Some("shot") {
-            if let Some(last) = app.profiles.last_profile() {
-                let load_time = last.get("load_time").and_then(Value::as_f64).unwrap_or(0.0);
-                let difference = (start.timestamp() as f64
-                    + f64::from(start.timestamp_subsec_micros()) / 1e6)
-                    - load_time;
-                // PARITY: Python ignores the profile whenever the times differ
-                // at all, despite the 30 seconds its message mentions.
-                if difference.abs() != 0.0 {
-                    tracing::warn!(
-                        "Profile load time ({}) and shot start time ({}) are more than 30 seconds apart. Ignoring profile",
-                        local_time(load_time).format("%Y-%m-%d %H:%M:%S%.6f"),
-                        start.format("%Y-%m-%d %H:%M:%S%.6f")
-                    );
-                } else {
-                    let profile = last.get("profile").cloned().unwrap_or(Value::Null);
-                    let name = profile
-                        .get("name")
-                        .and_then(Value::as_str)
-                        .map(str::to_string);
-                    tracing::info!(
-                        "Using last profile {} for debug shot",
-                        name.as_deref().unwrap_or("None")
-                    );
-                    data.insert("profile".into(), profile);
-                    if let Some(name) = name.filter(|n| !n.is_empty()) {
-                        data.insert("profile_name".into(), json!(name));
-                    }
+        if !has_profile
+            && data.get("type").and_then(Value::as_str) == Some("shot")
+            && let Some(last) = app.profiles.last_profile()
+        {
+            let load_time = last.get("load_time").and_then(Value::as_f64).unwrap_or(0.0);
+            let difference = (start.timestamp() as f64
+                + f64::from(start.timestamp_subsec_micros()) / 1e6)
+                - load_time;
+            // PARITY: Python ignores the profile whenever the times differ
+            // at all, despite the 30 seconds its message mentions.
+            if difference.abs() != 0.0 {
+                tracing::warn!(
+                    "Profile load time ({}) and shot start time ({}) are more than 30 seconds apart. Ignoring profile",
+                    local_time(load_time).format("%Y-%m-%d %H:%M:%S%.6f"),
+                    start.format("%Y-%m-%d %H:%M:%S%.6f")
+                );
+            } else {
+                let profile = last.get("profile").cloned().unwrap_or(Value::Null);
+                let name = profile
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
+                tracing::info!(
+                    "Using last profile {} for debug shot",
+                    name.as_deref().unwrap_or("None")
+                );
+                data.insert("profile".into(), profile);
+                if let Some(name) = name.filter(|n| !n.is_empty()) {
+                    data.insert("profile_name".into(), json!(name));
                 }
             }
         }
@@ -339,7 +340,7 @@ impl ShotDebugManager {
         let text = Self::prepare(app, &shot, start);
         tracing::info!("Writing incomplete debug shot snapshot");
         tracing::info!("Writing debug json to {}", path.display());
-        if let Err(error) = crate::pending::shot_files::write_compressed(&path, text.as_bytes()) {
+        if let Err(error) = history::files::write_compressed(&path, text.as_bytes()) {
             tracing::error!("Failed to write the debug shot snapshot: {error}");
             return None;
         }
@@ -364,9 +365,7 @@ impl ShotDebugManager {
                 tracing::info!("Writing and compressing debug file");
                 let started = std::time::Instant::now();
                 tracing::info!("Writing debug json to {}", path.display());
-                if let Err(error) =
-                    crate::pending::shot_files::write_compressed(&path, text.as_bytes())
-                {
+                if let Err(error) = history::files::write_compressed(&path, text.as_bytes()) {
                     tracing::error!("Failed to write the debug shot: {error}");
                     return;
                 }
@@ -407,13 +406,13 @@ impl ShotDebugManager {
         // debug shots yet, because nothing created the folder.
         std::fs::create_dir_all(&self.debug_dir)?;
         for entry in walk(&self.debug_dir) {
-            if entry.extension().and_then(|e| e.to_str()) == Some("zip") {
-                if let Some(name) = entry.file_name() {
-                    tracing::info!("Removing {}", name.to_string_lossy());
-                    // PARITY: Python removes the name joined to the debug
-                    // root, whatever folder the zip was found in.
-                    let _ = std::fs::remove_file(self.debug_dir.join(name));
-                }
+            if entry.extension().and_then(|e| e.to_str()) == Some("zip")
+                && let Some(name) = entry.file_name()
+            {
+                tracing::info!("Removing {}", name.to_string_lossy());
+                // PARITY: Python removes the name joined to the debug
+                // root, whatever folder the zip was found in.
+                let _ = std::fs::remove_file(self.debug_dir.join(name));
             }
         }
         let name = chrono::Local::now()

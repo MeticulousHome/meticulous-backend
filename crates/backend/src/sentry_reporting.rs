@@ -31,20 +31,25 @@ pub struct Reporting {
 }
 
 impl Reporting {
+    /// Reporting off, quietly (tools that only build the app).
+    pub fn disabled() -> Arc<Reporting> {
+        Arc::new(Reporting {
+            enabled: false,
+            paused: AtomicBool::new(false),
+            scrubber: RwLock::new(None),
+            esp: None,
+            _guard: None,
+        })
+    }
+
     /// `sentry_sdk.init(...)` when `BACKEND` is FIKA or `SENTRY` is set; a
     /// fake-hardware run never sends anything.
     pub fn init(enabled: bool) -> Arc<Reporting> {
-        let reporting = Arc::new_cyclic(|weak: &std::sync::Weak<Reporting>| {
-            if !enabled {
-                println!("Skipping Sentry initialization");
-                return Reporting {
-                    enabled: false,
-                    paused: AtomicBool::new(false),
-                    scrubber: RwLock::new(None),
-                    esp: None,
-                    _guard: None,
-                };
-            }
+        if !enabled {
+            println!("Skipping Sentry initialization");
+            return Reporting::disabled();
+        }
+        Arc::new_cyclic(|weak: &std::sync::Weak<Reporting>| {
             println!("Initializing sentry");
             let backend_weak = weak.clone();
             let guard = sentry::init((
@@ -61,8 +66,7 @@ impl Reporting {
                 esp: Some(Arc::new(esp)),
                 _guard: Some(guard),
             }
-        });
-        reporting
+        })
     }
 
     pub fn enabled(&self) -> bool {
@@ -163,13 +167,13 @@ impl Reporting {
                         scope.set_tag(key, value);
                     }
                 }
-                if let Some((name, value)) = context {
-                    if let Value::Object(o) = value {
-                        scope.set_context(
-                            name,
-                            sentry::protocol::Context::Other(o.clone().into_iter().collect()),
-                        );
-                    }
+                if let Some((name, value)) = context
+                    && let Value::Object(o) = value
+                {
+                    scope.set_context(
+                        name,
+                        sentry::protocol::Context::Other(o.clone().into_iter().collect()),
+                    );
                 }
                 if let Some(version) = firmware_version {
                     scope.set_tag("firmware-version", version);

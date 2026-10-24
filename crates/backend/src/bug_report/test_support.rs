@@ -311,8 +311,9 @@ pub fn report_row(
 /// `_all_report_rows()`: by creation time, then localID.
 pub fn all_rows(app: &crate::app::App) -> Vec<history::bug_reports::BugReportRow> {
     let ids: Vec<String> = app
-        .reports
-        .database(app)
+        .history
+        .db()
+        .unwrap()
         .with_connection(|conn| {
             let mut statement = conn.prepare(
                 "SELECT \"localID\" FROM bug_reports ORDER BY \"creationTime\", \"localID\"",

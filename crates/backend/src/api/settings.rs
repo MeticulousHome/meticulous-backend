@@ -219,11 +219,7 @@ async fn post(app: Arc<App>, req: Request) -> Reply {
         match target.as_str() {
             keys::SSH_ENABLED => {
                 let enabled = value.as_bool().unwrap_or(false);
-                let app2 = app.clone();
-                let ok = tokio::task::spawn_blocking(move || app2.ssh.set_ssh_state(enabled))
-                    .await
-                    .unwrap_or(false);
-                if !ok {
+                if !app.ssh.set_ssh_state(enabled).await {
                     // PARITY: the error and, later, the settings are both
                     // written into one 500 response.
                     reply.set_status(500);
@@ -236,7 +232,16 @@ async fn post(app: Arc<App>, req: Request) -> Reply {
             }
             keys::TIMEZONE_SYNC => {
                 if value.as_str() == Some(config::AUTOMATIC_TIMEZONE_SYNC) {
-                    match app.timezone.request_and_sync_tz(&app).await {
+                    let worker = app.clone();
+                    let synced = tokio::task::spawn_blocking(move || {
+                        worker
+                            .timezone
+                            .request_and_sync_tz()
+                            .map_err(|e| e.to_string())
+                    })
+                    .await
+                    .unwrap_or_else(|e| Err(e.to_string()));
+                    match synced {
                         Ok(Some(new_tz)) => {
                             let tz = Value::String(new_tz);
                             // PARITY: checked against the stored time_zone's
@@ -259,8 +264,7 @@ async fn post(app: Arc<App>, req: Request) -> Reply {
                 let tz = python_str(&value);
                 let app2 = app.clone();
                 if let Ok(Err(error)) =
-                    tokio::task::spawn_blocking(move || app2.timezone.update_timezone(&app2, &tz))
-                        .await
+                    tokio::task::spawn_blocking(move || app2.timezone.update_timezone(&tz)).await
                 {
                     return refuse(Refusal::Other(format!(
                         "failed to set new timezone: {error}"
@@ -280,26 +284,24 @@ async fn post(app: Arc<App>, req: Request) -> Reply {
                 }
             }
             keys::USB_MODE => {
-                let mode = python_str(&value);
-                if !config::USB_MODES.contains(&mode.as_str()) {
-                    return refuse(Refusal::Other(format!(
-                        "Failed to set the USB mode: '{mode}' is not a valid USB_MODES"
-                    )));
-                }
+                let mode = match crate::usb::parse_usb_mode(&value) {
+                    Ok(mode) => mode,
+                    Err(error) => {
+                        return refuse(Refusal::Other(format!(
+                            "Failed to set the USB mode: {error}"
+                        )));
+                    }
+                };
                 let app2 = app.clone();
-                if let Ok(Err(error)) =
-                    tokio::task::spawn_blocking(move || app2.usb.set_usb_mode(&app2, &mode)).await
-                {
-                    return refuse(Refusal::Other(format!(
-                        "Failed to set the USB mode: {error}"
-                    )));
-                }
+                let _ = tokio::task::spawn_blocking(move || {
+                    app2.usb.set_usb_mode(mode, app2.emulated())
+                })
+                .await;
             }
             keys::UPDATE_CHANNEL => {
                 let channel = python_str(&value);
                 let app2 = app.clone();
-                let _ = tokio::task::spawn_blocking(move || app2.ota.set_channel(&app2, &channel))
-                    .await;
+                let _ = tokio::task::spawn_blocking(move || app2.ota.set_channel(&channel)).await;
             }
             keys::PROFILE_ORDER => app.profiles.on_profile_order_changed(),
             keys::PROFILE_PARTIAL_RETRACTION => app.machine.set_partial_retraction(
@@ -345,7 +347,7 @@ async fn timezones(app: Arc<App>, req: Request) -> Reply {
         other => other.to_string(),
     };
     let filter = req.get_argument_or("filter", "");
-    let map = app.timezone.ui_timezones(&app);
+    let map = app.timezone.get_ui_timezones();
     let (status, body) = match region.as_str() {
         "countries" => {
             let countries: Vec<Value> = map

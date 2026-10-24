@@ -1867,7 +1867,10 @@ async fn client_disconnect_over_http_cancels_the_collection() {
         .send()
         .await;
 
-    assert!(sent.is_err(), "the collection must still be waiting on the watcher");
+    assert!(
+        sent.is_err(),
+        "the collection must still be waiting on the watcher"
+    );
     eventually(|| watcher.closed_while_hanging() == 1).await;
     eventually(|| !app.reports.collection_in_progress()).await;
     assert_eq!(draft_dir_entries(&app), 0);

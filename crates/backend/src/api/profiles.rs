@@ -20,7 +20,11 @@ pub fn routes(app: &App) -> Vec<Route> {
             "CreateProfileFromManualHandler",
         )
         .post(from_manual),
-        Route::new("/profile/load", Kind::Base, m, "LoadProfileHandler").post(load_posted),
+        // LoadProfileHandler defines get and post for both of its routes;
+        // each route serves one (the other was a 500, now a 405).
+        Route::new("/profile/load", Kind::Base, m, "LoadProfileHandler")
+            .post(load_posted)
+            .class_methods(&["get", "post"]),
         Route::new("/profile/defaults", Kind::Base, m, "ListDefaultsHandler").get(defaults),
         Route::new("/profile/image([/]*)", Kind::Base, m, "ListImagesHandler").get(list_images),
         Route::new(
@@ -38,7 +42,8 @@ pub fn routes(app: &App) -> Vec<Route> {
             m,
             "LoadProfileHandler",
         )
-        .get(load_by_id),
+        .get(load_by_id)
+        .class_methods(&["get", "post"]),
         Route::new(
             "/profile/get/([0-9a-fA-F-]+)",
             Kind::Base,
@@ -75,7 +80,7 @@ async fn blocking<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> 
 
 async fn list(app: Arc<App>, req: Request) -> Reply {
     let full = req.get_argument_or("full", "false").to_lowercase() == "true";
-    if crate::limited_access::is_limited_access(&app) {
+    if crate::limited_access::is_limited_access(&app.config) {
         return Reply::base().dumps(Value::Array(app.simple_profile.list(full)));
     }
     let profiles: Vec<Value> = app
@@ -85,10 +90,8 @@ async fn list(app: Arc<App>, req: Request) -> Reply {
         // Manual profiles are reached from the manual-mode setup flow.
         .filter(|p| p.get("manual") != Some(&Value::Bool(true)))
         .map(|mut p| {
-            if !full {
-                if let Some(map) = p.as_object_mut() {
-                    map.shift_remove("stages");
-                }
+            if !full && let Some(map) = p.as_object_mut() {
+                map.shift_remove("stages");
             }
             p
         })
@@ -282,7 +285,7 @@ async fn load_by_id(app: Arc<App>, req: Request) -> Reply {
         return busy();
     }
     let id = req.arg(0).unwrap_or("").to_string();
-    let limited = if crate::limited_access::is_limited_access(&app) {
+    let limited = if crate::limited_access::is_limited_access(&app.config) {
         app.simple_profile.get_by_id(&id)
     } else {
         None
@@ -433,7 +436,7 @@ async fn legacy(app: Arc<App>, req: Request) -> Reply {
 async fn get(app: Arc<App>, req: Request) -> Reply {
     let id = req.arg(0).unwrap_or("").to_string();
     tracing::info!("Request for profile {id}");
-    let limited = if crate::limited_access::is_limited_access(&app) {
+    let limited = if crate::limited_access::is_limited_access(&app.config) {
         app.simple_profile.get_by_id(&id)
     } else {
         None

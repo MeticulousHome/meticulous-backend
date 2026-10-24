@@ -153,10 +153,10 @@ pub fn install(app: &Arc<App>) {
         {
             event["message"] = serde_json::Value::String(redaction.redact_text(&message));
         }
-        if let Some(logentry) = event.get_mut("logentry").and_then(|l| l.get_mut("message")) {
-            if let Some(text) = logentry.as_str().map(str::to_string) {
-                *logentry = serde_json::Value::String(redaction.redact_text(&text));
-            }
+        if let Some(logentry) = event.get_mut("logentry").and_then(|l| l.get_mut("message"))
+            && let Some(text) = logentry.as_str().map(str::to_string)
+        {
+            *logentry = serde_json::Value::String(redaction.redact_text(&text));
         }
         redactor::sanitize_sentry_event(&event)
     });

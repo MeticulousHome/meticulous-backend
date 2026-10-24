@@ -26,7 +26,7 @@ pub struct Reply {
     status: u16,
     headers: Vec<(String, String)>,
     body: Vec<u8>,
-    /// tornado computes an `Etag` only for a response never flushed.
+    /// False when the handler's `compute_etag` returns `None`.
     auto_etag: bool,
 }
 
@@ -142,13 +142,6 @@ impl Reply {
         self.body.extend_from_slice(bytes);
     }
 
-    /// The handler streamed the body with `flush()`: the headers went out
-    /// first, so no automatic `Etag` (and no `304`).
-    pub fn flushed(mut self) -> Reply {
-        self.auto_etag = false;
-        self
-    }
-
     /// Builder form of [`Reply::write_json`].
     pub fn json(mut self, value: Value) -> Reply {
         self.write_json(&value);
@@ -168,12 +161,17 @@ impl Reply {
             .json(serde_json::json!({"error": error, "details": details}))
     }
 
+    /// No automatic `Etag` (a `compute_etag` that returns `None`).
+    pub fn disable_etag(&mut self) {
+        self.auto_etag = false;
+    }
+
     /// `RequestHandler.finish()`: the automatic `Etag`/`304`, no
     /// representation headers on bodiless statuses, `Content-Length`.
     pub fn finish(mut self, req: &Request) -> Reply {
         let method = req.method.as_str();
-        if self.auto_etag
-            && self.status == 200
+        if self.status == 200
+            && self.auto_etag
             && (method == "GET" || method == "HEAD")
             && self.header("Etag").is_none()
         {
@@ -267,13 +265,13 @@ fn regex_lite_etags(header: &str) -> Vec<String> {
         if header[j..].starts_with("W/\"") {
             j += 2;
         }
-        if bytes.get(j) == Some(&b'"') {
-            if let Some(end) = header[j + 1..].find('"') {
-                let close = j + 1 + end;
-                tags.push(header[start..=close].to_string());
-                i = close + 1;
-                continue;
-            }
+        if bytes.get(j) == Some(&b'"')
+            && let Some(end) = header[j + 1..].find('"')
+        {
+            let close = j + 1 + end;
+            tags.push(header[start..=close].to_string());
+            i = close + 1;
+            continue;
         }
         i += 1;
     }

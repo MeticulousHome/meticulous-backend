@@ -423,11 +423,11 @@ impl Rules {
                     }
                 }
             }
-            if let Some((indent_len, inline)) = match_known_wifis(yaml) {
-                if matches!(inline, "" | "|" | ">") {
-                    state.known_wifis_indent = Some(indent_len);
-                    state.ssid_key_indent = None;
-                }
+            if let Some((indent_len, inline)) = match_known_wifis(yaml)
+                && matches!(inline, "" | "|" | ">")
+            {
+                state.known_wifis_indent = Some(indent_len);
+                state.ssid_key_indent = None;
             }
             if let Some(rewritten) = rewritten {
                 out.push_str(&rewritten);
@@ -497,10 +497,10 @@ fn contains_ignorecase_ssid(s: &str) -> bool {
 fn check_cancelled(
     cancelled: &mut Option<&mut dyn FnMut() -> bool>,
 ) -> Result<(), RedactionCancelled> {
-    if let Some(predicate) = cancelled.as_mut() {
-        if predicate() {
-            return Err(RedactionCancelled);
-        }
+    if let Some(predicate) = cancelled.as_mut()
+        && predicate()
+    {
+        return Err(RedactionCancelled);
     }
     Ok(())
 }

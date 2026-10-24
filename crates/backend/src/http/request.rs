@@ -112,6 +112,20 @@ impl Request {
             .map(|(_, v)| v.trim().to_string())
     }
 
+    /// `get_query_argument(name)`: the last value from the query only.
+    pub fn get_query_argument(&self, name: &str) -> Option<String> {
+        self.get_query_arguments(name).pop()
+    }
+
+    /// `get_query_arguments(name)`.
+    pub fn get_query_arguments(&self, name: &str) -> Vec<String> {
+        self.query_arguments()
+            .into_iter()
+            .filter(|(k, _)| k == name)
+            .map(|(_, v)| v.trim().to_string())
+            .collect()
+    }
+
     pub fn get_argument_or(&self, name: &str, default: &str) -> String {
         self.get_argument(name)
             .unwrap_or_else(|| default.to_string())
