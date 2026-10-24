@@ -28,8 +28,12 @@ pub struct Paths {
     pub profiles: PathBuf,
     pub pour_over_profiles: PathBuf,
     pub images: PathBuf,
+    /// The package's default profile images; their `accent_colors.json` is
+    /// also built in (`bundled`).
     pub default_images: PathBuf,
     pub user_sounds: PathBuf,
+    /// The package's sound themes; the default theme's `config.json` is also
+    /// built in (`bundled`).
     pub system_sounds: PathBuf,
     pub reports: PathBuf,
     pub user_db_migrations: PathBuf,
@@ -37,8 +41,11 @@ pub struct Paths {
     pub smoke_validation_state: PathBuf,
     pub smoke_validation_version: PathBuf,
     pub redaction_key: PathBuf,
+    /// The Dial's timezone table, generated here on first use from the
+    /// image's tzdata (the package's `UI_timezones.json` is not read).
     pub timezone_json: PathBuf,
     pub firmware: PathBuf,
+    /// Also built in (`bundled`): used when there is no file here.
     pub simple_profile: PathBuf,
     /// Where the package's read-only data lives (`/opt/meticulous-backend`).
     pub package_root: PathBuf,

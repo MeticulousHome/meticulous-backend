@@ -46,7 +46,24 @@ const PLAYER: [&str; 3] = ["gst-play-1.0", "--no-interactive", "--quiet"];
 /// `KNOWN_THEMES`: theme name to folder, in the order of the Python dict
 /// (user themes first, then system themes; a system theme with a user
 /// theme's name takes its folder and keeps its place).
-type Themes = Vec<(String, PathBuf)>;
+type Themes = Vec<(String, Theme)>;
+
+#[derive(Debug, Clone)]
+struct Theme {
+    folder: PathBuf,
+    /// The system default theme without its `config.json`: the theme's
+    /// config is the one built into the binary.
+    built_in: bool,
+}
+
+impl Theme {
+    fn on_disk(folder: PathBuf) -> Theme {
+        Theme {
+            folder,
+            built_in: false,
+        }
+    }
+}
 
 #[derive(Default)]
 struct State {
@@ -111,11 +128,28 @@ impl SoundPlayer {
         }
 
         let mut themes = Themes::new();
-        for (name, folder) in scan_folder(&self.user_sounds)
+        for (name, theme) in scan_folder(&self.user_sounds)
             .into_iter()
             .chain(scan_folder(&self.system_sounds))
         {
-            insert(&mut themes, name, folder);
+            insert(&mut themes, name, theme);
+        }
+        // Deliberate change: a package without the default theme's
+        // config.json still has the theme (and serves its config), where
+        // Python has no theme at all and logs errors on every set and play.
+        // Its sounds play from the system folder if they are there.
+        if folder(&themes, DEFAULT_THEME).is_none() {
+            tracing::warn!(
+                "No sound theme '{DEFAULT_THEME}' with a config.json in {}, using the built-in config",
+                self.system_sounds.display()
+            );
+            themes.push((
+                DEFAULT_THEME.to_string(),
+                Theme {
+                    folder: self.system_sounds.join(DEFAULT_THEME),
+                    built_in: true,
+                },
+            ));
         }
         {
             let mut state = self.state.lock();
@@ -276,15 +310,19 @@ impl SoundPlayer {
     }
 }
 
+fn theme<'a>(themes: &'a Themes, name: &str) -> Option<&'a Theme> {
+    themes.iter().find(|(n, _)| n == name).map(|(_, t)| t)
+}
+
 fn folder<'a>(themes: &'a Themes, name: &str) -> Option<&'a PathBuf> {
-    themes.iter().find(|(n, _)| n == name).map(|(_, f)| f)
+    theme(themes, name).map(|t| &t.folder)
 }
 
 /// `dict[name] = folder`: a known name keeps its place.
-fn insert(themes: &mut Themes, name: String, folder: PathBuf) {
+fn insert(themes: &mut Themes, name: String, theme: Theme) {
     match themes.iter_mut().find(|(n, _)| *n == name) {
-        Some(entry) => entry.1 = folder,
-        None => themes.push((name, folder)),
+        Some(entry) => entry.1 = theme,
+        None => themes.push((name, theme)),
     }
 }
 
@@ -311,7 +349,7 @@ fn walk(dir: &Path, themes: &mut Themes) {
         if has_config(path) {
             if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
                 tracing::info!("Found sound theme '{}'", path.display());
-                insert(themes, name.to_string(), path.clone());
+                insert(themes, name.to_string(), Theme::on_disk(path.clone()));
             }
         } else {
             tracing::info!("'{}' has no config.json", path.display());
@@ -332,8 +370,12 @@ fn has_config(dir: &Path) -> bool {
 }
 
 fn load_theme(themes: &Themes, name: &str) -> Option<Map<String, Value>> {
-    let folder = folder(themes, name)?;
-    let text = std::fs::read_to_string(folder.join("config.json")).ok()?;
+    let theme = theme(themes, name)?;
+    let text = if theme.built_in {
+        crate::bundled::DEFAULT_SOUND_THEME.to_string()
+    } else {
+        std::fs::read_to_string(theme.folder.join("config.json")).ok()?
+    };
     match serde_json::from_str::<Value>(&text) {
         Ok(Value::Object(map)) => Some(map),
         _ => Some(Map::new()),
