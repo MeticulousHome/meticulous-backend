@@ -529,7 +529,7 @@ fn handle_esp_info(app: &Arc<App>, info: esp::EspInfo) {
             "ESPInfo running firmware version:   {} on pinout version {} Machine_color: {} Serial_number: {} Batch_number: {} Build_date: {}",
             running
                 .as_ref()
-                .map(|v| format!("{v:?}"))
+                .map(|v| v.python_repr())
                 .unwrap_or_else(|| "None".into()),
             info.esp_pinout,
             info.color,
@@ -541,7 +541,7 @@ fn handle_esp_info(app: &Arc<App>, info: esp::EspInfo) {
             "Backend available firmware version: {}",
             available
                 .as_ref()
-                .map(|v| format!("{v:?}"))
+                .map(|v| v.python_repr())
                 .unwrap_or_else(|| "None".into())
         );
         machine.state.lock().emulated_firmware = machine.emulated;

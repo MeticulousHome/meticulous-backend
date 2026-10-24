@@ -18,7 +18,9 @@ apt-get install -y -qq --no-install-recommends /deb/*.deb >/dev/null
 # what the package installed.
 apt-get install -y -qq --no-install-recommends python3-venv >/dev/null
 python3 -m venv /tmp/harness
-/tmp/harness/bin/pip install -q "python-socketio[asyncio_client]==5.16.1"
+# python-socketio 5.16 has no asyncio_client extra: its websocket
+# transport needs aiohttp installed alongside.
+/tmp/harness/bin/pip install -q "python-socketio==5.16.1" "aiohttp==3.13.3"
 
 # The machine has a system bus and the backend connects to it.
 mkdir -p /run/dbus

@@ -11,19 +11,32 @@ use serde_json::{Number, Value};
 /// at least two digits (`1e-05`, `1e+16`), and appends `.0` to integral values
 /// in positional notation.
 pub fn repr_f64(v: f64) -> String {
+    let mut out = String::with_capacity(24);
+    write_repr_f64(&mut out, v);
+    out
+}
+
+/// [`repr_f64`] appended to `out`, without allocating: the encoders write
+/// hundreds of thousands of floats per shot listing.
+pub fn write_repr_f64(out: &mut String, v: f64) {
     if v.is_nan() {
-        return "nan".to_string();
+        out.push_str("nan");
+        return;
     }
     if v.is_infinite() {
-        return if v > 0.0 { "inf" } else { "-inf" }.to_string();
+        out.push_str(if v > 0.0 { "inf" } else { "-inf" });
+        return;
     }
     if v == 0.0 {
-        return if v.is_sign_negative() { "-0.0" } else { "0.0" }.to_string();
+        out.push_str(if v.is_sign_negative() { "-0.0" } else { "0.0" });
+        return;
     }
 
-    let (negative, digits, decpt) = shortest_digits(v);
+    let mut buffer = ryu::Buffer::new();
+    let (negative, digits, decpt) = shortest_digits(&mut buffer, v);
+    // Every byte is an ASCII digit.
+    let digits = std::str::from_utf8(digits.as_slice()).unwrap_or_default();
 
-    let mut out = String::with_capacity(digits.len() + 8);
     if negative {
         out.push('-');
     }
@@ -36,17 +49,21 @@ pub fn repr_f64(v: f64) -> String {
         let e = decpt - 1;
         out.push('e');
         out.push(if e < 0 { '-' } else { '+' });
-        out.push_str(&format!("{:02}", e.unsigned_abs()));
+        let e = e.unsigned_abs();
+        if e < 10 {
+            out.push('0');
+        }
+        push_u32(out, e);
     } else if decpt <= 0 {
         out.push_str("0.");
         for _ in 0..(-decpt) {
             out.push('0');
         }
-        out.push_str(&digits);
+        out.push_str(digits);
     } else {
         let point = decpt as usize;
         if digits.len() <= point {
-            out.push_str(&digits);
+            out.push_str(digits);
             for _ in 0..(point - digits.len()) {
                 out.push('0');
             }
@@ -57,29 +74,81 @@ pub fn repr_f64(v: f64) -> String {
             out.push_str(&digits[point..]);
         }
     }
-    out
+}
+
+fn push_u32(out: &mut String, mut n: u32) {
+    let mut buf = [0u8; 10];
+    let mut i = buf.len();
+    loop {
+        i -= 1;
+        buf[i] = b'0' + (n % 10) as u8;
+        n /= 10;
+        if n == 0 {
+            break;
+        }
+    }
+    out.push_str(std::str::from_utf8(&buf[i..]).unwrap_or_default());
+}
+
+/// Up to 17 significant digits, on the stack.
+struct Digits {
+    bytes: [u8; 24],
+    len: usize,
+}
+
+impl Digits {
+    fn as_slice(&self) -> &[u8] {
+        &self.bytes[..self.len]
+    }
 }
 
 /// The shortest round-trip digits of a finite, non-zero `v` without leading
 /// or trailing zeros, and the decimal point position: `v = ±0.<digits> × 10^decpt`.
-fn shortest_digits(v: f64) -> (bool, String, i32) {
-    let mut buffer = ryu::Buffer::new();
-    let text = buffer.format_finite(v);
-    let (negative, text) = match text.strip_prefix('-') {
-        Some(rest) => (true, rest),
-        None => (false, text),
+fn shortest_digits(buffer: &mut ryu::Buffer, v: f64) -> (bool, Digits, i32) {
+    let text = buffer.format_finite(v).as_bytes();
+    let (negative, text) = match text.split_first() {
+        Some((b'-', rest)) => (true, rest),
+        _ => (false, text),
     };
-    let (mantissa, exponent) = match text.split_once(['e', 'E']) {
-        Some((m, e)) => (m, e.parse::<i32>().unwrap_or(0)),
+    let (mantissa, exponent) = match text.iter().position(|b| *b == b'e' || *b == b'E') {
+        Some(i) => (
+            &text[..i],
+            std::str::from_utf8(&text[i + 1..])
+                .ok()
+                .and_then(|e| e.parse::<i32>().ok())
+                .unwrap_or(0),
+        ),
         None => (text, 0),
     };
-    let (int_part, frac_part) = mantissa.split_once('.').unwrap_or((mantissa, ""));
-    let all: String = format!("{int_part}{frac_part}");
-    let leading_zeros = all.len() - all.trim_start_matches('0').len();
-    let digits = all.trim_matches('0').to_string();
-    // Position of the point counted from the start of `all`, then shifted
-    // past the leading zeros that were dropped.
-    let decpt = int_part.len() as i32 + exponent - leading_zeros as i32;
+    let int_len = mantissa
+        .iter()
+        .position(|b| *b == b'.')
+        .unwrap_or(mantissa.len());
+    let mut all = Digits {
+        bytes: [0; 24],
+        len: 0,
+    };
+    for b in mantissa.iter().filter(|b| b.is_ascii_digit()) {
+        if all.len < all.bytes.len() {
+            all.bytes[all.len] = *b;
+            all.len += 1;
+        }
+    }
+    let leading_zeros = all.as_slice().iter().take_while(|b| **b == b'0').count();
+    let trailing_zeros = all.as_slice()[leading_zeros..]
+        .iter()
+        .rev()
+        .take_while(|b| **b == b'0')
+        .count();
+    let kept = &all.as_slice()[leading_zeros..all.len - trailing_zeros];
+    let mut digits = Digits {
+        bytes: [0; 24],
+        len: kept.len(),
+    };
+    digits.bytes[..kept.len()].copy_from_slice(kept);
+    // Position of the point counted from the start of the digits, then
+    // shifted past the leading zeros that were dropped.
+    let decpt = int_len as i32 + exponent - leading_zeros as i32;
     (negative, digits, decpt)
 }
 

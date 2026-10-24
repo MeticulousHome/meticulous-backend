@@ -369,7 +369,7 @@ impl Machine {
             "Backend available firmware version: {}",
             parsed
                 .as_ref()
-                .map(|v| format!("{v:?}"))
+                .map(|v| v.python_repr())
                 .unwrap_or_else(|| "None".into())
         );
         let mut state = self.state.lock();

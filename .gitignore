@@ -185,3 +185,4 @@ userdata.img
 /target
 
 # crates/history is the Rust history store, not machine data matched by "history" above.
+boot-reports/

@@ -443,12 +443,10 @@ impl HistoryDb {
                     other => other.to_string(),
                 };
                 match files::read_shot_json(&self.shot_path(&relative)) {
-                    Ok(Value::Object(contents)) => {
-                        data = contents.get("data").cloned().unwrap_or(Value::Null);
-                        push_to_brew_time = contents
-                            .get("push_to_brew_time")
-                            .cloned()
-                            .unwrap_or(Value::Null);
+                    Ok(Value::Object(mut contents)) => {
+                        data = contents.remove("data").unwrap_or(Value::Null);
+                        push_to_brew_time =
+                            contents.remove("push_to_brew_time").unwrap_or(Value::Null);
                     }
                     Ok(_) => {
                         tracing::error!(
