@@ -10,11 +10,17 @@ use std::sync::Arc;
 
 use crate::alarms::AlarmManager;
 use crate::config::{self, ConfigStore};
+use crate::debug_shots::ShotDebugManager;
 use crate::env::Env;
 use crate::logging::LogHooks;
+use crate::machine::Machine;
 use crate::notifications::NotificationManager;
+use crate::pending;
+use crate::profiles::ProfileManager;
 use crate::redaction::Redaction;
 use crate::sentry_reporting::Reporting;
+use crate::shots::ShotManager;
+use crate::simple_profile::SimpleProfile;
 use crate::sio::Sio;
 use crate::sounds::SoundPlayer;
 
@@ -28,6 +34,18 @@ pub struct App {
     pub sounds: Arc<SoundPlayer>,
     pub notifications: Arc<NotificationManager>,
     pub alarms: Arc<AlarmManager>,
+    pub machine: Machine,
+    pub shots: ShotManager,
+    pub debug_shots: ShotDebugManager,
+    pub profiles: ProfileManager,
+    pub simple_profile: SimpleProfile,
+    pub history: pending::History,
+    pub ssh: pending::Ssh,
+    pub smoke: pending::Smoke,
+    pub ota: pending::Ota,
+    pub usb: pending::Usb,
+    pub timezone: pending::Timezone,
+    pub shot_sharing: pending::ShotSharing,
 }
 
 impl App {
@@ -55,6 +73,17 @@ impl App {
             env.paths.alarms.clone(),
             notifications.clone(),
         ));
+        let machine = Machine::new(env.backend);
+        let shots = ShotManager::new(env.paths.shots());
+        let debug_shots = ShotDebugManager::new(env.paths.debug_history.clone());
+        let profiles = ProfileManager::new(
+            env.paths.profiles.clone(),
+            env.paths.images.clone(),
+            env.paths.default_images.clone(),
+            config.clone(),
+            sio.clone(),
+        );
+        let simple_profile = SimpleProfile::new(env.paths.simple_profile.clone());
         Arc::new(App {
             env,
             log,
@@ -65,6 +94,18 @@ impl App {
             sounds,
             notifications,
             alarms,
+            machine,
+            shots,
+            debug_shots,
+            profiles,
+            simple_profile,
+            history: pending::History,
+            ssh: pending::Ssh,
+            smoke: pending::Smoke,
+            ota: pending::Ota,
+            usb: pending::Usb,
+            timezone: pending::Timezone,
+            shot_sharing: pending::ShotSharing,
         })
     }
 

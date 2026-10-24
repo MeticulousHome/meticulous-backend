@@ -30,7 +30,12 @@ pub enum LinkKind {
 }
 
 /// The board's lines (Fika V3+ pin configuration): (chip, line, alias).
-const FIKA_PINS: [(u32, u32, &str); 4] = [(4, 9, "en"), (0, 7, "esp_en"), (0, 8, "io0"), (3, 26, "buffer_pin")];
+const FIKA_PINS: [(u32, u32, &str); 4] = [
+    (4, 9, "en"),
+    (0, 7, "esp_en"),
+    (0, 8, "io0"),
+    (3, 26, "buffer_pin"),
+];
 
 struct FikaPins {
     requests: Vec<(u32, gpiocdev::Request)>,
@@ -42,7 +47,11 @@ impl FikaPins {
     fn request() -> Result<FikaPins, String> {
         let mut requests = Vec::new();
         for chip in [0u32, 3, 4] {
-            let lines: Vec<u32> = FIKA_PINS.iter().filter(|(c, _, _)| *c == chip).map(|(_, l, _)| *l).collect();
+            let lines: Vec<u32> = FIKA_PINS
+                .iter()
+                .filter(|(c, _, _)| *c == chip)
+                .map(|(_, l, _)| *l)
+                .collect();
             let request = gpiocdev::Request::builder()
                 .on_chip(format!("/dev/gpiochip{chip}"))
                 .with_consumer("fika_serial_connection")
@@ -57,9 +66,15 @@ impl FikaPins {
 
     fn set(&self, alias: &str, high: bool) {
         tracing::debug!("Setting pin {alias} to {}", u8::from(high));
-        let Some((chip, line, _)) = FIKA_PINS.iter().find(|(_, _, a)| *a == alias) else { return };
+        let Some((chip, line, _)) = FIKA_PINS.iter().find(|(_, _, a)| *a == alias) else {
+            return;
+        };
         if let Some((_, request)) = self.requests.iter().find(|(c, _)| c == chip) {
-            let value = if high { gpiocdev::line::Value::Active } else { gpiocdev::line::Value::Inactive };
+            let value = if high {
+                gpiocdev::line::Value::Active
+            } else {
+                gpiocdev::line::Value::Inactive
+            };
             if let Err(error) = request.set_value(*line, value) {
                 tracing::warn!("Could not set pin {alias}: {error}");
             }
@@ -72,6 +87,8 @@ pub struct EspLink {
     pub device: String,
     port: Box<dyn SerialPort>,
     pins: Option<FikaPins>,
+    /// The emulator behind an emulated link, which a reset sends to idle.
+    pub emulator: Option<std::sync::Arc<super::emulator::EmulatorControl>>,
 }
 
 impl EspLink {
@@ -96,7 +113,13 @@ impl EspLink {
             })?;
         tracing::info!("Successfully connected to {device}");
         tracing::info!("An ESP32 is connected");
-        Ok(EspLink { kind, device, port, pins })
+        Ok(EspLink {
+            kind,
+            device,
+            port,
+            pins,
+            emulator: None,
+        })
     }
 
     /// A second handle on the same port for the reader thread.
@@ -145,6 +168,11 @@ impl EspLink {
                     let _ = self.port.write_request_to_send(false);
                 }
             }
+            (LinkKind::Emulator(_), _) => {
+                if let Some(control) = &self.emulator {
+                    control.reset();
+                }
+            }
             _ => {}
         }
     }
@@ -179,7 +207,10 @@ pub struct LineReader {
 
 impl LineReader {
     pub fn new(port: Box<dyn SerialPort>) -> LineReader {
-        LineReader { port, buf: Vec::new() }
+        LineReader {
+            port,
+            buf: Vec::new(),
+        }
     }
 
     /// One line including its `\n`, or `None` when none completed before

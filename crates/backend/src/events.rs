@@ -1,21 +1,43 @@
 //! What the server does with the Socket.IO events clients send
-//! (`@sio.on(...)` handlers in `backend.py`).
+//! (`@sio.on(...)` handlers in `backend.py`), the `status` stream, and the
+//! developer commands read from stdin.
 
+use std::io::BufRead;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use crate::app::App;
+use crate::config::keys;
+use crate::machine::ALLOWED_ESP_ACTIONS;
+use crate::notifications::Notification;
 
 /// `connect`: the new client gets the hovered profile, from the backend.
 pub fn on_connect(app: &Arc<App>, sid: &str) {
-    let _ = (app, sid);
+    app.profiles.emit_hover_to(sid);
 }
 
 /// `action`: ESP32 actions are forwarded, `abort` ends the profile, `reset`
 /// is refused from Socket.IO, anything else is dropped.
 pub fn on_action(app: &Arc<App>, data: Option<Value>) {
-    let _ = (app, data);
+    let action = match &data {
+        Some(Value::String(s)) => Some(s.as_str()),
+        _ => None,
+    };
+    match action {
+        Some(a) if ALLOWED_ESP_ACTIONS.contains(&a) => {
+            app.machine.action(app, a);
+        }
+        Some("reset") => tracing::warn!("action,reset is not allowed from socket.io"),
+        Some("abort") => app.machine.end_profile(app),
+        _ => tracing::warn!(
+            "Invalid action {}",
+            data.as_ref()
+                .map(crate::metconfig::py_repr)
+                .unwrap_or_else(|| "None".into())
+        ),
+    }
 }
 
 /// `notification`: the payload is a JSON string `{"id", "response"}`.
@@ -49,10 +71,152 @@ pub fn on_notification(app: &Arc<App>, data: Option<Value>) {
 
 /// `profileHover`: remember the hovered profile and tell the other clients.
 pub fn on_profile_hover(app: &Arc<App>, sid: &str, data: Option<Value>) {
-    let _ = (app, sid, data);
+    let data = data.unwrap_or(Value::Null);
+    tracing::info!(
+        "Hovering Profile {}",
+        pyfmt::dumps(&data, &pyfmt::DumpOpts::indented(1))
+    );
+    app.profiles.handle_hover(&data, sid);
 }
 
 /// `calibrate`: write the scale calibration command with the current weight.
 pub fn on_calibrate(app: &Arc<App>) {
-    let _ = app;
+    app.machine.calibrate();
+}
+
+/// `live()`: the machine's state ten times a second, and `action,info`
+/// every two seconds until the ESP32 answered.
+pub async fn live(app: Arc<App>) {
+    const SAMPLE_TIME: Duration = Duration::from_millis(100);
+    let mut info_asked = Instant::now();
+    tracing::info!("Starting to emit machine data");
+    loop {
+        if info_asked.elapsed() > Duration::from_secs(2) && !app.machine.info_ready() {
+            info_asked = Instant::now();
+            app.machine.action(&app, "info");
+        }
+        app.sio.emit("status", &status(&app));
+        if let Some(sensors) = app.machine.sensor_sensors() {
+            app.sio.emit("sensors", &sensors.to_sio_sensors());
+        }
+        tokio::time::sleep(SAMPLE_TIME).await;
+    }
+}
+
+/// One `status` event: the machine's data plus the loaded profile.
+pub fn status(app: &App) -> Value {
+    let mut status = match app.machine.data_sensors().to_sio() {
+        Value::Object(map) => map,
+        _ => serde_json::Map::new(),
+    };
+    // Deliberate fix: a last profile without "profile" or "name" raises in
+    // Python and ends the status stream for good.
+    let profile = app
+        .profiles
+        .last_profile()
+        .and_then(|entry| entry.get("profile").cloned());
+    match profile {
+        Some(profile) => {
+            let name = profile.get("name").cloned().unwrap_or(Value::Null);
+            // The emulator does not know the profile; the placeholder stands in.
+            if app.emulated()
+                && status.get("profile").and_then(Value::as_str)
+                    == Some(crate::machine::emulator::PROFILE_PLACEHOLDER)
+            {
+                let shown = if app.machine.profile_ready() {
+                    name.clone()
+                } else {
+                    json!("default")
+                };
+                status.insert("profile".into(), shown);
+            }
+            status.insert("loaded_profile".into(), name);
+            status.insert(
+                "id".into(),
+                profile.get("id").cloned().unwrap_or(Value::Null),
+            );
+        }
+        None => {
+            status.insert("loaded_profile".into(), Value::Null);
+            status.insert("id".into(), Value::Null);
+        }
+    }
+    Value::Object(status)
+}
+
+/// `send_data()`: developer commands typed into the backend's terminal.
+/// The service has no stdin, so it stops at once there.
+pub fn start_stdin_commands(app: Arc<App>) {
+    let _ = std::thread::Builder::new()
+        .name("SendSocketIO".into())
+        .spawn(move || {
+            let stdin = std::io::stdin();
+            let mut lines = stdin.lock().lines();
+            loop {
+                print!("> ");
+                let Some(Ok(input)) = lines.next() else {
+                    tracing::warn!("no STDIN attached, not listening to commands!");
+                    return;
+                };
+                run_command(&app, input.trim_end_matches(['\r', '\n']));
+            }
+        });
+}
+
+fn run_command(app: &Arc<App>, input: &str) {
+    let button = |name: &str| {
+        if let Some(event) = esp::ButtonEventData::from_args(&[name]) {
+            app.sio.emit("button", &event.to_sio());
+        }
+    };
+    match input {
+        "reset" => app.machine.reset(),
+        "show" => {
+            app.config
+                .set_and_save(keys::LOGGING, keys::LOGGING_SENSOR_MESSAGES, json!(true))
+        }
+        "hide" => {
+            app.config
+                .set_and_save(keys::LOGGING, keys::LOGGING_SENSOR_MESSAGES, json!(false))
+        }
+        "tare" | "stop" | "purge" | "home" | "start" => {
+            app.machine.action(app, input);
+        }
+        "test" => {
+            let previous = app.config.get(keys::LOGGING, keys::LOGGING_SENSOR_MESSAGES);
+            app.config
+                .set(keys::LOGGING, keys::LOGGING_SENSOR_MESSAGES, json!(true));
+            for i in 0..10 {
+                app.machine.write(b"action,purge\x03");
+                std::thread::sleep(Duration::from_secs(15));
+                tracing::info!("action,purge\x03");
+                app.machine.write(b"action,home\x03");
+                std::thread::sleep(Duration::from_secs(15));
+                tracing::info!("action,home\x03");
+                tracing::info!("Numero de prueba: {}", i + 1);
+            }
+            app.config
+                .set(keys::LOGGING, keys::LOGGING_SENSOR_MESSAGES, previous);
+        }
+        s if s.starts_with("calibration") => {
+            app.machine.write(format!("action,{s}\x03").as_bytes())
+        }
+        s if s.starts_with("update") => {
+            app.machine.start_update(app);
+        }
+        s if s.starts_with("notification") => {
+            app.notifications
+                .add(Notification::new(s.get(12..).unwrap_or("")));
+        }
+        "l" | "CCW" => button("CCW"),
+        "r" | "CW" => button("CW"),
+        "e" | "push" => button("push"),
+        "d" | "pu_d" => button("pu_d"),
+        "t" | "ta_d" => button("ta_d"),
+        "s" | "ta_l" => button("ta_l"),
+        "ta_sl" => button("ta_sl"),
+        "pr" => button("encoder_button_pressed"),
+        "re" => button("encoder_button_released"),
+        _ => {}
+    }
 }

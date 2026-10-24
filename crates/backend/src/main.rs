@@ -7,20 +7,28 @@ mod alarms;
 mod api;
 mod app;
 mod config;
+mod debug_shots;
 mod env;
 mod events;
 mod http;
 mod images;
 mod logging;
+mod machine;
 mod metconfig;
 mod notifications;
+mod pending;
+mod profiles;
 mod redaction;
 mod sentry_reporting;
 mod server;
+mod shots;
+mod simple_profile;
 mod sio;
 mod sounds;
 #[cfg(test)]
 mod testing;
+
+pub use pending::{device_identity, firmware, limited_access};
 
 use std::sync::Arc;
 
@@ -78,8 +86,12 @@ fn serve() -> std::process::ExitCode {
     let reporting = sentry_reporting::Reporting::init(env.sentry && !env.hooks.fake_hardware);
     runtime.block_on(async move {
         let app = app::App::new(env, log, reporting);
-        start(&app);
+        if let Err(error) = start(&app) {
+            tracing::error!("main() failed: {error}");
+            return std::process::ExitCode::from(1);
+        }
         let router = Arc::new(api::router(&app));
+        tokio::spawn(events::live(app.clone()));
         match server::serve(app, router).await {
             Ok(()) => std::process::ExitCode::SUCCESS,
             Err(error) => {
@@ -91,8 +103,12 @@ fn serve() -> std::process::ExitCode {
 }
 
 /// `backend.main()` before the server listens, in the Python's order.
-fn start(app: &Arc<app::App>) {
+fn start(app: &Arc<app::App>) -> Result<(), String> {
     redaction::install(app);
     app.alarms.init();
+    app.machine.init(app)?;
+    events::start_stdin_commands(app.clone());
+    app.profiles.init(app);
     app.sounds.init(app.emulated(), true);
+    Ok(())
 }
