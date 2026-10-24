@@ -9,6 +9,7 @@ use std::sync::Arc;
 use md5::{Digest, Md5};
 use parking_lot::Mutex;
 use serde_json::{Map, Value, json};
+use tstype::{Ts, field};
 
 use crate::alarms::{AlarmType, minutes_left};
 use crate::app::App;
@@ -33,6 +34,14 @@ pub enum ProfileEvent {
 }
 
 impl ProfileEvent {
+    pub const ALL: [ProfileEvent; 5] = [
+        ProfileEvent::Create,
+        ProfileEvent::Update,
+        ProfileEvent::Delete,
+        ProfileEvent::Reload,
+        ProfileEvent::Load,
+    ];
+
     pub fn value(self) -> &'static str {
         match self {
             ProfileEvent::Create => "create",
@@ -42,6 +51,59 @@ impl ProfileEvent {
             ProfileEvent::Load => "load",
         }
     }
+}
+
+/// The `brew_type` of the Pour Over profiles' events; espresso profiles'
+/// events have none.
+pub const POUR_OVER_BREW_TYPE: &str = "pour_over";
+
+/// The payload of the `profile` event (`_emit_profile_event`).
+pub fn profile_event_payload(
+    change: ProfileEvent,
+    profile_id: Option<&str>,
+    change_id: Option<&str>,
+    brew_type: Option<&str>,
+) -> Value {
+    let mut payload = Map::new();
+    payload.insert("change".into(), json!(change.value()));
+    if let Some(id) = profile_id {
+        payload.insert("profile_id".into(), json!(id));
+    }
+    if let Some(id) = change_id {
+        payload.insert("change_id".into(), json!(id));
+    }
+    if let Some(t) = brew_type {
+        payload.insert("brew_type".into(), json!(t));
+    }
+    Value::Object(payload)
+}
+
+/// The TypeScript type of [`profile_event_payload`].
+pub fn profile_event_type() -> Ts {
+    Ts::named(
+        "ProfilePayload",
+        "The `profile` event: a profile was created, updated, deleted or loaded, or the whole\n\
+         list changed (`full_reload`).",
+        Ts::object([
+            field(
+                "change",
+                Ts::named(
+                    "ProfileChange",
+                    "",
+                    Ts::literals(ProfileEvent::ALL.map(ProfileEvent::value)),
+                ),
+            ),
+            field("profile_id", Ts::String)
+                .optional()
+                .doc("Absent on `full_reload`."),
+            field("change_id", Ts::String)
+                .optional()
+                .doc("The change log entry: on creates, updates and Pour Over deletes."),
+            field("brew_type", Ts::literal(POUR_OVER_BREW_TYPE))
+                .optional()
+                .doc("Only on Pour Over profile events."),
+        ]),
+    )
 }
 
 /// `ProfileHover`: which profile a client has in focus.
@@ -55,6 +117,21 @@ pub struct Hover {
 impl Hover {
     pub fn to_value(&self) -> Value {
         json!({"id": self.id, "type": self.kind, "from": self.from})
+    }
+
+    /// The TypeScript type of [`Hover::to_value`], the `profileHover` event.
+    pub fn sio_type() -> Ts {
+        Ts::named(
+            "ProfileHoverPayload",
+            "The `profileHover` event: the profile a client has in focus, passed on to the other\n\
+             clients as strings (`from` is `backend` in the hover a client gets on connect). Empty\n\
+             strings for keys the client left out, and before any client sent one.",
+            Ts::object([
+                field("id", Ts::String),
+                field("type", Ts::String),
+                field("from", Ts::String),
+            ]),
+        )
     }
 
     /// `ProfileHover.from_dict`: missing keys become empty strings, other
@@ -197,18 +274,10 @@ impl ProfileManager {
         change_id: Option<&str>,
         brew_type: Option<&str>,
     ) {
-        let mut payload = Map::new();
-        payload.insert("change".into(), json!(change.value()));
-        if let Some(id) = profile_id {
-            payload.insert("profile_id".into(), json!(id));
-        }
-        if let Some(id) = change_id {
-            payload.insert("change_id".into(), json!(id));
-        }
-        if let Some(t) = brew_type {
-            payload.insert("brew_type".into(), json!(t));
-        }
-        self.sio.emit("profile", &Value::Object(payload));
+        self.sio.emit(
+            "profile",
+            &profile_event_payload(change, profile_id, change_id, brew_type),
+        );
     }
 
     fn set_last_profile(&self, profile: &Value) {

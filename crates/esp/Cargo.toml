@@ -13,6 +13,7 @@ pyfmt = { path = "../pyfmt" }
 regex = "1"
 serde_json.workspace = true
 thiserror.workspace = true
+tstype = { path = "../tstype" }
 
 [lints]
 workspace = true

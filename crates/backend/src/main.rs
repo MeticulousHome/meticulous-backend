@@ -52,6 +52,7 @@ mod shots;
 mod simple_profile;
 mod sio;
 mod smoke_validation;
+mod socketio_types;
 mod sounds;
 mod ssh_manager;
 mod system_services;
@@ -85,7 +86,12 @@ enum Command {
     MetConfig(metconfig::Args),
     /// Print the HTTP routes, Socket.IO events, payload keys and default
     /// settings as the contract snapshots record them.
-    Contract,
+    Contract {
+        /// Print the TypeScript types of the Socket.IO payloads instead
+        /// (bindings/socketio.d.ts).
+        #[arg(long)]
+        typescript: bool,
+    },
 }
 
 fn main() -> std::process::ExitCode {
@@ -97,7 +103,17 @@ fn main() -> std::process::ExitCode {
             logging::init(&level.to_uppercase());
             metconfig::run(args)
         }
-        Command::Contract => contract(),
+        Command::Contract { typescript: false } => contract(),
+        Command::Contract { typescript: true } => match socketio_types::typescript() {
+            Ok(text) => {
+                print!("{text}");
+                std::process::ExitCode::SUCCESS
+            }
+            Err(error) => {
+                eprintln!("{error}");
+                std::process::ExitCode::from(1)
+            }
+        },
     }
 }
 

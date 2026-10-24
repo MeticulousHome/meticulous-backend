@@ -1667,11 +1667,14 @@ pub fn sweep_reports(app: &App, now: Option<i64>) -> Result<SweepStats, Fail> {
 /// `_emit_upload_report(payload)`: announce a dispatched report to the dial.
 pub fn emit_upload_report(app: &App, payload: &Value) {
     #[cfg(test)]
-    app.reports
-        .hooks
-        .emitted
-        .lock()
-        .push((UPLOAD_REPORT_EVENT, payload.clone()));
+    {
+        crate::socketio_types::assert_conforms(UPLOAD_REPORT_EVENT, payload);
+        app.reports
+            .hooks
+            .emitted
+            .lock()
+            .push((UPLOAD_REPORT_EVENT, payload.clone()));
+    }
     let local_id = payload.get("localID").and_then(Value::as_str).unwrap_or("");
     if !app.sio.attached() {
         tracing::warn!("[{local_id}] no socket server, {UPLOAD_REPORT_EVENT} not sent");
