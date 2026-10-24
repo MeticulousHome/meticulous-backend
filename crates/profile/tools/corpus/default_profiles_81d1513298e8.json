@@ -1,0 +1,58 @@
+{
+  "name": "Turbo",
+  "id": "0ad0b7f2-56f3-442a-a3f2-ec2478f48a73",
+  "author": "meticulous",
+  "author_id": "d9123a0a-d3d7-40fd-a548-b81376e43f23",
+  "previous_authors": [],
+  "display": {
+    "shortDescription": "Fast extraction with courser ground coffee and long contact times",
+    "description": "Immediately ramps-up to high pressure, bypassing the traditional pre-infusion phase. This rapid increase in pressure quickly saturates the coffee puck and initiates the extraction process almost instantly.\n\nStudies have shown that this method enhances sweetness and clarity, providing a bright and bold extraction.\n\nOften preserves the acidity despite the long extraction ratio.\n\nDial in a flow rate of 2.0 to 4.0 ml/s during the extraction. Use the 'Flow Limit' Variable to prevent absolute gushers."
+  },
+  "temperature": 90,
+  "final_weight": 50,
+  "variables": [
+    {
+      "name": "Pressure",
+      "key": "pressure_1",
+      "type": "pressure",
+      "value": 6
+    },
+    {
+      "name": "Flow Limit",
+      "key": "flow_1",
+      "type": "flow",
+      "value": 4
+    }
+  ],
+  "stages": [
+    {
+      "name": "no ramp (6bar down ramp) turbo ",
+      "key": "preinfusion_1",
+      "type": "pressure",
+      "dynamics": {
+        "points": [
+          [0, "$pressure_1"],
+          [9.5, "$pressure_1"],
+          [22.7, 2]
+        ],
+        "over": "time",
+        "interpolation": "curve"
+      },
+      "exit_triggers": [
+        {
+          "type": "time",
+          "value": 30,
+          "relative": true,
+          "comparison": ">="
+        }
+      ],
+      "limits": [
+        {
+          "type": "flow",
+          "value": "$flow_1"
+        }
+      ]
+    }
+  ],
+  "last_changed": 1719933945.3173907
+}
