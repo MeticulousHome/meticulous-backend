@@ -17,10 +17,21 @@ use crate::http::{Kind, Reply, Request, Route};
 pub fn routes() -> Vec<Route> {
     let m = "api.pour_over_history";
     vec![
-        Route::new("/history/pour-over", Kind::Base, m, "PourOverHistoryHandler")
-            .get(search)
-            .post(save),
-        Route::new("/history/pour-over/last", Kind::Base, m, "LastPourOverHandler").get(last),
+        Route::new(
+            "/history/pour-over",
+            Kind::Base,
+            m,
+            "PourOverHistoryHandler",
+        )
+        .get(search)
+        .post(save),
+        Route::new(
+            "/history/pour-over/last",
+            Kind::Base,
+            m,
+            "LastPourOverHandler",
+        )
+        .get(last),
         Route::new(
             "/history/pour-over/files",
             Kind::Redirect("/api/v1/history/pour-over/files/".into()),

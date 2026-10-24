@@ -39,7 +39,10 @@ impl History {
                 return;
             }
         }
-        if let Err(error) = self.db().and_then(|db| db.migrate().map_err(|e| e.to_string())) {
+        if let Err(error) = self
+            .db()
+            .and_then(|db| db.migrate().map_err(|e| e.to_string()))
+        {
             tracing::error!("Failed to run database migrations: {error}");
         }
     }

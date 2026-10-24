@@ -10,11 +10,14 @@ use std::sync::Arc;
 
 use crate::alarms::AlarmManager;
 use crate::backlight::BacklightController;
+use crate::ble::GattServer;
 use crate::config::{self, ConfigStore};
 use crate::dbus_monitor::DbusMonitor;
 use crate::debug_shots::ShotDebugManager;
 use crate::env::Env;
 use crate::host::Host;
+use crate::hostname::HostnameManager;
+use crate::http_client::{HttpClient, ReqwestClient};
 use crate::imager::DiscImager;
 use crate::limited_access::UnlockThrottle;
 use crate::logging::LogHooks;
@@ -25,6 +28,7 @@ use crate::ota::UpdateManager;
 use crate::pending;
 use crate::pour_over::PourOverProfileManager;
 use crate::profiles::ProfileManager;
+use crate::py::{CommandRunner, PyError, SystemRunner};
 use crate::redaction::Redaction;
 use crate::sentry_reporting::Reporting;
 use crate::shots::ShotManager;
@@ -34,7 +38,10 @@ use crate::smoke_validation::SmokeValidationManager;
 use crate::sounds::SoundPlayer;
 use crate::ssh_manager::SshManager;
 use crate::system_services::SystemServices;
+use crate::timezone::TimezoneManager;
 use crate::usb::UsbManager;
+use crate::wifi::{AnnouncerFactory, SystemWifiHost, WifiManager};
+use crate::zeroconf::{Announcer, MdnsResponder, ZeroConfAnnouncement};
 
 pub struct App {
     pub env: Env,
@@ -53,7 +60,6 @@ pub struct App {
     pub simple_profile: SimpleProfile,
     pub pour_over: PourOverProfileManager,
     pub history: crate::shot_database::History,
-    pub timezone: pending::Timezone,
     pub shot_sharing: pending::ShotSharing,
     /// The node program's reference ids, which never reset (PARITY: the
     /// Python counter lives for the process).
@@ -78,6 +84,10 @@ pub struct App {
     pub unlock_throttle: Arc<UnlockThrottle>,
     /// `SmokeValidationManager`.
     pub smoke: Arc<SmokeValidationManager>,
+    pub hostname: Arc<HostnameManager>,
+    pub timezone: Arc<TimezoneManager>,
+    pub wifi: Arc<WifiManager>,
+    pub gatt: Arc<GattServer>,
 }
 
 impl App {
@@ -158,6 +168,24 @@ impl App {
             system.smoke_publish_command.clone(),
             host.clone(),
         ));
+        let runner: Arc<dyn CommandRunner> = Arc::new(SystemRunner);
+        let http: Arc<dyn HttpClient> = Arc::new(ReqwestClient::new());
+        let hostname = Arc::new(HostnameManager::new(config.clone(), runner.clone()));
+        let timezone = Arc::new(TimezoneManager::new(
+            config.clone(),
+            env.paths.timezone_json.clone(),
+            runner,
+            http.clone(),
+        ));
+        let wifi = WifiManager::new(
+            config.clone(),
+            hostname.clone(),
+            timezone.clone(),
+            Arc::new(SystemWifiHost::new(http)),
+            env.paths.redaction_key.clone(),
+            mdns_announcer(),
+        );
+        let gatt = GattServer::new(wifi.clone(), hostname.clone(), config.clone(), env.port);
         Arc::new(App {
             env,
             log,
@@ -175,7 +203,6 @@ impl App {
             simple_profile,
             pour_over: PourOverProfileManager::new(env_paths_pour_over),
             history,
-            timezone: pending::Timezone,
             shot_sharing: pending::ShotSharing,
             reference_ids: parking_lot::Mutex::new(profile::ReferenceIds::default()),
             host,
@@ -189,10 +216,32 @@ impl App {
             imager,
             unlock_throttle: Arc::new(UnlockThrottle::default()),
             smoke,
+            hostname,
+            timezone,
+            wifi,
+            gatt,
         })
     }
 
     pub fn emulated(&self) -> bool {
         self.env.emulated()
     }
+}
+
+/// `ZeroConfAnnouncement(config_function=WifiManager.getCurrentConfig)` on
+/// mDNS, built when the Wi-Fi manager initializes.
+fn mdns_announcer() -> AnnouncerFactory {
+    Arc::new(|wifi| {
+        let responder = MdnsResponder::new().map_err(|e| PyError::new("OSError", e))?;
+        let source = Box::new(move || match wifi.upgrade() {
+            Some(wifi) => wifi.get_current_config(),
+            None => Err(PyError::new("RuntimeError", "the Wi-Fi manager is gone")),
+        });
+        let announcer: Arc<dyn Announcer> = Arc::new(ZeroConfAnnouncement::new(
+            source,
+            Arc::new(responder),
+            ZeroConfAnnouncement::port_from_env(),
+        ));
+        Ok(announcer)
+    })
 }

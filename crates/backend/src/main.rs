@@ -11,6 +11,7 @@ mod alarms;
 mod api;
 mod app;
 mod backlight;
+mod ble;
 mod clock;
 mod config;
 mod contract;
@@ -21,7 +22,9 @@ mod env;
 mod esp_tool;
 mod events;
 mod host;
+mod hostname;
 mod http;
+mod http_client;
 mod imager;
 mod images;
 mod limited_access;
@@ -36,10 +39,12 @@ mod ota;
 mod pending;
 mod pour_over;
 mod profiles;
+mod py;
+mod qr;
 mod redaction;
 mod sentry_reporting;
-mod shot_database;
 mod server;
+mod shot_database;
 mod shots;
 mod simple_profile;
 mod sio;
@@ -49,7 +54,10 @@ mod ssh_manager;
 mod system_services;
 #[cfg(test)]
 mod testing;
+mod timezone;
 mod usb;
+mod wifi;
+mod zeroconf;
 
 use std::sync::Arc;
 
@@ -119,9 +127,8 @@ fn serve() -> std::process::ExitCode {
             return std::process::ExitCode::from(1);
         }
         let router = Arc::new(api::router(&app));
-        tokio::spawn(events::live(app.clone()));
-        app.imager.flash_if_required();
-        match server::serve(app, router).await {
+        let listening = app.clone();
+        match server::serve(app, router, move || after_listen(&listening)).await {
             Ok(()) => std::process::ExitCode::SUCCESS,
             Err(error) => {
                 tracing::error!("main() failed: {error}");
@@ -149,18 +156,63 @@ fn contract() -> std::process::ExitCode {
 async fn start(app: &Arc<app::App>) -> Result<(), String> {
     redaction::install(app);
     app.dbus.init().await;
-    // HostnameManager.init
+    blocking(app, |app| app.hostname.init()).await;
     app.ota.init();
     app.alarms.init();
     app.machine.init(app)?;
+    let machine = Arc::downgrade(app);
+    app.wifi.set_manufacturing_probe(Arc::new(move || {
+        machine
+            .upgrade()
+            .is_some_and(|app| app.machine.enable_manufacturing())
+    }));
     app.ssh
         .init(app.machine.enable_manufacturing(), app.emulated());
     app.system_services.init(app.emulated()).await;
     app.usb.init(app.emulated());
     app.dbus.enable_usb_test().await;
     events::start_stdin_commands(app.clone());
+    // `GATTServer.getServer().start()`; the boot harness patches out BlueZ.
+    if !app.env.hooks.fake_hardware {
+        app.gatt.start(&app.wifi);
+    }
+    if app.emulated() {
+        blocking(app, init_wifi_emulated).await;
+    }
     app.profiles.init(app);
     app.pour_over.init();
     app.sounds.init(app.emulated(), true);
+    blocking(app, |app| app.timezone.init()).await;
     Ok(())
+}
+
+/// Run a step that blocks (subprocesses, blocking HTTP) off the runtime.
+async fn blocking(app: &Arc<app::App>, step: impl FnOnce(&Arc<app::App>) + Send + 'static) {
+    let app = app.clone();
+    if let Err(error) = tokio::task::spawn_blocking(move || step(&app)).await {
+        tracing::error!("main() step panicked: {error}");
+    }
+}
+
+/// `WifiManager.init()`, run inline on the emulator. With fake hardware only
+/// the NetworkManager probe runs, so the emulation routes still replace the
+/// real ones when `nmcli` is missing, and nothing changes the host.
+fn init_wifi_emulated(app: &Arc<app::App>) {
+    if app.env.hooks.fake_hardware {
+        app.wifi.probe_networking();
+        return;
+    }
+    if let Err(error) = app.wifi.init() {
+        tracing::error!("WifiManager.init failed: {}: {}", error.kind, error.message);
+    }
+}
+
+/// `backend.main()` once the server listens.
+fn after_listen(app: &Arc<app::App>) {
+    // `start_wifi_manager_in_background()`, which the boot harness patches out.
+    if !app.emulated() && !app.env.hooks.fake_hardware {
+        app.wifi.start_in_background();
+    }
+    tokio::spawn(events::live(app.clone()));
+    app.imager.flash_if_required();
 }

@@ -365,9 +365,7 @@ impl ShotDebugManager {
                 tracing::info!("Writing and compressing debug file");
                 let started = std::time::Instant::now();
                 tracing::info!("Writing debug json to {}", path.display());
-                if let Err(error) =
-                    history::files::write_compressed(&path, text.as_bytes())
-                {
+                if let Err(error) = history::files::write_compressed(&path, text.as_bytes()) {
                     tracing::error!("Failed to write the debug shot: {error}");
                     return;
                 }

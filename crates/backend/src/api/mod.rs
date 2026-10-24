@@ -2,6 +2,7 @@
 //! tornado's route list.
 
 pub mod action;
+pub mod emulation;
 pub mod history;
 pub mod machine;
 pub mod notifications;
@@ -15,6 +16,7 @@ pub mod smoke_validation;
 pub mod sounds;
 pub mod update;
 pub mod web_ui;
+pub mod wifi;
 
 use std::net::IpAddr;
 
@@ -71,9 +73,36 @@ pub fn redact_ip(ip: &str) -> String {
         .join(&separator.to_string())
 }
 
+/// `api/wifi.py`'s routes; on the emulator without NetworkManager,
+/// `register_emulation_handlers()` replaces those with the same path.
+fn wifi_routes(app: &App) -> Vec<Route> {
+    if !(app.emulated() && !app.wifi.networking_available()) {
+        return wifi::routes();
+    }
+    let emulated = emulation::routes();
+    let mut routes: Vec<Route> = wifi::routes()
+        .into_iter()
+        .filter(|r| !emulated.iter().any(|e| e.pattern == r.pattern))
+        .collect();
+    routes.extend(emulated);
+    routes
+}
+
 /// `API.get_routes()`: every API route under `/api/v1`, sorted by pattern.
 pub fn api_routes(app: &App) -> Vec<Route> {
-    let mut routes: Vec<Route> = Vec::new();
+    with_prefix(app, wifi_routes(app))
+}
+
+/// The routes the contract snapshot records: the API, with both the real
+/// and the emulated Wi-Fi handlers (`extract.py` reads every module).
+pub fn contract_routes(app: &App) -> Vec<Route> {
+    let mut wifi = wifi::routes();
+    wifi.extend(emulation::routes());
+    with_prefix(app, wifi)
+}
+
+fn with_prefix(app: &App, wifi: Vec<Route>) -> Vec<Route> {
+    let mut routes: Vec<Route> = wifi;
     routes.extend(action::routes());
     routes.extend(history::routes());
     routes.extend(machine::routes());
@@ -94,11 +123,6 @@ pub fn api_routes(app: &App) -> Vec<Route> {
     }
     routes.sort_by(|a, b| a.pattern.cmp(&b.pattern));
     routes
-}
-
-/// The routes the contract snapshot records: the API, whatever the mode.
-pub fn contract_routes(app: &App) -> Vec<Route> {
-    api_routes(app)
 }
 
 /// `API.get_routes()` plus `WEB_UI_HANDLER`, in the order tornado tries them:

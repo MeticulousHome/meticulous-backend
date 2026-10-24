@@ -5,9 +5,9 @@ use std::sync::Arc;
 
 use serde_json::{Map, Value, json};
 
+use history::SearchParams;
 use history::files::{self, HistoryFile};
 use history::search::{SearchError as ErrorDetail, ValidationError};
-use history::SearchParams;
 
 use crate::app::App;
 use crate::config::keys;
@@ -94,11 +94,10 @@ fn internal_error() -> Reply {
 
 async fn profile_search(app: Arc<App>, req: Request) -> Reply {
     let query = req.get_argument_or("query", "");
-    match app
-        .history
-        .db()
-        .and_then(|db| db.autocomplete_profile_name(&query).map_err(|e| e.to_string()))
-    {
+    match app.history.db().and_then(|db| {
+        db.autocomplete_profile_name(&query)
+            .map_err(|e| e.to_string())
+    }) {
         Ok(profiles) => Reply::base().json(json!({"profiles": profiles})),
         Err(error) => {
             tracing::error!("Profile name search failed: {error}");
@@ -123,8 +122,10 @@ async fn upload_index(app: Arc<App>, req: Request) -> Reply {
     if let Some(refused) = super::local_only(&req) {
         return refused;
     }
-    let Some(max_results) = py_int(&req.get_query_argument("max_results").unwrap_or("200".into()))
-    else {
+    let Some(max_results) = py_int(
+        &req.get_query_argument("max_results")
+            .unwrap_or("200".into()),
+    ) else {
         return Reply::base()
             .status(400)
             .json(json!({"status": "error", "error": "max_results must be an integer"}));
@@ -543,7 +544,9 @@ mod tests {
             422
         );
         assert_eq!(
-            get(&app, "/api/v1/history?sort=sideways").await.status_code(),
+            get(&app, "/api/v1/history?sort=sideways")
+                .await
+                .status_code(),
             422
         );
     }

@@ -13,8 +13,13 @@ use socketioxide::extract::{SocketRef, TryData};
 use crate::app::App;
 use crate::http::Router;
 
-/// Bind and serve until the process ends.
-pub async fn serve(app: Arc<App>, router: Arc<Router>) -> std::io::Result<()> {
+/// Bind and serve until the process ends. `on_listening` runs once the
+/// socket is bound, like the code after `app.listen()` in `backend.main()`.
+pub async fn serve(
+    app: Arc<App>,
+    router: Arc<Router>,
+    on_listening: impl FnOnce(),
+) -> std::io::Result<()> {
     let (layer, io) = SocketIo::builder()
         // python-socketio AsyncServer(ping_interval=10, ping_timeout=60)
         .ping_interval(Duration::from_secs(10))
@@ -39,6 +44,7 @@ pub async fn serve(app: Arc<App>, router: Arc<Router>) -> std::io::Result<()> {
     let address = SocketAddr::from(([127, 0, 0, 1], app.env.port));
     let listener = tokio::net::TcpListener::bind(address).await?;
     tracing::info!("Listening on {address}");
+    on_listening();
     axum::serve(
         listener,
         service.into_make_service_with_connect_info::<SocketAddr>(),

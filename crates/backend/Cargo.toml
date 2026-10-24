@@ -19,11 +19,13 @@ chrono = "0.4.45"
 clap = { version = "4.6.7", features = ["derive"] }
 crc32fast = "1.5.3"
 espflash = { version = "4.6.0", default-features = false, features = ["serialport"] }
+flate2 = "1.1.10"
 futures = "0.3.34"
 gpiocdev = "0.8.0"
 hex = "0.4.3"
 http = "1.5.0"
 md-5 = "0.11.0"
+mdns-sd = { version = "0.21.6", default-features = false }
 mime_guess = "2.0.5"
 multer = "3.1.0"
 nix = { version = "0.31.3", features = ["term", "fs", "process", "signal", "hostname", "time", "user"] }
@@ -32,9 +34,11 @@ percent-encoding = "2.3.2"
 pyfmt = { path = "../pyfmt" }
 esp = { path = "../esp" }
 profile = { path = "../profile" }
+qrcode = { version = "0.14.1", default-features = false }
 redactor = { path = "../redactor" }
 rand = "0.10.3"
 regex = "1.13.1"
+reqwest = { version = "0.12.28", default-features = false, features = ["rustls-tls-native-roots"] }
 sentry = { version = "0.49.3", default-features = false, features = ["backtrace", "contexts", "panic", "reqwest", "rustls", "tracing"] }
 serde.workspace = true
 serde_json.workspace = true
@@ -52,7 +56,7 @@ tracing.workspace = true
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt", "registry"] }
 url = "2.5.8"
 uuid = { version = "1.29", features = ["v4"] }
-zbus = { version = "6.1.0", default-features = false, features = ["tokio"] }
+zbus = { version = "6.1.0", default-features = false, features = ["tokio", "proxy", "service", "object-manager"] }
 zip = "9.0.5"
 zstd = "0.14.3"
 tempfile = "3.27.0"

@@ -339,10 +339,9 @@ impl ShotManager {
                 tracing::info!("Writing and compressing shot file");
                 let started = std::time::Instant::now();
                 let text = pyfmt::dumps(&Value::Object(data.clone()), &pyfmt::DumpOpts::unicode());
-                if let Err(error) = history::files::write_compressed(
-                    &shots_dir.join(&file),
-                    text.as_bytes(),
-                ) {
+                if let Err(error) =
+                    history::files::write_compressed(&shots_dir.join(&file), text.as_bytes())
+                {
                     tracing::error!("Failed to write shotfile to disk: {error}");
                     return;
                 }

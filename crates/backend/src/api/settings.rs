@@ -232,7 +232,16 @@ async fn post(app: Arc<App>, req: Request) -> Reply {
             }
             keys::TIMEZONE_SYNC => {
                 if value.as_str() == Some(config::AUTOMATIC_TIMEZONE_SYNC) {
-                    match app.timezone.request_and_sync_tz(&app).await {
+                    let worker = app.clone();
+                    let synced = tokio::task::spawn_blocking(move || {
+                        worker
+                            .timezone
+                            .request_and_sync_tz()
+                            .map_err(|e| e.to_string())
+                    })
+                    .await
+                    .unwrap_or_else(|e| Err(e.to_string()));
+                    match synced {
                         Ok(Some(new_tz)) => {
                             let tz = Value::String(new_tz);
                             // PARITY: checked against the stored time_zone's
@@ -255,8 +264,7 @@ async fn post(app: Arc<App>, req: Request) -> Reply {
                 let tz = python_str(&value);
                 let app2 = app.clone();
                 if let Ok(Err(error)) =
-                    tokio::task::spawn_blocking(move || app2.timezone.update_timezone(&app2, &tz))
-                        .await
+                    tokio::task::spawn_blocking(move || app2.timezone.update_timezone(&tz)).await
                 {
                     return refuse(Refusal::Other(format!(
                         "failed to set new timezone: {error}"
@@ -339,7 +347,7 @@ async fn timezones(app: Arc<App>, req: Request) -> Reply {
         other => other.to_string(),
     };
     let filter = req.get_argument_or("filter", "");
-    let map = app.timezone.ui_timezones(&app);
+    let map = app.timezone.get_ui_timezones();
     let (status, body) = match region.as_str() {
         "countries" => {
             let countries: Vec<Value> = map

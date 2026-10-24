@@ -6,12 +6,25 @@ use serde_json::{Map, Value, json};
 use crate::app::App;
 use crate::config::keys;
 
+/// `WifiManager.getCurrentConfig().hostname`. Deliberate fix: a failed
+/// NetworkManager read made the whole machine info a 500; the hostname is
+/// null instead.
+fn current_hostname(app: &App) -> Value {
+    match app.wifi.get_current_config() {
+        Ok(config) => json!(config.hostname),
+        Err(error) => {
+            tracing::warn!("Cannot read the network configuration: {}", error.message);
+            Value::Null
+        }
+    }
+}
+
 /// The identity part both `get_machine_info()` and `ShotDebugManager` build:
 /// name, hostname and the OS image the machine runs.
 pub fn identity(app: &App) -> Map<String, Value> {
     let mut machine = Map::new();
-    machine.insert("name".into(), json!(crate::pending::network::device_name(app)));
-    machine.insert("hostname".into(), json!(crate::pending::network::hostname(app)));
+    machine.insert("name".into(), json!(app.hostname.generate_device_name()));
+    machine.insert("hostname".into(), json!(current_hostname(app)));
     insert_image(app, &mut machine);
     machine
 }
@@ -46,8 +59,8 @@ fn system_or_empty(app: &App, key: &str) -> Value {
 /// `get_machine_info()`.
 pub fn machine_info(app: &App) -> Value {
     let mut response = Map::new();
-    response.insert("name".into(), json!(crate::pending::network::device_name(app)));
-    response.insert("hostname".into(), json!(crate::pending::network::hostname(app)));
+    response.insert("name".into(), json!(app.hostname.generate_device_name()));
+    response.insert("hostname".into(), json!(current_hostname(app)));
     let esp_info = app.machine.esp_info();
     if let Some(info) = &esp_info {
         response.insert("firmware".into(), json!(info.firmware_v));

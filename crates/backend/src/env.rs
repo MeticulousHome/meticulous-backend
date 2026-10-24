@@ -107,7 +107,7 @@ impl SystemPaths {
         }
     }
 
-        pub fn under(root: &std::path::Path) -> SystemPaths {
+    pub fn under(root: &std::path::Path) -> SystemPaths {
         SystemPaths {
             image_build_date: root.join("opt/ROOTFS_BUILD_DATE"),
             image_summary: root.join("opt/summary.txt"),
