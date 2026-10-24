@@ -1662,6 +1662,34 @@ async fn list_handler_validates_pagination_and_filters() {
             "{query}"
         );
     }
+    let negative = call(
+        &app,
+        Method::GET,
+        "/api/v1/reports/list?page=-99999999999999999999&size=1",
+        "",
+    )
+    .await;
+    assert_eq!(
+        body_json(&negative)["error"],
+        "Invalid pagination params: page must be >= 0 and size must be > 0"
+    );
+    // PARITY: a page beyond 64 bits passes validation, then SQLite refuses it.
+    let huge = call(
+        &app,
+        Method::GET,
+        "/api/v1/reports/list?page=99999999999999999999&size=1",
+        "",
+    )
+    .await;
+    assert_eq!(huge.status_code(), 500);
+    let overflow = call(
+        &app,
+        Method::GET,
+        "/api/v1/reports/list?page=9223372036854775807&size=2",
+        "",
+    )
+    .await;
+    assert_eq!(overflow.status_code(), 500);
     let queued = call(
         &app,
         Method::GET,

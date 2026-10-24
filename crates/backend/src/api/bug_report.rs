@@ -131,16 +131,30 @@ fn query_argument(req: &Request, name: &str) -> Option<String> {
     query_arguments(req, name).pop()
 }
 
-/// `int(get_query_argument(name))`, with the exception message.
-fn int_argument(req: &Request, name: &str) -> Result<i64, String> {
+/// `int(get_query_argument(name))`, with the exception message. A valid
+/// literal beyond `i64` is `Err(negative)`: Python carries on with it.
+fn int_argument(req: &Request, name: &str) -> Result<Result<i64, bool>, String> {
     let value = query_argument(req, name)
         .ok_or_else(|| format!("HTTP 400: Bad Request (Missing argument {name})"))?;
-    pyfmt::py_int(&value).ok_or_else(|| {
-        format!(
-            "invalid literal for int() with base 10: {}",
-            py::repr_str(&value)
-        )
-    })
+    if let Some(number) = pyfmt::py_int(&value) {
+        return Ok(Ok(number));
+    }
+    let text = py::strip(&value);
+    let (negative, digits) = match text.strip_prefix('-') {
+        Some(rest) => (true, rest),
+        None => (false, text.strip_prefix('+').unwrap_or(text)),
+    };
+    let literal = !digits.is_empty()
+        && digits
+            .split('_')
+            .all(|group| !group.is_empty() && group.bytes().all(|b| b.is_ascii_digit()));
+    if literal {
+        return Ok(Err(negative));
+    }
+    Err(format!(
+        "invalid literal for int() with base 10: {}",
+        py::repr_str(&value)
+    ))
 }
 
 fn validated_path_id(req: &Request) -> Result<String, Reply> {
@@ -605,7 +619,8 @@ async fn list(app: Arc<App>, req: Request) -> Reply {
     let pagination = (|| {
         let page = int_argument(&req, "page")?;
         let size = int_argument(&req, "size")?;
-        if page < 0 || size <= 0 {
+        let negative = |n: &Result<i64, bool>| matches!(n, Ok(v) if *v < 0) || *n == Err(true);
+        if negative(&page) || matches!(size, Ok(0)) || negative(&size) {
             return Err("page must be >= 0 and size must be > 0".to_string());
         }
         Ok((page, size))
@@ -620,6 +635,18 @@ async fn list(app: Arc<App>, req: Request) -> Reply {
         Ok((filter, false)) => filter,
         Err(_) => return uncaught(&req),
     };
+    // Python's ints do not overflow; SQLite refuses what does not fit in
+    // 64 bits (OverflowError, a 500).
+    let (Ok(page), Ok(size)) = (page, size) else {
+        return uncaught(&req);
+    };
+    if page
+        .checked_add(1)
+        .and_then(|p| p.checked_mul(size))
+        .is_none()
+    {
+        return uncaught(&req);
+    }
     match blocking(move || reports::list_report_page(&app, page, size, filter.as_ref())).await {
         Ok(page) => Reply::base().json(page),
         Err(_) => uncaught(&req),
