@@ -3,8 +3,6 @@
 //! Each is replaced by the real module when its branch is merged; nothing
 //! here ships.
 
-use std::path::Path;
-
 use serde_json::{Value, json};
 
 use crate::app::App;
@@ -48,22 +46,6 @@ impl Timezone {
     pub fn ui_timezones(&self, _app: &App) -> Value {
         json!({})
     }
-}
-
-pub struct ShotSharing;
-impl ShotSharing {
-    pub fn should_upload(&self, _app: &App, _shot_type: &str) -> bool {
-        false
-    }
-    pub fn upload_debug_shot(
-        &self,
-        _app: &App,
-        _text: &str,
-        _start: chrono::DateTime<chrono::Local>,
-        _path: &Path,
-    ) {
-    }
-    pub fn on_setting_changed(&self, _app: &App, _value: &Value) {}
 }
 
 pub struct History;
@@ -158,6 +140,24 @@ pub mod limited_access {
 
     pub fn is_limited_access(_app: &App) -> bool {
         false
+    }
+}
+
+pub mod machine_info {
+    use serde_json::Value;
+
+    use crate::app::App;
+    use crate::config::keys;
+
+    /// `api.machine.get_machine_info()`, which bug reports bundle, until
+    /// `api/machine.py` is ported.
+    pub fn get_machine_info(app: &App) -> Result<Value, String> {
+        let mut info = super::machine_identity::identity(app);
+        info.insert(
+            "serial".into(),
+            app.config.get(keys::SYSTEM, keys::MACHINE_SERIAL_NUMBER),
+        );
+        Ok(Value::Object(info))
     }
 }
 

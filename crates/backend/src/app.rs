@@ -9,6 +9,7 @@
 use std::sync::Arc;
 
 use crate::alarms::AlarmManager;
+use crate::bug_report::{BugReports, ReportsConfig};
 use crate::config::{self, ConfigStore};
 use crate::debug_shots::ShotDebugManager;
 use crate::env::Env;
@@ -20,6 +21,7 @@ use crate::pour_over::PourOverProfileManager;
 use crate::profiles::ProfileManager;
 use crate::redaction::Redaction;
 use crate::sentry_reporting::Reporting;
+use crate::shot_data_sharing::{SharingTarget, ShotDataSharing};
 use crate::shots::ShotManager;
 use crate::simple_profile::SimpleProfile;
 use crate::sio::Sio;
@@ -47,7 +49,8 @@ pub struct App {
     pub ota: pending::Ota,
     pub usb: pending::Usb,
     pub timezone: pending::Timezone,
-    pub shot_sharing: pending::ShotSharing,
+    pub shot_sharing: ShotDataSharing,
+    pub reports: BugReports,
     /// The node program's reference ids, which never reset (PARITY: the
     /// Python counter lives for the process).
     pub reference_ids: parking_lot::Mutex<profile::ReferenceIds>,
@@ -90,6 +93,16 @@ impl App {
         );
         let simple_profile = SimpleProfile::new(env.paths.simple_profile.clone());
         let env_paths_pour_over = env.paths.pour_over_profiles.clone();
+        // Tests never read the developer's environment.
+        let lookup = |name: &str| {
+            if cfg!(test) {
+                None
+            } else {
+                std::env::var(name).ok()
+            }
+        };
+        let reports = BugReports::new(ReportsConfig::from_lookup(&env.paths, lookup));
+        let shot_sharing = ShotDataSharing::new(SharingTarget::from_lookup(lookup));
         Arc::new(App {
             env,
             log,
@@ -112,7 +125,8 @@ impl App {
             ota: pending::Ota,
             usb: pending::Usb,
             timezone: pending::Timezone,
-            shot_sharing: pending::ShotSharing,
+            shot_sharing,
+            reports,
             reference_ids: parking_lot::Mutex::new(profile::ReferenceIds::default()),
         })
     }

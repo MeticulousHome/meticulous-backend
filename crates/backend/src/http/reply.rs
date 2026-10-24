@@ -26,6 +26,8 @@ pub struct Reply {
     status: u16,
     headers: Vec<(String, String)>,
     body: Vec<u8>,
+    /// tornado computes an `Etag` only for a response never flushed.
+    auto_etag: bool,
 }
 
 impl Reply {
@@ -40,6 +42,7 @@ impl Reply {
                 ("Date".into(), http_date(chrono::Utc::now())),
             ],
             body: Vec::new(),
+            auto_etag: true,
         };
         if kind == Kind::Base {
             reply.base_handler_headers();
@@ -139,6 +142,13 @@ impl Reply {
         self.body.extend_from_slice(bytes);
     }
 
+    /// The handler streamed the body with `flush()`: the headers went out
+    /// first, so no automatic `Etag` (and no `304`).
+    pub fn flushed(mut self) -> Reply {
+        self.auto_etag = false;
+        self
+    }
+
     /// Builder form of [`Reply::write_json`].
     pub fn json(mut self, value: Value) -> Reply {
         self.write_json(&value);
@@ -162,7 +172,8 @@ impl Reply {
     /// representation headers on bodiless statuses, `Content-Length`.
     pub fn finish(mut self, req: &Request) -> Reply {
         let method = req.method.as_str();
-        if self.status == 200
+        if self.auto_etag
+            && self.status == 200
             && (method == "GET" || method == "HEAD")
             && self.header("Etag").is_none()
         {

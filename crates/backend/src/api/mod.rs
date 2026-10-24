@@ -2,6 +2,8 @@
 //! tornado's route list.
 
 pub mod action;
+pub mod bug_report;
+pub mod community_upload_diagnostics;
 pub mod notifications;
 pub mod password;
 pub mod pour_over_profiles;
@@ -72,6 +74,7 @@ pub fn redact_ip(ip: &str) -> String {
 pub fn router(app: &App) -> Router {
     let mut routes: Vec<Route> = Vec::new();
     routes.extend(action::routes());
+    routes.extend(bug_report::routes());
     routes.extend(notifications::routes());
     routes.extend(serial::routes());
     routes.extend(settings::routes());

@@ -20,6 +20,11 @@ impl Sio {
         let _ = self.io.set(io);
     }
 
+    /// Whether the server is running (emits before that go nowhere).
+    pub fn attached(&self) -> bool {
+        self.io.get().is_some()
+    }
+
     /// `sio.emit(event, data)` to every client.
     pub fn emit(&self, event: &str, data: &Value) {
         self.emit_where(event, data, |_| true);

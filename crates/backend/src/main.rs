@@ -6,6 +6,7 @@
 mod alarms;
 mod api;
 mod app;
+mod bug_report;
 mod config;
 mod debug_shots;
 mod env;
@@ -23,6 +24,7 @@ mod profiles;
 mod redaction;
 mod sentry_reporting;
 mod server;
+mod shot_data_sharing;
 mod shots;
 mod simple_profile;
 mod sio;
@@ -113,5 +115,6 @@ fn start(app: &Arc<app::App>) -> Result<(), String> {
     app.profiles.init(app);
     app.pour_over.init();
     app.sounds.init(app.emulated(), true);
+    bug_report::start(app);
     Ok(())
 }
