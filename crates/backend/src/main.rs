@@ -96,6 +96,7 @@ enum Command {
 }
 
 fn main() -> std::process::ExitCode {
+    tune_allocator();
     let cli = Cli::parse();
     match cli.command.unwrap_or(Command::Serve) {
         Command::Serve => serve(),
@@ -115,6 +116,22 @@ fn main() -> std::process::ExitCode {
                 std::process::ExitCode::from(1)
             }
         },
+    }
+}
+
+/// glibc keeps the heap it frees, and its mmap threshold grows after large
+/// frees, so on a machine a few history listings left the backend holding
+/// ~100 MB it no longer used. A fixed threshold hands buffers above 4 MiB
+/// (the 100-shot listings) back to the system when they are freed, and two
+/// arenas are plenty for the machine's four cores.
+fn tune_allocator() {
+    #[cfg(target_env = "gnu")]
+    #[allow(unsafe_code)]
+    // SAFETY: mallopt only sets allocator parameters, and this runs before
+    // any other thread exists.
+    unsafe {
+        nix::libc::mallopt(nix::libc::M_ARENA_MAX, 2);
+        nix::libc::mallopt(nix::libc::M_MMAP_THRESHOLD, 4 << 20);
     }
 }
 
