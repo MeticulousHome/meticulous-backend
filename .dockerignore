@@ -9,3 +9,12 @@ config
 .github*
 target
 .venv
+# What run_emulated.sh, build-deb.sh and the boot harness write in the checkout
+history
+pour-over-profiles
+reports
+alarms
+db-migrations
+out
+boot-reports
+memory_profiling_*
