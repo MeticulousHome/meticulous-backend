@@ -84,10 +84,17 @@ pub fn on_calibrate(app: &Arc<App>) {
     app.machine.calibrate();
 }
 
-/// `live()`: the machine's state ten times a second, and `action,info`
+/// `live()`: the machine's state with each frame the ESP sends, and `action,info`
 /// every two seconds until the ESP32 answered.
+///
+/// The Python emitted on a 10 Hz timer of its own, up to a period behind the
+/// ESP's frames (which also come every 100 ms) and repeating stale data when
+/// the ESP was silent. Here a status goes out as soon as a frame is applied;
+/// [`HEARTBEAT`] keeps the stream alive while the ESP sends nothing
+/// (flashing, unplugged, the boot harness's silent pty), and
+/// [`MIN_INTERVAL`] caps the rate when frames come faster (the emulator at
+/// speed).
 pub async fn live(app: Arc<App>) {
-    const SAMPLE_TIME: Duration = Duration::from_millis(100);
     let mut info_asked = Instant::now();
     tracing::info!("Starting to emit machine data");
     loop {
@@ -99,9 +106,19 @@ pub async fn live(app: Arc<App>) {
         if let Some(sensors) = app.machine.sensor_sensors() {
             app.sio.emit("sensors", &sensors.to_sio_sensors());
         }
-        tokio::time::sleep(SAMPLE_TIME).await;
+        tokio::time::sleep(MIN_INTERVAL).await;
+        let _ = tokio::time::timeout(
+            HEARTBEAT.saturating_sub(MIN_INTERVAL),
+            app.machine.frames.notified(),
+        )
+        .await;
     }
 }
+
+/// The longest gap between two statuses while the ESP is silent.
+pub const HEARTBEAT: Duration = Duration::from_millis(200);
+/// The shortest gap between two statuses.
+pub const MIN_INTERVAL: Duration = Duration::from_millis(40);
 
 /// One `status` event: the machine's data plus the loaded profile.
 pub fn status(app: &App) -> Value {

@@ -147,6 +147,9 @@ pub struct Machine {
     /// that fires late does nothing.
     uuid_timer_generation: AtomicU64,
     clock: Instant,
+    /// Signalled each time a data frame from the ESP has been applied, so the
+    /// status stream goes out with it instead of on a timer of its own.
+    pub frames: tokio::sync::Notify,
 }
 
 impl Machine {
@@ -161,6 +164,7 @@ impl Machine {
             energy: Mutex::new(EnergyCalculator::motor()),
             uuid_timer_generation: AtomicU64::new(0),
             clock,
+            frames: tokio::sync::Notify::new(),
         }
     }
 

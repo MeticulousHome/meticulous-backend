@@ -450,6 +450,7 @@ fn handle_shot_data(app: &Arc<App>, data: esp::ShotData) {
         state.info_ready = true;
         state.old_status.clone()
     };
+    machine.frames.notify_one();
     app.smoke.observe_status(&new_status, time_flag);
 }
 
