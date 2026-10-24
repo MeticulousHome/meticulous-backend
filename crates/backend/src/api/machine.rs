@@ -32,6 +32,7 @@ pub fn routes() -> Vec<Route> {
             m,
             "MachineResetHandler",
         )
+        .prepare(local_only)
         .get(factory_reset),
         Route::new("/machine/OS_update_status", Kind::Base, m, "UpdateOSStatus")
             .get(os_update_status),
@@ -190,9 +191,6 @@ async fn backlight(app: Arc<App>, req: Request) -> Reply {
 
 /// `MachineResetHandler.get` (a `LocalAccessHandler`).
 async fn factory_reset(app: Arc<App>, req: Request) -> Reply {
-    if let Some(refused) = local_only(&req) {
-        return refused;
-    }
     if req.get_argument("confirm").as_deref() != Some("true") {
         return Reply::base()
             .status(400)

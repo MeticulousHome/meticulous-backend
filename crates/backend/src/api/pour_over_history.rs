@@ -23,6 +23,7 @@ pub fn routes() -> Vec<Route> {
             m,
             "PourOverHistoryHandler",
         )
+        .prepare(prepare)
         .get(search)
         .post(save),
         Route::new(
@@ -54,11 +55,17 @@ fn error(status: u16, message: &str) -> Reply {
         .json(json!({"status": "error", "error": message}))
 }
 
-/// `post`: only the Dial writes history, so writes are local only.
-async fn save(app: Arc<App>, req: Request) -> Reply {
-    if let Some(refused) = super::local_only(&req) {
-        return refused;
+/// `PourOverHistoryHandler.prepare`: reads (and their preflight) are open
+/// to LAN clients like the rest of the history; only the Dial writes, so
+/// every other method is local only.
+fn prepare(req: &Request) -> Option<Reply> {
+    if req.method == http::Method::GET || req.method == http::Method::OPTIONS {
+        return None;
     }
+    super::local_only(req)
+}
+
+async fn save(app: Arc<App>, req: Request) -> Reply {
     if req.body.len() > MAX_POUR_OVER_RECORD_BYTES {
         return error(413, "Pour Over record is too large");
     }

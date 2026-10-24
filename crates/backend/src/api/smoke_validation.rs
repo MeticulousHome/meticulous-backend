@@ -17,15 +17,13 @@ pub fn routes() -> Vec<Route> {
             "api.smoke_validation",
             "SmokeValidationHandler",
         )
+        .prepare(local_only)
         .get(get),
     ]
 }
 
 /// `SmokeValidationHandler.get` (a `LocalAccessHandler`).
 async fn get(app: Arc<App>, req: Request) -> Reply {
-    if let Some(refused) = local_only(&req) {
-        return refused;
-    }
     let status = {
         let app = app.clone();
         tokio::task::spawn_blocking(move || {

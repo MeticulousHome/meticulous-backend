@@ -26,6 +26,8 @@ use crate::app::App;
 
 pub type HandlerFuture = Pin<Box<dyn Future<Output = Reply> + Send>>;
 pub type HandlerFn = Arc<dyn Fn(Arc<App>, Request) -> HandlerFuture + Send + Sync>;
+/// `RequestHandler.prepare`: a reply finishes the request.
+pub type Prepare = fn(&Request) -> Option<Reply>;
 
 /// HTTP methods tornado dispatches to handler methods.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -77,6 +79,8 @@ pub struct Route {
     /// The Python module the handler lives in, for the contract snapshot.
     pub module: &'static str,
     pub methods: Vec<(Method, HandlerFn)>,
+    /// The handler class's `prepare()`, when it has one that can answer.
+    pub prepare: Option<Prepare>,
     /// The methods the Python handler class defines, when they differ from
     /// what the route serves (see [`Route::contract_methods`]).
     class_methods: Option<Vec<&'static str>>,
@@ -97,8 +101,17 @@ impl Route {
             handler,
             module,
             methods: Vec::new(),
+            prepare: None,
             class_methods: None,
         }
+    }
+
+    /// Set the handler's `prepare()`. tornado runs it for every method it
+    /// supports before looking for the handler's own, so its reply also
+    /// answers a preflight and a method the class does not define.
+    pub fn prepare(mut self, prepare: Prepare) -> Route {
+        self.prepare = Some(prepare);
+        self
     }
 
     /// Add a handler method.
@@ -216,6 +229,11 @@ impl Router {
         let Some(method) = Method::parse(&req.method) else {
             return Reply::error(route.kind.clone(), 405, req);
         };
+        if let Some(prepare) = route.prepare
+            && let Some(reply) = prepare(req)
+        {
+            return reply.finish(req);
+        }
         match &route.kind {
             Kind::Static(options) if matches!(method, Method::Get | Method::Head) => {
                 return serve_static(options, req).await;
