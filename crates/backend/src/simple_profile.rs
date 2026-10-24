@@ -73,10 +73,8 @@ impl SimpleProfile {
         let Some(mut profile) = self.get() else {
             return Vec::new();
         };
-        if !full {
-            if let Some(map) = profile.as_object_mut() {
-                map.shift_remove("stages");
-            }
+        if !full && let Some(map) = profile.as_object_mut() {
+            map.shift_remove("stages");
         }
         vec![profile]
     }

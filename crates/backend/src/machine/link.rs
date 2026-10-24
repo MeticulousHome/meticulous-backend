@@ -85,7 +85,7 @@ impl FikaPins {
 pub struct EspLink {
     pub kind: LinkKind,
     pub device: String,
-    port: Box<dyn SerialPort>,
+    port: serialport::TTYPort,
     pins: Option<FikaPins>,
     /// The emulator behind an emulated link, which a reset sends to idle.
     pub emulator: Option<std::sync::Arc<super::emulator::EmulatorControl>>,
@@ -106,7 +106,7 @@ impl EspLink {
         tracing::info!("Testing connect to {device}");
         let port = serialport::new(&device, BAUDRATE)
             .timeout(READ_TIMEOUT)
-            .open()
+            .open_native()
             .map_err(|e| {
                 tracing::info!("Serial Exception raised while trying to connect: {e}");
                 "Couldn't connect to ESP32".to_string()
@@ -181,9 +181,10 @@ impl EspLink {
         let _ = self.port.set_baud_rate(baud);
     }
 
-    /// The port itself, for the flasher.
-    pub fn port_mut(&mut self) -> &mut Box<dyn SerialPort> {
-        &mut self.port
+    /// A handle on the port for the flasher, which takes it by value; the
+    /// reader is paused while it runs.
+    pub fn flash_port(&self) -> Result<serialport::TTYPort, String> {
+        self.port.try_clone_native().map_err(|e| e.to_string())
     }
 }
 

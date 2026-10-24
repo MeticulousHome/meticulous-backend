@@ -100,10 +100,10 @@ pub fn get_reportable_config(config: &Value) -> Value {
         return Value::Object(output);
     }
     for (path, validator) in APPROVED_PATHS {
-        if let Some(value) = read_path(config, path) {
-            if validator(value) {
-                write_path(&mut output, path, value.clone());
-            }
+        if let Some(value) = read_path(config, path)
+            && validator(value)
+        {
+            write_path(&mut output, path, value.clone());
         }
     }
     if let Some(Value::String(theme)) = read_path(config, &["system", "sounds_theme"]) {

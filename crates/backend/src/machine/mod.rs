@@ -284,8 +284,14 @@ impl Machine {
             });
     }
 
-    fn on_first_normal_boot(&self, app: &App) {
-        app.ssh.set_ssh_state(false);
+    fn on_first_normal_boot(&self, app: &Arc<App>) {
+        // init() runs inside the runtime; systemd is asked over D-Bus.
+        if let Ok(runtime) = tokio::runtime::Handle::try_current() {
+            let app = app.clone();
+            runtime.spawn(async move {
+                app.ssh.set_ssh_state(false).await;
+            });
+        }
         app.config
             .set_and_save(keys::USER, keys::SSH_ENABLED, Value::Bool(false));
     }
@@ -322,15 +328,16 @@ impl Machine {
             app.config
                 .set_and_save(keys::SYSTEM, keys::MACHINE_SERIAL_NUMBER, serial.clone());
         }
-        if let Some(serial) = serial.as_str() {
-            if !serial.is_empty() && serial != "NOT_ASSIGNED" && !serial.starts_with("999") {
-                let last_mode = app
-                    .config
-                    .get_str(keys::MANUFACTURING, keys::LAST_BOOT_MODE);
-                self.state.lock().is_first_normal_boot =
-                    last_mode.as_deref() == Some("manufacturing");
-                return;
-            }
+        if let Some(serial) = serial.as_str()
+            && !serial.is_empty()
+            && serial != "NOT_ASSIGNED"
+            && !serial.starts_with("999")
+        {
+            let last_mode = app
+                .config
+                .get_str(keys::MANUFACTURING, keys::LAST_BOOT_MODE);
+            self.state.lock().is_first_normal_boot = last_mode.as_deref() == Some("manufacturing");
+            return;
         }
         self.toggle_manufacturing_mode(app, true);
     }
@@ -356,7 +363,7 @@ impl Machine {
 
     /// `refreshAvailableFirmware`.
     pub fn refresh_available_firmware(&self, app: &App) -> Option<FirmwareVersion> {
-        let text = crate::firmware::firmware_version(&app.env.paths.firmware);
+        let text = crate::esp_tool::firmware_version(&app.env.paths.firmware);
         let parsed = esp::parse_version_string(text.as_deref());
         tracing::info!(
             "Backend available firmware version: {}",
@@ -388,10 +395,10 @@ impl Machine {
         if self.stop_comm.load(Ordering::Relaxed) {
             return;
         }
-        if let Some(link) = self.link.lock().as_mut() {
-            if let Err(error) = link.write_all(bytes) {
-                tracing::warn!("Writing to the ESP32 failed: {error}");
-            }
+        if let Some(link) = self.link.lock().as_mut()
+            && let Err(error) = link.write_all(bytes)
+        {
+            tracing::warn!("Writing to the ESP32 failed: {error}");
         }
     }
 
@@ -408,22 +415,22 @@ impl Machine {
     /// loaded profile first sends the last one.
     pub fn action(&self, app: &App, action: &str) -> bool {
         let alarm = app.alarms.end_time(AlarmType::MotorStressed);
-        if action == "purge" {
-            if let Some(end) = alarm {
-                let warning =
-                    format!("refusing action {action}, there is an alarm up (motor_stressed)");
-                tracing::warn!("{warning}");
-                app.reporting
-                    .capture_message(&warning, sentry::Level::Warning);
-                app.alarms.notify(
+        if action == "purge"
+            && let Some(end) = alarm
+        {
+            let warning =
+                format!("refusing action {action}, there is an alarm up (motor_stressed)");
+            tracing::warn!("{warning}");
+            app.reporting
+                .capture_message(&warning, sentry::Level::Warning);
+            app.alarms.notify(
                     &format!(
                         "Brewing has been disabled because of a recent high strain on the motor, let it rest for {} more minutes",
                         minutes_left(end)
                     ),
                     WARNING_TRIANGLE_IMAGE,
                 );
-                return false;
-            }
+            return false;
         }
         tracing::info!("sending action,{action}");
         if action == "start" && !self.state.lock().profile_ready {
@@ -517,7 +524,7 @@ impl Machine {
 
     /// The scale calibration command with the current weight.
     pub fn calibrate(&self) {
-        let weight = self.state.lock().data_sensors.weight.clone();
+        let weight = self.state.lock().data_sensors.weight;
         self.write(&encode::calibration(&weight));
     }
 
@@ -612,18 +619,13 @@ impl Machine {
                 (!diagnostic.context.is_empty()).then_some(("esp-diagnostic", &context)),
                 firmware.as_deref(),
             );
-            match diagnostic.alarm() {
-                Some(esp::DiagnosticAlarm::EspRestart) => {
-                    if app.alarms.end_time(AlarmType::EspRestart).is_none() {
-                        app.alarms.set(AlarmType::EspRestart, None, false, true);
-                    }
-                }
-                Some(esp::DiagnosticAlarm::EspDisconnected) => {
-                    if app.alarms.end_time(AlarmType::EspDisconnected).is_none() {
-                        app.alarms.set(AlarmType::EspDisconnected, None, true, true);
-                    }
-                }
-                None => {}
+            let (alarm, force) = match diagnostic.alarm() {
+                Some(esp::DiagnosticAlarm::EspRestart) => (AlarmType::EspRestart, false),
+                Some(esp::DiagnosticAlarm::EspDisconnected) => (AlarmType::EspDisconnected, true),
+                None => continue,
+            };
+            if app.alarms.end_time(alarm).is_none() {
+                app.alarms.set(alarm, None, force, true);
             }
         }
     }
@@ -969,7 +971,12 @@ fn flash(app: &App, link: &mut EspLink) -> Result<(), String> {
         return Ok(());
     }
     link.reset(true);
-    let result = crate::firmware::flash(link.port_mut(), &app.env.paths.firmware);
+    let result = match link.flash_port() {
+        Ok(port) => crate::esp_tool::flash(port, &app.env.paths.firmware)
+            .1
+            .map_err(|e| e.to_string()),
+        Err(error) => Err(format!("SerialException: {error}")),
+    };
     // esptool cannot reset the Fika board, so it is always reset by hand.
     link.reset(false);
     link.set_baud_rate(link::BAUDRATE);

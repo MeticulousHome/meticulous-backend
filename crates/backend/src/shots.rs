@@ -147,30 +147,30 @@ impl Shot {
     /// `addShotData`: name the shot after the profile on its first real
     /// sample, then record the sample.
     pub fn add_shot_data(&mut self, app: &App, shot: &ShotData) {
-        if self.profile_name.is_none() && shot.status.as_deref() != Some("starting...") {
-            if let Some(profile) = &shot.profile {
-                let last = app.profiles.last_profile();
-                let last_profile = last.as_ref().and_then(|l| l.get("profile")).cloned();
-                let last_name = last_profile
-                    .as_ref()
-                    .and_then(|p| p.get("name"))
-                    .and_then(Value::as_str)
-                    .map(str::to_string);
-                self.profile_name = if app.emulated()
-                    && profile == crate::machine::emulator::PROFILE_PLACEHOLDER
-                    && last_name.is_some()
-                {
-                    last_name.clone()
-                } else {
-                    Some(profile.clone())
-                };
-                if self.profile.is_none() {
-                    if let (Some(p), Some(name)) = (&last_profile, &last_name) {
-                        if Some(name) == self.profile_name.as_ref() {
-                            self.profile = Some(p.clone());
-                        }
-                    }
-                }
+        if self.profile_name.is_none()
+            && shot.status.as_deref() != Some("starting...")
+            && let Some(profile) = &shot.profile
+        {
+            let last = app.profiles.last_profile();
+            let last_profile = last.as_ref().and_then(|l| l.get("profile")).cloned();
+            let last_name = last_profile
+                .as_ref()
+                .and_then(|p| p.get("name"))
+                .and_then(Value::as_str)
+                .map(str::to_string);
+            self.profile_name = if app.emulated()
+                && profile == crate::machine::emulator::PROFILE_PLACEHOLDER
+                && last_name.is_some()
+            {
+                last_name.clone()
+            } else {
+                Some(profile.clone())
+            };
+            if self.profile.is_none()
+                && let (Some(p), Some(name)) = (&last_profile, &last_name)
+                && Some(name) == self.profile_name.as_ref()
+            {
+                self.profile = Some(p.clone());
             }
         }
         self.data.push(Value::Object(Self::format_sample(shot)));
@@ -187,10 +187,10 @@ impl Shot {
         shot.insert("data".into(), Value::Array(self.data.clone()));
         shot.insert("id".into(), json!(self.id));
         shot.insert("push_to_brew_time".into(), json!(self.push_to_brew_time));
-        if let Some(profile) = &self.profile {
-            if crate::config::python_truthy(profile) {
-                shot.insert("profile".into(), profile.clone());
-            }
+        if let Some(profile) = &self.profile
+            && crate::config::python_truthy(profile)
+        {
+            shot.insert("profile".into(), profile.clone());
         }
         shot
     }
@@ -322,13 +322,13 @@ impl ShotManager {
             return;
         };
         let mut data = shot.to_json();
-        if !data.contains_key("profile") {
-            if let Some(last) = app.profiles.last_profile() {
-                data.insert(
-                    "profile".into(),
-                    last.get("profile").cloned().unwrap_or(Value::Null),
-                );
-            }
+        if !data.contains_key("profile")
+            && let Some(last) = app.profiles.last_profile()
+        {
+            data.insert(
+                "profile".into(),
+                last.get("profile").cloned().unwrap_or(Value::Null),
+            );
         }
         let app = app.clone();
         let shots_dir = self.shots_dir.clone();

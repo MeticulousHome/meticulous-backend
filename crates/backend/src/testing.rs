@@ -28,6 +28,20 @@ pub fn app_with(backend: BackendMode, prepare: impl FnOnce(&Env)) -> (tempfile::
     (dir, app)
 }
 
+/// Like [`app_with`], with the environment itself adjustable (a test that
+/// needs the hardware hooks off).
+pub fn app_custom(
+    backend: BackendMode,
+    configure: impl FnOnce(&mut Env),
+) -> (tempfile::TempDir, Arc<App>) {
+    let dir = tempfile::tempdir().expect("temporary directory");
+    let mut env = Env::for_tests(dir.path(), backend);
+    configure(&mut env);
+    let log = Arc::new(crate::logging::LogHooks::default());
+    let app = App::new(env, log, crate::sentry_reporting::Reporting::init(false));
+    (dir, app)
+}
+
 /// Send one request through the real route table.
 pub async fn call(
     app: &Arc<App>,

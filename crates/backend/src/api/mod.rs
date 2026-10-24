@@ -2,12 +2,14 @@
 //! tornado's route list.
 
 pub mod action;
+pub mod machine;
 pub mod notifications;
 pub mod password;
 pub mod pour_over_profiles;
 pub mod profiles;
 pub mod serial;
 pub mod settings;
+pub mod smoke_validation;
 pub mod sounds;
 pub mod update;
 pub mod web_ui;
@@ -72,6 +74,7 @@ pub fn redact_ip(ip: &str) -> String {
 pub fn router(app: &App) -> Router {
     let mut routes: Vec<Route> = Vec::new();
     routes.extend(action::routes());
+    routes.extend(machine::routes());
     routes.extend(notifications::routes());
     routes.extend(serial::routes());
     routes.extend(settings::routes());
@@ -79,6 +82,7 @@ pub fn router(app: &App) -> Router {
     routes.extend(password::routes());
     routes.extend(pour_over_profiles::routes());
     routes.extend(profiles::routes(app));
+    routes.extend(smoke_validation::routes());
     routes.extend(sounds::routes());
     for route in &mut routes {
         route.pattern = format!("/api/v1{}", route.pattern);
