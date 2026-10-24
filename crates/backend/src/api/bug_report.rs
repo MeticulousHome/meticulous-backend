@@ -485,6 +485,8 @@ async fn draft_get(app: Arc<App>, req: Request) -> Reply {
         }
         Err(error) => {
             tracing::error!("Failed to read bug report draft: {error}");
+            // PARITY: the error body keeps the attachment header set before
+            // the archive failed.
             api_error(500, "Failed to read report draft", message(&error))
                 .with_header("Content-Disposition", disposition)
         }
@@ -635,8 +637,8 @@ async fn list(app: Arc<App>, req: Request) -> Reply {
         Ok((filter, false)) => filter,
         Err(_) => return uncaught(&req),
     };
-    // Python's ints do not overflow; SQLite refuses what does not fit in
-    // 64 bits (OverflowError, a 500).
+    // PARITY: Python's ints do not overflow, so a huge page passes the
+    // checks above and SQLite refuses it (OverflowError, a 500).
     let (Ok(page), Ok(size)) = (page, size) else {
         return uncaught(&req);
     };

@@ -204,6 +204,9 @@ impl Fail {
         }
     }
 
+    /// PARITY: any `FileNotFoundError` reaching a handler is "Unknown
+    /// localID" (404), whichever file was missing: a draft without its
+    /// `report_info.json`, or the debug history root during a PUT.
     fn io(error: &std::io::Error, path: &Path) -> Fail {
         let message = py::os_error(error, path);
         if error.kind() == std::io::ErrorKind::NotFound {
@@ -1270,6 +1273,9 @@ pub fn apply_draft_patch(
     values.machine_logs = db_values.machine_logs;
     values.machine_info = db_values.machine_info;
     values.machine_status = db_values.machine_status;
+    // PARITY: the report info is written before the row is updated, so a
+    // value SQLite cannot bind (a dict description) answers 500 with the
+    // draft's report info already changed.
     write_draft_report_info(&draft_dir, &report_info)?;
     update_report_db(app, local_id, &values)?;
     Ok(report_info)
