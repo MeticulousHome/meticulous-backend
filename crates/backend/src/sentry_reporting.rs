@@ -232,3 +232,38 @@ pub fn level_from_name(name: &str) -> Level {
         _ => Level::Error,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::env::BackendMode;
+
+    /// tests/test_sentry_offline.py::test_the_esp32_sentry_client_has_no_dsn_and_no_transport:
+    /// no test may send events to the production Sentry projects. Every app
+    /// the tests build, the production machine (FIKA) included, has neither
+    /// the ESP32's client nor the backend's.
+    #[test]
+    fn test_apps_have_no_sentry_client() {
+        let apps = [
+            crate::testing::app(),
+            crate::testing::app_with(BackendMode::Fika, |_| {}),
+            crate::testing::app_custom(BackendMode::Fika, |env| {
+                env.sentry = true;
+                env.hooks.fake_hardware = false;
+            }),
+        ];
+        for (_dir, app) in &apps {
+            assert!(!app.reporting.enabled());
+            assert!(app.reporting.esp.is_none());
+            // ESP32 events go nowhere instead of to the ESP32's project.
+            app.reporting.capture_esp_event(
+                "test event",
+                super::Level::Error,
+                None,
+                &[],
+                None,
+                Some("1.2.3"),
+            );
+        }
+        assert!(sentry::Hub::current().client().is_none());
+    }
+}

@@ -3,9 +3,11 @@
 //! node program sent to the ESP32 and the backend's logs during the brew.
 //!
 //! The Python guards the current debug shot with two locks and spins in
-//! `send_json_with_hash` until the reader thread opened the shot; here one
-//! mutex guards it, the log sink takes it only for the append, and the node
-//! program waits in `pending_node_json` for the shot to start.
+//! `send_json_with_hash` until the reader thread opened the shot; here too
+//! the shot's data and its log records have a lock each: code holding the
+//! data lock logs, and a record must neither wait for that lock nor be lost
+//! while the UART thread holds it. The node program waits in
+//! `pending_node_json` for the shot to start.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -129,17 +131,54 @@ struct State {
     pending_node_json: Option<Value>,
 }
 
+/// The running shot's log records (`_logs_lock` and `current.logs`), kept
+/// apart from its data. Present exactly while a shot is.
+struct ShotLog {
+    start_time: f64,
+    records: Vec<Value>,
+}
+
 pub struct ShotDebugManager {
     debug_dir: PathBuf,
-    state: Arc<Mutex<State>>,
+    state: Mutex<State>,
+    /// Taken after `state` when both are needed; nothing logs while holding
+    /// it, so the log sink, which takes only this one, never deadlocks.
+    logs: Arc<Mutex<Option<ShotLog>>>,
 }
 
 impl ShotDebugManager {
     pub fn new(debug_dir: PathBuf) -> ShotDebugManager {
         ShotDebugManager {
             debug_dir,
-            state: Arc::new(Mutex::new(State::default())),
+            state: Mutex::new(State::default()),
+            logs: Arc::new(Mutex::new(None)),
         }
+    }
+
+    /// The running shot with the records logged so far, under the data lock
+    /// (`_copy_current_data`); `take` closes it.
+    fn snapshot(&self, take: bool) -> Option<DebugShot> {
+        let mut state = self.state.lock();
+        let mut shot = if take {
+            state.current.take()?
+        } else {
+            state.current.clone()?
+        };
+        let mut logs = self.logs.lock();
+        let records = if take {
+            logs.take().map(|log| log.records)
+        } else {
+            logs.as_ref().map(|log| log.records.clone())
+        };
+        shot.logs = records.unwrap_or_default();
+        Some(shot)
+    }
+
+    /// Holds the shot's data lock, as `clear_current_data_lock` is held
+    /// while a shot is built or a sample ingested.
+    #[cfg(test)]
+    pub fn hold_data_lock(&self) -> impl Sized + '_ {
+        self.state.lock()
     }
 
     pub fn debug_dir(&self) -> &Path {
@@ -155,27 +194,29 @@ impl ShotDebugManager {
             let mut state = self.state.lock();
             shot.node_json = state.pending_node_json.take();
             if state.current.is_none() {
+                *self.logs.lock() = Some(ShotLog {
+                    start_time: shot.start_time,
+                    records: Vec::new(),
+                });
                 state.current = Some(shot);
             }
         }
-        let sink_state = Arc::downgrade(&self.state);
+        let sink_logs = Arc::downgrade(&self.logs);
         app.log.set_shot_sink(Some(Arc::new(move |record: &Record| {
-            let Some(state) = sink_state.upgrade() else {
+            let Some(logs) = sink_logs.upgrade() else {
                 return;
             };
-            // A log record never waits on the shot: a record that finds the
-            // lock busy is dropped, as the Python drops one racing a stop.
-            let Some(mut state) = state.try_lock() else {
-                return;
-            };
-            if let Some(shot) = state.current.as_mut() {
+            // Only the log list's own lock: a record logged by code that
+            // holds the data lock, or while the UART thread does, is kept
+            // and never waits. A record logged between shots goes nowhere.
+            if let Some(log) = logs.lock().as_mut() {
                 let created = record
                     .created
                     .duration_since(std::time::UNIX_EPOCH)
                     .map(|d| d.as_secs_f64())
                     .unwrap_or(0.0);
-                shot.logs.push(json!({
-                    "profile_ms": ((created - shot.start_time) * 1000.0) as i64,
+                log.records.push(json!({
+                    "profile_ms": ((created - log.start_time) * 1000.0) as i64,
                     "loglevel": record.level,
                     "caller": record.name,
                     "log_message": record.line,
@@ -345,7 +386,7 @@ impl ShotDebugManager {
     /// `write_current_incomplete_debug_shot`: a snapshot of the running shot
     /// for a bug report, relative to `root`.
     pub fn write_current_incomplete(&self, app: &App, root: &Path) -> Option<String> {
-        let shot = self.state.lock().current.clone()?;
+        let shot = self.snapshot(false)?;
         let (start, path) = Self::file_path(root, &shot, true);
         let text = Self::prepare(app, &shot, start);
         tracing::info!("Writing incomplete debug shot snapshot");
@@ -362,7 +403,7 @@ impl ShotDebugManager {
     /// `stop`: close the shot and save it in the background.
     pub fn stop(&self, app: &Arc<App>) {
         tracing::info!("Stopping debug shot");
-        let Some(shot) = self.state.lock().current.take() else {
+        let Some(shot) = self.snapshot(true) else {
             return;
         };
         let (start, path) = Self::file_path(&self.debug_dir, &shot, false);

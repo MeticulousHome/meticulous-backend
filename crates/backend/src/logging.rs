@@ -180,9 +180,57 @@ pub fn init(log_level: &str) -> Arc<LogHooks> {
     hooks
 }
 
+/// The backend's logging feeding `hooks`, for a test to install where it
+/// logs (`tracing::dispatcher::with_default`), as `init` installs it for the
+/// process.
+#[cfg(test)]
+pub fn dispatch_for_tests(hooks: Arc<LogHooks>) -> tracing::Dispatch {
+    pin_callsite_interest();
+    tracing::Dispatch::new(tracing_subscriber::registry().with(PythonLayer {
+        hooks,
+        max_level: Level::DEBUG,
+    }))
+}
+
+/// Call before a test installs a dispatcher of its own. While exactly one
+/// dispatcher is registered, tracing-core caches the interest of a callsite
+/// first hit on a thread without one (any other test's) as never, and every
+/// later dispatcher misses that callsite: a test's log capture then sees
+/// nothing of it. A dispatcher registered for the whole run keeps two
+/// registered from the second one on, so interest is asked of all of them.
+#[cfg(test)]
+pub fn pin_callsite_interest() {
+    static PINNED: std::sync::LazyLock<tracing::Dispatch> =
+        std::sync::LazyLock::new(|| tracing::Dispatch::new(tracing_subscriber::registry()));
+    std::sync::LazyLock::force(&PINNED);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn log_from_anywhere() {
+        tracing::error!("logged on two threads");
+    }
+
+    /// pin_callsite_interest: a test's capture sees a callsite that another
+    /// thread, without a capture of its own, hit first.
+    #[test]
+    fn capture_sees_a_callsite_another_thread_hit_first() {
+        let capture = crate::bug_report::test_support::capture_logs();
+        std::thread::spawn(log_from_anywhere)
+            .join()
+            .expect("other thread");
+
+        log_from_anywhere();
+
+        assert_eq!(
+            capture
+                .messages(tracing::Level::ERROR, "logging::tests")
+                .len(),
+            1
+        );
+    }
 
     #[test]
     fn names_like_python_modules() {

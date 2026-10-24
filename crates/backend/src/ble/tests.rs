@@ -106,6 +106,7 @@ fn logged<T>(f: impl FnOnce() -> T) -> (T, String) {
         }
     }
     let capture = Capture::default();
+    crate::logging::pin_callsite_interest();
     let subscriber = tracing_subscriber::registry().with(capture.clone());
     let result = tracing::subscriber::with_default(subscriber, f);
     let lines = capture.0.lock().join("\n");
