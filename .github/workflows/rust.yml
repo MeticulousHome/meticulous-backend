@@ -1,0 +1,82 @@
+name: Rust
+
+# The Rust backend's gates. Each replaces a Python gate of build.yml:
+# lint (rustfmt, clippy), test, coverage (65% total, 80% of the changed
+# lines on a pull request), test-random-order and typecheck (the compiler).
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'true'
+    - uses: Swatinem/rust-cache@v2
+    - name: rustfmt
+      run: cargo fmt --all --check
+    - name: clippy
+      run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'true'
+    - uses: Swatinem/rust-cache@v2
+    - name: Every crate and test compiles
+      run: cargo check --workspace --all-targets --locked
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'true'
+    - uses: Swatinem/rust-cache@v2
+    - name: Run tests
+      run: cargo test --workspace --locked
+
+  # The suite in a random order, so a test that only passes after another one
+  # fails here. Reproduce with the seed from the log:
+  # cargo +nightly test --workspace -- -Z unstable-options --shuffle --shuffle-seed <seed>
+  test-random-order:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'true'
+    - uses: dtolnay/rust-toolchain@nightly
+    - uses: Swatinem/rust-cache@v2
+    - name: Run tests in a random order
+      run: cargo +nightly test --workspace -- -Z unstable-options --shuffle --shuffle-seed ${{ github.run_id }}
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'true'
+        fetch-depth: 0 # diff-cover compares against the base branch
+    - uses: Swatinem/rust-cache@v2
+    - uses: taiki-e/install-action@cargo-llvm-cov
+    - name: Run tests with coverage
+      run: >
+        cargo llvm-cov --workspace --locked --cobertura --output-path coverage.xml
+        --fail-under-lines 65
+    - name: Changed lines are covered
+      if: github.event_name == 'pull_request'
+      run: >
+        pipx run diff-cover coverage.xml --compare-branch=origin/${{ github.base_ref }}
+        --fail-under=80 --markdown-report=diff-cover.md
+    - name: Coverage of the change
+      if: always() && github.event_name == 'pull_request'
+      run: cat diff-cover.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true

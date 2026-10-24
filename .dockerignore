@@ -7,3 +7,5 @@ images/profile-images
 config
 .git
 .github*
+target
+.venv

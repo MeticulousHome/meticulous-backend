@@ -3,8 +3,9 @@ Version: ${VERSION}
 Architecture: ${ARCH}
 Maintainer: Meticulous Home <info@meticuloushome.com>
 Description: Meticulous Espresso Machine Backend
- Backend service for the Meticulous espresso machine.
- Includes a pre-built Python virtual environment with all dependencies.
-Depends: python3, libcairo2, libgirepository-1.0-1, libgstreamer1.0-0, libsystemd0, libparted2, libglib2.0-0, libffi8, bluez, dbus, gir1.2-glib-2.0, gir1.2-freedesktop, gstreamer1.0-plugins-base, gstreamer1.0-plugins-base-apps
+ Backend service for the Meticulous espresso machine: the HTTP and Socket.IO
+ API for the Dial and the mobile app, the UART link to the ESP32 firmware, shot
+ history and the machine's OS integration.
+Depends: libc6 (>= 2.36), python3, bluez, dbus, gstreamer1.0-plugins-base, gstreamer1.0-plugins-base-apps
 Section: misc
 Priority: optional

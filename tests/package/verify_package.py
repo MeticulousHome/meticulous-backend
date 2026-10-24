@@ -1,15 +1,18 @@
-"""Check that the built .deb ships every file the backend needs at run time.
+"""Check that the built .deb ships everything the backend needs at run time.
 
-Dockerfile.deb stages the package from an explicit COPY list, so a module or
-data file added to the repository is left out silently until the service fails
-to start on a machine (#418: profile_converter/ was missing). This compares the
-extracted package against the files git tracks:
+Dockerfile.deb stages the package from an explicit COPY list, so a data file
+added to the repository is left out silently until the service fails on a
+machine (#418: profile_converter/ was missing). This compares the extracted
+package against the files git tracks and the paths other components rely on:
 
-* every tracked Python file must be in the package, unless NOT_PACKAGED says
-  why it stays out;
-* every tracked data file under a runtime data directory must be there too;
-* nothing under tests/ may be shipped;
-* the launcher must point at the packaged interpreter and entry point.
+* the backend binary, and met-config, which meticulous-machine's hawkbit
+  setup calls;
+* every tracked runtime data file;
+* the paths the machine image uses from the Python package:
+  /opt/meticulous-venv/bin/python3 (its met-config wrapper and smoke report),
+  /opt/meticulous-backend/met-config.py and /opt/meticulous-backend/api/web_ui
+  (nginx's /debug alias);
+* nothing under tests/, and none of the Python backend's sources.
 
 Usage: python3 tests/package/verify_package.py --repo . --package DIR
 where DIR is the output of ``dpkg-deb -x meticulous-backend_*.deb DIR``.
@@ -23,33 +26,25 @@ from pathlib import Path
 
 INSTALL_ROOT = Path("opt/meticulous-backend")
 
-# Tracked Python files that are deliberately not in the package.
-NOT_PACKAGED = {
-    "tests/*": "test suite",
-    "*/tests/*": "a submodule's own test suite",
-    ".github/*": "CI scripts",
-    "log_redactor/*/*": "only log_redactor/*.py is the runtime module",
-    "profile_schema/*": "JSON schema repository; only its data files ship",
-    "images/default/*": "image repository; only its images ship",
-}
-
-# Tracked non-Python files the backend reads at run time.
+# Tracked files the backend reads at run time, by pattern, and where they go
+# under INSTALL_ROOT (the same relative path).
 DATA_FILES = [
-    "alembic.ini",
-    "alembic/env.py",
-    "alembic/script.py.mako",
     "UI_timezones.json",
     "simple_profile.json",
-    "esp_serial/connection/*.json",
-    "profile_schema/schema.json",
-    "pour_over_profile_schema/*.json",
     "sounds/*",
     "images/default/*.png",
     "images/default/accent_colors.json",
 ]
 
-LAUNCHER = Path("usr/bin/meticulous-backend")
-LAUNCHER_COMMAND = "/opt/meticulous-venv/bin/python3 /opt/meticulous-backend/back.py"
+BINARY = Path("usr/bin/meticulous-backend")
+MET_CONFIG = Path("usr/bin/met-config")
+MET_CONFIG_COMMAND = "/usr/bin/meticulous-backend met-config"
+REQUIRED_PATHS = {
+    "opt/meticulous-backend/met-config.py": "meticulous-machine's met-config wrapper runs it",
+    "opt/meticulous-backend/api/web_ui": "nginx serves /debug from it",
+}
+# Python files the package may carry: the met-config shim only.
+ALLOWED_PYTHON = {"met-config.py"}
 
 
 def tracked_files(repo: Path) -> list[str]:
@@ -63,27 +58,33 @@ def tracked_files(repo: Path) -> list[str]:
     return [line for line in output.splitlines() if line]
 
 
-def excluded_reason(path: str) -> str | None:
-    for pattern, reason in NOT_PACKAGED.items():
-        if fnmatch.fnmatch(path, pattern):
-            return reason
-    return None
-
-
 def verify(repo: Path, package: Path) -> list[str]:
     problems = []
     root = package / INSTALL_ROOT
     if not root.is_dir():
         return [f"{INSTALL_ROOT} is not in the package"]
 
+    binary = package / BINARY
+    if not binary.is_file():
+        problems.append(f"{BINARY} is missing")
+    elif not binary.read_bytes()[:4] == b"\x7fELF":
+        problems.append(f"{BINARY} is not an executable binary")
+
+    wrapper = package / MET_CONFIG
+    if not wrapper.is_file():
+        problems.append(f"{MET_CONFIG} is missing")
+    elif MET_CONFIG_COMMAND not in wrapper.read_text():
+        problems.append(f"{MET_CONFIG} does not run {MET_CONFIG_COMMAND}")
+
+    venv_python = package / "opt/meticulous-venv/bin/python3"
+    if not venv_python.is_symlink():
+        problems.append("opt/meticulous-venv/bin/python3 is missing")
+
+    for path, reason in REQUIRED_PATHS.items():
+        if not (package / path).exists():
+            problems.append(f"{path} is missing ({reason})")
+
     files = tracked_files(repo)
-
-    for path in files:
-        if not path.endswith(".py") or excluded_reason(path):
-            continue
-        if not (root / path).is_file():
-            problems.append(f"{path} is tracked but not packaged")
-
     for pattern in DATA_FILES:
         matches = [path for path in files if fnmatch.fnmatch(path, pattern)]
         if not matches:
@@ -92,23 +93,14 @@ def verify(repo: Path, package: Path) -> list[str]:
             if not (root / path).is_file():
                 problems.append(f"{path} is runtime data but not packaged")
 
-    shipped_tests = sorted(
-        str(path.relative_to(root))
-        for path in root.rglob("*")
-        if path.is_file() and ("tests" in path.relative_to(root).parts)
-    )
-    for path in shipped_tests:
-        problems.append(f"{path} is test code but shipped")
-
-    launcher = package / LAUNCHER
-    if not launcher.is_file():
-        problems.append(f"{LAUNCHER} is missing")
-    elif LAUNCHER_COMMAND not in launcher.read_text():
-        problems.append(f"{LAUNCHER} does not run {LAUNCHER_COMMAND}")
-
-    venv_python = package / "opt/meticulous-venv/bin/python3"
-    if not (venv_python.exists() or venv_python.is_symlink()):
-        problems.append("opt/meticulous-venv/bin/python3 is missing")
+    for path in sorted(root.rglob("*")):
+        relative = path.relative_to(root)
+        if not path.is_file():
+            continue
+        if "tests" in relative.parts:
+            problems.append(f"{relative} is test code but shipped")
+        elif path.suffix == ".py" and str(relative) not in ALLOWED_PYTHON:
+            problems.append(f"{relative} is Python source but shipped")
 
     return problems
 

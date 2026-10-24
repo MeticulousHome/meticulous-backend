@@ -1,59 +1,58 @@
-"""Boot the real backend entry point with only the machine's hardware replaced.
+"""Boot the real backend binary with only the machine's hardware replaced.
 
-Runs ``back.run()``, the function the systemd service starts, in production
-mode (``BACKEND=FIKA``), and checks from inside the running server that the
-backend came up:
+Runs ``meticulous-backend`` as the systemd service does, in production mode
+(``BACKEND=FIKA``), and checks from outside, as the Dial and the app see it,
+that the backend came up:
 
 * the HTTP server answers and every read-only GET route answers below 500,
 * a Socket.IO client receives the ``status`` stream with its documented keys,
-* each event a client sends does what backend.py's handler says: whitelisted
+* each event a client sends does what the backend's handler says: whitelisted
   actions reach the ESP32 and the rest do not, calibrate writes its command,
   profileHover is relayed to the other clients, and a notification is
   delivered and acknowledged,
 * the ESP32 was greeted over the UART (``\\x03`` then ``action,info``),
-* the history database was migrated to ``DB_VERSION_REQUIRED``,
+* the history database was migrated to the required alembic revision,
 * nothing logged at ERROR or above while booting.
 
 What is replaced is the hardware and the host OS the machine image provides,
-each at its boundary: the ESP32 UART, GPIO, I2C, systemd and BlueZ (their
-D-Bus services), NetworkManager, ``timedatectl``, ``chpasswd``, audio
-playback, disk imaging and Sentry's network transport. Everything else runs
-for real against throwaway directories, including the D-Bus system bus, which
-the caller provides (``dbus-daemon --system``).
+each at its boundary: the ESP32 UART is a pty this harness holds (it records
+what the backend writes and only speaks when a check needs the ESP to), GPIO,
+I2C, BlueZ, systemd, the backlight, audio and disk imaging are left alone
+(``METICULOUS_FAKE_HARDWARE=1``), and the host commands the image provides are
+recording stubs on PATH. Everything else runs for real against throwaway
+directories, including the D-Bus system bus, which the caller provides
+(``dbus-daemon --system``).
 
-The harness runs as its own process so the backend's module-level singletons
-and threads never leak into the pytest process. It writes a JSON report to
-``--report`` and exits 0 only when every check passed. It needs the
-machine's dependency group (pydbus needs PyGObject), so CI runs it with the
-virtualenv from the built .deb; ``tests/test_boot.py`` runs it under pytest
-when those dependencies are installed.
-
-Usage: python tests/boot/boot_harness.py --data-dir DIR --report FILE
-           [--package-root DIR] [--esp-uart DEVICE] [--serve READY_FILE]
-
-Booting twice with the same --data-dir checks the restart of a machine that
-already has its own config, profiles and history.
+It writes a JSON report to ``--report`` and exits 0 only when every check
+passed. Booting twice with the same --data-dir checks the restart of a machine
+that already has its own config, profiles and history.
 
 For integration tests against a real firmware: --esp-uart connects the backend
-to a serial device instead of the fake UART (fika-sil's --pty-link), and
+to a serial device instead of the harness's pty (fika-sil's --pty-link), and
 --serve skips the checks, writes READY_FILE once the server answers and keeps
-the backend running until SIGTERM. The report then holds the ERROR records,
-the UART greeting and the database check of the whole run.
+the backend running until SIGTERM. The report then holds the ERROR records, the
+UART greeting and the database check of the whole run.
+
+Usage: python tests/boot/boot_harness.py --data-dir DIR --report FILE
+           [--binary PATH] [--package-root DIR] [--esp-uart DEVICE]
+           [--serve READY_FILE]
 """
 
 import argparse
 import asyncio
 import json
-import logging
 import os
+import re
 import signal
 import socket
+import sqlite3
+import subprocess
 import sys
 import threading
 import time
-import traceback
+import urllib.error
+import urllib.request
 from pathlib import Path
-from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parent.parent
@@ -61,8 +60,11 @@ REPO_ROOT = HERE.parent.parent
 # Seconds the whole boot plus checks may take before the watchdog fails it.
 BOOT_TIMEOUT_SECONDS = float(os.getenv("BOOT_TIMEOUT_SECONDS", "90"))
 
-# Keys every ``status`` event carries: ShotData.to_sio() plus what live()
-# adds. The Dial and the mobile app read these by name.
+# The alembic revision the backend migrates the history database to.
+DB_VERSION_REQUIRED = "c4d2e9f1a7b3"
+
+# Keys every ``status`` event carries. The Dial and the mobile app read these
+# by name.
 STATUS_EVENT_KEYS = {
     "name",
     "sensors",
@@ -95,27 +97,36 @@ EXPECTED_BOOT_ERRORS = {
 # the ERROR records starting with the listed messages are reported but do not
 # fail the boot. A listed route that stops answering 500 does fail it, so the
 # entry is removed together with the fix.
-KNOWN_ISSUES = {
-    "/api/v1/history/debug.zip": {
-        "bug": "500 on a machine without debug shots: the zip is opened inside "
-        "DEBUG_HISTORY_PATH before anything creates that directory",
-        "errors": [
-            "Error compressing debug file: FileNotFoundError",
-            "500 GET /api/v1/history/debug.zip",
-        ],
+KNOWN_ISSUES = {}
+_KNOWN_ERROR_PREFIXES = [prefix for issue in KNOWN_ISSUES.values() for prefix in issue["errors"]]
+
+# `<date> <time>,<ms> <logger> <LEVEL> <message>`, the backend's log lines.
+LOG_LINE = re.compile(r"^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d,\d{3} (\S+) (DEBUG|INFO|WARNING|ERROR|CRITICAL) (.*)$")
+
+# Host commands the machine image provides, replaced by recording stubs on
+# PATH. Keyed by the first argument, each prints what the real tool prints for
+# the call the backend makes at boot; any other call prints nothing and
+# succeeds. Commands that change the host (reboot, mount, hostnamectl, ...)
+# are stubbed so that a boot that calls one records it instead of acting on
+# the CI runner. host_commands in the report lists every call.
+HOST_COMMANDS = {
+    "nmcli": {},
+    "pactl": {},
+    "gst-play-1.0": {},
+    "i2cget": {"-f": "0x21"},  # SOM revision register
+    "timedatectl": {
+        "status": "                Time zone: Etc/UTC (UTC, +0000)",
+        "list-timezones": "Etc/UTC\nAmerica/Mexico_City\nEurope/Berlin",
     },
-    "/api/v1/profile/load": {
-        "bug": "GET without a profile id reaches LoadProfileHandler.get(profile_id) "
-        "and raises TypeError instead of answering 404/405",
-        "errors": [
-            "Uncaught exception GET /api/v1/profile/load ",
-            "500 GET /api/v1/profile/load ",
-        ],
-    },
+    "chpasswd": {},
+    "systemctl": {},
+    "hostnamectl": {},
+    "reboot": {},
+    "mount": {},
+    "umount": {},
+    "partprobe": {},
+    "rauc-hawkbit-updater": {},
 }
-_KNOWN_ERROR_PREFIXES = [
-    prefix for issue in KNOWN_ISSUES.values() for prefix in issue["errors"]
-]
 
 
 def _free_port() -> int:
@@ -124,12 +135,8 @@ def _free_port() -> int:
         return sock.getsockname()[1]
 
 
-def _prepare_environment(data_dir: Path, code_root: Path, port: int):
-    """Point every path the backend writes to into ``data_dir``.
-
-    Must run before any backend module is imported: most of them read their
-    paths from the environment at import time.
-    """
+def _environment(data_dir: Path, code_root: Path, port: int) -> dict:
+    """Point every path the backend writes to into ``data_dir``."""
     user = data_dir / "meticulous-user"
     paths = {
         "CONFIG_PATH": user / "config",
@@ -148,160 +155,35 @@ def _prepare_environment(data_dir: Path, code_root: Path, port: int):
         "SMOKE_VALIDATION_STATE_FILE": user / "smoke-validation.json",
         "SMOKE_VALIDATION_VERSION_FILE": data_dir / "opt" / "image-build-version",
         "REDACTION_KEY_PATH": data_dir / "root" / ".redaction_key",
-        "TIMEZONE_JSON_FILE_PATH": data_dir
-        / "usr"
-        / "share"
-        / "zoneinfo"
-        / "UI_timezones.json",
+        "TIMEZONE_JSON_FILE_PATH": data_dir / "usr" / "share" / "zoneinfo" / "UI_timezones.json",
         "UPDATE_PATH": data_dir / "opt" / "meticulous-firmware",
+        "ISSUE_PATH": data_dir / "etc-issue",
+        "METICULOUS_PACKAGE_ROOT": code_root,
         "DEFAULT_IMAGES": code_root / "images" / "default",
         "SYSTEM_SOUNDS": code_root / "sounds",
+        "SIMPLE_PROFILE": code_root / "simple_profile.json",
     }
+    env = dict(os.environ)
     for key, value in paths.items():
-        os.environ[key] = str(value)
+        env[key] = str(value)
     for key in ("REDACTION_KEY_PATH", "TIMEZONE_JSON_FILE_PATH", "DEVICE_UUID_CACHE_PATH"):
-        Path(os.environ[key]).parent.mkdir(parents=True, exist_ok=True)
-    os.environ["BACKEND"] = "FIKA"
-    os.environ["PORT"] = str(port)
-    os.environ.pop("SENTRY", None)
-    os.environ.pop("DEBUG", None)
+        Path(env[key]).parent.mkdir(parents=True, exist_ok=True)
+    env["BACKEND"] = "FIKA"
+    env["PORT"] = str(port)
+    env["METICULOUS_FAKE_HARDWARE"] = "1"
+    env.pop("SENTRY", None)
+    env.pop("DEBUG", None)
+    env.pop("LOGLEVEL", None)
+    return env
 
 
-class FakeEspPort:
-    """The ESP32's UART as pyserial exposes it: records writes, never answers."""
-
-    def __init__(self):
-        self.written = bytearray()
-        self.in_waiting = 0
-        self.is_open = True
-
-    def write(self, data):
-        self.written += data
-        return len(data)
-
-    def read(self, size=1):
-        time.sleep(0.05)
-        return b""
-
-    def readline(self):
-        time.sleep(0.05)
-        return b""
-
-    def reset_input_buffer(self):
-        pass
-
-    def reset_output_buffer(self):
-        pass
-
-    def flush(self):
-        pass
-
-    def close(self):
-        self.is_open = False
-
-
-# Every ESP32 connection Machine.init opened, fake or real. Their port records
-# the bytes the backend wrote in .written.
-ESP_CONNECTIONS = []
-
-
-class FakeFikaSerialConnection:
-    """Stands in for FikaSerialConnection: no GPIO lines, a FakeEspPort as UART."""
-
-    def __init__(self, device, *args, **kwargs):
-        self.device = device
-        self.port = FakeEspPort()
-        ESP_CONNECTIONS.append(self)
-
-    def reset(self, *args, **kwargs):
-        pass
-
-    def sendUpdate(self, *args, **kwargs):
-        return "firmware updates are not available in the boot harness"
-
-
-def _serial_device_connection(uart_path: str):
-    """FikaSerialConnection's stand-in for a firmware on a serial device.
-
-    With --esp-uart the backend talks to a real firmware, e.g. the one fika-sil
-    runs with --pty-link, through its own pyserial SerialConnection; only the
-    GPIO lines that enable and reset the ESP32 on the board are left out.
-    """
-    from esp_serial.connection.serial_connection import SerialConnection
-
-    class SerialDeviceConnection(SerialConnection):
-        def __init__(self, device, *args, **kwargs):
-            super().__init__(uart_path)
-            written = bytearray()
-            write = self.port.write
-
-            def recording_write(data):
-                written.extend(data)
-                return write(data)
-
-            self.port.write = recording_write
-            self.port.written = written
-            ESP_CONNECTIONS.append(self)
-
-        def reset(self, *args, **kwargs):
-            pass
-
-        def sendUpdate(self, *args, **kwargs):
-            return "firmware updates are not available in the boot harness"
-
-    return SerialDeviceConnection
-
-
-class ErrorCollector(logging.Handler):
-    def __init__(self):
-        super().__init__(level=logging.ERROR)
-        self.records = []
-
-    def emit(self, record):
-        message = record.getMessage()
-        if any(message.startswith(prefix) for prefix in EXPECTED_BOOT_ERRORS):
-            return
-        if any(message.startswith(prefix) for prefix in _KNOWN_ERROR_PREFIXES):
-            return
-        detail = f"{record.name}: {message}"
-        if record.exc_info:
-            detail += "\n" + "".join(traceback.format_exception(*record.exc_info))
-        self.records.append(detail)
-
-
-# Host commands the machine image provides, replaced by recording stubs on
-# PATH. Keyed by the first argument, each prints what the real tool prints for
-# the call the backend makes at boot; any other call prints nothing and
-# succeeds. Commands that change the host (reboot, mount, hostnamectl, ...)
-# are stubbed so that a boot that calls one records it instead of acting on
-# the CI runner. host_commands in the report lists every call.
-HOST_COMMANDS = {
-    "nmcli": {},
-    "pactl": {},
-    "i2cget": {"-f": "0x21"},  # SOM revision register
-    "timedatectl": {
-        "status": "                Time zone: Etc/UTC (UTC, +0000)",
-        "list-timezones": "Etc/UTC\nAmerica/Mexico_City\nEurope/Berlin",
-    },
-    "chpasswd": {},
-    "systemctl": {},
-    "hostnamectl": {},
-    "reboot": {},
-    "mount": {},
-    "umount": {},
-    "partprobe": {},
-    "rauc-hawkbit-updater": {},
-}
-
-
-def _install_host_commands(data_dir: Path, boot_index: int) -> Path:
+def _install_host_commands(data_dir: Path, boot_index: int, env: dict) -> Path:
     bin_dir = data_dir / "host-bin"
     bin_dir.mkdir(parents=True, exist_ok=True)
     log = data_dir / f"host-commands-{boot_index}.log"
     for name, outputs in HOST_COMMANDS.items():
         cases = "".join(
-            f"    {argument}) printf '%s\\n' '{output}' ;;\n"
-            for argument, output in outputs.items()
+            f"    {argument}) printf '%s\\n' '{output}' ;;\n" for argument, output in outputs.items()
         )
         stub = bin_dir / name
         stub.write_text(
@@ -311,107 +193,128 @@ def _install_host_commands(data_dir: Path, boot_index: int) -> Path:
             "exit 0\n"
         )
         stub.chmod(0o755)
-    os.environ["PATH"] = f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+    env["PATH"] = f"{bin_dir}{os.pathsep}{env.get('PATH', '')}"
     return log
 
 
-def _install_import_time_fakes():
-    """Fakes that must exist before the backend modules are imported."""
-    import sentry_sdk
+class FakeEsp:
+    """The ESP32's UART: a pty whose other end this harness holds. Records what
+    the backend writes and only answers when a check writes a line."""
 
-    real_client = sentry_sdk.Client
-    real_init = sentry_sdk.init
+    def __init__(self):
+        self.master, slave = os.openpty()
+        self.device = os.ttyname(slave)
+        self._slave = slave
+        self.written = bytearray()
+        self._lock = threading.Lock()
+        threading.Thread(target=self._read, daemon=True).start()
 
-    # back.py initializes Sentry at import time when BACKEND is FIKA and
-    # machine.py builds a second client for the ESP32 project. Both stay real,
-    # integrations included, with the DSN dropped so nothing is sent. The DSN
-    # is the only positional parameter of either, hence args[1:].
-    def offline_client(*args, **kwargs):
-        kwargs["dsn"] = None
-        return real_client(*args[1:], **kwargs)
+    def _read(self):
+        while True:
+            try:
+                data = os.read(self.master, 4096)
+            except OSError:
+                return
+            if not data:
+                return
+            with self._lock:
+                self.written += data
 
-    def offline_init(*args, **kwargs):
-        kwargs["dsn"] = None
-        return real_init(*args[1:], **kwargs)
+    def snapshot(self) -> bytes:
+        with self._lock:
+            return bytes(self.written)
 
-    sentry_sdk.Client = offline_client
-    sentry_sdk.init = offline_init
-
-
-def _hardware_patches(issue_file: Path, esp_uart: str | None):
-    """Patches at the hardware boundary, applied around back.run()."""
-    gpio_chip = mock.MagicMock(name="gpiod.chip")
-    esp_connection = (
-        _serial_device_connection(esp_uart) if esp_uart else FakeFikaSerialConnection
-    )
-
-    return [
-        # ESP32 UART and its enable/boot GPIO lines.
-        mock.patch("machine.FikaSerialConnection", esp_connection),
-        # Audio enable GPIO and playback.
-        mock.patch("sounds.gpiod.chip", gpio_chip, create=True),
-        mock.patch("sounds.playsound", mock.MagicMock(name="playsound")),
-        # systemd's D-Bus service. The bus itself is real, so DBusMonitor
-        # subscribes to the RAUC, Hawkbit and USB signals for real.
-        mock.patch("system_services.SystemBus"),
-        # USB-C PD controller on I2C.
-        mock.patch("usb.PTN5150H"),
-        # The console banner the root password is written into.
-        mock.patch("ssh_manager.SSHManager.ISSUE_PATH", str(issue_file)),
-        # BlueZ GATT server.
-        mock.patch("ble_gatt.GATTServer.getServer"),
-        # NetworkManager: the Wi-Fi manager starts on its own thread on a machine.
-        mock.patch("backend.start_wifi_manager_in_background"),
-        # Never touch block devices.
-        mock.patch("imager.DiscImager.needsImaging", return_value=False),
-    ]
+    def send_line(self, line: str):
+        os.write(self.master, (line + "\r\n").encode())
 
 
-async def _wait_until_serving(port: int, report: dict) -> bool:
-    from tornado.httpclient import AsyncHTTPClient
+class Backend:
+    """The binary under test, its log captured line by line."""
 
-    deadline = time.monotonic() + 15
-    while True:
+    def __init__(self, binary: Path, env: dict, log_path: Path):
+        self.log_path = log_path
+        self.lines = []
+        self._log = log_path.open("w")
+        self.process = subprocess.Popen(
+            [str(binary)],
+            env=env,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            errors="replace",
+        )
+        threading.Thread(target=self._pump, daemon=True).start()
+
+    def _pump(self):
+        for line in self.process.stdout:
+            self.lines.append(line.rstrip("\n"))
+            self._log.write(line)
+            self._log.flush()
+
+    def errors(self) -> list:
+        records = []
+        for line in self.lines:
+            match = LOG_LINE.match(line)
+            if not match or match.group(2) not in ("ERROR", "CRITICAL"):
+                continue
+            message = match.group(3)
+            if any(message.startswith(prefix) for prefix in EXPECTED_BOOT_ERRORS):
+                continue
+            if any(message.startswith(prefix) for prefix in _KNOWN_ERROR_PREFIXES):
+                continue
+            records.append(f"{match.group(1)}: {message}")
+        return records
+
+    def stop(self):
+        if self.process.poll() is None:
+            self.process.send_signal(signal.SIGTERM)
+            try:
+                self.process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+                self.process.wait()
+
+
+def _http_get(url: str, timeout: float = 20):
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as response:
+            return response.status, response.read()
+    except urllib.error.HTTPError as error:
+        return error.code, error.read()
+
+
+def _wait_until_serving(base: str, backend: Backend, report: dict) -> bool:
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        if backend.process.poll() is not None:
+            report["failures"].append(f"the backend exited with {backend.process.returncode}")
+            return False
         try:
-            # Any answer means the server is up; the sweep judges the status.
-            await AsyncHTTPClient().fetch(
-                f"http://127.0.0.1:{port}/api/v1/settings", raise_error=False
-            )
+            _http_get(f"{base}/api/v1/settings", timeout=2)
             return True
-        except (ConnectionError, OSError):
-            if time.monotonic() > deadline:
-                report["failures"].append("HTTP server never accepted a connection")
-                return False
-            await asyncio.sleep(0.2)
+        except (ConnectionError, OSError, urllib.error.URLError):
+            time.sleep(0.2)
+    report["failures"].append("HTTP server never accepted a connection")
+    return False
 
 
-async def _http_checks(port: int, report: dict):
-    from tornado.httpclient import AsyncHTTPClient, HTTPClientError
-    from tornado.web import RequestHandler
+def _contract_routes(binary: Path) -> list:
+    output = subprocess.run([str(binary), "contract"], capture_output=True, text=True, check=True).stdout
+    return json.loads(output)["http_routes.json"]
 
-    from api.api import API
 
-    client = AsyncHTTPClient()
-    base = f"http://127.0.0.1:{port}"
-
-    if not await _wait_until_serving(port, report):
-        return
-
+def _http_checks(base: str, binary: Path, report: dict):
     swept = {}
-    for route in API.get_routes():
-        pattern, handler = route[0], route[1]
-        if "(" in pattern or pattern in SWEEP_SKIP:
+    seen = set()
+    for route in _contract_routes(binary):
+        path = route["path"]
+        if "(" in path or path in SWEEP_SKIP or "get" not in route["methods"] or path in seen:
             continue
-        if handler.get is RequestHandler.get:
-            continue  # not a GET route
-        path = pattern.replace("[/]*", "")
+        seen.add(path)
+        path = path.replace("[/]*", "")
         try:
-            response = await client.fetch(
-                f"{base}{path}", raise_error=False, request_timeout=20
-            )
-            code = response.code
-        except HTTPClientError as error:
-            code = error.code
+            code, _ = _http_get(f"{base}{path}")
         except Exception as error:  # timeouts, resets
             code = f"{type(error).__name__}: {error}"
         swept[path] = code
@@ -419,20 +322,26 @@ async def _http_checks(port: int, report: dict):
         if path in KNOWN_ISSUES:
             if not failed:
                 report["failures"].append(
-                    f"GET {path} answered {code}: the known issue is fixed, "
-                    "remove its KNOWN_ISSUES entry"
+                    f"GET {path} answered {code}: the known issue is fixed, remove its KNOWN_ISSUES entry"
                 )
         elif failed:
             report["failures"].append(f"GET {path} answered {code}")
     report["routes"] = swept
-    report["known_issues"] = {
-        path: issue["bug"] for path, issue in KNOWN_ISSUES.items() if path in swept
-    }
+    report["known_issues"] = {path: issue["bug"] for path, issue in KNOWN_ISSUES.items() if path in swept}
     for path in KNOWN_ISSUES.keys() - swept.keys():
         report["failures"].append(f"KNOWN_ISSUES lists {path}, which is no longer a GET route")
 
 
-async def _socketio_checks(port: int, report: dict):
+async def _wait_for(condition, timeout: float) -> bool:
+    deadline = time.monotonic() + timeout
+    while not condition():
+        if time.monotonic() > deadline:
+            return False
+        await asyncio.sleep(0.05)
+    return True
+
+
+async def _socketio_checks(base: str, report: dict):
     import socketio
 
     received = {}
@@ -443,14 +352,11 @@ async def _socketio_checks(port: int, report: dict):
         received.setdefault(event, data)
 
     try:
-        await sio.connect(f"http://127.0.0.1:{port}", transports=["websocket"], wait_timeout=10)
+        await sio.connect(base, transports=["websocket"], wait_timeout=10)
     except Exception as error:
         report["failures"].append(f"Socket.IO connect failed: {error}")
         return
-
-    deadline = time.monotonic() + 10
-    while "status" not in received and time.monotonic() < deadline:
-        await asyncio.sleep(0.1)
+    await _wait_for(lambda: "status" in received, 10)
     await sio.disconnect()
 
     report["socketio_events"] = sorted(received)
@@ -466,22 +372,9 @@ async def _socketio_checks(port: int, report: dict):
         report["failures"].append(f"status event has undocumented keys {sorted(unexpected)}")
 
 
-async def _wait_for(condition, timeout: float) -> bool:
-    deadline = time.monotonic() + timeout
-    while not condition():
-        if time.monotonic() > deadline:
-            return False
-        await asyncio.sleep(0.05)
-    return True
-
-
-async def _socketio_inbound_checks(port: int, report: dict):
-    """What the server does with each event a client sends (backend.py's handlers)."""
+async def _socketio_inbound_checks(base: str, esp: FakeEsp, report: dict):
+    """What the server does with each event a client sends."""
     import socketio
-    from tornado.httpclient import AsyncHTTPClient
-
-    from machine import Machine
-    from notifications import Notification, NotificationManager
 
     failures = report["failures"]
     received = {"dial": [], "app": []}
@@ -496,46 +389,38 @@ async def _socketio_inbound_checks(port: int, report: dict):
             return record
 
         client.on("*", recorder(name))
-        await client.connect(
-            f"http://127.0.0.1:{port}", transports=["websocket"], wait_timeout=10
-        )
+        await client.connect(base, transports=["websocket"], wait_timeout=10)
         clients[name] = client
     dial, app = clients["dial"], clients["app"]
 
-    uart = ESP_CONNECTIONS[0].port
-
     def written_since(mark: int) -> bytes:
-        return bytes(uart.written[mark:])
+        return esp.snapshot()[mark:]
 
     # A whitelisted ESP32 action is forwarded as action,<name>.
-    mark = len(uart.written)
+    mark = len(esp.snapshot())
     await dial.emit("action", "tare")
     if not await _wait_for(lambda: b"action,tare\x03" in written_since(mark), 3):
         failures.append("socket.io action 'tare' was not forwarded to the ESP32")
 
     # reset is refused from socket.io; an unknown action is dropped; abort
-    # while idle does nothing (Machine.end_profile).
-    mark = len(uart.written)
+    # while idle does nothing.
+    mark = len(esp.snapshot())
     for action in ("reset", "not-an-action", "abort"):
         await dial.emit("action", action)
     await asyncio.sleep(0.5)
     leaked = [
         command
-        for command in (
-            b"action,reset",
-            b"action,not-an-action",
-            b"action,stop",
-            b"action,home",
-        )
+        for command in (b"action,reset", b"action,not-an-action", b"action,stop", b"action,home")
         if command in written_since(mark)
     ]
     if leaked:
         failures.append(f"socket.io actions reached the ESP32 that must not: {leaked}")
 
-    # calibrate sends the known weight and the current reading.
-    mark = len(uart.written)
+    # calibrate sends the known weight and the current reading (0.0: the
+    # silent ESP never reported a weight).
+    mark = len(esp.snapshot())
     await dial.emit("calibrate", True)
-    expected = f"action,calibration,100.0,{Machine.data_sensors.weight}\x03".encode()
+    expected = b"action,calibration,100.0,0.0\x03"
     if not await _wait_for(lambda: expected in written_since(mark), 3):
         failures.append(f"socket.io calibrate did not write {expected!r}")
 
@@ -548,196 +433,159 @@ async def _socketio_inbound_checks(port: int, report: dict):
         failures.append("profileHover was echoed back to its sender")
 
     # A notification reaches the clients and is acknowledged over socket.io.
-    notification = Notification("boot harness notification")
-    NotificationManager.add_notification(notification)
+    # The ESP32 raises it, as it would for a scale or water warning.
+    esp.send_line("Notify,generic,boot harness notification")
 
     def delivered():
-        return any(
-            event == "notification" and notification.id in str(data)
-            for event, data in received["app"]
-        )
+        for event, data in received["app"]:
+            if event == "notification" and "boot harness notification" in str(data):
+                return json.loads(data)["id"]
+        return None
 
-    if not await _wait_for(delivered, 5):
+    if not await _wait_for(lambda: delivered() is not None, 5):
         failures.append("a new notification was not emitted to the clients")
-    await app.emit("notification", json.dumps({"id": notification.id, "response": "Ok"}))
-    if not await _wait_for(lambda: notification.acknowledged, 3):
-        failures.append("acknowledging a notification over socket.io had no effect")
-    response = await AsyncHTTPClient().fetch(
-        f"http://127.0.0.1:{port}/api/v1/notifications", raise_error=False
-    )
-    pending = [entry["id"] for entry in json.loads(response.body or b"[]")]
-    if notification.id in pending:
-        failures.append("an acknowledged notification is still listed as pending")
+    else:
+        notification_id = delivered()
+        await app.emit("notification", json.dumps({"id": notification_id, "response": "Ok"}))
+
+        def pending():
+            _, body = _http_get(f"{base}/api/v1/notifications")
+            return [entry["id"] for entry in json.loads(body or b"[]")]
+
+        if not await _wait_for(lambda: notification_id not in pending(), 3):
+            failures.append("an acknowledged notification is still listed as pending")
 
     for client in clients.values():
         await client.disconnect()
 
 
-def _uart_checks(report: dict):
-    if not ESP_CONNECTIONS:
-        report["failures"].append("Machine.init never opened the ESP32 UART")
+def _uart_checks(esp: FakeEsp | None, report: dict):
+    if esp is None:
         return
-    written = bytes(ESP_CONNECTIONS[0].port.written)
+    written = esp.snapshot()
     report["uart_written"] = written.decode(errors="replace")
     greeting = b"\x03action,info\x03"
     if not written.startswith(greeting):
         report["failures"].append(f"UART did not start with {greeting!r}: {written[:40]!r}")
 
 
-def _database_checks(report: dict):
-    from alembic.runtime.migration import MigrationContext
-    from sqlalchemy import create_engine
-
-    from config import DATABASE_URL
-    from db_migration_updater import DB_VERSION_REQUIRED
-
-    engine = create_engine(DATABASE_URL)
+def _database_checks(data_dir: Path, report: dict):
+    database = data_dir / "meticulous-user" / "history" / "history.sqlite"
     try:
-        with engine.connect() as connection:
-            revision = MigrationContext.configure(connection).get_current_revision()
-    finally:
-        engine.dispose()
+        with sqlite3.connect(database) as connection:
+            row = connection.execute("SELECT version_num FROM alembic_version").fetchone()
+        revision = row[0] if row else None
+    except sqlite3.Error as error:
+        revision = f"unreadable: {error}"
     report["db_revision"] = revision
     if revision != DB_VERSION_REQUIRED:
-        report["failures"].append(
-            f"history DB is at {revision}, the backend requires {DB_VERSION_REQUIRED}"
-        )
+        report["failures"].append(f"history DB is at {revision}, the backend requires {DB_VERSION_REQUIRED}")
 
 
-def _boot(args):
+def _finish(report: dict, backend: Backend | None, report_path: str, host_log: Path | None) -> int:
+    errors = backend.errors() if backend else []
+    report["errors_logged"] = errors
+    report["host_commands"] = host_log.read_text().splitlines() if host_log and host_log.exists() else []
+    if errors:
+        report["failures"].append(f"{len(errors)} record(s) logged at ERROR while booting")
+    Path(report_path).write_text(json.dumps(report, indent=2, default=str))
+    for failure in report["failures"]:
+        print(f"BOOT FAILURE: {failure}", file=sys.stderr)
+    for record in errors:
+        print(f"ERROR RECORD: {record}", file=sys.stderr)
+    return 0 if not report["failures"] else 1
+
+
+def _default_binary(package_root: Path | None) -> Path:
+    if package_root is not None and Path("/usr/bin/meticulous-backend").exists():
+        return Path("/usr/bin/meticulous-backend")
+    for profile in ("release", "debug"):
+        candidate = REPO_ROOT / "target" / profile / "meticulous-backend"
+        if candidate.exists():
+            return candidate
+    return Path("/usr/bin/meticulous-backend")
+
+
+def run(args) -> int:
     report = {"failures": [], "boot": args.boot_index}
-    errors = ErrorCollector()
+    data_dir = Path(args.data_dir).resolve()
+    code_root = Path(args.package_root).resolve() if args.package_root else REPO_ROOT
+    binary = Path(args.binary).resolve() if args.binary else _default_binary(args.package_root and code_root)
+    report["binary"] = str(binary)
+    port = _free_port()
+    base = f"http://127.0.0.1:{port}"
+    env = _environment(data_dir, code_root, port)
+    host_log = _install_host_commands(data_dir, args.boot_index, env)
+    report["host_commands_log"] = str(host_log)
+
+    esp = None
+    if args.esp_uart:
+        env["METICULOUS_ESP_UART"] = args.esp_uart
+    else:
+        esp = FakeEsp()
+        env["METICULOUS_ESP_UART"] = esp.device
+
+    backend = Backend(binary, env, data_dir / f"backend-{args.boot_index}.log")
+    report["backend_log"] = str(backend.log_path)
+
+    if args.serve:
+        stop = threading.Event()
+        signal.signal(signal.SIGTERM, lambda *_: stop.set())
+        signal.signal(signal.SIGINT, lambda *_: stop.set())
+        if _wait_until_serving(base, backend, report):
+            Path(args.serve).write_text(json.dumps({"port": port, "pid": os.getpid(), "data_dir": str(data_dir)}))
+            while not stop.is_set() and backend.process.poll() is None:
+                stop.wait(0.5)
+        backend.stop()
+        _uart_checks(esp, report)
+        _database_checks(data_dir, report)
+        return _finish(report, backend, args.report, host_log)
 
     def watchdog():
         report["failures"].append(f"boot did not finish within {BOOT_TIMEOUT_SECONDS:.0f} s")
-        _finish(report, errors, args.report)
+        backend.stop()
+        os._exit(_finish(report, backend, args.report, host_log))
 
     timer = threading.Timer(BOOT_TIMEOUT_SECONDS, watchdog)
     timer.daemon = True
     timer.start()
-
     try:
-        _run_backend(args, report, errors, timer)
-    except BaseException:
-        report["failures"].append("boot crashed:\n" + traceback.format_exc())
-    timer.cancel()
-    _finish(report, errors, args.report)
+        if _wait_until_serving(base, backend, report):
+            _http_checks(base, binary, report)
+            asyncio.run(_socketio_checks(base, report))
+            asyncio.run(_socketio_inbound_checks(base, esp, report))
+            _uart_checks(esp, report)
+            _database_checks(data_dir, report)
+    except Exception:
+        import traceback
 
-
-def _run_backend(args, report: dict, errors: ErrorCollector, boot_timer: threading.Timer):
-    data_dir = Path(args.data_dir).resolve()
-    code_root = Path(args.package_root).resolve() if args.package_root else REPO_ROOT
-    port = _free_port()
-    _prepare_environment(data_dir, code_root, port)
-    sys.path.insert(0, str(code_root))
-    os.chdir(code_root)
-    # backend.main() hands sys.argv to tornado's option parser, as the
-    # launcher's "$@" would: start it with no options.
-    sys.argv = [str(code_root / "back.py")]
-
-    host_command_log = _install_host_commands(data_dir, args.boot_index)
-    report["host_commands_log"] = str(host_command_log)
-    _install_import_time_fakes()
-    logging.getLogger().addHandler(errors)
-
-    import tornado.ioloop
-
-    import back  # noqa: E402  (environment and fakes first)
-
-    report["code_root"] = str(Path(back.__file__).resolve().parent)
-
-    io_loop = tornado.ioloop.IOLoop.current()
-
-    async def checks():
-        try:
-            await _http_checks(port, report)
-            await _socketio_checks(port, report)
-            await _socketio_inbound_checks(port, report)
-            _uart_checks(report)
-            _database_checks(report)
-        except Exception:
-            report["failures"].append("checks crashed:\n" + traceback.format_exc())
-        finally:
-            io_loop.stop()
-
-    async def serve():
-        """--serve: announce the running backend and keep it up until SIGTERM."""
-        if not await _wait_until_serving(port, report):
-            io_loop.stop()
-            return
-        boot_timer.cancel()
-        ready = {"port": port, "pid": os.getpid(), "data_dir": str(data_dir)}
-        Path(args.serve).write_text(json.dumps(ready))
-
-    def stop_serving(*_):
-        async def wind_down():
-            try:
-                _uart_checks(report)
-                _database_checks(report)
-            finally:
-                io_loop.stop()
-
-        io_loop.add_callback_from_signal(wind_down)
-
-    if args.serve:
-        signal.signal(signal.SIGTERM, stop_serving)
-        signal.signal(signal.SIGINT, stop_serving)
-        io_loop.add_callback(serve)
-    else:
-        io_loop.add_callback(checks)
-
-    patches = _hardware_patches(data_dir / "etc-issue", args.esp_uart)
-    for patch in patches:
-        patch.start()
-    try:
-        back.run()
-    except SystemExit as error:
-        report["failures"].append(f"back.run() exited with {error.code}")
+        report["failures"].append("checks crashed:\n" + traceback.format_exc())
     finally:
-        for patch in reversed(patches):
-            patch.stop()
-
-
-def _finish(report: dict, errors: ErrorCollector, report_path: str):
-    report["errors_logged"] = list(errors.records)
-    log = Path(report.get("host_commands_log", "/nonexistent"))
-    report["host_commands"] = log.read_text().splitlines() if log.exists() else []
-    if errors.records:
-        report["failures"].append(
-            f"{len(errors.records)} record(s) logged at ERROR while booting"
-        )
-    Path(report_path).write_text(json.dumps(report, indent=2, default=str))
-    for failure in report["failures"]:
-        print(f"BOOT FAILURE: {failure}", file=sys.stderr)
-    for record in errors.records:
-        print(f"ERROR RECORD: {record}", file=sys.stderr)
-    sys.stdout.flush()
-    sys.stderr.flush()
-    # The backend's threads are not daemons and never return: leave hard.
-    os._exit(0 if not report["failures"] else 1)
+        timer.cancel()
+        backend.stop()
+    return _finish(report, backend, args.report, host_log)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--data-dir", required=True, help="throwaway root for user data")
     parser.add_argument("--report", required=True, help="where to write the JSON report")
+    parser.add_argument("--binary", help="the backend binary (default: the installed one, else target/)")
     parser.add_argument(
         "--package-root",
-        help="backend code to boot, e.g. /opt/meticulous-backend (default: this checkout)",
+        help="the package's read-only data, e.g. /opt/meticulous-backend (default: this checkout)",
     )
     parser.add_argument(
         "--esp-uart",
-        help="serial device of a real firmware, e.g. fika-sil's --pty-link, instead of the "
-        "fake UART",
+        help="serial device of a real firmware, e.g. fika-sil's --pty-link, instead of the fake UART",
     )
     parser.add_argument(
         "--serve",
         metavar="READY_FILE",
-        help="skip the checks and keep the backend running until SIGTERM; READY_FILE gets "
-        '{"port", "pid", "data_dir"} once it serves',
+        help='skip the checks and keep the backend running until SIGTERM; READY_FILE gets {"port", "pid", "data_dir"} once it serves',
     )
     parser.add_argument("--boot-index", type=int, default=1, help=argparse.SUPPRESS)
-    _boot(parser.parse_args())
+    sys.exit(run(parser.parse_args()))
 
 
 if __name__ == "__main__":

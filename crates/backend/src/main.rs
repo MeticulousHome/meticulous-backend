@@ -12,6 +12,7 @@ mod events;
 mod http;
 mod images;
 mod logging;
+mod metconfig;
 mod notifications;
 mod server;
 mod sio;
@@ -38,12 +39,19 @@ struct Cli {
 enum Command {
     /// Serve the HTTP and Socket.IO API (the default).
     Serve,
+    /// Inspect and modify the configuration (met-config.py).
+    MetConfig(metconfig::Args),
 }
 
 fn main() -> std::process::ExitCode {
     let cli = Cli::parse();
     match cli.command.unwrap_or(Command::Serve) {
         Command::Serve => serve(),
+        Command::MetConfig(args) => {
+            let level = std::env::var("LOGLEVEL").unwrap_or_else(|_| "DEBUG".into());
+            logging::init(&level.to_uppercase());
+            metconfig::run(args)
+        }
     }
 }
 

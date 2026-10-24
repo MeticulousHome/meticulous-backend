@@ -14,14 +14,24 @@ apt-get update -qq
 # Debian archive fails here instead of on a machine.
 apt-get install -y -qq --no-install-recommends /deb/*.deb >/dev/null
 
-# The machine has a system bus and the backend connects to it at import time.
+# The harness is a Socket.IO client: give it its own environment, apart from
+# what the package installed.
+apt-get install -y -qq --no-install-recommends python3-venv >/dev/null
+python3 -m venv /tmp/harness
+/tmp/harness/bin/pip install -q "python-socketio[asyncio_client]==5.16.1"
+
+# The machine has a system bus and the backend connects to it.
 mkdir -p /run/dbus
 dbus-daemon --system --fork
+
+# The image's own met-config wrapper goes through Python: it must still work.
+/opt/meticulous-venv/bin/python3 /opt/meticulous-backend/met-config.py --help >/dev/null
 
 data_dir=$(mktemp -d)
 for boot in 1 2; do
     echo "== boot ${boot}"
-    /opt/meticulous-venv/bin/python3 /src/tests/boot/boot_harness.py \
+    /tmp/harness/bin/python /src/tests/boot/boot_harness.py \
+        --binary /usr/bin/meticulous-backend \
         --package-root /opt/meticulous-backend \
         --data-dir "${data_dir}" \
         --report "/reports/boot-${boot}.json" \
