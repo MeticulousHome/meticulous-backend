@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use serde_json::{Value, json};
+use tstype::{Ts, field};
 
 use crate::app::App;
 use crate::config::keys;
@@ -159,6 +160,21 @@ pub fn status(app: &App) -> Value {
         }
     }
     Value::Object(status)
+}
+
+/// The TypeScript type of [`status`].
+pub fn status_type() -> Ts {
+    let mut fields = esp::ShotData::sio_fields();
+    fields.push(
+        field("loaded_profile", Ts::String.nullable())
+            .doc("The name of the last profile loaded; null before the first."),
+    );
+    fields.push(field("id", Ts::String.nullable()).doc("The id of that profile."));
+    Ts::named(
+        "StatusPayload",
+        "The `status` event: the machine's last frame and the loaded profile.",
+        Ts::object(fields),
+    )
 }
 
 /// `send_data()`: developer commands typed into the backend's terminal.

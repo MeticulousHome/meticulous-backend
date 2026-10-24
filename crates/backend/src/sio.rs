@@ -82,6 +82,7 @@ impl Sio {
 
     #[cfg(test)]
     fn record(&self, event: &str, data: &Value, to: Option<&str>, skip_sid: Option<&str>) {
+        crate::socketio_types::assert_conforms(event, data);
         self.recorded.lock().push(Emitted {
             event: event.to_string(),
             data: data.clone(),

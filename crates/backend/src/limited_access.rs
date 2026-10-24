@@ -11,6 +11,7 @@ use serde_json::{Value, json};
 use crate::app::App;
 use crate::config::{ConfigStore, keys};
 use crate::ota::py_strip;
+use crate::profiles::ProfileEvent;
 
 pub const LIMITED_ACCESS_CHANNEL: &str = "factory";
 pub const UNLOCKED_CHANNEL: &str = "stable";
@@ -162,7 +163,10 @@ pub fn unlock(app: &App) -> Value {
         .set(keys::USER, keys::UPDATE_CHANNEL, json!(UNLOCKED_CHANNEL));
     app.config.save();
     // ProfileManager._emit_profile_event(PROFILE_EVENT.RELOAD).
-    app.sio.emit("profile", &json!({"change": "full_reload"}));
+    app.sio.emit(
+        "profile",
+        &crate::profiles::profile_event_payload(ProfileEvent::Reload, None, None, None),
+    );
     tracing::info!("Machine unlocked: update channel set to {UNLOCKED_CHANNEL}");
     json!(UNLOCKED_CHANNEL)
 }

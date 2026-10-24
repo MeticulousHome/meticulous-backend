@@ -20,7 +20,9 @@ crates/esp/                ESP32 UART protocol, ESP observability, motor energy,
 crates/profile/            profile variables, the manual-mode node program, schema validation (pure)
 crates/redactor/           log redaction, sentry event scrubbing, reportable config (pure)
 crates/history/            the SQLite history store, its alembic-compatible migrations, shot and Pour Over files (sync IO)
+crates/tstype/             TypeScript types of the JSON the backend sends: checked against values, written as .d.ts (pure)
 crates/backend/            the `meticulous-backend` binary: HTTP, Socket.IO, the machine, storage, OS
+bindings/socketio.d.ts     the Socket.IO payload types, generated (see below)
 tests/                     black-box tests that drive the binary over HTTP, Socket.IO and a pty
 ```
 
@@ -101,6 +103,34 @@ come from the Python code or its tests, never from what the Rust code returns.
   directories; `testing::call(&app, Method::GET, "/api/v1/...", body)`
   sends a request through the real route table, like the Python suite's
   `AsyncHTTPTestCase`.
+
+## Socket.IO payload types
+
+Payloads are built as `serde_json::Value`s by hand, for Python's key order
+and number types, so no Rust type describes them. Next to each builder sits
+its TypeScript type, a `tstype::Ts` (`ShotData::sio_fields` next to
+`ShotData::to_sio`, `Notification::sio_type` next to `to_sio`, ...);
+`socketio_types::payload_type` maps every event in `contract::EMITS` to one.
+Derives like `ts-rs` need a Rust type to read, and mirror structs would
+drift from the builders unless checked this way anyway.
+
+- The `socketio_types` tests build each payload from representative inputs
+  (the ESP32 golden lines, the services' emit paths) and hold them against
+  the types: no undeclared key, every value of its type, and every union
+  member, optional key (present and absent) and index signature exercised
+  by some sample, so a type promises no more and no less than the wire
+  carries. `"NaN"` strings and `null`s are declared where the builder sends
+  them.
+- In test builds every emit is checked against its type (`Sio::record`), so
+  any handler test that emits something else fails.
+- `bindings/socketio.d.ts` is generated from the types and compared with
+  the committed file: `UPDATE_CONTRACTS=1 cargo test -p meticulous-backend
+  socketio_types` rewrites it, `meticulous-backend contract --typescript`
+  prints it. Commit it with the payload change that caused the diff.
+
+A new event needs a type in `payload_type` and samples in the test.
+`docs/rust/client-types.md` compares the bindings with the TypeScript
+client's `src/types.ts`.
 
 ## Conventions
 

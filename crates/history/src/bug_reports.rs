@@ -4,6 +4,7 @@
 use rusqlite::types::{Value as SqlValue, ValueRef};
 use rusqlite::{Connection, params_from_iter};
 use serde_json::{Map, Value};
+use tstype::{Ts, field};
 
 use crate::db::HistoryDb;
 use crate::error::{Error, Result};
@@ -162,6 +163,27 @@ impl BugReportRow {
             ("name", self.contact_name.clone()),
             ("email", self.contact_email.clone()),
         ])
+    }
+
+    /// The TypeScript type of [`BugReportRow::dispatch_payload`] for a
+    /// queued row, which always has a ticket (`insert_queued_report`).
+    pub fn dispatch_payload_type() -> Ts {
+        let text = || Ts::String.nullable();
+        Ts::named(
+            "UploadReportPayload",
+            "The `upload_report` event (and each entry of GET /reports/dispatch): a report the mobile\n\
+             app dispatched, for the Dial to collect and upload. Times are seconds since the epoch.",
+            Ts::object([
+                field("localID", Ts::String),
+                field("machineID", text()).doc("The serial number; null on a machine without one."),
+                field("ticket", Ts::Number),
+                field("issueTime", Ts::Number),
+                field("requestTime", Ts::Number).doc("When the dispatch reached the backend."),
+                field("description", text()),
+                field("name", text()),
+                field("email", text()),
+            ]),
+        )
     }
 }
 

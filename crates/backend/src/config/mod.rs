@@ -100,6 +100,21 @@ pub const MAX_PISTON_POSITION: f64 = 75.0;
 
 pub const USB_MODES: [&str; 3] = ["client", "host", "dual_role"];
 
+/// The payload of the `settings` event every save sends (`setSIO`): empty,
+/// clients re-read the settings.
+pub fn settings_event_payload() -> Value {
+    json!({})
+}
+
+/// The TypeScript type of [`settings_event_payload`].
+pub fn settings_event_type() -> tstype::Ts {
+    tstype::Ts::named(
+        "SettingsPayload",
+        "The `settings` event: the settings were saved; re-read GET /settings.",
+        tstype::Ts::object([]),
+    )
+}
+
 /// `DefaultConfiguration_V1`, in the Python's key order: the settings API
 /// returns the user section in this order.
 pub fn defaults() -> Value {

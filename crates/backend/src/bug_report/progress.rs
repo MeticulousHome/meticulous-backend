@@ -12,6 +12,7 @@ use std::collections::HashMap;
 
 use history::bug_reports::BugReportRow;
 use serde_json::{Value, json};
+use tstype::{Ts, field};
 
 use super::{REPORT_STATUS_CANCELLED, REPORT_STATUS_QUEUED};
 
@@ -39,6 +40,22 @@ pub enum Stage {
 }
 
 impl Stage {
+    pub const ALL: [Stage; 13] = [
+        Stage::Queued,
+        Stage::Preparing,
+        Stage::FetchingMachineInfo,
+        Stage::FetchingLogs,
+        Stage::FetchingMachineStatus,
+        Stage::CollectingDebugShots,
+        Stage::Ticketing,
+        Stage::Compressing,
+        Stage::Uploading,
+        Stage::Finishing,
+        Stage::Submitted,
+        Stage::Failed,
+        Stage::Cancelled,
+    ];
+
     /// `REPORT_STAGES`.
     pub const ORDER: [Stage; 10] = [
         Stage::Queued,
@@ -102,6 +119,8 @@ pub enum Origin {
 }
 
 impl Origin {
+    pub const ALL: [Origin; 2] = [Origin::Dial, Origin::Mobile];
+
     pub fn as_str(self) -> &'static str {
         match self {
             Origin::Dial => "dial",
@@ -207,6 +226,50 @@ impl ReportProgress {
             ("startedAt", self.started_at.clone()),
             ("updatedAt", self.updated_at.clone()),
         ])
+    }
+
+    /// The TypeScript type of [`ReportProgress::payload`], the
+    /// `report_progress` event and each entry of GET /reports/progress.
+    pub fn payload_type() -> Ts {
+        let pending = Ts::named(
+            "ReportPendingStage",
+            "The stages that are not final, in the order a report runs them.",
+            Ts::literals(Stage::ORDER.map(Stage::as_str)),
+        );
+        let finals = Stage::ALL.into_iter().filter(|s| s.is_final());
+        let stage = Ts::named(
+            "ReportStage",
+            "",
+            pending.clone().or(Ts::named(
+                "ReportFinalStage",
+                "",
+                Ts::literals(finals.map(Stage::as_str)),
+            )),
+        );
+        let pair = |a: &str, b: &str, ty: Ts| Ts::object([field(a, ty.clone()), field(b, ty)]);
+        Ts::named(
+            "ReportProgressPayload",
+            "The `report_progress` event, contract v1: where one report stands. Times are seconds\n\
+             since the epoch.",
+            Ts::object([
+                field("v", Ts::IntLit(REPORT_PROGRESS_VERSION)),
+                field("localID", Ts::String),
+                field("origin", Ts::literals(Origin::ALL.map(Origin::as_str))),
+                field("ticket", Ts::Number.nullable()),
+                field("stage", stage),
+                field("stages", pending.array()).doc(
+                    "The stages this report runs: a Dial report has no `queued`, a mobile one no\n\
+                     `ticketing`.",
+                ),
+                field("detail", pair("current", "total", Ts::Number).nullable())
+                    .doc("Debug shots copied so far, during `collecting_debug_shots`."),
+                field("cancellable", Ts::Boolean),
+                field("final", Ts::Boolean),
+                field("failure", pair("code", "message", Ts::String).nullable()),
+                field("startedAt", Ts::Number),
+                field("updatedAt", Ts::Number),
+            ]),
+        )
     }
 }
 

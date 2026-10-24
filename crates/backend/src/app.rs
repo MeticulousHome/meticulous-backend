@@ -106,7 +106,7 @@ impl App {
         // reload the settings. Saves before the server runs reach nobody.
         {
             let sio = sio.clone();
-            config.on_save(move || sio.emit("settings", &serde_json::json!({})));
+            config.on_save(move || sio.emit("settings", &config::settings_event_payload()));
         }
         let host = Arc::new(Host::default());
         let sounds = Arc::new(SoundPlayer::new(

@@ -183,7 +183,8 @@ fn handle_line(app: &Arc<App>, data_str: &str) -> Option<(&'static str, Option<S
                         state.heater_timeout_info = Some(heater);
                         state.previous_preheat_remaining.replace(remaining)
                     };
-                    app.sio.emit("heater_status", &serde_json::json!(remaining));
+                    app.sio
+                        .emit("heater_status", &heater.to_sio_heater_status());
                     if remaining == 0.0 && previous != Some(0.0) {
                         tracing::info!("Heater_status: off");
                     }

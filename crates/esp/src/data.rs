@@ -6,8 +6,20 @@ use std::sync::LazyLock;
 use pyfmt::{object, py_float, py_int, strip_crlf, unquote};
 use regex::Regex;
 use serde_json::Value;
+use tstype::{Field, Ts, field};
 
 use crate::pynum::{PyNum, float_json};
+
+/// The TypeScript type of a value `safe_float_with_nan` fills.
+fn sensor_reading_type() -> Ts {
+    Ts::named(
+        "SensorReading",
+        "A reading the backend does not clamp: `\"NaN\"` where the firmware sent something that is\n\
+         not a number (a failed sensor), `null` for an infinite one (Python wrote the invalid JSON\n\
+         token `Infinity`).",
+        Ts::Number.or(Ts::literal("NaN")).nullable(),
+    )
+}
 
 /// `esp_serial.data.MachineStatus`: the status labels the ESP32 reports.
 #[derive(Debug, Clone, Copy)]
@@ -242,6 +254,47 @@ impl SensorData {
             ("motor_temp", self.motor_thermistor.to_json()),
             ("weight_pred", self.weight_prediction.to_json()),
         ])
+    }
+
+    /// The TypeScript type of [`SensorData::to_sio_sensors`].
+    pub fn sio_sensors_type() -> Ts {
+        let clamped = [
+            "t_ext_1",
+            "t_ext_2",
+            "t_bar_up",
+            "t_bar_mu",
+            "t_bar_md",
+            "t_bar_down",
+            "t_tube",
+            "t_motor_temp",
+            "lam_temp",
+            "p",
+            "a_0",
+            "a_1",
+            "a_2",
+            "a_3",
+            "m_pos",
+            "m_spd",
+            "m_pwr",
+            "m_cur",
+            "bh_pwr",
+            "bh_cur",
+        ];
+        Ts::named(
+            "SensorsPayload",
+            "The `sensors` event, after each `Sensors` frame. `safeFloat` sends 0 for a value that is\n\
+             not finite, except in `motor_temp` and `weight_pred`.",
+            Ts::object(
+                clamped
+                    .into_iter()
+                    .map(|key| field(key, Ts::Number))
+                    .chain([
+                        field("w_stat", Ts::Boolean),
+                        field("motor_temp", sensor_reading_type()),
+                        field("weight_pred", sensor_reading_type()),
+                    ]),
+            ),
+        )
     }
 }
 
@@ -611,6 +664,61 @@ impl ShotData {
             ("extracting", Value::Bool(self.is_extracting)),
         ])
     }
+
+    /// The TypeScript types of [`ShotData::to_sio`]'s keys, in its order.
+    pub fn sio_fields() -> Vec<Field> {
+        let sensors = Ts::named(
+            "StatusSensors",
+            "Pressure, flow, weight, temperature and gravimetric flow.",
+            Ts::object(["p", "f", "w", "t", "g"].map(|key| field(key, sensor_reading_type()))),
+        );
+        // data.py lists these kinds (Temperature in a comment); the keys
+        // are whatever the firmware names, lower-cased.
+        let kinds = [
+            ControlTypes::FLOW,
+            ControlTypes::PRESSURE,
+            ControlTypes::PISTON,
+            ControlTypes::POWER,
+            "Temperature",
+        ];
+        let setpoints = Ts::named(
+            "StatusSetpoints",
+            "The setpoint of each controller the frame names, by its kind in lower case.",
+            Ts::object_with_rest(
+                std::iter::once(
+                    field("active", Ts::String.nullable())
+                        .doc("The kind in charge; null when the frame names none."),
+                )
+                .chain(kinds.map(|kind| field(kind.to_lowercase(), Ts::Number).optional())),
+                field("kind", Ts::Number)
+                    .doc("A kind the firmware names that data.py does not list."),
+            ),
+        );
+        // `from_args` lower-cases `idle`, `Purge` and `Home` and calls any
+        // other profile brewing; MachineState.ERROR is never set.
+        let state = Ts::named(
+            "MachineState",
+            "",
+            Ts::literals([
+                MachineState::IDLE,
+                MachineState::PURGE,
+                MachineState::HOME,
+                MachineState::BREWING,
+            ]),
+        );
+        vec![
+            field("name", Ts::String.nullable())
+                .doc("The firmware's status (`idle`, `heating`, ...); null in a five-field frame."),
+            field("sensors", sensors),
+            field("setpoints", setpoints),
+            field("time", Ts::Number),
+            field("profile", Ts::String.nullable())
+                .doc("The profile the firmware runs; null in a five-field frame."),
+            field("profile_time", Ts::Number),
+            field("state", state),
+            field("extracting", Ts::Boolean),
+        ]
+    }
 }
 
 /// `ButtonEventEnum`.
@@ -752,6 +860,26 @@ impl ButtonEventData {
             ),
         ])
     }
+
+    /// The TypeScript type of [`ButtonEventData::to_sio`].
+    pub fn sio_type() -> Ts {
+        Ts::named(
+            "ButtonPayload",
+            "The `button` event: a physical button of the machine.",
+            Ts::object([
+                field(
+                    "type",
+                    Ts::named(
+                        "ButtonEventType",
+                        "",
+                        Ts::literals(ButtonEvent::ALL.map(ButtonEvent::name)),
+                    ),
+                ),
+                field("time_since_last_event", Ts::Number)
+                    .doc("10000 once the firmware's counter overflows (`9999+++`)."),
+            ]),
+        )
+    }
 }
 
 /// `MachineNotify`: a message the ESP32 wants the user to see.
@@ -806,6 +934,21 @@ impl HeaterTimeoutInfo {
             preheat_remaining: float(2)?,
             preheat_timeout: float(3)?,
         })
+    }
+
+    /// The payload of the `heater_status` event (`preheat_remaining`).
+    pub fn to_sio_heater_status(&self) -> Value {
+        float_json(self.preheat_remaining)
+    }
+
+    /// The TypeScript type of [`HeaterTimeoutInfo::to_sio_heater_status`].
+    pub fn sio_heater_status_type() -> Ts {
+        Ts::named(
+            "HeaterStatusPayload",
+            "The `heater_status` event: the preheat time remaining; null for a value that is not\n\
+             finite (Python wrote the invalid JSON tokens `NaN` and `Infinity`).",
+            Ts::Number.nullable(),
+        )
     }
 
     /// `HeaterTimeoutInfo.to_dict`.

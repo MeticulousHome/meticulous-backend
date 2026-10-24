@@ -16,7 +16,7 @@ use profile::pour_over::{
 
 use crate::app::App;
 use crate::http::Reply;
-use crate::profiles::ProfileEvent;
+use crate::profiles::{POUR_OVER_BREW_TYPE, ProfileEvent};
 
 /// A request body over the size limit that names itself a Pour Over profile:
 /// refused before it is parsed.
@@ -263,8 +263,12 @@ impl PourOverProfileManager {
         } else {
             ProfileEvent::Create
         };
-        app.profiles
-            .emit_event(event, Some(&id), Some(&change_id), Some("pour_over"));
+        app.profiles.emit_event(
+            event,
+            Some(&id),
+            Some(&change_id),
+            Some(POUR_OVER_BREW_TYPE),
+        );
         tracing::info!("Saved Pour Over profile {id}");
         Ok(json!({"profile": profile, "change_id": change_id}))
     }
@@ -314,7 +318,7 @@ impl PourOverProfileManager {
             ProfileEvent::Delete,
             Some(id),
             Some(&change_id),
-            Some("pour_over"),
+            Some(POUR_OVER_BREW_TYPE),
         );
         tracing::info!("Deleted Pour Over profile {id}");
         Ok(Some(json!({"profile": profile, "change_id": change_id})))

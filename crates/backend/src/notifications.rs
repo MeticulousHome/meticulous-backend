@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 use serde_json::{Value, json};
+use tstype::{Ts, field};
 
 use crate::config::{ConfigStore, keys};
 use crate::sio::Sio;
@@ -79,6 +80,33 @@ impl Notification {
     pub fn to_json(&self) -> String {
         pyfmt::dumps_default(&self.to_value())
     }
+
+    /// The payload of the `notification` event.
+    pub fn to_sio(&self) -> Value {
+        Value::String(self.to_json())
+    }
+
+    /// The TypeScript type of [`Notification::to_sio`].
+    pub fn sio_type() -> Ts {
+        let message = Ts::named(
+            "NotificationMessage",
+            "A notification, as GET /notifications lists it too.",
+            Ts::object([
+                field("id", Ts::String),
+                field("message", Ts::String),
+                field("image", Ts::String.nullable()),
+                field("responses", Ts::String.array()),
+                field("timestamp", Ts::String)
+                    .doc("Local time, `datetime.isoformat()` without an offset."),
+            ]),
+        );
+        Ts::named(
+            "NotificationPayload",
+            "The `notification` event: the JSON text of a `NotificationMessage` (the Python emits\n\
+             `json.dumps(...)`), not an object.",
+            message.json_text(),
+        )
+    }
 }
 
 /// `datetime.isoformat()`: microseconds only when there are any.
@@ -124,9 +152,12 @@ impl NotificationManager {
             list.push(notification.clone());
             updating
         };
-        let text = notification.to_json();
-        self.sio.emit("notification", &Value::String(text.clone()));
-        tracing::info!("send notification: {text}");
+        let payload = notification.to_sio();
+        self.sio.emit("notification", &payload);
+        tracing::info!(
+            "send notification: {}",
+            payload.as_str().unwrap_or_default()
+        );
         if updating {
             tracing::info!("Notification updated");
         } else {

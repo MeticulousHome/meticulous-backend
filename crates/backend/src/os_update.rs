@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 use serde_json::{Value, json};
+use tstype::{Ts, field};
 
 use crate::sio::Sio;
 
@@ -20,6 +21,14 @@ pub enum OsStatus {
 }
 
 impl OsStatus {
+    pub const ALL: [OsStatus; 5] = [
+        OsStatus::Idle,
+        OsStatus::Downloading,
+        OsStatus::Installing,
+        OsStatus::Complete,
+        OsStatus::Failed,
+    ];
+
     /// `OSStatus.to_string`.
     pub fn as_str(self) -> &'static str {
         match self {
@@ -70,6 +79,28 @@ impl OsUpdateStatus {
             "status": state.last_status.as_str(),
             "info": info,
         })
+    }
+
+    /// The TypeScript type of [`OsUpdateStatus::to_json`], the `OSUpdate`
+    /// event and GET /machine/OS_update_status.
+    pub fn sio_type() -> Ts {
+        Ts::named(
+            "OSUpdatePayload",
+            "The `OSUpdate` event: the progress of an OS update.",
+            Ts::object([
+                field("progress", Ts::Number).doc("Rounded to an integer."),
+                field(
+                    "status",
+                    Ts::named(
+                        "OSUpdateStatus",
+                        "",
+                        Ts::literals(OsStatus::ALL.map(OsStatus::as_str)),
+                    ),
+                ),
+                field("info", Ts::String)
+                    .doc("Empty, or ` : ` and a detail (the Python never sets one)."),
+            ]),
+        )
     }
 
     /// `UpdateOSStatus.markAsRecoveryUpdate`: a USB recovery update shows its

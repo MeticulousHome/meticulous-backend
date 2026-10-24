@@ -826,6 +826,7 @@ dependencies = [
  "regex",
  "serde_json",
  "thiserror",
+ "tstype",
 ]
 
 [[package]]
@@ -1194,6 +1195,7 @@ dependencies = [
  "tempfile",
  "thiserror",
  "tracing",
+ "tstype",
  "uuid",
  "zstd 0.13.3",
 ]
@@ -1829,6 +1831,7 @@ dependencies = [
  "tower-http 0.7.1",
  "tracing",
  "tracing-subscriber",
+ "tstype",
  "url",
  "uuid",
  "zbus",
@@ -3735,6 +3738,13 @@ name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
+
+[[package]]
+name = "tstype"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
 
 [[package]]
 name = "tungstenite"
