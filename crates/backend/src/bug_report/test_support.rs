@@ -223,6 +223,7 @@ impl<S: tracing::Subscriber> tracing_subscriber::Layer<S> for CaptureLayer {
 
 /// Capture what this thread logs (`#[tokio::test]` runs on one thread).
 pub fn capture_logs() -> LogCapture {
+    crate::logging::pin_callsite_interest();
     let records = Arc::new(Mutex::new(Vec::new()));
     let subscriber = tracing_subscriber::registry().with(CaptureLayer {
         records: records.clone(),
