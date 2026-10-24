@@ -14,4 +14,4 @@ mod text;
 
 pub use float::{PyFloat, py_float, py_int, repr_f64, safe_float, safe_float_with_nan};
 pub use json::{DumpOpts, dumps, dumps_default, loads_lenient, object, tornado_json_encode};
-pub use text::{strip_crlf, unquote};
+pub use text::{strip_crlf, unquote, unquote_to_bytes};

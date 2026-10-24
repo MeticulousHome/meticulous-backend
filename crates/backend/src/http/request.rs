@@ -32,6 +32,11 @@ pub struct JsonError {
     pub message: String,
 }
 
+/// A query or form argument whose bytes are not UTF-8.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error("Invalid unicode in argument")]
+pub struct InvalidUnicode;
+
 impl Request {
     pub async fn from_axum(
         request: axum::extract::Request,
@@ -90,14 +95,32 @@ impl Request {
         parse_qs(&self.query)
     }
 
+    fn is_form(&self) -> bool {
+        self.header("content-type")
+            .is_some_and(|ct| ct.starts_with("application/x-www-form-urlencoded"))
+    }
+
     fn body_arguments(&self) -> Vec<(String, String)> {
-        let form = self
-            .header("content-type")
-            .is_some_and(|ct| ct.starts_with("application/x-www-form-urlencoded"));
-        if form {
+        if self.is_form() {
             parse_qs(&String::from_utf8_lossy(&self.body))
         } else {
             Vec::new()
+        }
+    }
+
+    /// `get_argument(name)` decoded the way tornado's `decode_argument`
+    /// does it: a value that is not UTF-8 is an `HTTPError(400)` there,
+    /// `Err` here.
+    pub fn get_argument_checked(&self, name: &str) -> Result<Option<String>, InvalidUnicode> {
+        let mut all = parse_qs_bytes(&self.query);
+        if self.is_form() {
+            all.extend(parse_qs_bytes(&String::from_utf8_lossy(&self.body)));
+        }
+        match all.into_iter().rev().find(|(k, _)| k == name) {
+            None => Ok(None),
+            Some((_, raw)) => String::from_utf8(raw)
+                .map(|v| Some(v.trim().to_string()))
+                .map_err(|_| InvalidUnicode),
         }
     }
 
@@ -193,6 +216,13 @@ pub fn parse_python_json(body: &[u8]) -> Result<Value, JsonError> {
     match pyfmt::loads_lenient(text) {
         Ok(value) => Ok(value),
         Err(error) => {
+            if (error.is_eof() || text.trim().is_empty())
+                && let Some((what, at)) = truncated_json(text)
+            {
+                return Err(JsonError {
+                    message: python_json_position(what, text, at),
+                });
+            }
             let line = error.line().max(1);
             let column = error.column().max(1);
             let offset = char_offset(text, line, column);
@@ -216,6 +246,119 @@ pub fn parse_python_json(body: &[u8]) -> Result<Value, JsonError> {
             })
         }
     }
+}
+
+/// What CPython's decoder expected where a document that is valid so far
+/// ends, and the character index it names: `{` wants a property name, `[1`
+/// a `,`, `"ab` is an unterminated string. `None` when the text does not
+/// read as a cut-off document.
+fn truncated_json(text: &str) -> Option<(&'static str, usize)> {
+    #[derive(Clone, Copy, PartialEq)]
+    enum Want {
+        Value,
+        Key,
+        Colon,
+        CommaOrEnd,
+    }
+    let chars: Vec<char> = text.chars().collect();
+    let mut containers: Vec<char> = Vec::new();
+    let mut want = Want::Value;
+    let mut i = 0;
+    while let Some(&c) = chars.get(i) {
+        match (want, c) {
+            (_, ' ' | '\t' | '\n' | '\r') => i += 1,
+            (Want::Value | Want::Key, '"') => {
+                let start = i;
+                i += 1;
+                loop {
+                    match chars.get(i) {
+                        None => return Some(("Unterminated string starting at", start)),
+                        Some('\\') => i += 2,
+                        Some('"') => break,
+                        Some(_) => i += 1,
+                    }
+                }
+                i += 1;
+                want = if want == Want::Key {
+                    Want::Colon
+                } else {
+                    Want::CommaOrEnd
+                };
+            }
+            (Want::Value, '{') => {
+                containers.push('{');
+                want = Want::Key;
+                i += 1;
+            }
+            (Want::Value, '[') => {
+                containers.push('[');
+                i += 1;
+            }
+            (Want::Key | Want::CommaOrEnd, '}') | (Want::Value | Want::CommaOrEnd, ']') => {
+                containers.pop()?;
+                want = Want::CommaOrEnd;
+                i += 1;
+            }
+            (Want::Colon, ':') => {
+                want = Want::Value;
+                i += 1;
+            }
+            (Want::CommaOrEnd, ',') => {
+                want = match containers.last()? {
+                    '{' => Want::Key,
+                    _ => Want::Value,
+                };
+                i += 1;
+            }
+            (Want::Value, _) => {
+                // A number or a literal, up to the next delimiter.
+                let start = i;
+                while chars
+                    .get(i)
+                    .is_some_and(|c| !matches!(c, ',' | ']' | '}' | ':' | ' ' | '\t' | '\n' | '\r'))
+                {
+                    i += 1;
+                }
+                let token: String = chars[start..i].iter().collect();
+                if i == chars.len() && !complete_json_scalar(&token) {
+                    return Some(("Expecting value", start));
+                }
+                want = Want::CommaOrEnd;
+            }
+            _ => return None,
+        }
+    }
+    let what = match want {
+        Want::Value => "Expecting value",
+        Want::Key => "Expecting property name enclosed in double quotes",
+        Want::Colon => "Expecting ':' delimiter",
+        Want::CommaOrEnd => "Expecting ',' delimiter",
+    };
+    Some((what, chars.len()))
+}
+
+/// A number or a literal `json.loads` reads in full.
+fn complete_json_scalar(token: &str) -> bool {
+    static NUMBER: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+    let number = NUMBER.get_or_init(|| {
+        regex::Regex::new(r"^-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][-+]?[0-9]+)?$").expect("valid regex")
+    });
+    matches!(
+        token,
+        "true" | "false" | "null" | "NaN" | "Infinity" | "-Infinity"
+    ) || number.is_match(token)
+}
+
+/// `JSONDecodeError`'s text: the message and where, as line, column and
+/// character index.
+fn python_json_position(what: &str, text: &str, at: usize) -> String {
+    let before: Vec<char> = text.chars().take(at).collect();
+    let line = before.iter().filter(|c| **c == '\n').count() + 1;
+    let column = match before.iter().rposition(|c| *c == '\n') {
+        Some(newline) => at - newline,
+        None => at + 1,
+    };
+    format!("{what}: line {line} column {column} (char {at})")
 }
 
 fn char_offset(text: &str, line: usize, column: usize) -> usize {
@@ -245,6 +388,22 @@ fn decode_form(s: &str) -> String {
     pyfmt::unquote(&s.replace('+', " "))
 }
 
+/// tornado's `parse_qs_bytes`: the values stay bytes until a handler asks
+/// for one.
+fn parse_qs_bytes(query: &str) -> Vec<(String, Vec<u8>)> {
+    query
+        .split('&')
+        .filter(|pair| !pair.is_empty())
+        .map(|pair| {
+            let (k, v) = pair.split_once('=').unwrap_or((pair, ""));
+            (
+                decode_form(k),
+                pyfmt::unquote_to_bytes(&v.replace('+', " ")),
+            )
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -265,11 +424,72 @@ mod tests {
     }
 
     #[test]
+    fn undecodable_arguments_like_tornado() {
+        let req = Request::synthetic(http::Method::GET, "/x?f=%ff&g=caf%C3%A9+%20", "");
+        assert_eq!(req.get_argument_checked("f"), Err(InvalidUnicode));
+        assert_eq!(req.get_argument_checked("g"), Ok(Some("café".into())));
+        assert_eq!(req.get_argument_checked("missing"), Ok(None));
+    }
+
+    #[test]
     fn json_errors_read_like_cpython() {
         assert_eq!(
             parse_python_json(b"").unwrap_err().message,
             "Expecting value: line 1 column 1 (char 0)"
         );
         assert!(parse_python_json(b"{\"a\": 1}").is_ok());
+    }
+
+    /// A body cut short names what CPython expected next (the texts are
+    /// CPython 3.12's).
+    #[test]
+    fn truncated_json_errors_read_like_cpython() {
+        for (body, message) in [
+            ("   ", "Expecting value: line 1 column 4 (char 3)"),
+            (
+                "{",
+                "Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
+            ),
+            (
+                "{ ",
+                "Expecting property name enclosed in double quotes: line 1 column 3 (char 2)",
+            ),
+            (
+                "{\"a\"",
+                "Expecting ':' delimiter: line 1 column 5 (char 4)",
+            ),
+            ("{\"a\":", "Expecting value: line 1 column 6 (char 5)"),
+            (
+                "{\"a\": 1",
+                "Expecting ',' delimiter: line 1 column 8 (char 7)",
+            ),
+            (
+                "{\"a\": 1,",
+                "Expecting property name enclosed in double quotes: line 1 column 9 (char 8)",
+            ),
+            ("[", "Expecting value: line 1 column 2 (char 1)"),
+            ("[1", "Expecting ',' delimiter: line 1 column 3 (char 2)"),
+            ("[1,", "Expecting value: line 1 column 4 (char 3)"),
+            (
+                "\"abc",
+                "Unterminated string starting at: line 1 column 1 (char 0)",
+            ),
+            (
+                "{\"ab",
+                "Unterminated string starting at: line 1 column 2 (char 1)",
+            ),
+            ("[tr", "Expecting value: line 1 column 2 (char 1)"),
+            ("[-", "Expecting value: line 1 column 2 (char 1)"),
+            (
+                "{\n  \"a\": [1,\n",
+                "Expecting value: line 3 column 1 (char 13)",
+            ),
+        ] {
+            assert_eq!(
+                parse_python_json(body.as_bytes()).unwrap_err().message,
+                message,
+                "{body:?}"
+            );
+        }
     }
 }
