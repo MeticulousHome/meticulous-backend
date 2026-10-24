@@ -183,6 +183,13 @@ impl NotificationManager {
         self.list.lock().clone()
     }
 
+    /// Replace the list as it stands, acknowledged entries included (the
+    /// Python suite patches `NotificationManager._notifications`).
+    #[cfg(test)]
+    pub fn replace_all(&self, notifications: Vec<Notification>) {
+        *self.list.lock() = notifications;
+    }
+
     fn delete_old_acknowledged(&self) {
         let ttl = self
             .config
