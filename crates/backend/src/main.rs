@@ -37,6 +37,8 @@ mod metconfig;
 mod notifications;
 mod os_update;
 mod ota;
+#[cfg(test)]
+mod ported;
 mod pour_over;
 mod profiles;
 mod py;
@@ -53,8 +55,6 @@ mod smoke_validation;
 mod sounds;
 mod ssh_manager;
 mod system_services;
-#[cfg(test)]
-mod ported;
 #[cfg(test)]
 mod testing;
 mod timezone;
