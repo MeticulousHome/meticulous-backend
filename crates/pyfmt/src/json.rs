@@ -1,6 +1,8 @@
 use serde_json::{Map, Value};
 
-use crate::float::repr_f64;
+use std::fmt::Write as _;
+
+use crate::float::write_repr_f64;
 
 /// The `json.dumps` options this backend uses.
 #[derive(Debug, Clone, Copy)]
@@ -58,29 +60,32 @@ pub fn dumps_default(value: &Value) -> String {
 /// `json.dumps(value, ...)` byte for byte.
 pub fn dumps(value: &Value, opts: &DumpOpts) -> String {
     let mut out = String::new();
-    write_value(&mut out, value, opts, 0);
+    write_value(&mut out, value, opts, 0, false);
     out
 }
 
 /// What tornado's `RequestHandler.write(dict)` sends: `json.dumps` with the
 /// defaults and every `</` escaped so the body can sit inside a script tag.
 pub fn tornado_json_encode(value: &Value) -> String {
-    dumps_default(value).replace("</", "<\\/")
+    let mut out = String::new();
+    // `</` can only occur inside strings, so it is escaped as they are written.
+    write_value(&mut out, value, &DumpOpts::default(), 0, true);
+    out
 }
 
-fn write_value(out: &mut String, value: &Value, opts: &DumpOpts, level: usize) {
+fn write_value(out: &mut String, value: &Value, opts: &DumpOpts, level: usize, html: bool) {
     match value {
         Value::Null => out.push_str("null"),
         Value::Bool(true) => out.push_str("true"),
         Value::Bool(false) => out.push_str("false"),
         Value::Number(n) => {
             if n.is_f64() {
-                out.push_str(&repr_f64(n.as_f64().unwrap_or(0.0)));
+                write_repr_f64(out, n.as_f64().unwrap_or(0.0));
             } else {
-                out.push_str(&n.to_string());
+                let _ = write!(out, "{n}");
             }
         }
-        Value::String(s) => write_string(out, s, opts.ensure_ascii),
+        Value::String(s) => write_string(out, s, opts.ensure_ascii, html),
         Value::Array(items) => {
             if items.is_empty() {
                 out.push_str("[]");
@@ -92,7 +97,7 @@ fn write_value(out: &mut String, value: &Value, opts: &DumpOpts, level: usize) {
                     out.push_str(opts.item_separator);
                 }
                 newline(out, opts, level + 1);
-                write_value(out, item, opts, level + 1);
+                write_value(out, item, opts, level + 1, html);
             }
             newline(out, opts, level);
             out.push(']');
@@ -108,9 +113,9 @@ fn write_value(out: &mut String, value: &Value, opts: &DumpOpts, level: usize) {
                     out.push_str(opts.item_separator);
                 }
                 newline(out, opts, level + 1);
-                write_string(out, key, opts.ensure_ascii);
+                write_string(out, key, opts.ensure_ascii, html);
                 out.push_str(opts.key_separator);
-                write_value(out, item, opts, level + 1);
+                write_value(out, item, opts, level + 1, html);
             };
             if opts.sort_keys {
                 let mut keys: Vec<&String> = map.keys().collect();
@@ -138,9 +143,19 @@ fn newline(out: &mut String, opts: &DumpOpts, level: usize) {
     }
 }
 
-/// `json.encoder.py_encode_basestring(_ascii)`.
-fn write_string(out: &mut String, s: &str, ensure_ascii: bool) {
+/// `json.encoder.py_encode_basestring(_ascii)`; `html` also escapes `</`
+/// (tornado's `json_encode`).
+fn write_string(out: &mut String, s: &str, ensure_ascii: bool, html: bool) {
     out.push('"');
+    let plain = s.bytes().all(|b| {
+        b >= 0x20 && b != b'"' && b != b'\\' && (!ensure_ascii || b < 0x7f) && (!html || b != b'/')
+    });
+    if plain {
+        out.push_str(s);
+        out.push('"');
+        return;
+    }
+    let mut previous = '\0';
     for c in s.chars() {
         match c {
             '"' => out.push_str("\\\""),
@@ -150,15 +165,19 @@ fn write_string(out: &mut String, s: &str, ensure_ascii: bool) {
             '\t' => out.push_str("\\t"),
             '\u{08}' => out.push_str("\\b"),
             '\u{0c}' => out.push_str("\\f"),
-            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
+            '/' if html && previous == '<' => out.push_str("\\/"),
+            c if (c as u32) < 0x20 => {
+                let _ = write!(out, "\\u{:04x}", c as u32);
+            }
             c if ensure_ascii && !(' '..='~').contains(&c) => {
                 let mut units = [0u16; 2];
                 for unit in c.encode_utf16(&mut units) {
-                    out.push_str(&format!("\\u{unit:04x}"));
+                    let _ = write!(out, "\\u{unit:04x}");
                 }
             }
             c => out.push(c),
         }
+        previous = c;
     }
     out.push('"');
 }
@@ -237,6 +256,19 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tornado_encoding_escapes_only_lt_slash() {
+        let value = serde_json::json!({"a/b": "</script> <b>x</b> a/b", "n": [1, 2.5, -0.0]});
+        assert_eq!(
+            tornado_json_encode(&value),
+            r#"{"a/b": "<\/script> <b>x<\/b> a/b", "n": [1, 2.5, -0.0]}"#
+        );
+        assert_eq!(
+            tornado_json_encode(&value),
+            dumps_default(&value).replace("</", "<\\/")
+        );
+    }
     use serde_json::json;
 
     /// `\uXXXX` built at run time, so the escape survives editors and tools

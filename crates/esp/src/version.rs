@@ -284,6 +284,24 @@ pub struct FirmwareVersion {
     pub local: String,
 }
 
+impl FirmwareVersion {
+    /// The dict `_parseVersionString` returns, as the Python logs it:
+    /// `{'Release': <Version('0.2.24')>, 'ExtraCommits': '469', 'SHA': ..., 'Local': ...}`.
+    pub fn python_repr(&self) -> String {
+        let quote = |s: &str| format!("'{}'", s.replace('\\', "\\\\").replace('\'', "\\'"));
+        let commits = match &self.extra_commits {
+            ExtraCommits::Default => "0".to_string(),
+            ExtraCommits::Text(text) => quote(text),
+        };
+        format!(
+            "{{'Release': <Version({})>, 'ExtraCommits': {commits}, 'SHA': {}, 'Local': {}}}",
+            quote(&self.release.to_string()),
+            quote(&self.sha),
+            quote(&self.local)
+        )
+    }
+}
+
 /// `Machine._parseVersionString`: `git describe`-style text split on `-`
 /// into release, extra commits, sha and modifier. `None` for `None`, the
 /// empty string, or a release that is not PEP 440 (Python logs a warning).
@@ -437,6 +455,25 @@ mod tests {
         assert_ne!(
             parse_version_string(Some("1.2.3")),
             parse_version_string(Some("1.2.3-0"))
+        );
+    }
+}
+
+#[cfg(test)]
+mod repr_tests {
+    use super::*;
+
+    #[test]
+    fn firmware_version_logs_like_the_python_dict() {
+        let parsed = parse_version_string(Some("0.2.24-469-gf8064c0")).expect("parse");
+        assert_eq!(
+            parsed.python_repr(),
+            "{'Release': <Version('0.2.24')>, 'ExtraCommits': '469', 'SHA': 'gf8064c0', 'Local': ''}"
+        );
+        let bare = parse_version_string(Some("1.0.0")).expect("parse");
+        assert_eq!(
+            bare.python_repr(),
+            "{'Release': <Version('1.0.0')>, 'ExtraCommits': 0, 'SHA': '', 'Local': ''}"
         );
     }
 }
