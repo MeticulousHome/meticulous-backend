@@ -83,6 +83,9 @@ impl History {
     pub fn unlink_debug_file(&self, _file: &str) -> Result<(), String> {
         Ok(())
     }
+    pub fn search_manual_shots(&self, _ids: &[String]) -> Result<Vec<Value>, String> {
+        Ok(Vec::new())
+    }
 }
 
 pub mod shot_files {

@@ -13,19 +13,47 @@ pub fn routes(app: &App) -> Vec<Route> {
     vec![
         Route::new("/profile/list", Kind::Base, m, "ListHandler").get(list),
         Route::new("/profile/save", Kind::Base, m, "SaveProfileHandler").post(save),
-        Route::new("/profile/from_manual", Kind::Base, m, "CreateProfileFromManualHandler").post(from_manual),
+        Route::new(
+            "/profile/from_manual",
+            Kind::Base,
+            m,
+            "CreateProfileFromManualHandler",
+        )
+        .post(from_manual),
         Route::new("/profile/load", Kind::Base, m, "LoadProfileHandler").post(load_posted),
         Route::new("/profile/defaults", Kind::Base, m, "ListDefaultsHandler").get(defaults),
         Route::new("/profile/image([/]*)", Kind::Base, m, "ListImagesHandler").get(list_images),
         Route::new(
             "/profile/image/(.*)",
-            Kind::Static(StaticOptions { root: app.env.paths.images.clone(), default_filename: None }),
+            Kind::Static(StaticOptions {
+                root: app.env.paths.images.clone(),
+                default_filename: None,
+            }),
             m,
             "StaticFileHandler",
         ),
-        Route::new("/profile/load/([0-9a-fA-F-]+)", Kind::Base, m, "LoadProfileHandler").get(load_by_id),
-        Route::new("/profile/get/([0-9a-fA-F-]+)", Kind::Base, m, "GetProfileHandler").get(get),
-        Route::new("/profile/delete/([0-9a-fA-F-]+)", Kind::Base, m, "DeleteProfileHandler").get(delete).delete(delete),
+        Route::new(
+            "/profile/load/([0-9a-fA-F-]+)",
+            Kind::Base,
+            m,
+            "LoadProfileHandler",
+        )
+        .get(load_by_id),
+        Route::new(
+            "/profile/get/([0-9a-fA-F-]+)",
+            Kind::Base,
+            m,
+            "GetProfileHandler",
+        )
+        .get(get),
+        Route::new(
+            "/profile/delete/([0-9a-fA-F-]+)",
+            Kind::Base,
+            m,
+            "DeleteProfileHandler",
+        )
+        .get(delete)
+        .delete(delete),
         Route::new("/profile/changes", Kind::Base, m, "ChangesHandler").get(changes),
         Route::new("/profile/last", Kind::Base, m, "LastProfileHandler").get(last),
         Route::new("/profile/selected", Kind::Base, m, "SelectedProfileHandler").get(selected),
@@ -112,22 +140,29 @@ fn bare_token(text: &str, token: &str) -> bool {
 
 async fn save(app: Arc<App>, req: Request) -> Reply {
     let change_id = req.header("X-Change-Id").map(str::to_string);
-    if req.body.len() > crate::pour_over::MAX_POUR_OVER_PROFILE_BYTES && crate::pour_over::looks_like_pour_over(&req.body) {
-        return crate::pour_over::error_reply(&profile::pour_over::PourOverProfileError::TooLarge);
+    if crate::pour_over::looks_like_pour_over(&req.body) {
+        return crate::pour_over::error_reply(&profile::PourOverProfileError::TooLarge);
     }
     let data = match parse_profile_body(&req.body) {
         Ok(data) => data,
         Err(cause) => {
             tracing::warn!("Failed to save profile: {cause}");
-            return error(400, json!({"status": "error", "error": "failed to save profile", "cause": cause}));
+            return error(
+                400,
+                json!({"status": "error", "error": "failed to save profile", "cause": cause}),
+            );
         }
     };
     let is_pour_over = data.get("brew_type").and_then(Value::as_str) == Some("pour_over");
     let result = blocking(move || {
         if is_pour_over {
-            app.pour_over.save_profile(&app, data.clone(), change_id).map_err(SaveError::PourOver)
+            app.pour_over
+                .save_profile(&app, data, change_id)
+                .map_err(SaveError::PourOver)
         } else {
-            app.profiles.save_profile(&app, data.clone(), false, change_id, false).map_err(|e| SaveError::Espresso(e, data))
+            app.profiles
+                .save_profile(&app, data.clone(), false, change_id, false)
+                .map_err(|e| SaveError::Espresso(e, data))
         }
     })
     .await;
@@ -139,19 +174,28 @@ async fn save(app: Arc<App>, req: Request) -> Reply {
         }
         Some(Err(SaveError::Espresso(ProfileError::Validation(message), data))) => {
             let id = data.get("id").cloned().unwrap_or(Value::Null);
-            tracing::warn!("Rejected espresso profile {}: {message}", crate::metconfig::py_repr(&id));
-            error(400, json!({"status": "error", "error": format!("JSON validation error: {message}")}))
+            tracing::warn!(
+                "Rejected espresso profile {}: {message}",
+                crate::metconfig::py_repr(&id)
+            );
+            error(
+                400,
+                json!({"status": "error", "error": format!("JSON validation error: {message}")}),
+            )
         }
         Some(Err(SaveError::Espresso(e, _))) => {
             tracing::warn!("Failed to save profile: {e}");
-            error(400, json!({"status": "error", "error": "failed to save profile", "cause": e.to_string()}))
+            error(
+                400,
+                json!({"status": "error", "error": "failed to save profile", "cause": e.to_string()}),
+            )
         }
         None => Reply::error(Kind::Base, 500, &req),
     }
 }
 
 enum SaveError {
-    PourOver(profile::pour_over::PourOverProfileError),
+    PourOver(profile::PourOverProfileError),
     Espresso(ProfileError, Value),
 }
 
@@ -162,38 +206,65 @@ async fn from_manual(app: Arc<App>, req: Request) -> Reply {
         match req.json() {
             Ok(v) => v,
             Err(e) => {
-                return error(400, json!({"status": "error", "error": "failed to create profile from manual brew", "cause": e.message}))
+                return error(
+                    400,
+                    json!({"status": "error", "error": "failed to create profile from manual brew", "cause": e.message}),
+                );
             }
         }
     };
     let Value::Object(map) = &data else {
-        return error(400, json!({"status": "error", "error": "body must be a JSON object"}));
+        return error(
+            400,
+            json!({"status": "error", "error": "body must be a JSON object"}),
+        );
     };
     let name = map.get("name").cloned();
     if name.as_ref().is_some_and(|n| !n.is_string()) {
-        return error(400, json!({"status": "error", "error": "name must be a string"}));
+        return error(
+            400,
+            json!({"status": "error", "error": "name must be a string"}),
+        );
     }
     let shot_id = map.get("shot_id").cloned();
     if shot_id.as_ref().is_some_and(|s| !s.is_string()) {
-        return error(400, json!({"status": "error", "error": "shot_id must be a string"}));
+        return error(
+            400,
+            json!({"status": "error", "error": "shot_id must be a string"}),
+        );
     }
     let change_id = req.header("X-Change-Id").map(str::to_string);
-    let outcome = blocking(move || -> Result<Value, crate::manual_mode::FromManualError> {
-        let shot = crate::manual_mode::find_manual_shot(&app, shot_id.as_ref().and_then(Value::as_str))?;
-        let profile = crate::manual_mode::build_profile_from_manual_shot(&shot, name.as_ref().and_then(Value::as_str))?;
-        app.profiles
-            .save_profile(&app, profile, false, change_id, false)
-            .map_err(crate::manual_mode::FromManualError::Profile)
-    })
+    let outcome = blocking(
+        move || -> Result<Value, crate::manual_mode::FromManualError> {
+            let shot = crate::manual_mode::find_manual_shot(
+                &app,
+                shot_id.as_ref().and_then(Value::as_str),
+            )?;
+            let profile = crate::manual_mode::build_profile_from_manual_shot(
+                &shot,
+                name.as_ref().and_then(Value::as_str),
+            )?;
+            app.profiles
+                .save_profile(&app, profile, false, change_id, false)
+                .map_err(crate::manual_mode::FromManualError::Profile)
+        },
+    )
     .await;
     use crate::manual_mode::FromManualError as E;
     match outcome {
         Some(Ok(response)) => Reply::base().json(response),
-        Some(Err(E::NotFound)) => error(404, json!({"status": "error", "error": "no manual brew found"})),
-        Some(Err(E::NoTargets)) => error(409, json!({"status": "error", "error": "shot has no target samples"})),
-        Some(Err(E::Profile(ProfileError::Validation(message)))) => {
-            error(400, json!({"status": "error", "error": format!("JSON validation error: {message}")}))
-        }
+        Some(Err(E::NotFound(_))) => error(
+            404,
+            json!({"status": "error", "error": "no manual brew found"}),
+        ),
+        Some(Err(E::NoTargets)) => error(
+            409,
+            json!({"status": "error", "error": "shot has no target samples"}),
+        ),
+        Some(Err(E::Profile(ProfileError::Validation(message)))) => error(
+            400,
+            json!({"status": "error", "error": format!("JSON validation error: {message}")}),
+        ),
         Some(Err(other)) => {
             tracing::warn!("Failed to create profile from manual brew: {other}");
             error(
@@ -211,7 +282,11 @@ async fn load_by_id(app: Arc<App>, req: Request) -> Reply {
         return busy();
     }
     let id = req.arg(0).unwrap_or("").to_string();
-    let limited = if crate::limited_access::is_limited_access(&app) { app.simple_profile.get_by_id(&id) } else { None };
+    let limited = if crate::limited_access::is_limited_access(&app) {
+        app.simple_profile.get_by_id(&id)
+    } else {
+        None
+    };
     if let Some(limited) = limited {
         let outcome = blocking({
             let app = app.clone();
@@ -219,11 +294,17 @@ async fn load_by_id(app: Arc<App>, req: Request) -> Reply {
         })
         .await;
         return match outcome {
-            Some(Ok(Some(profile))) => Reply::base().json(json!({"name": profile.get("name"), "id": profile.get("id")})),
-            Some(Ok(None)) => error(403, json!({"status": "error", "error": "high strain on motor"})),
-            Some(Err(ProfileError::Validation(message))) => {
-                error(400, json!({"status": "error", "error": format!("JSON validation error: {message}")}))
+            Some(Ok(Some(profile))) => {
+                Reply::base().json(json!({"name": profile.get("name"), "id": profile.get("id")}))
             }
+            Some(Ok(None)) => error(
+                403,
+                json!({"status": "error", "error": "high strain on motor"}),
+            ),
+            Some(Err(ProfileError::Validation(message))) => error(
+                400,
+                json!({"status": "error", "error": format!("JSON validation error: {message}")}),
+            ),
             // PARITY: other errors are uncaught on this path in Python.
             _ => Reply::error(Kind::Base, 500, &req),
         };
@@ -240,14 +321,23 @@ async fn load_by_id(app: Arc<App>, req: Request) -> Reply {
     })
     .await;
     match outcome {
-        Some(Ok(Some(profile))) => Reply::base().json(json!({"name": profile.get("name"), "id": profile.get("id")})),
-        Some(Ok(None)) => error(404, json!({"status": "error", "error": "profile not found", "id": id})),
-        Some(Err(ProfileError::Validation(message))) => {
-            error(400, json!({"status": "error", "error": format!("JSON validation error: {message}")}))
+        Some(Ok(Some(profile))) => {
+            Reply::base().json(json!({"name": profile.get("name"), "id": profile.get("id")}))
         }
+        Some(Ok(None)) => error(
+            404,
+            json!({"status": "error", "error": "profile not found", "id": id}),
+        ),
+        Some(Err(ProfileError::Validation(message))) => error(
+            400,
+            json!({"status": "error", "error": format!("JSON validation error: {message}")}),
+        ),
         Some(Err(e)) => {
             tracing::warn!("Failed to execute profile in place: {e}");
-            error(400, json!({"status": "error", "error": format!("failed to load profile {e}")}))
+            error(
+                400,
+                json!({"status": "error", "error": format!("failed to load profile {e}")}),
+            )
         }
         None => Reply::error(Kind::Base, 500, &req),
     }
@@ -262,7 +352,10 @@ async fn load_posted(app: Arc<App>, req: Request) -> Reply {
         Ok(data) => data,
         Err(e) => {
             tracing::warn!("JSON decode error: {}", e.message);
-            return error(400, json!({"status": "error", "error": format!("Invalid JSON: {}", e.message)}));
+            return error(
+                400,
+                json!({"status": "error", "error": format!("Invalid JSON: {}", e.message)}),
+            );
         }
     };
     tracing::warn!("Parsed data: {}", crate::metconfig::py_repr(&data));
@@ -272,24 +365,37 @@ async fn load_posted(app: Arc<App>, req: Request) -> Reply {
     })
     .await;
     match outcome {
-        Some(Ok(Some(profile))) => Reply::base().json(json!({"name": profile.get("name"), "id": profile.get("id")})),
-        Some(Ok(None)) => error(403, json!({"status": "error", "error": "high strain on motor"})),
-        Some(Err(ProfileError::Validation(message))) => {
-            error(400, json!({"status": "error", "error": format!("JSON validation error: {message}")}))
+        Some(Ok(Some(profile))) => {
+            Reply::base().json(json!({"name": profile.get("name"), "id": profile.get("id")}))
         }
-        Some(Err(ProfileError::Variable { class, message })) => {
-            error(400, json!({"status": "error", "error": format!("variable error: {class}:{message}")}))
-        }
+        Some(Ok(None)) => error(
+            403,
+            json!({"status": "error", "error": "high strain on motor"}),
+        ),
+        Some(Err(ProfileError::Validation(message))) => error(
+            400,
+            json!({"status": "error", "error": format!("JSON validation error: {message}")}),
+        ),
+        Some(Err(ProfileError::Variable { class, message })) => error(
+            400,
+            json!({"status": "error", "error": format!("variable error: {class}:{message}")}),
+        ),
         Some(Err(e)) => {
             tracing::warn!("Failed to execute profile in place: {e}");
-            error(400, json!({"status": "error", "error": format!("failed to load profile {e}")}))
+            error(
+                400,
+                json!({"status": "error", "error": format!("failed to load profile {e}")}),
+            )
         }
         None => Reply::error(Kind::Base, 500, &req),
     }
 }
 
 async fn legacy(app: Arc<App>, req: Request) -> Reply {
-    if !app.config.get_bool(crate::config::keys::USER, crate::config::keys::ALLOW_LEGACY_JSON) {
+    if !app.config.get_bool(
+        crate::config::keys::USER,
+        crate::config::keys::ALLOW_LEGACY_JSON,
+    ) {
         return Reply::base().status(404);
     }
     if !app.machine.is_idle() {
@@ -297,20 +403,29 @@ async fn legacy(app: Arc<App>, req: Request) -> Reply {
     }
     let data = match req.json() {
         Ok(data) => data,
-        Err(e) => return error(400, json!({"status": "error", "error": format!("failed to load profile {}", e.message)})),
+        Err(e) => {
+            return error(
+                400,
+                json!({"status": "error", "error": format!("failed to load profile {}", e.message)}),
+            );
+        }
     };
     let sent = data.clone();
     blocking({
         let app = app.clone();
         move || {
-            app.profiles.remember_last_profile(&crate::api::emulation::legacy_dummy_profile());
+            app.profiles
+                .remember_last_profile(&crate::profiles::legacy_dummy_profile());
             app.machine.send_json_with_hash(&app, &sent);
         }
     })
     .await;
     let missing = ["name", "id"].into_iter().find(|k| data.get(*k).is_none());
     match missing {
-        Some(key) => error(400, json!({"status": "error", "error": format!("failed to load profile '{key}'")})),
+        Some(key) => error(
+            400,
+            json!({"status": "error", "error": format!("failed to load profile '{key}'")}),
+        ),
         None => Reply::base().json(json!({"name": data["name"], "id": data["id"]})),
     }
 }
@@ -318,10 +433,17 @@ async fn legacy(app: Arc<App>, req: Request) -> Reply {
 async fn get(app: Arc<App>, req: Request) -> Reply {
     let id = req.arg(0).unwrap_or("").to_string();
     tracing::info!("Request for profile {id}");
-    let limited = if crate::limited_access::is_limited_access(&app) { app.simple_profile.get_by_id(&id) } else { None };
+    let limited = if crate::limited_access::is_limited_access(&app) {
+        app.simple_profile.get_by_id(&id)
+    } else {
+        None
+    };
     match limited.or_else(|| app.profiles.get_profile(&id)) {
         Some(profile) if crate::config::python_truthy(&profile) => Reply::base().json(profile),
-        _ => error(404, json!({"status": "error", "error": "profile not found", "id": id})),
+        _ => error(
+            404,
+            json!({"status": "error", "error": "profile not found", "id": id}),
+        ),
     }
 }
 
@@ -340,7 +462,10 @@ async fn delete(app: Arc<App>, req: Request) -> Reply {
             tracing::info!("Deleted profile: {id}");
             Reply::base().json(data)
         }
-        Some(Ok(None)) => error(404, json!({"status": "error", "error": "profile not found", "id": id})),
+        Some(Ok(None)) => error(
+            404,
+            json!({"status": "error", "error": "profile not found", "id": id}),
+        ),
         _ => Reply::error(Kind::Base, 500, &req),
     }
 }
@@ -355,7 +480,10 @@ async fn last(app: Arc<App>, _req: Request) -> Reply {
     };
     let mut reply = Reply::base();
     if let Some(load_time) = last.get("load_time").and_then(Value::as_f64) {
-        reply.set_header("Last-Modified", crate::http::http_date(crate::shots::local_time(load_time).with_timezone(&chrono::Utc)));
+        reply.set_header(
+            "Last-Modified",
+            crate::http::http_date(crate::shots::local_time(load_time).with_timezone(&chrono::Utc)),
+        );
     }
     reply.write_dumps(&last);
     reply
@@ -370,7 +498,12 @@ async fn selected(app: Arc<App>, _req: Request) -> Reply {
 }
 
 async fn list_images(app: Arc<App>, _req: Request) -> Reply {
-    let images: Vec<Value> = app.profiles.default_images().into_iter().map(Value::String).collect();
+    let images: Vec<Value> = app
+        .profiles
+        .default_images()
+        .into_iter()
+        .map(Value::String)
+        .collect();
     Reply::base().dumps(Value::Array(images))
 }
 
@@ -380,8 +513,14 @@ mod tests {
 
     #[test]
     fn refuses_nan_like_parse_constant() {
-        assert_eq!(parse_profile_body(br#"{"a": NaN}"#), Err("Invalid number NaN".into()));
-        assert_eq!(parse_profile_body(br#"{"a": -Infinity}"#), Err("Invalid number -Infinity".into()));
+        assert_eq!(
+            parse_profile_body(br#"{"a": NaN}"#),
+            Err("Invalid number NaN".into())
+        );
+        assert_eq!(
+            parse_profile_body(br#"{"a": -Infinity}"#),
+            Err("Invalid number -Infinity".into())
+        );
         assert!(parse_profile_body(br#"{"a": "NaN"}"#).is_ok());
         assert_eq!(
             parse_profile_body(b""),

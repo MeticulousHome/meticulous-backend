@@ -1462,6 +1462,7 @@ dependencies = [
  "nix 0.31.3",
  "parking_lot 0.13.0",
  "percent-encoding",
+ "profile",
  "pyfmt",
  "rand",
  "redactor",

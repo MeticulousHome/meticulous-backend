@@ -88,6 +88,21 @@ pub enum ProfileError {
     Other(String),
 }
 
+impl From<profile::ProfileError> for ProfileError {
+    fn from(error: profile::ProfileError) -> ProfileError {
+        match error {
+            profile::ProfileError::Schema(err) => ProfileError::Validation(err.message.clone()),
+            profile::ProfileError::Preprocess(err) if err.is_variable_error() => {
+                ProfileError::Variable {
+                    class: err.class_name().to_string(),
+                    message: err.to_string(),
+                }
+            }
+            other => ProfileError::Other(other.to_string()),
+        }
+    }
+}
+
 #[derive(Default)]
 struct State {
     known: HashMap<String, Value>,
@@ -133,7 +148,7 @@ impl ProfileManager {
         self.refresh_image_list();
         app.simple_profile.load();
         self.refresh_profile_list();
-        self.ensure_manual_mode_profile();
+        self.ensure_manual_mode_profile(app);
         self.delete_unused_images();
         if let Some(Value::Object(last)) = self.last_profile() {
             if let Some(profile) = last.get("profile") {
@@ -761,14 +776,64 @@ impl ProfileManager {
         self.sio.emit_to(sid, "profileHover", &value);
     }
 
-    /// `ensure_manual_mode_profile`.
-    pub fn ensure_manual_mode_profile(&self) {
-        let _ = &self.config;
+    /// `ensure_manual_mode_profile`: seed the Manual mode profile, or give a
+    /// damaged or v1 one the seeded stage pair. True when written.
+    pub fn ensure_manual_mode_profile(&self, app: &App) -> bool {
+        let existing = self
+            .state
+            .lock()
+            .known
+            .get(profile::profiles::MANUAL_MODE_PROFILE_ID)
+            .cloned();
+        let (profile, action) = match profile::plan_manual_mode_profile(existing.as_ref()) {
+            profile::ManualModeSeed::UpToDate => return false,
+            profile::ManualModeSeed::Seed(p) => (p, "Seeded"),
+            profile::ManualModeSeed::Migrate(p) => (p, "Migrated"),
+        };
+        match self.save_profile(app, profile, true, None, false) {
+            Ok(_) => {
+                tracing::info!("{action} Manual mode profile");
+                true
+            }
+            Err(error) => {
+                // Best effort: a machine that cannot write it still starts.
+                tracing::error!("Failed to write the Manual mode profile: {error}");
+                false
+            }
+        }
     }
 
     pub fn known_count(&self) -> usize {
         self.state.lock().known.len()
     }
+}
+
+/// `LEGACY_DUMMY_PROFILE` (`api/emulation.py`): what a legacy JSON load
+/// records as the last profile.
+pub fn legacy_dummy_profile() -> Value {
+    json!({
+        "id": "0eddc1d9-aa2e-404b-a209-e7e76c9552bc",
+        "name": "LEGACY JSON PLACEHOLDER",
+        "author": "",
+        "author_id": "00000000-0000-0000-0000-000000000000",
+        "previous_authors": [{"name": "", "author_id": "", "profile_id": ""}],
+        "temperature": 88,
+        "final_weight": 36,
+        "display": {
+            "image": "/api/v1/profile/image/f98ff6e029e70ee9a99565796615d55c.png",
+            "accentColor": "#42a59d",
+        },
+        "variables": [],
+        "last_changed": 1723127046.5605135,
+        "stages": [{
+            "key": "206c654b-5766-4ebb-a4bc-dcafa5aacd8b",
+            "name": "EMPTY FLOW STAGE",
+            "type": "flow",
+            "dynamics": {"points": [[0, 0]], "over": "time", "interpolation": "linear"},
+            "exit_triggers": [],
+            "limits": [],
+        }],
+    })
 }
 
 /// `_get_payload_md5`: md5 of `json.dumps(payload, sort_keys=True)`.
@@ -833,49 +898,10 @@ fn list_names(dir: &Path) -> Vec<String> {
 
 /// What `refresh_profile_list` fills in on profiles older versions wrote.
 fn normalize_on_load(profile: &mut Value) -> bool {
-    let Some(map) = profile.as_object_mut() else {
-        return false;
-    };
-    let mut changed = false;
-    if map
-        .get("id")
-        .and_then(Value::as_str)
-        .is_none_or(str::is_empty)
-    {
-        map.insert("id".into(), json!(uuid::Uuid::new_v4().to_string()));
-        changed = true;
-    }
-    if !map.contains_key("author") {
-        map.insert("author".into(), json!(""));
-        changed = true;
-    }
-    if map
-        .get("author_id")
-        .and_then(Value::as_str)
-        .is_none_or(str::is_empty)
-    {
-        map.insert("author_id".into(), json!(DEFAULT_AUTHOR_ID));
-        changed = true;
-    }
-    if !map.contains_key("last_changed") {
-        changed = true;
-    }
-    match map.get_mut("stages") {
-        None => {
-            map.insert("stages".into(), json!([]));
-            changed = true;
-        }
-        Some(Value::Array(stages)) => {
-            for stage in stages.iter_mut().filter_map(Value::as_object_mut) {
-                if !stage.contains_key("key") {
-                    stage.insert("key".into(), json!(uuid::Uuid::new_v4().to_string()));
-                    changed = true;
-                }
-            }
-        }
-        Some(_) => {}
-    }
-    changed
+    let mut new_uuid = || uuid::Uuid::new_v4().to_string();
+    // Deliberate fix: a profile file that is not an object makes Python's
+    // refresh raise and the backend fail to start; it is skipped instead.
+    profile::normalize_loaded_profile(profile, &mut new_uuid).unwrap_or(false)
 }
 
 fn validate_profile(app: &App, data: &Value) -> Result<(), ProfileError> {
@@ -883,12 +909,43 @@ fn validate_profile(app: &App, data: &Value) -> Result<(), ProfileError> {
     validate_schema_only(data)
 }
 
+/// `validate_profile`: the variables resolve and the schema holds.
 fn validate_schema_only(data: &Value) -> Result<(), ProfileError> {
-    let _ = data;
+    if let Some(id) = data.get("id") {
+        let id = match id {
+            Value::String(s) => s.clone(),
+            other => crate::metconfig::py_repr(other),
+        };
+        tracing::info!("validating profile: {id}");
+    }
+    profile::validate_profile(data).map_err(|error| {
+        if let profile::ProfileError::Schema(err) = &error {
+            tracing::error!("JSON validation error: {}", err.message);
+        } else {
+            tracing::info!(
+                "Profile variables could not be processed: {}: {error}",
+                error.class_name()
+            );
+        }
+        ProfileError::from(error)
+    })?;
+    tracing::info!("JSON data is valid.");
     Ok(())
 }
 
+/// What `send_profile_to_esp32` streams: validated, variables expanded,
+/// a manual profile turned into its node program, cut to the ESP32 fields.
 fn prepare_for_esp32(app: &App, data: &Value) -> Result<Value, ProfileError> {
-    let _ = app;
-    Ok(data.clone())
+    let settings = profile::ProgramSettings {
+        auto_purge: app.config.get_bool(keys::USER, keys::PROFILE_AUTO_PURGE),
+        allow_stage_skipping: app
+            .config
+            .get_bool(keys::USER, keys::MACHINE_ALLOW_STAGE_SKIPPING),
+        partial_retraction: app
+            .config
+            .get_f64(keys::USER, keys::PROFILE_PARTIAL_RETRACTION)
+            .unwrap_or(crate::config::PARTIAL_RETRACTION_DEFAULT),
+    };
+    let mut ids = app.reference_ids.lock();
+    Ok(profile::prepare_for_esp32(data, &settings, &mut ids)?)
 }

@@ -28,6 +28,7 @@ parking_lot = "0.13"
 percent-encoding = "2.3.2"
 pyfmt = { path = "../pyfmt" }
 esp = { path = "../esp" }
+profile = { path = "../profile" }
 redactor = { path = "../redactor" }
 rand = "0.10.3"
 regex = "1.13.1"
@@ -50,6 +51,7 @@ url = "2.5.8"
 uuid = { version = "1.29", features = ["v4"] }
 zip = "9.0.5"
 zstd = "0.14.3"
+tempfile = "3.27.0"
 
 [lints]
 workspace = true

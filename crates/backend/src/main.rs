@@ -14,9 +14,11 @@ mod http;
 mod images;
 mod logging;
 mod machine;
+mod manual_mode;
 mod metconfig;
 mod notifications;
 mod pending;
+mod pour_over;
 mod profiles;
 mod redaction;
 mod sentry_reporting;
@@ -109,6 +111,7 @@ fn start(app: &Arc<app::App>) -> Result<(), String> {
     app.machine.init(app)?;
     events::start_stdin_commands(app.clone());
     app.profiles.init(app);
+    app.pour_over.init();
     app.sounds.init(app.emulated(), true);
     Ok(())
 }

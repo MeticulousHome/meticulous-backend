@@ -4,6 +4,8 @@
 pub mod action;
 pub mod notifications;
 pub mod password;
+pub mod pour_over_profiles;
+pub mod profiles;
 pub mod serial;
 pub mod settings;
 pub mod sounds;
@@ -75,6 +77,8 @@ pub fn router(app: &App) -> Router {
     routes.extend(settings::routes());
     routes.extend(update::routes());
     routes.extend(password::routes());
+    routes.extend(pour_over_profiles::routes());
+    routes.extend(profiles::routes(app));
     routes.extend(sounds::routes());
     for route in &mut routes {
         route.pattern = format!("/api/v1{}", route.pattern);

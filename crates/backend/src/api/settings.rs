@@ -169,9 +169,9 @@ async fn post(app: Arc<App>, req: Request) -> Reply {
     let settings = match req.json() {
         Ok(settings) => settings,
         Err(e) => {
-            return Reply::base()
-                .status(403)
-                .json(json!({"status": "error", "error": "invalid json", "json_error": e.message}));
+            return Reply::base().status(403).json(
+                json!({"status": "error", "error": "invalid json", "json_error": e.message}),
+            );
         }
     };
     let mut work = match app.config.section(keys::USER) {
@@ -404,9 +404,9 @@ async fn manufacturing_post(app: Arc<App>, req: Request) -> Reply {
     let body = match req.json() {
         Ok(body) => body,
         Err(e) => {
-            return Reply::base()
-                .status(403)
-                .json(json!({"status": "error", "error": "invalid json", "json_error": e.message}));
+            return Reply::base().status(403).json(
+                json!({"status": "error", "error": "invalid json", "json_error": e.message}),
+            );
         }
     };
     let mut work = match app.config.section(keys::MANUFACTURING) {

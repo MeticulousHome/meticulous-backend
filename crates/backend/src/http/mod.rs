@@ -18,8 +18,8 @@ use std::time::Instant;
 
 use regex::Regex;
 
-pub use reply::{Kind, Reply};
-pub use request::Request;
+pub use reply::{Kind, Reply, http_date};
+pub use request::{Request, parse_python_json};
 pub use static_files::{StaticOptions, serve_static};
 
 use crate::app::App;

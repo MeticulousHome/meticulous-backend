@@ -16,6 +16,7 @@ use crate::logging::LogHooks;
 use crate::machine::Machine;
 use crate::notifications::NotificationManager;
 use crate::pending;
+use crate::pour_over::PourOverProfileManager;
 use crate::profiles::ProfileManager;
 use crate::redaction::Redaction;
 use crate::sentry_reporting::Reporting;
@@ -39,6 +40,7 @@ pub struct App {
     pub debug_shots: ShotDebugManager,
     pub profiles: ProfileManager,
     pub simple_profile: SimpleProfile,
+    pub pour_over: PourOverProfileManager,
     pub history: pending::History,
     pub ssh: pending::Ssh,
     pub smoke: pending::Smoke,
@@ -46,6 +48,9 @@ pub struct App {
     pub usb: pending::Usb,
     pub timezone: pending::Timezone,
     pub shot_sharing: pending::ShotSharing,
+    /// The node program's reference ids, which never reset (PARITY: the
+    /// Python counter lives for the process).
+    pub reference_ids: parking_lot::Mutex<profile::ReferenceIds>,
 }
 
 impl App {
@@ -84,6 +89,7 @@ impl App {
             sio.clone(),
         );
         let simple_profile = SimpleProfile::new(env.paths.simple_profile.clone());
+        let env_paths_pour_over = env.paths.pour_over_profiles.clone();
         Arc::new(App {
             env,
             log,
@@ -99,6 +105,7 @@ impl App {
             debug_shots,
             profiles,
             simple_profile,
+            pour_over: PourOverProfileManager::new(env_paths_pour_over),
             history: pending::History,
             ssh: pending::Ssh,
             smoke: pending::Smoke,
@@ -106,6 +113,7 @@ impl App {
             usb: pending::Usb,
             timezone: pending::Timezone,
             shot_sharing: pending::ShotSharing,
+            reference_ids: parking_lot::Mutex::new(profile::ReferenceIds::default()),
         })
     }
 
