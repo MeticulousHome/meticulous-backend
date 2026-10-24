@@ -61,7 +61,7 @@ fn serve_blocking(opts: &StaticOptions, req: &Request) -> Reply {
     let modified = std::fs::metadata(&path)
         .and_then(|m| m.modified())
         .ok()
-        .map(|t| chrono::DateTime::<chrono::Utc>::from(t));
+        .map(chrono::DateTime::<chrono::Utc>::from);
 
     let mut reply = Reply::new(Kind::Plain);
     reply.set_header("Accept-Ranges", "bytes");
@@ -120,10 +120,10 @@ fn not_modified(
             .split(',')
             .any(|t| t.trim() == "*" || strip(t) == strip(etag));
     }
-    if let (Some(since), Some(modified)) = (req.header("If-Modified-Since"), modified) {
-        if let Ok(since) = chrono::DateTime::parse_from_rfc2822(since) {
-            return since.timestamp() >= modified.timestamp();
-        }
+    if let (Some(since), Some(modified)) = (req.header("If-Modified-Since"), modified)
+        && let Ok(since) = chrono::DateTime::parse_from_rfc2822(since)
+    {
+        return since.timestamp() >= modified.timestamp();
     }
     false
 }

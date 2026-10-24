@@ -9,12 +9,19 @@
 use std::sync::Arc;
 
 use crate::alarms::AlarmManager;
+use crate::ble::GattServer;
 use crate::config::{self, ConfigStore};
 use crate::env::Env;
+use crate::hostname::HostnameManager;
+use crate::http_client::{HttpClient, ReqwestClient};
 use crate::logging::LogHooks;
 use crate::notifications::NotificationManager;
+use crate::py::{CommandRunner, PyError, SystemRunner};
 use crate::sio::Sio;
 use crate::sounds::SoundPlayer;
+use crate::timezone::TimezoneManager;
+use crate::wifi::{AnnouncerFactory, SystemWifiHost, WifiManager};
+use crate::zeroconf::{Announcer, MdnsResponder, ZeroConfAnnouncement};
 
 pub struct App {
     pub env: Env,
@@ -24,6 +31,10 @@ pub struct App {
     pub sounds: Arc<SoundPlayer>,
     pub notifications: Arc<NotificationManager>,
     pub alarms: Arc<AlarmManager>,
+    pub hostname: Arc<HostnameManager>,
+    pub timezone: Arc<TimezoneManager>,
+    pub wifi: Arc<WifiManager>,
+    pub gatt: Arc<GattServer>,
 }
 
 impl App {
@@ -50,6 +61,24 @@ impl App {
             env.paths.alarms.clone(),
             notifications.clone(),
         ));
+        let runner: Arc<dyn CommandRunner> = Arc::new(SystemRunner);
+        let http: Arc<dyn HttpClient> = Arc::new(ReqwestClient::new());
+        let hostname = Arc::new(HostnameManager::new(config.clone(), runner.clone()));
+        let timezone = Arc::new(TimezoneManager::new(
+            config.clone(),
+            env.paths.timezone_json.clone(),
+            runner,
+            http.clone(),
+        ));
+        let wifi = WifiManager::new(
+            config.clone(),
+            hostname.clone(),
+            timezone.clone(),
+            Arc::new(SystemWifiHost::new(http)),
+            env.paths.redaction_key.clone(),
+            mdns_announcer(),
+        );
+        let gatt = GattServer::new(wifi.clone(), hostname.clone(), config.clone(), env.port);
         Arc::new(App {
             env,
             log,
@@ -58,10 +87,32 @@ impl App {
             sounds,
             notifications,
             alarms,
+            hostname,
+            timezone,
+            wifi,
+            gatt,
         })
     }
 
     pub fn emulated(&self) -> bool {
         self.env.emulated()
     }
+}
+
+/// `ZeroConfAnnouncement(config_function=WifiManager.getCurrentConfig)` on
+/// mDNS, built when the Wi-Fi manager initializes.
+fn mdns_announcer() -> AnnouncerFactory {
+    Arc::new(|wifi| {
+        let responder = MdnsResponder::new().map_err(|e| PyError::new("OSError", e))?;
+        let source = Box::new(move || match wifi.upgrade() {
+            Some(wifi) => wifi.get_current_config(),
+            None => Err(PyError::new("RuntimeError", "the Wi-Fi manager is gone")),
+        });
+        let announcer: Arc<dyn Announcer> = Arc::new(ZeroConfAnnouncement::new(
+            source,
+            Arc::new(responder),
+            ZeroConfAnnouncement::port_from_env(),
+        ));
+        Ok(announcer)
+    })
 }

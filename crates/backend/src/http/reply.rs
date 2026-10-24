@@ -256,13 +256,13 @@ fn regex_lite_etags(header: &str) -> Vec<String> {
         if header[j..].starts_with("W/\"") {
             j += 2;
         }
-        if bytes.get(j) == Some(&b'"') {
-            if let Some(end) = header[j + 1..].find('"') {
-                let close = j + 1 + end;
-                tags.push(header[start..=close].to_string());
-                i = close + 1;
-                continue;
-            }
+        if bytes.get(j) == Some(&b'"')
+            && let Some(end) = header[j + 1..].find('"')
+        {
+            let close = j + 1 + end;
+            tags.push(header[start..=close].to_string());
+            i = close + 1;
+            continue;
         }
         i += 1;
     }

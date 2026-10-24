@@ -1,10 +1,12 @@
 //! The HTTP API (`api/*.py`): one module per Python module, assembled into
 //! tornado's route list.
 
+pub mod emulation;
 pub mod notifications;
 pub mod password;
 pub mod sounds;
 pub mod web_ui;
+pub mod wifi;
 
 use std::net::IpAddr;
 
@@ -61,6 +63,21 @@ pub fn redact_ip(ip: &str) -> String {
         .join(&separator.to_string())
 }
 
+/// `api/wifi.py`'s routes; on the emulator without NetworkManager,
+/// `register_emulation_handlers()` replaces those with the same path.
+fn wifi_routes(app: &App) -> Vec<Route> {
+    if !(app.emulated() && !app.wifi.networking_available()) {
+        return wifi::routes();
+    }
+    let emulated = emulation::routes();
+    let mut routes: Vec<Route> = wifi::routes()
+        .into_iter()
+        .filter(|r| !emulated.iter().any(|e| e.pattern == r.pattern))
+        .collect();
+    routes.extend(emulated);
+    routes
+}
+
 /// `API.get_routes()` plus `WEB_UI_HANDLER`, in the order tornado tries them:
 /// the API routes sorted by pattern, then the web UI.
 pub fn router(app: &App) -> Router {
@@ -68,6 +85,7 @@ pub fn router(app: &App) -> Router {
     routes.extend(notifications::routes());
     routes.extend(password::routes());
     routes.extend(sounds::routes());
+    routes.extend(wifi_routes(app));
     for route in &mut routes {
         route.pattern = format!("/api/v1{}", route.pattern);
         route.regex = regex::Regex::new(&format!("^{}$", route.pattern))
