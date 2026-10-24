@@ -14,6 +14,7 @@ mod images;
 mod logging;
 mod metconfig;
 mod notifications;
+mod redaction;
 mod sentry_reporting;
 mod server;
 mod sio;
@@ -91,6 +92,7 @@ fn serve() -> std::process::ExitCode {
 
 /// `backend.main()` before the server listens, in the Python's order.
 fn start(app: &Arc<app::App>) {
+    redaction::install(app);
     app.alarms.init();
     app.sounds.init(app.emulated(), true);
 }

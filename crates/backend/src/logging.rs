@@ -28,7 +28,7 @@ pub struct Record {
     pub line: String,
 }
 
-type Redact = Arc<dyn Fn(&str) -> String + Send + Sync>;
+type Redact = Arc<dyn Fn(&str, &str) -> String + Send + Sync>;
 type Sink = Arc<dyn Fn(&Record) + Send + Sync>;
 
 /// What other services plug into logging. Shared by the layer and `App`.
@@ -39,8 +39,9 @@ pub struct LogHooks {
 }
 
 impl LogHooks {
-    /// Every line is passed through `f` before it is written anywhere.
-    pub fn set_redactor(&self, f: impl Fn(&str) -> String + Send + Sync + 'static) {
+    /// Every message, with its logger's name, is passed through `f` before
+    /// it is written anywhere (the filter on every Python logger).
+    pub fn set_redactor(&self, f: impl Fn(&str, &str) -> String + Send + Sync + 'static) {
         *self.redact.write() = Some(Arc::new(f));
     }
 
@@ -49,10 +50,10 @@ impl LogHooks {
         *self.shot_sink.write() = f;
     }
 
-    fn redact(&self, line: String) -> String {
+    fn redact(&self, logger: &str, message: String) -> String {
         match self.redact.read().as_ref() {
-            Some(f) => f(&line),
-            None => line,
+            Some(f) => f(logger, &message),
+            None => message,
         }
     }
 }
@@ -129,21 +130,21 @@ impl<S: Subscriber> Layer<S> for PythonLayer {
         let created = SystemTime::now();
         let stamp =
             chrono::DateTime::<chrono::Local>::from(created).format("%Y-%m-%d %H:%M:%S,%3f");
-        let raw = format!(
-            "{stamp} {name} {level} {}{}",
-            visitor.message, visitor.fields
-        );
-        let line = self.hooks.redact(raw);
+        let message = self
+            .hooks
+            .redact(&name, format!("{}{}", visitor.message, visitor.fields));
+        let line = format!("{stamp} {name} {level} {message}");
         {
             let mut stderr = std::io::stderr().lock();
             let _ = writeln!(stderr, "{line}");
         }
         if let Some(sink) = self.hooks.shot_sink.read().clone() {
+            // The debug shot's handler has the default formatter: the message.
             sink(&Record {
                 created,
                 level,
                 name,
-                line,
+                line: message,
             });
         }
     }

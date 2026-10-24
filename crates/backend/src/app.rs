@@ -13,6 +13,7 @@ use crate::config::{self, ConfigStore};
 use crate::env::Env;
 use crate::logging::LogHooks;
 use crate::notifications::NotificationManager;
+use crate::redaction::Redaction;
 use crate::sentry_reporting::Reporting;
 use crate::sio::Sio;
 use crate::sounds::SoundPlayer;
@@ -21,6 +22,7 @@ pub struct App {
     pub env: Env,
     pub log: Arc<LogHooks>,
     pub reporting: Arc<Reporting>,
+    pub redaction: Arc<Redaction>,
     pub config: Arc<ConfigStore>,
     pub sio: Arc<Sio>,
     pub sounds: Arc<SoundPlayer>,
@@ -32,6 +34,7 @@ impl App {
     /// Build the services in the order the Python imports and initializes
     /// them. Nothing here touches hardware or starts tasks; `start` does.
     pub fn new(env: Env, log: Arc<LogHooks>, reporting: Arc<Reporting>) -> Arc<App> {
+        let redaction = Redaction::new(env.paths.redaction_key.clone());
         let config = Arc::new(ConfigStore::open(
             env.paths.config_file(),
             config::defaults(),
@@ -56,6 +59,7 @@ impl App {
             env,
             log,
             reporting,
+            redaction,
             config,
             sio,
             sounds,
