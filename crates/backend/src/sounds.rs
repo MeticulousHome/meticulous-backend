@@ -168,6 +168,9 @@ impl SoundPlayer {
             );
             let mut state = self.state.lock();
             let themes = state.known_themes.clone().unwrap_or_default();
+            // Deliberate fix: for a cleared theme (`None`) Python runs
+            // `update(_load_theme(None))`, i.e. `update(False)`, a TypeError
+            // out of init or play_sound; the merged config stays as it is.
             if let Some(config) = name.and_then(|n| load_theme(&themes, n)) {
                 for (k, v) in config {
                     state.theme_config.insert(k, v);
