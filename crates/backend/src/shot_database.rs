@@ -29,8 +29,16 @@ impl History {
     /// `update_db_migrations()` brings it to `DB_VERSION_REQUIRED`. Either
     /// failing is logged and the backend starts anyway.
     pub fn init(&self) {
+        self.init_with(|_| {});
+    }
+
+    /// `init`, with the database adjusted before anything uses it (a test
+    /// that shrinks the Pour Over limits, as the Python suite patches the
+    /// module constants).
+    pub fn init_with(&self, configure: impl FnOnce(&mut HistoryDb)) {
         match HistoryDb::open(self.paths.clone(), LocalZone::System) {
-            Ok(db) => {
+            Ok(mut db) => {
+                configure(&mut db);
                 let _ = self.db.set(db);
                 tracing::info!("ShotManager initialized successfully");
             }

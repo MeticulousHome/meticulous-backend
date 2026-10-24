@@ -13,6 +13,20 @@ use socketioxide::SocketIo;
 #[derive(Default)]
 pub struct Sio {
     io: OnceLock<SocketIo>,
+    /// Every emit, attached or not: handler tests read what clients would
+    /// have received (the Python suite's `RecordingSocketIO`).
+    #[cfg(test)]
+    recorded: parking_lot::Mutex<Vec<Emitted>>,
+}
+
+/// One recorded emit and its `to=` / `skip_sid=`.
+#[cfg(test)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct Emitted {
+    pub event: String,
+    pub data: Value,
+    pub to: Option<String>,
+    pub skip_sid: Option<String>,
 }
 
 impl Sio {
@@ -27,17 +41,44 @@ impl Sio {
 
     /// `sio.emit(event, data)` to every client.
     pub fn emit(&self, event: &str, data: &Value) {
+        #[cfg(test)]
+        self.record(event, data, None, None);
         self.emit_where(event, data, |_| true);
     }
 
     /// `sio.emit(event, data, to=sid)`.
     pub fn emit_to(&self, sid: &str, event: &str, data: &Value) {
+        #[cfg(test)]
+        self.record(event, data, Some(sid), None);
         self.emit_where(event, data, |id| id == sid);
     }
 
     /// `sio.emit(event, data, skip_sid=sid)`.
     pub fn emit_skip(&self, skip_sid: &str, event: &str, data: &Value) {
+        #[cfg(test)]
+        self.record(event, data, None, Some(skip_sid));
         self.emit_where(event, data, |id| id != skip_sid);
+    }
+
+    #[cfg(test)]
+    fn record(&self, event: &str, data: &Value, to: Option<&str>, skip_sid: Option<&str>) {
+        self.recorded.lock().push(Emitted {
+            event: event.to_string(),
+            data: data.clone(),
+            to: to.map(str::to_string),
+            skip_sid: skip_sid.map(str::to_string),
+        });
+    }
+
+    /// The emits so far, oldest first.
+    #[cfg(test)]
+    pub fn emitted(&self) -> Vec<Emitted> {
+        self.recorded.lock().clone()
+    }
+
+    #[cfg(test)]
+    pub fn clear_emitted(&self) {
+        self.recorded.lock().clear();
     }
 
     fn emit_where(&self, event: &str, data: &Value, select: impl Fn(&str) -> bool) {

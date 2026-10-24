@@ -150,6 +150,11 @@ pub struct Machine {
     /// Signalled each time a data frame from the ESP has been applied, so the
     /// status stream goes out with it instead of on a timer of its own.
     pub frames: tokio::sync::Notify,
+    /// Every `write` that would reach the port, link or not: handler tests
+    /// read the bytes the ESP32 would have received (the Python suite swaps
+    /// the port for a recorder).
+    #[cfg(test)]
+    pub(crate) uart_writes: Mutex<Vec<Vec<u8>>>,
 }
 
 impl Machine {
@@ -165,6 +170,8 @@ impl Machine {
             uuid_timer_generation: AtomicU64::new(0),
             clock,
             frames: tokio::sync::Notify::new(),
+            #[cfg(test)]
+            uart_writes: Mutex::new(Vec::new()),
         }
     }
 
@@ -399,6 +406,8 @@ impl Machine {
         if self.stop_comm.load(Ordering::Relaxed) {
             return;
         }
+        #[cfg(test)]
+        self.uart_writes.lock().push(bytes.to_vec());
         if let Some(link) = self.link.lock().as_mut()
             && let Err(error) = link.write_all(bytes)
         {
