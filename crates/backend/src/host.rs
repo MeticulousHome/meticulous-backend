@@ -45,6 +45,19 @@ pub trait CommandRunner: Send + Sync {
     /// `Err` is Python's `OSError` from `Popen`: the program could not start.
     fn run(&self, argv: &[&str], stdin: Option<&[u8]>) -> std::io::Result<CommandOutput>;
 
+    /// `subprocess.run(argv, capture_output=True, timeout=...)`: a command
+    /// still running after `timeout` is killed and answers
+    /// `ErrorKind::TimedOut` (`TimeoutExpired`). A runner that records
+    /// instead of running has nothing to time out and only records it.
+    fn run_with_timeout(
+        &self,
+        argv: &[&str],
+        timeout: std::time::Duration,
+    ) -> std::io::Result<CommandOutput> {
+        let _ = timeout;
+        self.run(argv, None)
+    }
+
     /// `subprocess.Popen(argv, stdout=DEVNULL, stderr=DEVNULL)`: start it
     /// and do not wait.
     fn spawn(&self, argv: &[&str]) -> std::io::Result<()>;
@@ -82,6 +95,29 @@ impl CommandRunner for SystemRunner {
             stdout: output.stdout,
             stderr: output.stderr,
         })
+    }
+
+    fn run_with_timeout(
+        &self,
+        argv: &[&str],
+        timeout: std::time::Duration,
+    ) -> std::io::Result<CommandOutput> {
+        let argv: Vec<String> = argv.iter().map(|a| a.to_string()).collect();
+        match crate::py::run_command(&argv, Some(timeout), &[]) {
+            Ok(done) => Ok(CommandOutput {
+                status: (done.returncode >= 0).then_some(done.returncode),
+                stdout: done.stdout.into_bytes(),
+                stderr: done.stderr.into_bytes(),
+            }),
+            Err(error) => {
+                let kind = match error {
+                    crate::py::RunError::NotFound(_) => std::io::ErrorKind::NotFound,
+                    crate::py::RunError::Timeout { .. } => std::io::ErrorKind::TimedOut,
+                    crate::py::RunError::Os(_) => std::io::ErrorKind::Other,
+                };
+                Err(std::io::Error::new(kind, error.to_string()))
+            }
+        }
     }
 
     fn spawn(&self, argv: &[&str]) -> std::io::Result<()> {
@@ -140,6 +176,14 @@ impl Host {
 
     pub fn run_with_input(&self, argv: &[&str], stdin: &[u8]) -> std::io::Result<CommandOutput> {
         self.runner().run(argv, Some(stdin))
+    }
+
+    pub fn run_with_timeout(
+        &self,
+        argv: &[&str],
+        timeout: std::time::Duration,
+    ) -> std::io::Result<CommandOutput> {
+        self.runner().run_with_timeout(argv, timeout)
     }
 
     /// `subprocess.run(command, shell=True, capture_output=True)`.

@@ -735,11 +735,17 @@ impl Machine {
     }
 
     /// `syncDeviceUUID`, on every ESPInfo.
-    fn sync_device_uuid(&self, app: &Arc<App>, uuid: &str, supported: bool) {
+    pub(crate) fn sync_device_uuid(&self, app: &Arc<App>, uuid: &str, supported: bool) {
         let steps = self.state.lock().uuid.sync(uuid, supported, || {
             crate::device_identity::generate_device_uuid()
         });
         self.run_uuid_steps(app, steps);
+    }
+
+    /// `Machine.pending_device_uuid_assignment`.
+    #[cfg(test)]
+    pub(crate) fn pending_device_uuid(&self) -> Option<String> {
+        self.state.lock().uuid.pending.clone()
     }
 
     fn handle_device_uuid_response(&self, app: &Arc<App>, response: &str) {
@@ -789,9 +795,10 @@ impl Machine {
                         Ok(true) => {
                             tracing::info!("Updated OTA device UUID cache from ESP32");
                             if !self.emulated {
+                                let host = app.host.clone();
                                 let _ = std::thread::Builder::new()
                                     .name("HawkbitRestart".into())
-                                    .spawn(restart_hawkbit_updater);
+                                    .spawn(move || restart_hawkbit_updater(&host));
                             }
                         }
                     }
@@ -1009,53 +1016,29 @@ fn som_revision() -> Result<String, String> {
     Ok(format!("{}.{}", ((value & 0xE0) >> 5) + 1, value & 0x1F))
 }
 
-fn restart_hawkbit_updater() {
-    let mut child = match std::process::Command::new("systemctl")
-        .args(["--no-block", "restart", "rauc-hawkbit-updater.service"])
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .spawn()
-    {
-        Ok(child) => child,
-        Err(error) => {
-            tracing::error!(
-                "Could not restart rauc-hawkbit-updater after updating device UUID cache: {error}"
+/// `_restartHawkbitUpdater`: queue a restart of the updater so it reads the
+/// new device UUID, without waiting for it; a failure is logged, never
+/// raised.
+pub(crate) fn restart_hawkbit_updater(host: &crate::host::Host) {
+    let argv = [
+        "systemctl",
+        "--no-block",
+        "restart",
+        "rauc-hawkbit-updater.service",
+    ];
+    match host.run_with_timeout(&argv, HAWKBIT_UPDATER_RESTART_TIMEOUT) {
+        Err(error) => tracing::error!(
+            "Could not restart rauc-hawkbit-updater after updating device UUID cache: {error}"
+        ),
+        Ok(output) if !output.success() => {
+            let stderr = Value::String(String::from_utf8_lossy(&output.stderr).into_owned());
+            tracing::warn!(
+                "Could not restart rauc-hawkbit-updater after updating device UUID cache: exit={} stderr={}",
+                output.returncode(),
+                crate::metconfig::py_repr(&stderr)
             );
-            return;
         }
-    };
-    let started = Instant::now();
-    loop {
-        match child.try_wait() {
-            Ok(Some(status)) if status.success() => return,
-            Ok(Some(status)) => {
-                let mut stderr = String::new();
-                if let Some(mut pipe) = child.stderr.take() {
-                    use std::io::Read;
-                    let _ = pipe.read_to_string(&mut stderr);
-                }
-                tracing::warn!(
-                    "Could not restart rauc-hawkbit-updater after updating device UUID cache: exit={} stderr={:?}",
-                    status.code().unwrap_or(-1),
-                    stderr
-                );
-                return;
-            }
-            Ok(None) if started.elapsed() > HAWKBIT_UPDATER_RESTART_TIMEOUT => {
-                let _ = child.kill();
-                tracing::error!(
-                    "Could not restart rauc-hawkbit-updater after updating device UUID cache: timed out"
-                );
-                return;
-            }
-            Ok(None) => std::thread::sleep(Duration::from_millis(50)),
-            Err(error) => {
-                tracing::error!(
-                    "Could not restart rauc-hawkbit-updater after updating device UUID cache: {error}"
-                );
-                return;
-            }
-        }
+        Ok(_) => {}
     }
 }
 
