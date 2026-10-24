@@ -148,6 +148,18 @@ impl Reply {
         self
     }
 
+    /// [`Reply::json`] for a dict already encoded the way tornado encodes it
+    /// (`pyfmt::JsonStyle::TORNADO`).
+    pub fn json_encoded(mut self, encoded: String) -> Reply {
+        self.set_header("Content-Type", "application/json; charset=UTF-8");
+        if self.body.is_empty() {
+            self.body = encoded.into_bytes();
+        } else {
+            self.body.extend_from_slice(encoded.as_bytes());
+        }
+        self
+    }
+
     /// Builder form of [`Reply::write_dumps`].
     pub fn dumps(mut self, value: Value) -> Reply {
         self.write_dumps(&value);

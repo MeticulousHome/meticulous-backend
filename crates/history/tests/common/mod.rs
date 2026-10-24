@@ -3,7 +3,7 @@
 
 use std::path::{Path, PathBuf};
 
-use history::{HistoryDb, HistoryPaths, LocalZone};
+use history::{HistoryDb, HistoryPaths, LocalZone, SearchParams};
 use rusqlite::Connection;
 use rusqlite::types::ValueRef;
 use serde_json::{Map, Value, json};
@@ -26,6 +26,30 @@ pub fn data_dir() -> PathBuf {
 pub fn load_json(name: &str) -> Value {
     let text = std::fs::read_to_string(data_dir().join(name)).expect("reference file exists");
     pyfmt::loads_lenient(&text).expect("reference file is JSON")
+}
+
+/// `search_history_json`, the HTTP handler's path, in `style`.
+pub fn search_json(db: &HistoryDb, params: &SearchParams, style: pyfmt::JsonStyle) -> String {
+    let mut out = String::new();
+    db.search_history_json(params, style, &mut out)
+        .expect("search succeeds");
+    out
+}
+
+/// The handler's path writes, in every style, what encoding the values of
+/// `search_history` (the internal path) writes.
+pub fn assert_search_json_agrees(db: &HistoryDb, params: &SearchParams, values: &[Value]) {
+    let list = Value::Array(values.to_vec());
+    for (style, expected) in [
+        (pyfmt::JsonStyle::DUMPS, pyfmt::dumps_default(&list)),
+        (
+            pyfmt::JsonStyle::UNICODE,
+            pyfmt::dumps(&list, &pyfmt::DumpOpts::unicode()),
+        ),
+        (pyfmt::JsonStyle::TORNADO, pyfmt::tornado_json_encode(&list)),
+    ] {
+        assert_eq!(search_json(db, params, style), expected, "{style:?}");
+    }
 }
 
 /// One machine: a history directory and a script backup directory.

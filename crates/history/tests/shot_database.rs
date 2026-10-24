@@ -67,7 +67,9 @@ fn make_history_entry(profile: Option<Value>, overrides: Value) -> Value {
 }
 
 fn search(db: &HistoryDb, params: SearchParams) -> Vec<Value> {
-    db.search_history(&params).unwrap()
+    let result = db.search_history(&params).unwrap();
+    common::assert_search_json_agrees(db, &params, &result);
+    result
 }
 
 fn no_data() -> SearchParams {

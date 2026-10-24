@@ -1,5 +1,8 @@
 //! `shot_database.ShotDataBase`: the espresso shot history.
 
+use std::path::Path;
+
+use pyfmt::{JsonStyle, Members};
 use rusqlite::types::Value as SqlValue;
 use rusqlite::{Connection, OptionalExtension, params_from_iter};
 use serde_json::{Map, Value};
@@ -12,6 +15,76 @@ use crate::sqlvalue::{bind, json_column, to_json};
 
 fn key_error(key: &str) -> Error {
     Error::InvalidValue(format!("KeyError: '{key}'"))
+}
+
+/// A row of `search_history`: the dict's values in its order, with the
+/// shot file's `data` and `push_to_brew_time` when they were read.
+struct SearchRow<D> {
+    id: Value,
+    db_key: Value,
+    time: Value,
+    file: Value,
+    debug_file: Value,
+    name: Value,
+    shot: Option<D>,
+    profile: Value,
+}
+
+/// The `AttributeError` of `file_contents.get(...)` on a shot file that is
+/// valid JSON but not an object.
+fn log_not_an_object(relative: &str, type_name: &str) {
+    tracing::error!(
+        "Failed to read shot file {relative}: '{type_name}' object has no attribute 'get'"
+    );
+}
+
+/// `data` and `push_to_brew_time` of a shot file as values; `None` (logged)
+/// when the file cannot be read.
+fn read_shot_values(path: &Path, relative: &str) -> Option<(Value, Value)> {
+    match files::read_shot_json(path) {
+        Ok(Value::Object(mut contents)) => Some((
+            contents.remove("data").unwrap_or(Value::Null),
+            contents.remove("push_to_brew_time").unwrap_or(Value::Null),
+        )),
+        Ok(other) => {
+            let type_name = match other {
+                Value::Null => "NoneType",
+                Value::Bool(_) => "bool",
+                Value::Number(n) if n.is_f64() => "float",
+                Value::Number(_) => "int",
+                Value::String(_) => "str",
+                _ => "list",
+            };
+            log_not_an_object(relative, type_name);
+            None
+        }
+        Err(error) => {
+            tracing::error!("Failed to read shot file {relative}: {error}");
+            None
+        }
+    }
+}
+
+/// `data` and `push_to_brew_time` of a shot file as JSON text in `style`;
+/// `None` (logged) when the file cannot be read.
+fn read_shot_text(path: &Path, relative: &str, style: JsonStyle) -> Option<(String, String)> {
+    match files::read_shot_members(path, style) {
+        Ok(Members::Object([data, push_to_brew_time])) => {
+            let null = || "null".to_string();
+            Some((
+                data.unwrap_or_else(null),
+                push_to_brew_time.unwrap_or_else(null),
+            ))
+        }
+        Ok(Members::NotObject(type_name)) => {
+            log_not_an_object(relative, type_name);
+            None
+        }
+        Err(error) => {
+            tracing::error!("Failed to read shot file {relative}: {error}");
+            None
+        }
+    }
 }
 
 fn get<'a>(object: &'a Map<String, Value>, key: &str) -> Result<&'a Value> {
@@ -326,6 +399,82 @@ impl HistoryDb {
     /// `push_to_brew_time` when `dump_data` is set. A shot whose file cannot
     /// be read is left out (after the LIMIT, as in Python).
     pub fn search_history(&self, params: &SearchParams) -> Result<Vec<Value>> {
+        let mut results = Vec::new();
+        self.search_rows(params, read_shot_values, |row| {
+            let (data, push_to_brew_time) = row.shot.unwrap_or((Value::Null, Value::Null));
+            results.push(pyfmt::object([
+                ("id", row.id),
+                ("db_key", row.db_key),
+                ("time", row.time),
+                ("file", row.file),
+                ("debug_file", row.debug_file),
+                ("name", row.name),
+                ("data", data),
+                ("push_to_brew_time", push_to_brew_time),
+                ("profile", row.profile),
+            ]));
+        })?;
+        Ok(results)
+    }
+
+    /// [`search_history`](Self::search_history)'s list as JSON text in
+    /// `style`, appended to `out`: what the history API sends. The shot
+    /// samples, nearly all of it, are transcoded from the files' text
+    /// ([`files::read_shot_members`]) instead of parsed into values and
+    /// encoded again.
+    ///
+    /// The bytes are those of `json.dumps(search_history(params))` in
+    /// `style`, which Python sends. [`search_history`](Self::search_history)
+    /// differs where a JSON value cannot hold what Python reads: see
+    /// [`pyfmt::transcode`]. On an error `out` holds a partial list.
+    pub fn search_history_json(
+        &self,
+        params: &SearchParams,
+        style: JsonStyle,
+        out: &mut String,
+    ) -> Result<()> {
+        out.push('[');
+        let mut first = true;
+        let read = |path: &Path, relative: &str| read_shot_text(path, relative, style);
+        self.search_rows(params, read, |row| {
+            if !first {
+                out.push_str(", ");
+            }
+            first = false;
+            let (data, push_to_brew_time) = row
+                .shot
+                .unwrap_or_else(|| ("null".to_string(), "null".to_string()));
+            for (key, value) in [
+                ("{\"id\": ", &row.id),
+                (", \"db_key\": ", &row.db_key),
+                (", \"time\": ", &row.time),
+                (", \"file\": ", &row.file),
+                (", \"debug_file\": ", &row.debug_file),
+                (", \"name\": ", &row.name),
+            ] {
+                out.push_str(key);
+                pyfmt::write_json(out, value, style);
+            }
+            out.push_str(", \"data\": ");
+            out.push_str(&data);
+            out.push_str(", \"push_to_brew_time\": ");
+            out.push_str(&push_to_brew_time);
+            out.push_str(", \"profile\": ");
+            pyfmt::write_json(out, &row.profile, style);
+            out.push('}');
+        })?;
+        out.push(']');
+        Ok(())
+    }
+
+    /// The search itself: `found` gets each row with its shot data, as
+    /// `read_shot` reads it from the file (`None` leaves the row out).
+    fn search_rows<D>(
+        &self,
+        params: &SearchParams,
+        mut read_shot: impl FnMut(&Path, &str) -> Option<D>,
+        mut found: impl FnMut(SearchRow<D>),
+    ) -> Result<()> {
         let mut args: Vec<SqlValue> = Vec::new();
         let mut conditions: Vec<String> = Vec::new();
         if let Some(query) = params.query.as_deref().filter(|q| !q.is_empty()) {
@@ -397,7 +546,7 @@ impl HistoryDb {
             collected
         };
 
-        let mut results = Vec::new();
+        let mut count = 0;
         for row in rows {
             let value = |index: usize| to_json(rusqlite::types::ValueRef::from(&row[index]));
             let json = |index: usize| json_column(rusqlite::types::ValueRef::from(&row[index]));
@@ -435,45 +584,31 @@ impl HistoryDb {
                 ("variables", json(col::VARIABLES)?),
                 ("previous_authors", json(col::PREVIOUS_AUTHORS)?),
             ]);
-            let mut data = Value::Null;
-            let mut push_to_brew_time = Value::Null;
+            let mut shot = None;
             if params.dump_data {
                 let relative = match &file_entry {
                     Value::String(s) => s.clone(),
                     other => other.to_string(),
                 };
-                match files::read_shot_json(&self.shot_path(&relative)) {
-                    Ok(Value::Object(mut contents)) => {
-                        data = contents.remove("data").unwrap_or(Value::Null);
-                        push_to_brew_time =
-                            contents.remove("push_to_brew_time").unwrap_or(Value::Null);
-                    }
-                    Ok(_) => {
-                        tracing::error!(
-                            "Failed to read shot file {relative}: 'list' object has no attribute 'get'"
-                        );
-                        continue;
-                    }
-                    Err(error) => {
-                        tracing::error!("Failed to read shot file {relative}: {error}");
-                        continue;
-                    }
+                match read_shot(&self.shot_path(&relative), &relative) {
+                    Some(contents) => shot = Some(contents),
+                    None => continue,
                 }
             }
-            results.push(pyfmt::object([
-                ("id", value(col::UUID)?),
-                ("db_key", value(col::ID)?),
-                ("time", time),
-                ("file", file_entry),
-                ("debug_file", value(col::DEBUG_FILE)?),
-                ("name", value(col::NAME)?),
-                ("data", data),
-                ("push_to_brew_time", push_to_brew_time),
-                ("profile", profile),
-            ]));
+            found(SearchRow {
+                id: value(col::UUID)?,
+                db_key: value(col::ID)?,
+                time,
+                file: file_entry,
+                debug_file: value(col::DEBUG_FILE)?,
+                name: value(col::NAME)?,
+                shot,
+                profile,
+            });
+            count += 1;
         }
-        tracing::info!("shot database query returned {} results", results.len());
-        Ok(results)
+        tracing::info!("shot database query returned {count} results");
+        Ok(())
     }
 
     /// `ShotDataBase.list_history_files`: `[{"file": ...}]` after the cursor,

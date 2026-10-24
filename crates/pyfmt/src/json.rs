@@ -73,7 +73,13 @@ pub fn tornado_json_encode(value: &Value) -> String {
     out
 }
 
-fn write_value(out: &mut String, value: &Value, opts: &DumpOpts, level: usize, html: bool) {
+pub(crate) fn write_value(
+    out: &mut String,
+    value: &Value,
+    opts: &DumpOpts,
+    level: usize,
+    html: bool,
+) {
     match value {
         Value::Null => out.push_str("null"),
         Value::Bool(true) => out.push_str("true"),
@@ -145,7 +151,7 @@ fn newline(out: &mut String, opts: &DumpOpts, level: usize) {
 
 /// `json.encoder.py_encode_basestring(_ascii)`; `html` also escapes `</`
 /// (tornado's `json_encode`).
-fn write_string(out: &mut String, s: &str, ensure_ascii: bool, html: bool) {
+pub(crate) fn write_string(out: &mut String, s: &str, ensure_ascii: bool, html: bool) {
     out.push('"');
     let plain = s.bytes().all(|b| {
         b >= 0x20 && b != b'"' && b != b'\\' && (!ensure_ascii || b < 0x7f) && (!html || b != b'/')

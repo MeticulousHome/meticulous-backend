@@ -155,9 +155,21 @@ async fn stats(app: Arc<App>, req: Request) -> Reply {
     }
 }
 
+/// `self.write({"history": ShotDataBase.search_history(params)})`, with the
+/// shot samples transcoded from the files rather than parsed and encoded.
 async fn search(app: Arc<App>, req: &Request, params: SearchParams) -> Reply {
-    match tokio::task::spawn_blocking(move || app.history.search(&params)).await {
-        Ok(Ok(results)) => Reply::base().json(json!({"history": results})),
+    let result = tokio::task::spawn_blocking(move || {
+        let mut body = String::from("{\"history\": ");
+        app.history
+            .search_json(&params, pyfmt::JsonStyle::TORNADO, &mut body)
+            .map(|()| {
+                body.push('}');
+                body
+            })
+    })
+    .await;
+    match result {
+        Ok(Ok(body)) => Reply::base().json_encoded(body),
         _ => Reply::error(Kind::Base, 500, req),
     }
 }
@@ -977,6 +989,27 @@ mod tests {
 
         assert_eq!(current["profile"], json!({"db_key": null}));
         assert_eq!(current["profile_name"], json!("Classic"));
+    }
+
+    /// The search answers with the shots' samples transcoded from their
+    /// files: the same bytes as tornado encoding `search_history`'s values.
+    #[tokio::test]
+    async fn search_body_is_tornados_encoding_of_the_shots() {
+        let (_dir, app) = app();
+        brew_three_shots(&app).await;
+        let params = SearchParams::from_json(&Map::new()).expect("defaults");
+        let shots = app.history.search(&params).expect("search");
+        assert_eq!(shots.len(), 3);
+        let expected = pyfmt::tornado_json_encode(&json!({"history": shots}));
+
+        let reply = post(&app, "/api/v1/history", "{}").await;
+
+        assert_eq!(reply.status_code(), 200);
+        assert_eq!(
+            reply.header("Content-Type"),
+            Some("application/json; charset=UTF-8")
+        );
+        assert_eq!(std::str::from_utf8(reply.body()), Ok(expected.as_str()));
     }
 
     /// tests/test_api_history.py::TestStatistics::test_counts_shots_and_profile_versions_and_reports_esp_mileage

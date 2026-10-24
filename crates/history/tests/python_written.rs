@@ -80,6 +80,13 @@ fn search_history_reads_python_rows_and_files() {
             &Value::Array(result),
             &case["result"],
         );
+        // The handler's path, as text.
+        assert_eq!(
+            common::search_json(&db, &params, pyfmt::JsonStyle::DUMPS),
+            pyfmt::dumps_default(&case["result"]),
+            "search {}",
+            case["params"]
+        );
     }
 }
 

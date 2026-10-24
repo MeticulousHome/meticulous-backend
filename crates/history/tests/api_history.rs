@@ -11,6 +11,7 @@ mod common;
 use std::path::Path;
 
 use common::Env;
+use history::files;
 use history::files::{
     HistoryFile, compressed_download_name, decompressed_content_type, latest_debug_file,
     list_directory, read_patched, resolve_history_file, shot_file_paths, write_shot_file,
@@ -141,7 +142,16 @@ impl Machine {
 
     fn search(&self, query: Value) -> Vec<Value> {
         let params = SearchParams::from_json(query.as_object().unwrap()).unwrap();
-        self.db.search_history(&params).unwrap()
+        let result = self.db.search_history(&params).unwrap();
+        common::assert_search_json_agrees(&self.db, &params, &result);
+        result
+    }
+
+    /// Rewrite a recorded shot file's JSON text.
+    fn rewrite_shot(&self, file: &str, edit: impl Fn(&str) -> String) {
+        let path = self.db.paths().shot_dir().join(file);
+        let raw = String::from_utf8(files::decompress_file(&path, None).unwrap()).unwrap();
+        files::write_compressed(&path, edit(&raw).as_bytes()).unwrap();
     }
 }
 
@@ -344,6 +354,115 @@ fn non_finite_values_in_shot_file_are_listed_as_zero() {
         &result[0]["data"],
         &json!([stored_point(1000, json!(9.0), json!(0.0), json!(0.0))]),
     );
+}
+
+/// Tokens the `: Infinity`/`: NaN` patch does not reach: Python reads them
+/// as floats and json.dumps writes them back as bare tokens, which the
+/// handler's path does; the values of the internal path hold `null`.
+#[test]
+fn unpatched_non_finite_tokens_are_listed_like_python() {
+    let mut machine = Machine::fresh();
+    machine.record_shot(classic(), FIRST_SHOT_TIME, vec![point(1000, 9.0, 0.0)], 0);
+    machine.rewrite_shot(FIRST_SHOT_FILE, |raw| {
+        raw.replace(
+            "\"gravimetric_flow\": 1.5",
+            "\"gravimetric_flow\": -Infinity, \"extra\": [NaN, Infinity]",
+        )
+    });
+    let params = SearchParams::default();
+    let values = machine.db.search_history(&params).unwrap();
+    assert_eq!(values[0]["data"][0]["shot"]["extra"], json!([null, null]));
+    let expected = pyfmt::tornado_json_encode(&Value::Array(values)).replace(
+        "\"gravimetric_flow\": null, \"extra\": [null, null]",
+        "\"gravimetric_flow\": -Infinity, \"extra\": [NaN, Infinity]",
+    );
+    assert!(expected.contains("-Infinity"));
+    assert_eq!(
+        common::search_json(&machine.db, &params, pyfmt::JsonStyle::TORNADO),
+        expected
+    );
+}
+
+/// What else Python reads that JSON values cannot hold: integers past 64
+/// bits (kept exact), `-0` (the int 0), floats past the double range
+/// (`Infinity`), lone surrogates (kept escaped). The internal path cannot
+/// read such a file and leaves the shot out.
+#[test]
+fn shot_data_keeps_what_python_reads() {
+    let mut machine = Machine::fresh();
+    machine.record_shot(classic(), FIRST_SHOT_TIME, vec![point(1000, 9.0, 0.0)], 0);
+    machine.rewrite_shot(FIRST_SHOT_FILE, |raw| {
+        raw.replace(
+            "\"time\": 1000",
+            "\"time\": 123456789012345678901234567890, \"zero\": -0, \"big\": 1e400, \"s\": \"\\ud800</\"",
+        )
+    });
+    let params = SearchParams::default();
+    assert!(machine.db.search_history(&params).unwrap().is_empty());
+    let body = common::search_json(&machine.db, &params, pyfmt::JsonStyle::TORNADO);
+    assert!(
+        body.contains(
+            "\"time\": 123456789012345678901234567890, \"zero\": 0, \"big\": Infinity, \"s\": \"\\ud800<\\/\""
+        ),
+        "{body}"
+    );
+}
+
+/// A repeated key in a shot file: `dict` keeps the last value, in the place
+/// of the first. Both paths agree (checked by `search`).
+#[test]
+fn repeated_keys_in_a_shot_file_keep_the_last_value() {
+    let mut machine = Machine::fresh();
+    machine.record_shot(classic(), FIRST_SHOT_TIME, vec![point(1000, 9.0, 0.0)], 7);
+    machine.rewrite_shot(FIRST_SHOT_FILE, |raw| {
+        let raw = raw.replace("\"flow\": 2.0", "\"flow\": 2.0, \"weight\": 5, \"flow\": 3.0");
+        format!(
+            "{}, \"data\": [], \"d\\u0061ta\": [{{\"x\": 1, \"y\": 2, \"x\": 3}}], \"push_to_brew_time\": 9}}",
+            raw.strip_suffix('}').unwrap()
+        )
+    });
+    let result = machine.search(json!({}));
+    assert_eq!(
+        pyfmt::dumps_default(&result[0]["data"]),
+        r#"[{"x": 3, "y": 2}]"#
+    );
+    assert_eq!(result[0]["push_to_brew_time"], json!(9));
+    let result = machine.search(json!({"dump_data": false}));
+    assert!(result[0]["data"].is_null());
+}
+
+/// TestHistoryList.test_shot_with_unreadable_file_is_left_out_of_the_listing,
+/// for every way a file can be unreadable; both paths leave the same rows out.
+#[test]
+fn shots_with_bad_files_are_left_out_of_both_listings() {
+    let mut machine = Machine::fresh();
+    let mut ids = Vec::new();
+    for minute in 0..6 {
+        ids.push(machine.record_shot(
+            classic(),
+            FIRST_SHOT_TIME + 60.0 * f64::from(minute),
+            vec![point(1000, 9.0, 0.0)],
+            0,
+        ));
+    }
+    let file = |minute: u32| format!("{DAY}/08:{:02}:00.shot.json.zst", 30 + minute);
+    let shots = machine.db.paths().shot_dir();
+    std::fs::write(shots.join(file(1)), b"not zstd").unwrap();
+    machine.rewrite_shot(&file(2), |raw| raw[..raw.len() - 1].to_string());
+    machine.rewrite_shot(&file(3), |raw| format!("[{raw}]"));
+    let path = shots.join(file(4));
+    let mut raw = files::decompress_file(&path, None).unwrap();
+    raw.extend_from_slice(b" \xff");
+    files::write_compressed(&path, &raw).unwrap();
+    machine.rewrite_shot(&file(5), |raw| {
+        raw.replace("\"brewing\"", "\"brew\u{1}ing\"")
+    });
+    let listed: Vec<Value> = machine
+        .search(json!({}))
+        .iter()
+        .map(|e| e["id"].clone())
+        .collect();
+    assert_eq!(listed, vec![json!(ids[0])]);
 }
 
 /// TestHistoryList.test_linked_debug_file_is_reported

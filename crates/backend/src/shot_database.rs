@@ -84,6 +84,17 @@ impl History {
         self.with(|db| db.search_history(params))
     }
 
+    /// [`search`](Self::search) as JSON text in `style`, appended to `out`
+    /// (see `HistoryDb::search_history_json`).
+    pub fn search_json(
+        &self,
+        params: &SearchParams,
+        style: pyfmt::JsonStyle,
+        out: &mut String,
+    ) -> Result<(), String> {
+        self.with(|db| db.search_history_json(params, style, out))
+    }
+
     pub fn insert_history(&self, shot: &Value) -> Result<i64, String> {
         self.with(|db| db.insert_history(shot))
     }
