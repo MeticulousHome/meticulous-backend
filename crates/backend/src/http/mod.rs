@@ -20,7 +20,7 @@ use regex::Regex;
 
 pub use reply::{Kind, Reply, http_date};
 pub use request::{Request, parse_python_json};
-pub use static_files::{StaticOptions, serve_file, serve_static};
+pub use static_files::{StaticOptions, absolute, serve_file, serve_static};
 
 use crate::app::App;
 

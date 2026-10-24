@@ -40,6 +40,12 @@ impl CommandOutput {
     }
 }
 
+/// A program [`CommandRunner::start`] left running.
+pub trait Process: Send {
+    /// End it and reap it.
+    fn stop(&mut self);
+}
+
 pub trait CommandRunner: Send + Sync {
     /// Run `argv` to completion with `stdin` piped in and the output captured.
     /// `Err` is Python's `OSError` from `Popen`: the program could not start.
@@ -48,6 +54,10 @@ pub trait CommandRunner: Send + Sync {
     /// `subprocess.Popen(argv, stdout=DEVNULL, stderr=DEVNULL)`: start it
     /// and do not wait.
     fn spawn(&self, argv: &[&str]) -> std::io::Result<()>;
+
+    /// Like [`CommandRunner::spawn`], keeping a handle to stop it later
+    /// (playsound's non-blocking `playsound(path, block=False).stop()`).
+    fn start(&self, argv: &[&str]) -> std::io::Result<Box<dyn Process>>;
 
     /// `shutil.which(name)`.
     fn which(&self, name: &str) -> Option<PathBuf>;
@@ -103,11 +113,35 @@ impl CommandRunner for SystemRunner {
             .map(|_| ())
     }
 
+    fn start(&self, argv: &[&str]) -> std::io::Result<Box<dyn Process>> {
+        let (program, args) = argv
+            .split_first()
+            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, "empty argv"))?;
+        let child = Command::new(program)
+            .args(args)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()?;
+        Ok(Box::new(ChildProcess(child)))
+    }
+
     fn which(&self, name: &str) -> Option<PathBuf> {
         let path = std::env::var_os("PATH")?;
         std::env::split_paths(&path)
             .map(|dir| dir.join(name))
             .find(|candidate| is_executable(candidate))
+    }
+}
+
+/// A started child: it stays a zombie once it ends until stopped, as the
+/// Python's `Popen` does until its next poll.
+struct ChildProcess(std::process::Child);
+
+impl Process for ChildProcess {
+    fn stop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
     }
 }
 
@@ -151,6 +185,10 @@ impl Host {
         self.runner().spawn(argv)
     }
 
+    pub fn start(&self, argv: &[&str]) -> std::io::Result<Box<dyn Process>> {
+        self.runner().start(argv)
+    }
+
     pub fn which(&self, name: &str) -> Option<PathBuf> {
         self.runner().which(name)
     }
@@ -174,10 +212,11 @@ pub fn describe_failure(argv: &[&str], output: &CommandOutput) -> String {
 pub mod fake {
     use std::collections::HashMap;
     use std::path::PathBuf;
+    use std::sync::Arc;
 
     use parking_lot::Mutex;
 
-    use super::{CommandOutput, CommandRunner};
+    use super::{CommandOutput, CommandRunner, Process};
 
     /// A recorded call: the argv and what was piped in.
     pub type Call = (Vec<String>, Option<Vec<u8>>);
@@ -189,8 +228,23 @@ pub mod fake {
     pub struct FakeRunner {
         pub calls: Mutex<Vec<Call>>,
         pub spawned: Mutex<Vec<Vec<String>>>,
+        /// The argv of every [`CommandRunner::start`], in order.
+        pub started: Mutex<Vec<Vec<String>>>,
+        /// The argv of every started program that was stopped, in order.
+        pub stopped: Arc<Mutex<Vec<Vec<String>>>>,
         pub answers: Mutex<HashMap<String, Answer>>,
         pub on_path: Mutex<Vec<String>>,
+    }
+
+    struct FakeProcess {
+        argv: Vec<String>,
+        stopped: Arc<Mutex<Vec<Vec<String>>>>,
+    }
+
+    impl Process for FakeProcess {
+        fn stop(&mut self) {
+            self.stopped.lock().push(self.argv.clone());
+        }
     }
 
     impl FakeRunner {
@@ -238,6 +292,20 @@ pub mod fake {
                 .lock()
                 .push(argv.iter().map(|s| s.to_string()).collect());
             Ok(())
+        }
+
+        /// Fails with the program's [`FakeRunner::missing`] answer, if any.
+        fn start(&self, argv: &[&str]) -> std::io::Result<Box<dyn Process>> {
+            let argv: Vec<String> = argv.iter().map(|s| s.to_string()).collect();
+            let program = argv.first().cloned().unwrap_or_default();
+            if let Some(Err(kind)) = self.answers.lock().get(&program) {
+                return Err(std::io::Error::new(*kind, "fake"));
+            }
+            self.started.lock().push(argv.clone());
+            Ok(Box::new(FakeProcess {
+                argv,
+                stopped: self.stopped.clone(),
+            }))
         }
 
         fn which(&self, name: &str) -> Option<PathBuf> {

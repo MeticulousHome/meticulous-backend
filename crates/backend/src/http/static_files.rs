@@ -177,7 +177,7 @@ fn parse_range(header: &str, size: usize) -> Option<Result<(usize, usize), ()>> 
 }
 
 /// `os.path.abspath`: absolute and normalized without touching the disk.
-fn absolute(path: &Path) -> PathBuf {
+pub fn absolute(path: &Path) -> PathBuf {
     let base = if path.is_absolute() {
         PathBuf::new()
     } else {

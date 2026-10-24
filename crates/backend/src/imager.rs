@@ -797,6 +797,7 @@ mod tests {
         let sio = Arc::new(crate::sio::Sio::default());
         let sounds = Arc::new(crate::sounds::SoundPlayer::new(
             config.clone(),
+            Arc::new(Host::default()),
             dir.path().join("s"),
             dir.path().join("u"),
             true,

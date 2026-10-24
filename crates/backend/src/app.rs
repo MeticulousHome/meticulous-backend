@@ -102,8 +102,10 @@ impl App {
             config::defaults(),
         ));
         let sio = Arc::new(Sio::default());
+        let host = Arc::new(Host::default());
         let sounds = Arc::new(SoundPlayer::new(
             config.clone(),
+            host.clone(),
             env.paths.system_sounds.clone(),
             env.paths.user_sounds.clone(),
             env.hooks.fake_hardware,
@@ -133,7 +135,6 @@ impl App {
         );
         let simple_profile = SimpleProfile::new(env.paths.simple_profile.clone());
         let env_paths_pour_over = env.paths.pour_over_profiles.clone();
-        let host = Arc::new(Host::default());
         let system = &env.paths.system;
         let os_update = Arc::new(OsUpdateStatus::new(sio.clone()));
         let ota = Arc::new(UpdateManager::new(config.clone(), system));
