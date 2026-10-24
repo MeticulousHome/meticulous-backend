@@ -92,29 +92,34 @@ fn validate(user: &Map<String, Value>, target: &str, value: &Value) -> Result<()
         ))));
     }
     if target == keys::PROFILE_TARE_BEHAVIOR {
-        let ok = value
-            .as_str()
-            .is_some_and(|v| config::TARE_BEHAVIORS.contains(&v));
-        if !ok {
-            return Err(Refusal::Other(format!(
-                "unsupported tare behavior: {}",
-                python_str(value)
-            )));
-        }
+        validate_tare_behavior(value).map_err(Refusal::Other)?;
     }
     if target == keys::PROFILE_PARTIAL_RETRACTION {
-        let v = value.as_f64().unwrap_or(f64::NAN);
-        if !v.is_finite()
-            || !(config::PARTIAL_RETRACTION_MIN..=config::PARTIAL_RETRACTION_MAX).contains(&v)
-        {
-            return Err(Refusal::Other(format!(
-                "partial_retraction must be between {:.2} and {:.2} mm",
-                config::PARTIAL_RETRACTION_MIN,
-                config::PARTIAL_RETRACTION_MAX
-            )));
-        }
+        validate_partial_retraction(value.as_f64().unwrap_or(f64::NAN)).map_err(Refusal::Other)?;
     }
     Ok(())
+}
+
+/// `settings_validation.validate_tare_behavior`: the `ValueError` text.
+pub fn validate_tare_behavior(value: &Value) -> Result<(), String> {
+    match value.as_str() {
+        Some(v) if config::TARE_BEHAVIORS.contains(&v) => Ok(()),
+        _ => Err(format!("unsupported tare behavior: {}", python_str(value))),
+    }
+}
+
+/// `settings_validation.validate_partial_retraction`: the `ValueError` text.
+pub fn validate_partial_retraction(value: f64) -> Result<(), String> {
+    if value.is_finite()
+        && (config::PARTIAL_RETRACTION_MIN..=config::PARTIAL_RETRACTION_MAX).contains(&value)
+    {
+        return Ok(());
+    }
+    Err(format!(
+        "partial_retraction must be between {:.2} and {:.2} mm",
+        config::PARTIAL_RETRACTION_MIN,
+        config::PARTIAL_RETRACTION_MAX
+    ))
 }
 
 /// `settings_validation.is_valid_setting_type`.
@@ -266,9 +271,10 @@ async fn post(app: Arc<App>, req: Request) -> Reply {
                 if let Ok(Err(error)) =
                     tokio::task::spawn_blocking(move || app2.timezone.update_timezone(&tz)).await
                 {
-                    return refuse(Refusal::Other(format!(
-                        "failed to set new timezone: {error}"
-                    )));
+                    // Only a UnicodeDecodeError gets the handler's "failed to
+                    // set new timezone" prefix; a TimezoneManagerError reaches
+                    // the generic 400 as it is.
+                    return refuse(Refusal::Other(error.to_string()));
                 }
             }
             keys::MACHINE_HEATING_TIMEOUT => {
@@ -346,7 +352,12 @@ async fn timezones(app: Arc<App>, req: Request) -> Reply {
         "" => "countries".to_string(),
         other => other.to_string(),
     };
-    let filter = req.get_argument_or("filter", "");
+    let filter = match req.get_argument_checked("filter") {
+        Ok(filter) => filter.unwrap_or_default(),
+        // tornado's get_argument raises HTTPError(400) itself, so the
+        // handler's UnicodeDecodeError branch (403) is never reached.
+        Err(_) => return Reply::error(Kind::Base, 400, &req),
+    };
     let map = app.timezone.get_ui_timezones();
     let (status, body) = match region.as_str() {
         "countries" => {

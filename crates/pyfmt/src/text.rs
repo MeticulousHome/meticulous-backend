@@ -9,6 +9,11 @@ pub fn unquote(s: &str) -> String {
     if !s.contains('%') {
         return s.to_string();
     }
+    String::from_utf8_lossy(&unquote_to_bytes(s)).into_owned()
+}
+
+/// `urllib.parse.unquote_to_bytes`: the decoded bytes, whatever they are.
+pub fn unquote_to_bytes(s: &str) -> Vec<u8> {
     let bytes = s.as_bytes();
     let mut out: Vec<u8> = Vec::with_capacity(bytes.len());
     let mut i = 0;
@@ -28,7 +33,7 @@ pub fn unquote(s: &str) -> String {
         out.push(b);
         i += 1;
     }
-    String::from_utf8_lossy(&out).into_owned()
+    out
 }
 
 #[cfg(test)]
@@ -42,6 +47,7 @@ mod tests {
         assert_eq!(unquote("100%"), "100%");
         assert_eq!(unquote("%zz"), "%zz");
         assert_eq!(unquote("%ff"), "\u{fffd}");
+        assert_eq!(unquote_to_bytes("%ff%41%zz"), b"\xffA%zz");
     }
 
     #[test]
