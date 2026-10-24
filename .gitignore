@@ -180,3 +180,6 @@ cython_debug/
 
 userdata/
 userdata.img
+
+# Rust
+/target
