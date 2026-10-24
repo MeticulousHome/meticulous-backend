@@ -54,6 +54,8 @@ mod sounds;
 mod ssh_manager;
 mod system_services;
 #[cfg(test)]
+mod ported;
+#[cfg(test)]
 mod testing;
 mod timezone;
 mod usb;
