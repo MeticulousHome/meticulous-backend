@@ -24,7 +24,7 @@ pub fn app_with(backend: BackendMode, prepare: impl FnOnce(&Env)) -> (tempfile::
     let env = Env::for_tests(dir.path(), backend);
     prepare(&env);
     let log = Arc::new(crate::logging::LogHooks::default());
-    let app = App::new(env, log);
+    let app = App::new(env, log, crate::sentry_reporting::Reporting::init(false));
     (dir, app)
 }
 

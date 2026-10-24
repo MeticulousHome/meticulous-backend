@@ -163,7 +163,19 @@ pub fn init(log_level: &str) -> Arc<LogHooks> {
         hooks: hooks.clone(),
         max_level,
     };
-    let _ = tracing_subscriber::registry().with(layer).try_init();
+    // The Python SDK's logging integration: ERROR records become events, no
+    // breadcrumbs. Without a Sentry client bound this does nothing.
+    let sentry = sentry::integrations::tracing::layer().event_filter(|meta| {
+        if *meta.level() == Level::ERROR {
+            sentry::integrations::tracing::EventFilter::Event
+        } else {
+            sentry::integrations::tracing::EventFilter::Ignore
+        }
+    });
+    let _ = tracing_subscriber::registry()
+        .with(layer)
+        .with(sentry)
+        .try_init();
     hooks
 }
 

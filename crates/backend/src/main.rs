@@ -14,6 +14,7 @@ mod images;
 mod logging;
 mod metconfig;
 mod notifications;
+mod sentry_reporting;
 mod server;
 mod sio;
 mod sounds;
@@ -71,8 +72,11 @@ fn serve() -> std::process::ExitCode {
             return std::process::ExitCode::from(1);
         }
     };
+    // back.py initializes Sentry at import, before anything else runs. A run
+    // with the hardware faked never reports.
+    let reporting = sentry_reporting::Reporting::init(env.sentry && !env.hooks.fake_hardware);
     runtime.block_on(async move {
-        let app = app::App::new(env, log);
+        let app = app::App::new(env, log, reporting);
         start(&app);
         let router = Arc::new(api::router(&app));
         match server::serve(app, router).await {
