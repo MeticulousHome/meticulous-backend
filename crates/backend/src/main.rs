@@ -13,6 +13,7 @@ mod app;
 mod backlight;
 mod ble;
 mod bug_report;
+mod bundled;
 mod clock;
 mod config;
 mod contract;

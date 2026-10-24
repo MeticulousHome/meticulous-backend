@@ -1,7 +1,9 @@
 #!/bin/bash
 # Install the built .deb on a clean Debian bookworm (the machine image's base)
 # and boot it twice with tests/boot/boot_harness.py: once as a fresh machine,
-# once as a restart that finds its own config, profiles and history.
+# once as a restart that finds its own config, profiles and history. Then a
+# third time on a copy of the package's data without the files the binary
+# also carries (crates/backend/src/bundled.rs), as a package missing them.
 #
 # Runs inside the container:
 #   docker run --rm -v "$PWD:/src:ro" -v "$PWD/out:/deb:ro" -v "$PWD/boot-reports:/reports" \
@@ -40,3 +42,16 @@ for boot in 1 2; do
         --boot-index "${boot}"
 done
 echo "installed package booted twice"
+
+echo "== boot 3 (package without the built-in data files)"
+stripped=$(mktemp -d)
+cp -a /opt/meticulous-backend/. "${stripped}/"
+rm -r "${stripped}/simple_profile.json" "${stripped}/sounds" \
+    "${stripped}/images/default/accent_colors.json"
+/tmp/harness/bin/python /src/tests/boot/boot_harness.py \
+    --binary /usr/bin/meticulous-backend \
+    --package-root "${stripped}" \
+    --data-dir "$(mktemp -d)" \
+    --report "/reports/boot-3-without-data-files.json" \
+    --boot-index 3
+echo "installed binary booted without its data files"

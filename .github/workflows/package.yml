@@ -1,9 +1,15 @@
 name: Package
 
 # Builds the .deb that meticulous-machine installs, checks that it ships every
-# runtime file, installs it on a clean Debian bookworm and boots it twice with
-# the hardware faked (tests/boot/boot_harness.py). Built natively for both
+# runtime file, installs it on a clean Debian bookworm and boots it with the
+# hardware faked (tests/boot/boot_harness.py). Built natively for both
 # architectures: arm64 is what machines run.
+#
+# The binary's debug file (line tables and symbols, split out of the shipped
+# binary) is kept as a workflow artifact, and uploaded to Sentry so it can
+# symbolicate this build's crash reports when the repository has a
+# SENTRY_AUTH_TOKEN secret, with the SENTRY_ORG and SENTRY_PROJECT variables
+# naming the backend's project (SENTRY_URL defaults to Meticulous' Sentry).
 #
 # Pull requests are tested on their merge result; pushes only on the branches
 # PRs merge into, so a push to a PR branch does not build twice.
@@ -44,7 +50,8 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Build the .deb
+    - name: Build the .deb and its debug file
+      id: build
       uses: docker/build-push-action@v6
       with:
         context: .
@@ -57,13 +64,48 @@ jobs:
         cache-from: type=gha,scope=deb-${{ matrix.arch }}
         cache-to: type=gha,mode=max,scope=deb-${{ matrix.arch }}
 
+    # Kept whatever the checks below say: it symbolicates this build's binary.
+    - name: Upload the debug file
+      if: always() && steps.build.outcome == 'success'
+      uses: actions/upload-artifact@v4
+      with:
+        name: meticulous-backend-debug-${{ matrix.arch }}
+        path: out/meticulous-backend_*.debug
+        if-no-files-found: error
+        retention-days: ${{ github.event_name == 'pull_request' && 14 || 90 }}
+
+    # Also checks that the debug file belongs to the shipped binary (same
+    # build id, the CRC its debuglink records) before Sentry gets it.
     - name: Package ships every runtime file
       run: |
         mkdir pkg
         dpkg-deb -x out/meticulous-backend_*.deb pkg
-        python3 tests/package/verify_package.py --repo . --package pkg
+        python3 tests/package/verify_package.py --repo . --package pkg \
+          --debug-file out/meticulous-backend_*.debug
 
-    - name: Installed package boots twice
+    # Secrets cannot be tested in `if:`; the step looks for the token itself.
+    - name: Upload the debug file to Sentry
+      env:
+        SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        SENTRY_URL: ${{ vars.SENTRY_URL || 'https://sentry.meticulousespresso.com' }}
+        SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+        SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+        # Read by the installer; bump deliberately.
+        SENTRY_CLI_VERSION: 2.46.0
+      run: |
+        if [ -z "$SENTRY_AUTH_TOKEN" ]; then
+          echo "::notice title=Sentry upload skipped::no SENTRY_AUTH_TOKEN secret, the debug file is only kept as the workflow artifact"
+          exit 0
+        fi
+        if [ -z "$SENTRY_ORG" ] || [ -z "$SENTRY_PROJECT" ]; then
+          echo "::error::SENTRY_AUTH_TOKEN is set but the SENTRY_ORG or SENTRY_PROJECT repository variable is not"
+          exit 1
+        fi
+        curl -sSfL https://sentry.io/get-cli/ | INSTALL_DIR="$RUNNER_TEMP" sh
+        "$RUNNER_TEMP/sentry-cli" debug-files check out/meticulous-backend_*.debug
+        "$RUNNER_TEMP/sentry-cli" debug-files upload --wait out/meticulous-backend_*.debug
+
+    - name: Installed package boots twice, and without its built-in data files
       run: |
         mkdir boot-reports
         docker run --rm \

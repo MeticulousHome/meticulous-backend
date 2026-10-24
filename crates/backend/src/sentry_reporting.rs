@@ -57,8 +57,12 @@ impl Reporting {
                 options(move |event| filter(&backend_weak, event)),
             ));
             let esp_weak = weak.clone();
-            let esp =
-                sentry::Client::from((ESP_DSN, options(move |event| filter(&esp_weak, event))));
+            // sentry::init gives the backend client its HTTP transport; a
+            // client built by hand gets one only through apply_defaults, and
+            // without it every ESP diagnostic was dropped.
+            let esp_options: sentry::ClientOptions =
+                (ESP_DSN, options(move |event| filter(&esp_weak, event))).into();
+            let esp = sentry::Client::from(sentry::apply_defaults(esp_options));
             Reporting {
                 enabled: true,
                 paused: AtomicBool::new(false),
@@ -235,7 +239,69 @@ pub fn level_from_name(name: &str) -> Level {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+    use std::sync::atomic::AtomicBool;
+
+    use parking_lot::RwLock;
+    use sentry::protocol::DebugImage;
+
+    use super::{Reporting, filter, options};
     use crate::env::BackendMode;
+
+    /// A panic reaches Sentry with what symbolicating the stripped release
+    /// binary from its uploaded debug file takes: every frame's instruction
+    /// address, and the debug images with this executable's GNU build id
+    /// (its code id), which Sentry files the debug file under. The privacy
+    /// scrubber keeps both. The event goes to the test transport only.
+    #[test]
+    fn panic_event_carries_what_symbolication_needs() {
+        let reporting = Arc::new(Reporting {
+            enabled: true,
+            paused: AtomicBool::new(false),
+            scrubber: RwLock::new(None),
+            esp: None,
+            _guard: None,
+        });
+        reporting.set_scrubber(|event| redactor::sanitize_sentry_event(&event));
+        let weak = Arc::downgrade(&reporting);
+        let events = sentry::test::with_captured_events_options(
+            || {
+                let _ = std::panic::catch_unwind(|| panic!("symbolication test panic"));
+            },
+            sentry::apply_defaults(options(move |event| filter(&weak, event))),
+        );
+
+        let event = events
+            .iter()
+            .find(|e| e.exception.values.iter().any(|x| x.ty == "panic"))
+            .expect("a panic event");
+        let frames = &event.exception.values[0]
+            .stacktrace
+            .as_ref()
+            .expect("a stack trace")
+            .frames;
+        assert!(!frames.is_empty());
+        assert!(frames.iter().all(|frame| frame.instruction_addr.is_some()));
+
+        let exe = std::env::current_exe().expect("test executable");
+        let own = event
+            .debug_meta
+            .images
+            .iter()
+            .find_map(|image| match image {
+                DebugImage::Symbolic(image) if std::path::Path::new(&image.name) == exe => {
+                    Some(image)
+                }
+                _ => None,
+            })
+            .expect("this executable among the debug images");
+        assert!(
+            own.code_id
+                .as_ref()
+                .is_some_and(|id| !id.to_string().is_empty())
+        );
+        assert!(!own.id.is_nil());
+    }
 
     /// tests/test_sentry_offline.py::test_the_esp32_sentry_client_has_no_dsn_and_no_transport:
     /// no test may send events to the production Sentry projects. Every app

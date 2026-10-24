@@ -1,6 +1,7 @@
 //! `simple_profile.py`: the bundled profile limited access serves and new
 //! profiles start from.
 
+use std::borrow::Cow;
 use std::path::PathBuf;
 
 use parking_lot::Mutex;
@@ -19,41 +20,56 @@ impl SimpleProfile {
         }
     }
 
-    /// `SimpleProfile.load`: `None` (logged at ERROR) when the file is
-    /// missing, not JSON, or not a profile with an id.
+    /// `SimpleProfile.load`: the file, or the built-in profile when there is
+    /// no file; `None` (logged at ERROR) when the file cannot be read, is not
+    /// JSON, or is not a profile with an id.
+    ///
+    /// Deliberate change: Python answers `None` for a missing file too
+    /// (tests/test_simple_profile.py::test_missing_file_is_empty_not_fatal),
+    /// which leaves a factory machine without its only profile.
     pub fn load(&self) -> Option<Value> {
-        let loaded =
-            match std::fs::read_to_string(&self.path).map(|t| serde_json::from_str::<Value>(&t)) {
-                Err(error) => {
-                    tracing::error!(
-                        "Could not load simple profile from {}: {error}",
-                        self.path.display()
-                    );
-                    None
-                }
-                Ok(Err(error)) => {
-                    tracing::error!(
-                        "Could not load simple profile from {}: {error}",
-                        self.path.display()
-                    );
-                    None
-                }
-                Ok(Ok(profile)) if profile.get("id").is_some_and(|id| id.is_string()) => {
-                    // Bound first: inside tracing's macros `Value` names its trait.
-                    let id = profile["id"].as_str().unwrap_or_default().to_string();
-                    let name = profile
-                        .get("name")
-                        .and_then(|n| n.as_str())
-                        .unwrap_or("None")
-                        .to_string();
-                    tracing::info!("Loaded simple profile {id} ({name})");
-                    Some(profile)
-                }
-                Ok(Ok(_)) => {
-                    tracing::error!("Simple profile is not a profile object with an id");
-                    None
-                }
-            };
+        let text = match std::fs::read_to_string(&self.path) {
+            Ok(text) => Ok(Cow::Owned(text)),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                tracing::warn!(
+                    "No simple profile at {}, using the built-in one",
+                    self.path.display()
+                );
+                Ok(Cow::Borrowed(crate::bundled::SIMPLE_PROFILE))
+            }
+            Err(error) => Err(error),
+        };
+        let loaded = match text.map(|t| serde_json::from_str::<Value>(&t)) {
+            Err(error) => {
+                tracing::error!(
+                    "Could not load simple profile from {}: {error}",
+                    self.path.display()
+                );
+                None
+            }
+            Ok(Err(error)) => {
+                tracing::error!(
+                    "Could not load simple profile from {}: {error}",
+                    self.path.display()
+                );
+                None
+            }
+            Ok(Ok(profile)) if profile.get("id").is_some_and(|id| id.is_string()) => {
+                // Bound first: inside tracing's macros `Value` names its trait.
+                let id = profile["id"].as_str().unwrap_or_default().to_string();
+                let name = profile
+                    .get("name")
+                    .and_then(|n| n.as_str())
+                    .unwrap_or("None")
+                    .to_string();
+                tracing::info!("Loaded simple profile {id} ({name})");
+                Some(profile)
+            }
+            Ok(Ok(_)) => {
+                tracing::error!("Simple profile is not a profile object with an id");
+                None
+            }
+        };
         *self.profile.lock() = loaded.clone();
         loaded
     }
@@ -103,9 +119,31 @@ mod tests {
         assert!(simple.get_by_id("nope").is_none());
     }
 
+    /// tests/test_simple_profile.py::test_path_override: a file that is
+    /// there wins over the built-in profile.
     #[test]
-    fn missing_file_is_none() {
-        let simple = SimpleProfile::new(PathBuf::from("/nonexistent/simple.json"));
+    fn file_overrides_the_built_in_profile() {
+        let dir = tempfile::tempdir().expect("temporary directory");
+        let custom = dir.path().join("custom.json");
+        std::fs::write(
+            &custom,
+            r#"{"id": "custom", "name": "Custom", "stages": []}"#,
+        )
+        .expect("custom profile");
+        assert_eq!(
+            SimpleProfile::new(custom).get().expect("custom")["id"],
+            "custom"
+        );
+    }
+
+    /// A file that is there but broken is an override gone wrong: reported,
+    /// not replaced by the built-in profile.
+    #[test]
+    fn broken_file_is_none() {
+        let dir = tempfile::tempdir().expect("temporary directory");
+        let broken = dir.path().join("simple.json");
+        std::fs::write(&broken, "{not json").expect("broken profile");
+        let simple = SimpleProfile::new(broken);
         assert!(simple.get().is_none());
         assert_eq!(simple.defaults()["default"], json!([]));
     }

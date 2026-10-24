@@ -1774,14 +1774,22 @@ fn defaults_have_only_the_simple_profile() {
     assert_eq!(defaults["community"], json!([]));
 }
 
-/// tests/test_simple_profile.py::test_missing_file_is_empty_not_fatal
+/// tests/test_simple_profile.py::test_missing_file_is_empty_not_fatal,
+/// changed on purpose: still not fatal, but a missing file serves the
+/// profile built into the binary (`bundled::SIMPLE_PROFILE`) instead of
+/// nothing, so a package without the file keeps a factory machine's only
+/// profile.
 #[test]
-fn missing_file_is_empty_not_fatal() {
+fn missing_file_is_not_fatal_and_serves_the_built_in_profile() {
     let dir = tempfile::tempdir().expect("tempdir");
     let simple = SimpleProfile::new(dir.path().join("missing.json"));
-    assert_eq!(simple.get(), None);
-    assert_eq!(simple.list(true), Vec::<Value>::new());
-    assert_eq!(simple.defaults(), json!({"default": [], "community": []}));
+    let bundled = simple_profile();
+    assert_eq!(simple.get(), Some(bundled.clone()));
+    assert_eq!(simple.list(true), vec![bundled.clone()]);
+    assert_eq!(
+        simple.defaults(),
+        json!({"default": [bundled], "community": []})
+    );
 }
 
 // --- tests/test_profile_uart_payload.py ------------------------------------

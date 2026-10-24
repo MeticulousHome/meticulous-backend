@@ -700,6 +700,13 @@ impl ProfileManager {
     }
 
     /// `refresh_image_list`: the bundled images copied under their md5 names.
+    ///
+    /// The images are not built into the binary: they would add 4.6 MB of
+    /// PNG to it (on top of the files, which stay the override), and a
+    /// package without them still boots, with new profiles left without a
+    /// default image and the ERROR below reported. Their accent colors are
+    /// built in: without the file a profile showing a bundled image still
+    /// gets that image's color, as with the full package.
     pub fn refresh_image_list(&self) {
         tracing::info!("Refreshing default image list");
         if !self.default_images_dir.exists() {
@@ -708,9 +715,17 @@ impl ProfileManager {
         }
         let _ = std::fs::create_dir_all(&self.images_dir);
         let accent_path = self.default_images_dir.join("accent_colors.json");
-        let accent_colors = match std::fs::read_to_string(&accent_path)
-            .map(|t| serde_json::from_str::<Value>(&t))
-        {
+        let accent_text = match std::fs::read_to_string(&accent_path) {
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                tracing::warn!(
+                    "No default accent colors at {}, using the built-in ones",
+                    accent_path.display()
+                );
+                Ok(crate::bundled::DEFAULT_ACCENT_COLORS.to_string())
+            }
+            other => other,
+        };
+        let accent_colors = match accent_text.map(|t| serde_json::from_str::<Value>(&t)) {
             Ok(Ok(Value::Object(map))) => Some(map),
             Ok(Err(error)) => {
                 tracing::warn!(

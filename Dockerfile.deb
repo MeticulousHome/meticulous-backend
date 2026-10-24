@@ -1,5 +1,10 @@
 # syntax=docker/dockerfile:1
-# Builds the meticulous-backend .deb that meticulous-machine installs.
+# Builds the meticulous-backend .deb that meticulous-machine installs, and
+# meticulous-backend_<version>_<arch>.debug next to it: the binary's debug
+# info and symbols, for Sentry to symbolicate its crash reports.
+#
+# Without BuildKit, build the packager stage and copy both out of /out:
+#   DOCKER_BUILDKIT=0 docker build -f Dockerfile.deb --target packager -t meticulous-deb .
 #
 # The Rust backend is built natively for the target architecture (CI runs
 # this on an arm64 runner for the machines and on amd64 for the tests). The
@@ -30,8 +35,15 @@ FROM toolchain AS builder
 COPY --from=planner /build/recipe.json recipe.json
 RUN cargo chef cook --release --locked --recipe-path recipe.json -p meticulous-backend
 COPY . .
+# The release profile keeps debug info (functions and lines, no types); it
+# goes to a separate debug file for Sentry (sentry-cli debug-files upload) and
+# the shipped binary keeps only its symbol table, plus a .gnu_debuglink to
+# meticulous-backend.debug for gdb or a backtrace on a machine where the
+# debug file is put next to the binary.
 RUN cargo build --release --locked -p meticulous-backend \
-    && cp target/release/meticulous-backend /meticulous-backend
+    && objcopy --only-keep-debug target/release/meticulous-backend /meticulous-backend.debug \
+    && objcopy --strip-debug --add-gnu-debuglink=/meticulous-backend.debug \
+        target/release/meticulous-backend /meticulous-backend
 
 # Stage 2: assemble the .deb
 FROM debian:bookworm AS packager
@@ -64,7 +76,9 @@ COPY sounds/ /pkg/opt/meticulous-backend/sounds/
 COPY images/default/*.png images/default/accent_colors.json /pkg/opt/meticulous-backend/images/default/
 
 RUN mkdir -p /out && dpkg-deb --build --root-owner-group /pkg /out/meticulous-backend_${VERSION}_${ARCH}.deb
+# Not installed: the debug file that symbolicates this package's binary.
+COPY --from=builder /meticulous-backend.debug /out/meticulous-backend_${VERSION}_${ARCH}.debug
 
-# Final stage: just the .deb file for extraction
+# Final stage: the .deb and its debug file for extraction
 FROM scratch
-COPY --from=packager /out/*.deb /
+COPY --from=packager /out/ /
