@@ -60,6 +60,10 @@ pub struct SoundPlayer {
     fake_hardware: bool,
     state: Mutex<State>,
     audio_pin: Mutex<Option<gpiocdev::Request>>,
+    /// Every event asked for, played or not: what the Python suite records
+    /// in place of `SoundPlayer.play_event_sound`.
+    #[cfg(test)]
+    pub events: Mutex<Vec<SoundEvent>>,
 }
 
 impl SoundPlayer {
@@ -76,6 +80,8 @@ impl SoundPlayer {
             fake_hardware,
             state: Mutex::new(State::default()),
             audio_pin: Mutex::new(None),
+            #[cfg(test)]
+            events: Mutex::new(Vec::new()),
         }
     }
 
@@ -175,6 +181,8 @@ impl SoundPlayer {
     }
 
     pub fn play_event(&self, event: SoundEvent) -> bool {
+        #[cfg(test)]
+        self.events.lock().push(event);
         self.play(event.key())
     }
 

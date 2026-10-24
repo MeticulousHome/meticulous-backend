@@ -150,6 +150,10 @@ pub struct Machine {
     /// Signalled each time a data frame from the ESP has been applied, so the
     /// status stream goes out with it instead of on a timer of its own.
     pub frames: tokio::sync::Notify,
+    /// Once a test installs it, the port the writes go to instead of a link:
+    /// the Python suite's `RecordingPort`.
+    #[cfg(test)]
+    recording_port: Mutex<Option<Vec<Vec<u8>>>>,
 }
 
 impl Machine {
@@ -165,7 +169,27 @@ impl Machine {
             uuid_timer_generation: AtomicU64::new(0),
             clock,
             frames: tokio::sync::Notify::new(),
+            #[cfg(test)]
+            recording_port: Mutex::new(None),
         }
+    }
+
+    /// Connect the machine to a port that records what is written to it.
+    #[cfg(test)]
+    pub fn record_writes(&self) {
+        *self.recording_port.lock() = Some(Vec::new());
+    }
+
+    /// Every message written to the recording port, oldest first.
+    #[cfg(test)]
+    pub fn writes(&self) -> Vec<Vec<u8>> {
+        self.recording_port.lock().clone().unwrap_or_default()
+    }
+
+    /// `Machine._pending_tare_behavior_writes`.
+    #[cfg(test)]
+    pub fn pending_tare_behavior_writes(&self) -> Vec<String> {
+        self.state.lock().tare.pending()
     }
 
     /// `time.monotonic()` for the observability state machine.
@@ -399,6 +423,11 @@ impl Machine {
         if self.stop_comm.load(Ordering::Relaxed) {
             return;
         }
+        #[cfg(test)]
+        if let Some(writes) = self.recording_port.lock().as_mut() {
+            writes.push(bytes.to_vec());
+            return;
+        }
         if let Some(link) = self.link.lock().as_mut()
             && let Err(error) = link.write_all(bytes)
         {
@@ -407,7 +436,10 @@ impl Machine {
     }
 
     fn connected(&self) -> bool {
-        !self.stop_comm.load(Ordering::Relaxed) && self.link.lock().is_some()
+        let linked = self.link.lock().is_some();
+        #[cfg(test)]
+        let linked = linked || self.recording_port.lock().is_some();
+        !self.stop_comm.load(Ordering::Relaxed) && linked
     }
 
     fn action_unchecked(&self, action: &str) {

@@ -13,9 +13,30 @@ use socketioxide::SocketIo;
 #[derive(Default)]
 pub struct Sio {
     io: OnceLock<SocketIo>,
+    /// Every emit, connected clients or not: the Python suite's
+    /// `RecordingSocket`.
+    #[cfg(test)]
+    recorded: parking_lot::Mutex<Vec<(String, Value)>>,
 }
 
 impl Sio {
+    /// The events emitted so far, oldest first, and forget them.
+    #[cfg(test)]
+    pub fn take_recorded(&self) -> Vec<(String, Value)> {
+        std::mem::take(&mut *self.recorded.lock())
+    }
+
+    /// The payloads of `event` emitted so far, oldest first.
+    #[cfg(test)]
+    pub fn recorded(&self, event: &str) -> Vec<Value> {
+        self.recorded
+            .lock()
+            .iter()
+            .filter(|(name, _)| name == event)
+            .map(|(_, data)| data.clone())
+            .collect()
+    }
+
     pub fn attach(&self, io: SocketIo) {
         let _ = self.io.set(io);
     }
@@ -41,6 +62,8 @@ impl Sio {
     }
 
     fn emit_where(&self, event: &str, data: &Value, select: impl Fn(&str) -> bool) {
+        #[cfg(test)]
+        self.recorded.lock().push((event.to_string(), data.clone()));
         let Some(io) = self.io.get() else { return };
         let Some(ns) = io.of("/") else { return };
         for socket in ns.sockets() {
