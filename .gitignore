@@ -183,3 +183,6 @@ userdata.img
 
 # Rust
 /target
+
+# crates/history is the Rust history store, not machine data matched by "history" above.
+!/crates/history/
