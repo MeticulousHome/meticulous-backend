@@ -198,6 +198,60 @@ class TestPourOverHistoryAPI(AsyncHTTPTestCase):
         assert response.code == 403
         assert PourOverHistoryManager.search() == []
 
+    def test_lan_client_can_read_and_paginate_history_without_writing(self):
+        first = free_pour_session()
+        second = free_pour_session(
+            session_id="33333333-4444-4555-8666-777777777777",
+            started_at="2026-08-16T09:00:00.000Z",
+        )
+        second["completedAt"] = "2026-08-16T09:02:15.000Z"
+        assert self.save(first).code == 201
+        assert self.save(second).code == 201
+        headers = {"Host": "machine.local", "X-Real-IP": "192.168.10.20"}
+
+        response = self.fetch(
+            "/api/v1/history/pour-over?sort=asc&max_results=1", headers=headers
+        )
+        assert response.code == 200
+        history = json.loads(response.body)["history"]
+        assert [record["id"] for record in history] == [first["id"]]
+
+        record = self.fetch(
+            f"/api/v1/history/pour-over/files/{history[0]['file']}", headers=headers
+        )
+        assert record.code == 200
+        assert json.loads(record.body)["id"] == first["id"]
+
+        response = self.fetch(
+            f"/api/v1/history/pour-over?sort=asc&max_results=1&after={history[0]['file']}",
+            headers=headers,
+        )
+        assert response.code == 200
+        assert [record["id"] for record in json.loads(response.body)["history"]] == [
+            second["id"]
+        ]
+
+        rejected = free_pour_session(session_id="99999999-8888-4777-8666-555555555555")
+        assert self.save(rejected, headers=headers).code == 403
+        assert len(PourOverHistoryManager.search()) == 2
+        assert len(list(self.history_path.rglob("*.zst"))) == 2
+
+    def test_lan_read_preflight_is_allowed(self):
+        response = self.fetch(
+            "/api/v1/history/pour-over",
+            method="OPTIONS",
+            headers={
+                "Host": "machine.local",
+                "X-Real-IP": "192.168.10.20",
+                "Origin": "https://community.meticuloushome.com",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+
+        assert response.code == 204
+        assert response.headers["Access-Control-Allow-Origin"] == "*"
+        assert PourOverHistoryManager.search() == []
+
     def test_profile_mode_and_legacy_contract_are_accepted(self):
         profile = free_pour_session()
         profile["mode"] = "profile"

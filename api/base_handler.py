@@ -1,3 +1,5 @@
+from ipaddress import IPv6Address, ip_address
+
 import tornado.web
 from netaddr import IPNetwork
 
@@ -84,22 +86,30 @@ class BaseHandler(tornado.web.RequestHandler):
             return
 
 
+def is_loopback_address(address: str) -> bool:
+    """Whether address is a loopback IP: 127.0.0.0/8, ::1 or ::ffff:127.x.x.x."""
+    try:
+        ip = ip_address(address)
+    except ValueError:
+        return False
+    if isinstance(ip, IPv6Address) and ip.ipv4_mapped:
+        return ip.ipv4_mapped.is_loopback
+    return ip.is_loopback
+
+
 class LocalAccessHandler(BaseHandler):
-    """Base handler that restricts access to local requests only."""
+    """Base handler that restricts access to local requests only.
+
+    The backend only listens on 127.0.0.1 (backend.py), so a request either comes
+    straight from a process on the machine, without X-Real-IP, or through the
+    machine's nginx, which sets X-Real-IP to the client's address. Only that address
+    decides: the Host header is whatever the client sends.
+    """
 
     def prepare(self):
         super().prepare()
         remote_ip = self.request.headers.get("X-Real-IP")
-        request_host = self.request.host.split(":")[0]
-        if (
-            remote_ip
-            and remote_ip not in ("127.0.0.1", "::1", "localhost")
-            and request_host
-            not in (
-                "localhost",
-                "127.0.0.1",
-            )
-        ):
+        if remote_ip is not None and not is_loopback_address(remote_ip):
             logger.warning(
                 f"Unauthorized access to {self.request.uri} "
                 f"from remote IP: {redact_ip(remote_ip)}"

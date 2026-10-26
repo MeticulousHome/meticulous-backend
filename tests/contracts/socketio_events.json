@@ -1,0 +1,22 @@
+{
+  "listens": [
+    "action",
+    "calibrate",
+    "connect",
+    "disconnect",
+    "notification",
+    "profileHover"
+  ],
+  "emits": [
+    "OSUpdate",
+    "button",
+    "heater_status",
+    "notification",
+    "profile",
+    "profileHover",
+    "sensors",
+    "settings",
+    "status",
+    "upload_report"
+  ]
+}

@@ -28,6 +28,7 @@ from config import (
 
 from database_models import bug_reports
 from log import MeticulousLogger
+from settings_validation import normalize_report_contact_mail
 from shot_database import ShotDataBase
 
 from .api import API, APIVersion
@@ -69,6 +70,15 @@ ALLOWED_DRAFT_UPDATE_KEYS = {
     "multimedia",
     "attachments",
 }
+# A report handed over by the mobile app: the row exists with its ticket and
+# contact details, but nothing has been collected yet. The dial picks it up
+# (live through `upload_report`, or from GET /reports/dispatch after a
+# restart) and runs the collection by creating the draft with this localID.
+REPORT_STATUS_QUEUED = "queued"
+UPLOAD_REPORT_EVENT = "upload_report"
+CREATE_KEYS = {"issueTime", "localID"}
+DISPATCH_KEYS = {"localID", "ticket", "issueTime", "description", "name", "email"}
+DISPATCH_TEXT_LIMITS = {"description": 10_000, "name": 200, "email": 254}
 
 
 @dataclass
@@ -128,7 +138,34 @@ class CollectionInProgress(ReportRequestError):
         super().__init__(409, "COLLECTION_IN_PROGRESS", "A report is already being collected")
 
 
+class DuplicateLocalID(ReportRequestError):
+    def __init__(self, message: str = "A report with this localID already exists"):
+        super().__init__(409, "DUPLICATE_LOCAL_ID", message)
+
+
 _collection_lock = asyncio.Lock()
+
+_sio = None
+
+
+def init_socket(sio) -> None:
+    """Register the socket.io server that carries `upload_report` to the dial."""
+    global _sio
+    _sio = sio
+
+
+async def _emit_upload_report(payload: dict[str, Any]) -> None:
+    if _sio is None:
+        logger.warning(
+            f"[{payload['localID']}] no socket server, {UPLOAD_REPORT_EVENT} not sent"
+        )
+        return
+    try:
+        await _sio.emit(UPLOAD_REPORT_EVENT, payload)
+    except Exception:
+        logger.warning(
+            f"[{payload['localID']}] failed to emit {UPLOAD_REPORT_EVENT}", exc_info=True
+        )
 
 
 def _ensure_database_initialized():
@@ -258,6 +295,7 @@ def _row_to_report_info(row) -> dict[str, Any]:
         "baseEventID": row.baseEventID,
         "ticket": row.ticketNumber,
         "localID": row.localID,
+        "status": row.status,
     }
 
 
@@ -763,9 +801,25 @@ async def _fetch_report_files(
     return result
 
 
+def _collected_db_values(report_info: dict[str, Any]) -> dict[str, Any]:
+    """Row columns that describe a collected draft, shared by insert and update."""
+    attachments = report_info.get("attachments") or {}
+    return {
+        "issueTime": report_info["issueTime"],
+        "description": report_info.get("description"),
+        "multimedia": report_info.get("multimedia"),
+        "machineID": report_info.get("machineID"),
+        "logFiles": _attachments_to_log_files(attachments),
+        "machineInfo": attachments.get("machineInfo"),
+        "machineLogs": attachments.get("machineLogs"),
+        "machineStatus": attachments.get("machineStatus"),
+        "ticketNumber": report_info.get("ticket"),
+        "status": "draft",
+    }
+
+
 def _insert_report(report_info: dict[str, Any]):
     _ensure_database_initialized()
-    attachments = report_info.get("attachments") or {}
     with ShotDataBase.engine.connect() as connection:
         with connection.begin():
             connection.execute(
@@ -773,20 +827,70 @@ def _insert_report(report_info: dict[str, Any]):
                     localID=report_info["localID"],
                     eventID=None,
                     baseEventID=None,
-                    issueTime=report_info["issueTime"],
                     creationTime=report_info["dateAndTime"],
                     submissionTime=None,
-                    description=None,
-                    multimedia=report_info.get("multimedia"),
-                    machineID=report_info.get("machineID"),
-                    logFiles=_attachments_to_log_files(attachments),
-                    machineInfo=attachments.get("machineInfo"),
-                    machineLogs=attachments.get("machineLogs"),
-                    machineStatus=attachments.get("machineStatus"),
-                    status="draft",
-                    ticketNumber=None,
+                    contactName=None,
+                    contactEmail=None,
+                    **_collected_db_values(report_info),
                 )
             )
+
+
+def _insert_queued_report(dispatch: dict[str, Any], now: int):
+    """Store a mobile dispatch as a `queued` row and return it."""
+    if _get_report_row(dispatch["localID"]) is not None:
+        raise DuplicateLocalID()
+    _ensure_database_initialized()
+    with ShotDataBase.engine.connect() as connection:
+        with connection.begin():
+            connection.execute(
+                insert(bug_reports).values(
+                    localID=dispatch["localID"],
+                    eventID=None,
+                    baseEventID=None,
+                    issueTime=(
+                        dispatch["issueTime"] if dispatch["issueTime"] is not None else now
+                    ),
+                    creationTime=now,
+                    submissionTime=None,
+                    description=dispatch["description"],
+                    multimedia=None,
+                    machineID=MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER],
+                    logFiles=None,
+                    machineInfo=None,
+                    machineLogs=None,
+                    machineStatus=None,
+                    status=REPORT_STATUS_QUEUED,
+                    ticketNumber=dispatch["ticket"],
+                    contactName=dispatch["name"],
+                    contactEmail=dispatch["email"],
+                )
+            )
+    return _get_report_row(dispatch["localID"])
+
+
+def _queued_report_rows():
+    _ensure_database_initialized()
+    with ShotDataBase.engine.connect() as connection:
+        return connection.execute(
+            select(bug_reports)
+            .where(bug_reports.c.status == REPORT_STATUS_QUEUED)
+            .order_by(bug_reports.c.creationTime, bug_reports.c.localID)
+        ).all()
+
+
+def _dispatch_payload(row) -> dict[str, Any]:
+    """The `upload_report` event body, also returned by GET /reports/dispatch."""
+    return {
+        "localID": row.localID,
+        "machineID": row.machineID,
+        "ticket": row.ticketNumber,
+        "issueTime": row.issueTime,
+        "requestTime": row.creationTime,
+        "description": row.description,
+        "name": row.contactName,
+        "email": row.contactEmail,
+    }
 
 
 def _update_report_db(local_id: str, values: dict[str, Any]) -> bool:
@@ -1070,8 +1174,15 @@ def _sweep_draft_dir(path: Path, local_id: str, row, now: int, stats: dict[str, 
             stats["rows"] += 1
 
 
-def _sweep_orphan_rows(rows: dict, stats: dict[str, int]) -> None:
+def _sweep_orphan_rows(rows: dict, now: int, stats: dict[str, int]) -> None:
     for local_id, row in rows.items():
+        if row.status == REPORT_STATUS_QUEUED:
+            # Nothing on disk yet by design; only give up on a dispatch the
+            # dial never collected within the draft retention window.
+            if now - int(row.creationTime or 0) > DRAFT_MAX_AGE_SECONDS:
+                if _delete_report(local_id):
+                    stats["rows"] += 1
+            continue
         if (
             row.status == "draft"
             and not _draft_path(local_id).exists()
@@ -1104,7 +1215,7 @@ def sweep_reports(now: int | None = None) -> dict[str, int]:
             _sweep_entry(path, rows, now, stats)
         except Exception:
             logger.warning(f"sweep_reports failed for {path.name}", exc_info=True)
-    _sweep_orphan_rows(rows, stats)
+    _sweep_orphan_rows(rows, now, stats)
     return stats
 
 
@@ -1165,16 +1276,49 @@ def _parse_fiql(filter_text: str):
     return or_(*valid_parts), False
 
 
-def _create_report_issue_time(body: bytes) -> int | None:
+def _parse_create_body(body: bytes) -> tuple[int | None, str | None]:
+    """Return `(issueTime, localID)`; at most one of them is set.
+
+    A `localID` names a dispatched (`queued`) report whose issue time was
+    stored with the dispatch, so passing both is rejected rather than letting
+    the client override what the mobile app asked for.
+    """
     if not body:
-        return None
+        return None, None
     data = _json_loads_body(body)
-    if set(data) != {"issueTime"}:
-        raise ValueError("Create report body must contain only issueTime")
+    if not data or set(data) - CREATE_KEYS:
+        raise ValueError("Create report body may only contain issueTime or localID")
+    if "localID" in data:
+        if "issueTime" in data:
+            raise ValueError("issueTime is taken from the dispatch when localID is given")
+        return None, _validate_local_id(data["localID"])
     issue_time = data["issueTime"]
     if isinstance(issue_time, bool) or not isinstance(issue_time, int):
         raise ValueError("issueTime must be an integer epoch timestamp")
-    return issue_time
+    return issue_time, None
+
+
+def _create_report_issue_time(body: bytes) -> int | None:
+    return _parse_create_body(body)[0]
+
+
+def _queued_report_for_create(local_id: str) -> tuple[Any, bool]:
+    """Resolve a pre-minted localID for create.
+
+    Returns `(row, already_collected)`. `already_collected` means the draft
+    directory exists from an earlier run, so the caller answers without
+    collecting again; the dial resumes its upload from there.
+    """
+    row = _get_report_row(local_id)
+    if row is None:
+        raise ReportRequestError(404, "UNKNOWN_LOCAL_ID", "Unknown localID")
+    if row.status == REPORT_STATUS_QUEUED:
+        return row, False
+    if row.status == "draft" and _draft_path(local_id).is_dir():
+        return row, True
+    if row.status == "submitted":
+        raise DuplicateLocalID("This report was already submitted")
+    raise ReportRequestError(404, "UNKNOWN_LOCAL_ID", "Unknown localID")
 
 
 def _collection_range(issue_time: int, now: int) -> tuple[int, int]:
@@ -1196,10 +1340,28 @@ class ReportsCreateHandler(BaseHandler):
     async def post(self):
         now = _now_seconds()
         try:
-            requested_issue_time = _create_report_issue_time(self.request.body)
+            requested_issue_time, queued_local_id = _parse_create_body(self.request.body)
         except ValueError as exc:
             _api_error(self, 400, str(exc), {"code": "INVALID_BODY"})
             return
+        except ReportRequestError as exc:
+            _reply_error(self, exc)
+            return
+
+        queued_row = None
+        if queued_local_id is not None:
+            try:
+                queued_row, already_collected = _queued_report_for_create(queued_local_id)
+            except ReportRequestError as exc:
+                _reply_error(self, exc)
+                return
+            if already_collected:
+                self.write({"localID": queued_local_id, "machineID": queued_row.machineID})
+                return
+            # The collection window is anchored on the dispatch, not on
+            # whenever the dial got around to this, so a report picked up
+            # after a restart still covers the time the user reported.
+            requested_issue_time = queued_row.issueTime
 
         if _collection_lock.locked():
             _reply_error(self, CollectionInProgress())
@@ -1215,7 +1377,7 @@ class ReportsCreateHandler(BaseHandler):
             except ReportRequestError as exc:
                 _reply_error(self, exc)
                 return
-            local_id = _new_local_id()
+            local_id = queued_local_id if queued_local_id is not None else _new_local_id()
             issue_time = requested_issue_time if requested_issue_time is not None else now
             collection_range = (
                 _collection_range(issue_time, now) if requested_issue_time is not None else None
@@ -1240,20 +1402,23 @@ class ReportsCreateHandler(BaseHandler):
                     "DBStatistics": db_statistics,
                 }
                 report_info = {
-                    "description": None,
-                    "dateAndTime": now,
+                    "description": queued_row.description if queued_row is not None else None,
+                    "dateAndTime": queued_row.creationTime if queued_row is not None else now,
                     "issueTime": issue_time,
                     "attachments": attachments,
                     "multimedia": None,
                     "machineID": MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER],
                     "eventID": None,
                     "baseEventID": None,
-                    "ticket": None,
+                    "ticket": queued_row.ticketNumber if queued_row is not None else None,
                     "localID": local_id,
                 }
                 _write_draft_report_info(draft_dir, report_info)
                 _write_draft_machine_stats(draft_dir, db_statistics)
-                _insert_report(report_info)
+                if queued_row is not None:
+                    _update_report_db(local_id, _collected_db_values(report_info))
+                else:
+                    _insert_report(report_info)
                 self.write({"localID": local_id, "machineID": report_info["machineID"]})
             except asyncio.CancelledError:
                 # The client disconnected. This is not an error: no Sentry
@@ -1389,6 +1554,101 @@ class ReportsListHandler(BaseHandler):
         self.write(_list_report_page(page, size, condition))
 
 
+class ReportsRequestHandler(BaseHandler):
+    """Mint a localID for a report the mobile app will dispatch to the dial.
+
+    Nothing is stored: a UUID v7 is unique on its own and the row only
+    appears once the dispatch arrives, so an abandoned request leaves no
+    trace to sweep.
+    """
+
+    async def post(self):
+        if self.request.body:
+            _api_error(self, 400, "Request report takes no body", {"code": "INVALID_BODY"})
+            return
+        self.write(
+            {
+                "localID": _new_local_id(),
+                "machineID": MeticulousConfig[CONFIG_SYSTEM][MACHINE_SERIAL_NUMBER],
+            }
+        )
+
+
+def _parse_dispatch_body(body: bytes) -> dict[str, Any]:
+    try:
+        data = _json_loads_body(body)
+    except ValueError as exc:
+        raise ReportRequestError(400, "INVALID_BODY", str(exc)) from exc
+    unknown = set(data) - DISPATCH_KEYS
+    if unknown:
+        raise ReportRequestError(
+            400, "INVALID_BODY", f"Unknown keys: {', '.join(sorted(unknown))}"
+        )
+    local_id = _validate_local_id(data.get("localID"))
+    ticket = data.get("ticket")
+    if isinstance(ticket, bool) or not isinstance(ticket, int):
+        raise ReportRequestError(400, "INVALID_BODY", "ticket must be an integer")
+    issue_time = data.get("issueTime")
+    if issue_time is not None and (
+        isinstance(issue_time, bool) or not isinstance(issue_time, int)
+    ):
+        raise ReportRequestError(
+            400, "INVALID_BODY", "issueTime must be an integer epoch timestamp"
+        )
+    parsed: dict[str, Any] = {"localID": local_id, "ticket": ticket, "issueTime": issue_time}
+    for key, limit in DISPATCH_TEXT_LIMITS.items():
+        value = data.get(key)
+        if value is not None and not isinstance(value, str):
+            raise ReportRequestError(400, "INVALID_BODY", f"{key} must be a string or null")
+        value = value.strip() if value else ""
+        if len(value) > limit:
+            raise ReportRequestError(
+                400, "INVALID_BODY", f"{key} must be at most {limit} characters"
+            )
+        parsed[key] = value or None
+    if parsed["email"] is not None:
+        try:
+            parsed["email"] = normalize_report_contact_mail(parsed["email"])
+        except ValueError as exc:
+            raise ReportRequestError(400, "INVALID_BODY", str(exc)) from exc
+    return parsed
+
+
+class ReportsDispatchHandler(BaseHandler):
+    """Hand a report over to the dial.
+
+    POST stores the ticket and contact details under the given localID and
+    emits `upload_report`; the dial then collects and uploads. GET lists the
+    dispatches still waiting for the dial, which it reads after (re)connecting
+    in case the live event was missed.
+    """
+
+    async def get(self):
+        self.write({"content": [_dispatch_payload(row) for row in _queued_report_rows()]})
+
+    async def post(self):
+        try:
+            dispatch = _parse_dispatch_body(self.request.body)
+        except ReportRequestError as exc:
+            _reply_error(self, exc)
+            return
+
+        try:
+            row = _insert_queued_report(dispatch, _now_seconds())
+        except ReportRequestError as exc:
+            _reply_error(self, exc)
+            return
+        except Exception as exc:
+            logger.exception("Failed to queue dispatched bug report")
+            _api_error(self, 500, "Failed to queue report", {"message": str(exc)})
+            return
+
+        payload = _dispatch_payload(row)
+        await _emit_upload_report(payload)
+        self.set_status(202)
+        self.write(payload)
+
+
 class ReportsSubmitHandler(BaseHandler):
     async def post(self):
         try:
@@ -1510,6 +1770,8 @@ class ReportsPreflightHandler(BaseHandler):
 
 
 API.register_handler(APIVersion.V1, r"/reports/create", ReportsCreateHandler)
+API.register_handler(APIVersion.V1, r"/reports/request", ReportsRequestHandler)
+API.register_handler(APIVersion.V1, r"/reports/dispatch", ReportsDispatchHandler)
 API.register_handler(APIVersion.V1, r"/reports/preflight", ReportsPreflightHandler)
 API.register_handler(APIVersion.V1, r"/reports/draft/([^/]+)", ReportDraftHandler)
 API.register_handler(APIVersion.V1, r"/reports/list", ReportsListHandler)
