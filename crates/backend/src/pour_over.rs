@@ -2,7 +2,6 @@
 //! Validation lives in the `profile` crate; this is the storage.
 
 use std::collections::BTreeMap;
-use std::io::Write;
 use std::path::PathBuf;
 
 use parking_lot::Mutex;
@@ -251,8 +250,11 @@ impl PourOverProfileManager {
                 "Not enough free storage".into(),
             ));
         }
-        self.write_atomically(&id, serialized.as_bytes())
-            .map_err(|_| PourOverProfileError::Storage("Could not save profile".into()))?;
+        crate::config::write_atomically(
+            &self.dir.join(format!("{id}.json")),
+            serialized.as_bytes(),
+        )
+        .map_err(|_| PourOverProfileError::Storage("Could not save profile".into()))?;
         self.state
             .lock()
             .known
@@ -271,19 +273,6 @@ impl PourOverProfileManager {
         );
         tracing::info!("Saved Pour Over profile {id}");
         Ok(json!({"profile": profile, "change_id": change_id}))
-    }
-
-    fn write_atomically(&self, id: &str, bytes: &[u8]) -> std::io::Result<()> {
-        let mut temporary = tempfile::Builder::new()
-            .prefix(&format!(".{id}."))
-            .suffix(".tmp")
-            .tempfile_in(&self.dir)?;
-        temporary.write_all(bytes)?;
-        temporary.as_file().sync_all()?;
-        temporary
-            .persist(self.dir.join(format!("{id}.json")))
-            .map_err(|e| e.error)?;
-        std::fs::File::open(&self.dir)?.sync_all()
     }
 
     /// `delete_profile`.
