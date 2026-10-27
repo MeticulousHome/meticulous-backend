@@ -1,5 +1,9 @@
 name: Build
 
+# The Python left in the repository (the boot harness, the package checks,
+# the TypeScript client contract check) and the contracts with other
+# repositories. The backend's own gates are in rust.yml.
+
 on:
   push:
   pull_request:
@@ -29,27 +33,6 @@ jobs:
     - name: Check code formatting with black
       run: uv run black --check .
 
-  test:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        submodules: 'true' # required for the log_refactor submodule
-
-    - name: Install uv
-      uses: astral-sh/setup-uv@v5
-
-    - name: Set up Python
-      run: uv python install
-
-    - name: Install dependencies
-      run: uv sync --group dev
-
-    - name: Run tests
-      run: uv run pytest -v tests log_redactor/tests/test_redaction_contract.py
-
   # Check the pinned log_redactor submodule commit is part of the main branch
   # ideally main's HEAD but at list within main's branch commit history ( not an
   # unmerged branch )
@@ -73,3 +56,21 @@ jobs:
             exit 1
         fi
         echo "log_redactor pinned to $SHA (on main)"
+
+  # meticulous-typescript-api is how the Dial and the mobile app reach the
+  # backend: every call, event and payload key it relies on must still exist.
+  client-contract:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Checkout meticulous-typescript-api
+      uses: actions/checkout@v4
+      with:
+        repository: MeticulousHome/meticulous-typescript-api
+        path: meticulous-typescript-api
+
+    - name: The client only relies on what the backend provides
+      run: python3 tests/contracts/check_ts_client.py --client meticulous-typescript-api
