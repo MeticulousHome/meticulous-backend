@@ -549,6 +549,49 @@ fn auto_connect_skips_hotspot_mode_and_suppression() {
     )));
 }
 
+/// Runs the auto-connect loop on the fake clock until `seconds` have passed.
+fn run_auto_connect(app: &crate::app::App, f: &WifiFixture, seconds: f64) {
+    {
+        let mut state = f.network.state.lock();
+        state.stop_after = Some(state.now + seconds);
+    }
+    let ended = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let _ = app.wifi.try_auto_connect();
+    }));
+    assert!(ended.is_err(), "the loop returned");
+}
+
+/// One failed NetworkManager call ended the auto-connect thread for good, so a
+/// machine that later dropped off Wi-Fi never rejoined until a reboot. The
+/// loop must outlive the error and join the known
+/// network once NetworkManager answers again (the Python's
+/// `test_autoconnect_keeps_running_after_a_networkmanager_error`).
+#[test]
+fn auto_connect_keeps_running_after_an_error() {
+    let (_dir, app, f) = setup();
+    app.config
+        .set(keys::USER, keys::TIMEZONE_SYNC, json!("manual"));
+    f.network.add_connection("HomeNet", "wifi");
+    f.network.state.lock().scan = vec![wpa2("HomeNet", 70)];
+    f.network.state.lock().scan_error =
+        Some(crate::py::PyError::new("RuntimeError", "D-Bus timeout"));
+
+    run_auto_connect(&app, &f, 30.0);
+    assert!(
+        !f.network
+            .calls()
+            .contains(&Call::Up("HomeNet".into(), Some(12)))
+    );
+
+    f.network.state.lock().scan_error = None;
+    run_auto_connect(&app, &f, 30.0);
+    assert!(
+        f.network
+            .calls()
+            .contains(&Call::Up("HomeNet".into(), Some(12)))
+    );
+}
+
 // ---- NetworkManager's view ----
 
 /// `getCurrentConfig()`: addresses, routes, DNS, domains, the connection,
