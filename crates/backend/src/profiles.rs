@@ -204,6 +204,7 @@ struct State {
     accent_colors: Map<String, Value>,
     known_images: Vec<String>,
     hover: Hover,
+    skipped_images: Vec<String>,
 }
 
 pub struct ProfileManager {
@@ -626,7 +627,11 @@ impl ProfileManager {
     /// versions left out, drop what fails validation.
     pub fn refresh_profile_list(&self, app: &App) {
         let started = std::time::Instant::now();
-        self.state.lock().known.clear();
+        {
+            let mut state = self.state.lock();
+            state.known.clear();
+            state.skipped_images.clear();
+        }
         let mut entries: Vec<PathBuf> = std::fs::read_dir(&self.profiles_dir)
             .map(|d| d.filter_map(Result::ok).map(|e| e.path()).collect())
             .unwrap_or_default();
@@ -635,8 +640,12 @@ impl ProfileManager {
             if path.extension().and_then(|e| e.to_str()) != Some("json") {
                 continue;
             }
-            let Ok(text) = std::fs::read_to_string(&path) else {
-                continue;
+            let text = match std::fs::read_to_string(&path) {
+                Ok(text) => text,
+                Err(error) => {
+                    tracing::warn!("Could not read profile {}: {error}", path.display());
+                    continue;
+                }
             };
             let mut profile = match pyfmt::loads_lenient(&text) {
                 Ok(p) => p,
@@ -654,15 +663,24 @@ impl ProfileManager {
             tracing::info!("Profile {id} was updated on load");
             if let Err(error) = validate_schema_only(&profile) {
                 tracing::warn!("Profile on disk failed to be loaded: {error}");
+                self.state
+                    .lock()
+                    .skipped_images
+                    .extend(image_name(&profile));
                 continue;
             }
+            let image = image_name(&profile);
             if changed {
                 // `save_profile(profile, set_last_changed=True,
                 // skip_validation=True)`: the image and accent color an older
                 // profile lacks, the stamp, and the change and its event.
                 match self.save_profile(app, profile, true, None, true) {
                     Ok(mut saved) => profile = saved["profile"].take(),
-                    Err(_) => continue,
+                    Err(error) => {
+                        tracing::warn!("Could not save profile {}: {error}", path.display());
+                        self.state.lock().skipped_images.extend(image);
+                        continue;
+                    }
                 }
             }
             let newer_known = {
@@ -781,9 +799,8 @@ impl ProfileManager {
             let referenced: HashSet<String> = state
                 .known
                 .values()
-                .filter_map(|p| p.get("display")?.get("image")?.as_str().map(str::to_string))
-                .filter(|url| url.starts_with(IMAGE_ROUTE))
-                .filter_map(|url| url.rsplit('/').next().map(str::to_string))
+                .filter_map(image_name)
+                .chain(state.skipped_images.iter().cloned())
                 .collect();
             (
                 referenced,
@@ -982,6 +999,12 @@ fn parse_data_uri(uri: &str) -> Option<(String, Vec<u8>)> {
 
 fn random_accent_color() -> String {
     format!("#{:06x}", rand::random_range(0u32..(1 << 24)))
+}
+
+fn image_name(profile: &Value) -> Option<String> {
+    let url = profile.get("display")?.get("image")?.as_str()?;
+    url.starts_with(IMAGE_ROUTE)
+        .then(|| url.rsplit('/').next().map(str::to_string))?
 }
 
 fn list_names(dir: &Path) -> Vec<String> {
