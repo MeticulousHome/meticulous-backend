@@ -663,7 +663,10 @@ impl ProfileManager {
                 .to_string();
             tracing::info!("Profile {id} was updated on load");
             if let Err(error) = validate_schema_only(&profile) {
-                tracing::warn!("Profile on disk failed to be loaded: {error}");
+                tracing::warn!(
+                    "Profile on disk failed to be loaded {}: {error}",
+                    path.display()
+                );
                 self.state.lock().skipped_files = true;
                 continue;
             }
