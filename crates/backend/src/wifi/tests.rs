@@ -561,11 +561,8 @@ fn run_auto_connect(app: &crate::app::App, f: &WifiFixture, seconds: f64) {
     assert!(ended.is_err(), "the loop returned");
 }
 
-/// One failed NetworkManager call ended the auto-connect thread for good, so a
-/// machine that later dropped off Wi-Fi never rejoined until a reboot. The
-/// loop must outlive the error and join the known
-/// network once NetworkManager answers again (the Python's
-/// `test_autoconnect_keeps_running_after_a_networkmanager_error`).
+/// An error raised out of one auto-connect pass must not end the loop: the
+/// next pass still rejoins the known network.
 #[test]
 fn auto_connect_keeps_running_after_an_error() {
     let (_dir, app, f) = setup();
@@ -573,23 +570,23 @@ fn auto_connect_keeps_running_after_an_error() {
         .set(keys::USER, keys::TIMEZONE_SYNC, json!("manual"));
     f.network.add_connection("HomeNet", "wifi");
     f.network.state.lock().scan = vec![wpa2("HomeNet", 70)];
-    f.network.state.lock().scan_error =
-        Some(crate::py::PyError::new("RuntimeError", "D-Bus timeout"));
-
-    run_auto_connect(&app, &f, 30.0);
-    assert!(
-        !f.network
-            .calls()
-            .contains(&Call::Up("HomeNet".into(), Some(12)))
-    );
-
-    f.network.state.lock().scan_error = None;
-    run_auto_connect(&app, &f, 30.0);
-    assert!(
+    let up = || {
         f.network
             .calls()
-            .contains(&Call::Up("HomeNet".into(), Some(12)))
-    );
+            .iter()
+            .filter(|c| **c == Call::Up("HomeNet".into(), Some(12)))
+            .count()
+    };
+    // The join succeeds, then the announcer restart raises out of the pass.
+    app.wifi.set_zeroconf(None);
+
+    run_auto_connect(&app, &f, 30.0);
+    assert_eq!(up(), 1);
+
+    f.network.disconnect_station("disconnected");
+    app.wifi.set_zeroconf(Some(f.zeroconf.clone()));
+    run_auto_connect(&app, &f, 30.0);
+    assert_eq!(up(), 2);
 }
 
 // ---- NetworkManager's view ----
