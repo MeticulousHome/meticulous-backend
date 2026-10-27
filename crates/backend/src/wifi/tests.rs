@@ -549,6 +549,46 @@ fn auto_connect_skips_hotspot_mode_and_suppression() {
     )));
 }
 
+/// Runs the auto-connect loop on the fake clock until `seconds` have passed.
+fn run_auto_connect(app: &crate::app::App, f: &WifiFixture, seconds: f64) {
+    {
+        let mut state = f.network.state.lock();
+        state.stop_after = Some(state.now + seconds);
+    }
+    let ended = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let _ = app.wifi.try_auto_connect();
+    }));
+    assert!(ended.is_err(), "the loop returned");
+}
+
+/// An error raised out of one auto-connect pass must not end the loop: the
+/// next pass still rejoins the known network.
+#[test]
+fn auto_connect_keeps_running_after_an_error() {
+    let (_dir, app, f) = setup();
+    app.config
+        .set(keys::USER, keys::TIMEZONE_SYNC, json!("manual"));
+    f.network.add_connection("HomeNet", "wifi");
+    f.network.state.lock().scan = vec![wpa2("HomeNet", 70)];
+    let up = || {
+        f.network
+            .calls()
+            .iter()
+            .filter(|c| **c == Call::Up("HomeNet".into(), Some(12)))
+            .count()
+    };
+    // The join succeeds, then the announcer restart raises out of the pass.
+    app.wifi.set_zeroconf(None);
+
+    run_auto_connect(&app, &f, 30.0);
+    assert_eq!(up(), 1);
+
+    f.network.disconnect_station("disconnected");
+    app.wifi.set_zeroconf(Some(f.zeroconf.clone()));
+    run_auto_connect(&app, &f, 30.0);
+    assert_eq!(up(), 2);
+}
+
 // ---- NetworkManager's view ----
 
 /// `getCurrentConfig()`: addresses, routes, DNS, domains, the connection,
