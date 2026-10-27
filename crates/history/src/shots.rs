@@ -527,7 +527,13 @@ impl HistoryDb {
         sql.push_str(&order.join(", "));
         if params.max_results > 0 {
             sql.push_str("\n LIMIT ? OFFSET ?");
-            args.push(SqlValue::Integer(params.max_results));
+            // Unreadable shot files are skipped below; fetch extra rows so a page still fills.
+            let extra = if params.dump_data && params.max_results > 1 {
+                100
+            } else {
+                0
+            };
+            args.push(SqlValue::Integer(params.max_results + extra));
             args.push(SqlValue::Integer(0));
         }
 
@@ -606,6 +612,9 @@ impl HistoryDb {
                 profile,
             });
             count += 1;
+            if count == params.max_results {
+                break;
+            }
         }
         tracing::info!("shot database query returned {count} results");
         Ok(())
