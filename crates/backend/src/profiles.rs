@@ -438,7 +438,8 @@ impl ProfileManager {
         let is_update = self.state.lock().known.contains_key(&id);
         let path = self.profiles_dir.join(format!("{id}.json"));
         let text = pyfmt::dumps(&data, &pyfmt::DumpOpts::indented(4));
-        std::fs::write(&path, text).map_err(|e| ProfileError::Other(e.to_string()))?;
+        crate::config::write_atomically(&path, text.as_bytes())
+            .map_err(|e| ProfileError::Other(e.to_string()))?;
         self.state.lock().known.insert(id.clone(), data.clone());
         self.add_to_order(&id);
         tracing::info!("Saved profile {id}.json");

@@ -16,6 +16,8 @@ use serde_json::{Map, Value, json};
 
 pub use yaml::to_yaml;
 
+static SAVE_LOCK: Mutex<()> = Mutex::new(());
+
 pub mod keys {
     pub const LOGGING: &str = "logging";
     pub const SYSTEM: &str = "system";
@@ -302,9 +304,12 @@ impl ConfigStore {
 
     /// `MeticulousConfig.save()`: write the whole tree, then run the hooks.
     pub fn save(&self) {
-        let text = to_yaml(&self.tree.read());
-        if let Err(error) = write_atomically(&self.path, text.as_bytes()) {
-            tracing::error!("Failed to save config: {error}");
+        {
+            let _saving = SAVE_LOCK.lock();
+            let text = to_yaml(&self.tree.read());
+            if let Err(error) = write_atomically(&self.path, text.as_bytes()) {
+                tracing::error!("Failed to save config: {error}");
+            }
         }
         for hook in self.save_hooks.lock().iter() {
             hook();
@@ -470,23 +475,68 @@ pub fn python_truthy(value: &Value) -> bool {
     }
 }
 
-/// Write `bytes` to `path` through a temporary file and a rename, so a power
-/// cut leaves either the old file or the new one, never half of one.
+/// Replace `path` with `bytes` so a power cut leaves either the old file or the
+/// new one, never half of one. The file keeps its mode (0644 when new).
 pub fn write_atomically(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
+    use std::io::Write;
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = match path.parent() {
+        Some(parent) if !parent.as_os_str().is_empty() => parent,
+        _ => Path::new("."),
+    };
+    std::fs::create_dir_all(dir)?;
+    let mode = std::fs::metadata(path).map_or(0o644, |m| m.permissions().mode() & 0o7777);
+    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+    let mut temporary = tempfile::Builder::new()
+        .prefix(&format!(".{name}."))
+        .suffix(".tmp")
+        .tempfile_in(dir)?;
+    temporary.write_all(bytes)?;
+    temporary
+        .as_file()
+        .set_permissions(std::fs::Permissions::from_mode(mode))?;
+    temporary.as_file().sync_all()?;
+    temporary.persist(path).map_err(|e| e.error)?;
+    if let Err(error) = std::fs::File::open(dir).and_then(|d| d.sync_all()) {
+        tracing::warn!("Could not fsync directory of {name}: {error}");
     }
-    let tmp = path.with_extension(format!(
-        "{}.tmp",
-        path.extension().and_then(|e| e.to_str()).unwrap_or("")
-    ));
-    std::fs::write(&tmp, bytes)?;
-    std::fs::rename(&tmp, path)
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Python's `tests/test_atomic_write.py`: a failed replace keeps the old
+    /// file and leaves no temporary behind.
+    #[test]
+    fn failed_write_leaves_no_temporary_and_keeps_old_file() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let target = dir.path().join("config.yml");
+        std::fs::create_dir(&target).expect("directory in the way");
+        assert!(write_atomically(&target, b"new").is_err());
+        assert!(target.is_dir());
+        assert_eq!(std::fs::read_dir(dir.path()).expect("ls").count(), 1);
+    }
+
+    /// Python's `tests/test_atomic_write.py`: an existing file keeps its mode,
+    /// a new one is 0644.
+    #[test]
+    fn write_keeps_existing_mode_and_new_file_is_world_readable() {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = |p: &Path| std::fs::metadata(p).expect("meta").permissions().mode() & 0o7777;
+        let dir = tempfile::tempdir().expect("tempdir");
+        let old = dir.path().join("a.txt");
+        std::fs::write(&old, "old").expect("write");
+        std::fs::set_permissions(&old, std::fs::Permissions::from_mode(0o640)).expect("chmod");
+        write_atomically(&old, b"new").expect("write");
+        assert_eq!(mode(&old), 0o640);
+        assert_eq!(std::fs::read_to_string(&old).expect("read"), "new");
+        let fresh = dir.path().join("b.txt");
+        write_atomically(&fresh, b"x").expect("write");
+        assert_eq!(mode(&fresh), 0o644);
+    }
 
     fn store_with(text: Option<&str>) -> (tempfile::TempDir, ConfigStore) {
         let dir = tempfile::tempdir().expect("tempdir");
