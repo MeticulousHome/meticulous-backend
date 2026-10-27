@@ -533,7 +533,7 @@ impl HistoryDb {
             } else {
                 0
             };
-            args.push(SqlValue::Integer(params.max_results + extra));
+            args.push(SqlValue::Integer(params.max_results.saturating_add(extra)));
             args.push(SqlValue::Integer(0));
         }
 
