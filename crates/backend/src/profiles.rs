@@ -204,6 +204,7 @@ struct State {
     accent_colors: Map<String, Value>,
     known_images: Vec<String>,
     hover: Hover,
+    skipped_files: bool,
 }
 
 pub struct ProfileManager {
@@ -625,7 +626,11 @@ impl ProfileManager {
     /// versions left out, drop what fails validation.
     pub fn refresh_profile_list(&self, app: &App) {
         let started = std::time::Instant::now();
-        self.state.lock().known.clear();
+        {
+            let mut state = self.state.lock();
+            state.known.clear();
+            state.skipped_files = false;
+        }
         let mut entries: Vec<PathBuf> = std::fs::read_dir(&self.profiles_dir)
             .map(|d| d.filter_map(Result::ok).map(|e| e.path()).collect())
             .unwrap_or_default();
@@ -634,13 +639,19 @@ impl ProfileManager {
             if path.extension().and_then(|e| e.to_str()) != Some("json") {
                 continue;
             }
-            let Ok(text) = std::fs::read_to_string(&path) else {
-                continue;
+            let text = match std::fs::read_to_string(&path) {
+                Ok(text) => text,
+                Err(error) => {
+                    tracing::warn!("Could not read profile {}: {error}", path.display());
+                    self.state.lock().skipped_files = true;
+                    continue;
+                }
             };
             let mut profile = match pyfmt::loads_lenient(&text) {
                 Ok(p) => p,
                 Err(error) => {
                     tracing::warn!("Could not decode profile {}: {error}", path.display());
+                    self.state.lock().skipped_files = true;
                     continue;
                 }
             };
@@ -652,7 +663,11 @@ impl ProfileManager {
                 .to_string();
             tracing::info!("Profile {id} was updated on load");
             if let Err(error) = validate_schema_only(&profile) {
-                tracing::warn!("Profile on disk failed to be loaded: {error}");
+                tracing::warn!(
+                    "Profile on disk failed to be loaded {}: {error}",
+                    path.display()
+                );
+                self.state.lock().skipped_files = true;
                 continue;
             }
             if changed {
@@ -661,7 +676,11 @@ impl ProfileManager {
                 // profile lacks, the stamp, and the change and its event.
                 match self.save_profile(app, profile, true, None, true) {
                     Ok(mut saved) => profile = saved["profile"].take(),
-                    Err(_) => continue,
+                    Err(error) => {
+                        tracing::warn!("Could not save profile {}: {error}", path.display());
+                        self.state.lock().skipped_files = true;
+                        continue;
+                    }
                 }
             }
             let newer_known = {
@@ -774,6 +793,10 @@ impl ProfileManager {
 
     /// `_delete_unused_images`.
     pub fn delete_unused_images(&self) {
+        if self.state.lock().skipped_files {
+            tracing::warn!("Skipped unreadable profiles, keeping all images");
+            return;
+        }
         tracing::info!("Garbage collecting unused images");
         let (referenced, known, defaults) = {
             let state = self.state.lock();
