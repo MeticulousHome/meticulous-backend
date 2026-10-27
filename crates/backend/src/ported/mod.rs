@@ -14,6 +14,7 @@ mod test_config;
 mod test_local_access_policy;
 mod test_machine_device_uuid;
 mod test_manual_mode;
+mod test_motor_strain;
 mod test_pour_over;
 mod test_settings_validation;
 mod test_shot_debug_log_lock;
