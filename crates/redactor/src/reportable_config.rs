@@ -50,7 +50,6 @@ const APPROVED_PATHS: &[(&[&str], Validator)] = &[
     (&["user", "partial_retraction"], is_number),
     (&["user", "heat_on_boot"], is_bool),
     (&["user", "heating_timeout"], is_number),
-    (&["user", "standby_enabled"], is_bool),
     (&["user", "standby_timeout"], is_number),
     (&["user", "update_channel"], is_string),
     (&["user", "idle_screen"], is_string),

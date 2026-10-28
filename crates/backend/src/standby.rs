@@ -1,5 +1,5 @@
 //! ErP standby (Regulation (EU) 2023/826): once nobody has used the machine
-//! for `standby_timeout` minutes, the ESP32 light-sleeps, the Bluetooth radio
+//! for `standby_timeout` minutes (0 turns it off), the ESP32 light-sleeps, the Bluetooth radio
 //! and the backlight go off, and the SoC suspends to RAM. A button or the dial
 //! (through the ESP32), the app's WoWLAN magic packet or the power key wake it.
 //! The image's systemd-sleep hook (meticulous-machine,
@@ -22,6 +22,8 @@ pub const STANDBY_TIMEOUT_DEFAULT: i64 = 15;
 /// ErP: the machine reaches networked standby within 20 minutes.
 pub const STANDBY_TIMEOUT_MAX: i64 = 20;
 pub const STANDBY_TIMEOUT_MIN: i64 = 1;
+/// `standby_timeout` 0: the user turned power save off.
+pub const STANDBY_TIMEOUT_OFF: i64 = 0;
 
 /// How often the idle timer is looked at.
 const CHECK_INTERVAL: Duration = Duration::from_secs(5);
@@ -140,14 +142,17 @@ impl Standby {
     /// Whether the machine should go to standby now, after `idle` without
     /// activity.
     pub fn due_after(&self, app: &App, idle: Duration) -> bool {
-        if self.phase() != Phase::Awake || !app.config.get_bool(keys::USER, keys::STANDBY_ENABLED) {
+        if self.phase() != Phase::Awake {
             return false;
         }
         let minutes = app
             .config
             .get_i64(keys::USER, keys::STANDBY_TIMEOUT)
-            .unwrap_or(STANDBY_TIMEOUT_DEFAULT)
-            .clamp(STANDBY_TIMEOUT_MIN, STANDBY_TIMEOUT_MAX);
+            .unwrap_or(STANDBY_TIMEOUT_DEFAULT);
+        if minutes == STANDBY_TIMEOUT_OFF {
+            return false;
+        }
+        let minutes = minutes.clamp(STANDBY_TIMEOUT_MIN, STANDBY_TIMEOUT_MAX);
         let timeout = Duration::from_secs(u64::try_from(minutes).unwrap_or(1) * 60);
         idle >= timeout && app.machine.ready_for_standby() && !app.os_update.in_progress()
     }
@@ -254,12 +259,13 @@ pub fn start(app: Arc<App>) {
     }
 }
 
-/// The settings handler's check for `standby_timeout`.
+/// The settings handler's check for `standby_timeout`: off, or 1 to 20 minutes.
 pub fn validate_timeout(value: &Value) -> Result<(), String> {
     match value.as_i64() {
+        Some(STANDBY_TIMEOUT_OFF) => Ok(()),
         Some(minutes) if (STANDBY_TIMEOUT_MIN..=STANDBY_TIMEOUT_MAX).contains(&minutes) => Ok(()),
         _ => Err(format!(
-            "standby_timeout must be between {STANDBY_TIMEOUT_MIN} and {STANDBY_TIMEOUT_MAX} minutes"
+            "standby_timeout must be {STANDBY_TIMEOUT_OFF} (off) or between {STANDBY_TIMEOUT_MIN} and {STANDBY_TIMEOUT_MAX} minutes"
         )),
     }
 }
@@ -331,9 +337,12 @@ mod tests {
         assert!(!standby.due_after(&app, TIMEOUT));
         app.os_update.set_last(OsStatus::Idle, 0.0);
 
-        app.config
-            .set_and_save(keys::USER, keys::STANDBY_ENABLED, json!(false));
-        assert!(!standby.due_after(&app, TIMEOUT));
+        app.config.set_and_save(
+            keys::USER,
+            keys::STANDBY_TIMEOUT,
+            json!(STANDBY_TIMEOUT_OFF),
+        );
+        assert!(!standby.due_after(&app, TIMEOUT * 4));
     }
 
     /// The ESP32 answers `Standby,entering`, the SoC suspends through
@@ -441,11 +450,12 @@ mod tests {
         assert!(idle(&app) < Duration::from_secs(60));
     }
 
-    /// ErP caps the delay before networked standby at 20 minutes.
+    /// ErP caps the delay before networked standby at 20 minutes; 0 is the
+    /// Dial's and the app's "Off".
     #[tokio::test]
-    async fn standby_timeout_is_refused_outside_one_to_twenty_minutes() {
+    async fn standby_timeout_is_refused_outside_off_or_one_to_twenty_minutes() {
         let (_dir, app) = testing::app();
-        for minutes in [0, 21] {
+        for minutes in [-1, 21] {
             let reply = testing::call(
                 &app,
                 http::Method::POST,
@@ -466,6 +476,18 @@ mod tests {
         assert_eq!(
             app.config.get_i64(keys::USER, keys::STANDBY_TIMEOUT),
             Some(20)
+        );
+        let reply = testing::call(
+            &app,
+            http::Method::POST,
+            "/api/v1/settings",
+            r#"{"standby_timeout": 0}"#,
+        )
+        .await;
+        assert_eq!(reply.status_code(), 200);
+        assert_eq!(
+            app.config.get_i64(keys::USER, keys::STANDBY_TIMEOUT),
+            Some(STANDBY_TIMEOUT_OFF)
         );
     }
 

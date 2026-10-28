@@ -41,7 +41,6 @@
     },
     "shot_data_sharing": null,
     "ssh_enabled": true,
-    "standby_enabled": true,
     "standby_timeout": 15,
     "tare_behavior": "after_retraction",
     "time_zone": null,

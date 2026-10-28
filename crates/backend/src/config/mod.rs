@@ -63,7 +63,6 @@ pub mod keys {
     pub const PROFILE_ORDER: &str = "profile_order";
     pub const HOSTNAME_OVERRIDE: &str = "hostname_override";
     pub const CLOCK_FORMAT_24_HOUR: &str = "clock_format_24_hour";
-    pub const STANDBY_ENABLED: &str = "standby_enabled";
     pub const STANDBY_TIMEOUT: &str = "standby_timeout";
 
     // logging
@@ -168,7 +167,6 @@ pub fn defaults() -> Value {
             PROFILE_ORDER: [],
             HOSTNAME_OVERRIDE: null,
             CLOCK_FORMAT_24_HOUR: true,
-            STANDBY_ENABLED: true,
             STANDBY_TIMEOUT: crate::standby::STANDBY_TIMEOUT_DEFAULT,
         },
         WIFI: {
