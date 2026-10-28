@@ -64,6 +64,11 @@ pub(super) fn run(app: Arc<App>, port: Box<dyn SerialPort>) {
             }
             app.alarms.clear(crate::alarms::AlarmType::EspDisconnected);
             app.alarms.clear(crate::alarms::AlarmType::EspRestart);
+            app.standby.on_esp_traffic();
+        }
+        // A sleeping ESP32 is silent on purpose.
+        if app.standby.esp_asleep() {
+            continue;
         }
         let diagnostics = machine.state.lock().observability.check_timeouts(now);
         machine.report_esp_diagnostics(&app, diagnostics);
@@ -199,6 +204,10 @@ fn handle_line(app: &Arc<App>, data_str: &str) -> Option<(&'static str, Option<S
                 Err(error) => tracing::error!("Error processing ESP log ({error})"),
             }
         }
+        EspLine::Standby { event, detail } => {
+            app.standby.on_esp_line(&event, &detail);
+            valid_message_type = Some("Standby");
+        }
         EspLine::MileageRequest => {
             machine.handle_mileage_request(app);
             valid_message_type = Some("MileageRequest");
@@ -274,6 +283,7 @@ fn handle_line(app: &Arc<App>, data_str: &str) -> Option<(&'static str, Option<S
         handle_esp_info(app, info);
     }
     if let Some(button) = button {
+        app.standby.note_activity();
         if button.event != ButtonEvent::EncoderClockwise
             && button.event != ButtonEvent::EncoderCounterclockwise
         {
@@ -328,6 +338,9 @@ fn handle_shot_data(app: &Arc<App>, data: esp::ShotData) {
     let is_preparing = status == MachineStatus::CLOSING_VALVE;
     let is_heating = status == MachineStatus::HEATING;
     let is_starting = status == MachineStatus::STARTING;
+    if !is_idle {
+        app.standby.note_activity();
+    }
 
     let mut effects = Vec::new();
     let (time_flag, retracting_extraction) = {

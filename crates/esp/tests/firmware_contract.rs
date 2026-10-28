@@ -68,6 +68,13 @@ const KNOWN: &[Known] = &[
         rest: false,
     },
     Known {
+        name: "Standby",
+        token: "Standby",
+        fields_read: 2,
+        exact: true,
+        rest: false,
+    },
+    Known {
         name: "MileageRequest",
         token: "MileageRequest",
         fields_read: 0,
@@ -126,10 +133,11 @@ const KEYS_SENT: &[&str] = &[
 ];
 
 /// Every action the backend writes: Socket.IO `action` (`ALLOWED_ESP_ACTIONS`),
-/// `action,info` and backend.py's `calibrate`.
+/// `action,info`, backend.py's `calibrate` and the standby service's
+/// `standby` and `wake`.
 fn actions_sent() -> Vec<&'static str> {
     let mut actions: Vec<&str> = encode::ALLOWED_ESP_ACTIONS.to_vec();
-    actions.extend(["info", "calibration"]);
+    actions.extend(["info", "calibration", "standby", "wake"]);
     actions.sort_unstable();
     actions.dedup();
     actions
@@ -180,6 +188,7 @@ fn dispatched_as(name: &str, line: &EspLine) -> bool {
         | ("ESPBoot", EspLine::EspBoot { .. })
         | ("HeaterTimeoutInfo", EspLine::HeaterTimeoutInfo(Ok(_)))
         | ("MileageRequest", EspLine::MileageRequest)
+        | ("Standby", EspLine::Standby { .. })
         | ("Event", EspLine::Event(Some(_)))
         | ("Notify", EspLine::Notify(_))
         | ("Log", EspLine::Log(Ok(_)))

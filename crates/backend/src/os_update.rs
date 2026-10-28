@@ -55,6 +55,15 @@ pub struct OsUpdateStatus {
 }
 
 impl OsUpdateStatus {
+    /// An update is being downloaded or installed: the machine must not
+    /// go to standby under it.
+    pub fn in_progress(&self) -> bool {
+        matches!(
+            self.state.lock().last_status,
+            OsStatus::Downloading | OsStatus::Installing
+        )
+    }
+
     pub fn new(sio: Arc<Sio>) -> OsUpdateStatus {
         OsUpdateStatus {
             sio,

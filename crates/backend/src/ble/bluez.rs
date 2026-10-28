@@ -215,6 +215,12 @@ impl BluezApp {
     }
 
     /// `BlessServerBlueZDBus.stop()`.
+    /// Turn the radio off or back on. bluetoothd keeps the GATT
+    /// application and the advertisement registered across it.
+    pub async fn set_powered(&self, powered: bool) -> Result<(), String> {
+        set_adapter_property(&self.conn, &self.adapter, "Powered", Variant::from(powered)).await
+    }
+
     pub async fn stop(&self) -> Result<(), String> {
         set_adapter_property(&self.conn, &self.adapter, "Alias", Variant::from("")).await?;
         if let Some(path) = self.advertisements.lock().await.pop() {

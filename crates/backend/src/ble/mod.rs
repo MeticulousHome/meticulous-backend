@@ -144,6 +144,20 @@ impl GattServer {
         });
     }
 
+    /// The radio is off while the machine is in standby. Nothing to do
+    /// when the GATT server never reached BlueZ.
+    pub async fn set_radio_powered(&self, powered: bool) {
+        let Some(app) = self.app.get() else {
+            return;
+        };
+        if let Err(error) = app.set_powered(powered).await {
+            tracing::warn!(
+                "Could not power the Bluetooth radio {}: {error}",
+                if powered { "on" } else { "off" }
+            );
+        }
+    }
+
     /// `stop()`.
     pub fn stop(&self) {
         tracing::info!("Stopping BLE GATT Server");

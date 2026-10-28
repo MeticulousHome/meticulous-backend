@@ -209,6 +209,7 @@ impl Router {
     /// `tornado.access`.
     pub async fn dispatch(&self, app: Arc<App>, mut req: Request) -> Reply {
         let started = Instant::now();
+        app.standby.note_request(&req);
         let reply = self.route(app, &mut req).await;
         log_access(&req, &reply, started);
         reply

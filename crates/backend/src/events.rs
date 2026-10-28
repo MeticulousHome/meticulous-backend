@@ -22,6 +22,7 @@ pub fn on_connect(app: &Arc<App>, sid: &str) {
 /// `action`: ESP32 actions are forwarded, `abort` ends the profile, `reset`
 /// is refused from Socket.IO, anything else is dropped.
 pub fn on_action(app: &Arc<App>, data: Option<Value>) {
+    app.standby.note_activity();
     let action = match &data {
         Some(Value::String(s)) => Some(s.as_str()),
         _ => None,
@@ -43,6 +44,7 @@ pub fn on_action(app: &Arc<App>, data: Option<Value>) {
 
 /// `notification`: the payload is a JSON string `{"id", "response"}`.
 pub fn on_notification(app: &Arc<App>, data: Option<Value>) {
+    app.standby.note_activity();
     let parsed = match data {
         Some(Value::String(text)) => serde_json::from_str::<Value>(&text).ok(),
         Some(other) => {
@@ -72,6 +74,7 @@ pub fn on_notification(app: &Arc<App>, data: Option<Value>) {
 
 /// `profileHover`: remember the hovered profile and tell the other clients.
 pub fn on_profile_hover(app: &Arc<App>, sid: &str, data: Option<Value>) {
+    app.standby.note_activity();
     let data = data.unwrap_or(Value::Null);
     tracing::info!(
         "Hovering Profile {}",
@@ -82,6 +85,7 @@ pub fn on_profile_hover(app: &Arc<App>, sid: &str, data: Option<Value>) {
 
 /// `calibrate`: write the scale calibration command with the current weight.
 pub fn on_calibrate(app: &Arc<App>) {
+    app.standby.note_activity();
     app.machine.calibrate();
 }
 

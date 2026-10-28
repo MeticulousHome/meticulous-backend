@@ -81,7 +81,8 @@ pub(crate) struct State {
     esp_notification_shown: bool,
     // `_read_data`'s locals, kept across lines.
     old_status: String,
-    time_flag: bool,
+    /// A shot is running.
+    pub time_flag: bool,
     shot_start_time: f64,
     time_passed: i64,
     profile_time: i64,
@@ -1006,6 +1007,17 @@ impl Machine {
 
     pub fn info_ready(&self) -> bool {
         self.state.lock().info_ready
+    }
+
+    /// The ESP32 may go to standby: it answered at boot, nothing is
+    /// brewing, heating or moving, and it is not being flashed.
+    pub fn ready_for_standby(&self) -> bool {
+        let state = self.state.lock();
+        state.info_ready
+            && state.is_idle
+            && !state.time_flag
+            && !state.observability.update_in_progress()
+            && !self.stop_comm.load(Ordering::Relaxed)
     }
 
     pub fn mileage(&self) -> Option<i64> {

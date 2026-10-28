@@ -97,6 +97,9 @@ fn validate(user: &Map<String, Value>, target: &str, value: &Value) -> Result<()
     if target == keys::PROFILE_PARTIAL_RETRACTION {
         validate_partial_retraction(value.as_f64().unwrap_or(f64::NAN)).map_err(Refusal::Other)?;
     }
+    if target == keys::STANDBY_TIMEOUT {
+        crate::standby::validate_timeout(value).map_err(Refusal::Other)?;
+    }
     Ok(())
 }
 

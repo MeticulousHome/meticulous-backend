@@ -38,6 +38,7 @@ use crate::sio::Sio;
 use crate::smoke_validation::SmokeValidationManager;
 use crate::sounds::SoundPlayer;
 use crate::ssh_manager::SshManager;
+use crate::standby::Standby;
 use crate::system_services::SystemServices;
 use crate::timezone::TimezoneManager;
 use crate::usb::UsbManager;
@@ -90,6 +91,7 @@ pub struct App {
     pub timezone: Arc<TimezoneManager>,
     pub wifi: Arc<WifiManager>,
     pub gatt: Arc<GattServer>,
+    pub standby: Arc<Standby>,
 }
 
 impl App {
@@ -240,6 +242,7 @@ impl App {
             timezone,
             wifi,
             gatt,
+            standby: Arc::new(Standby::default()),
         })
     }
 

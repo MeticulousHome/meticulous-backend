@@ -158,6 +158,9 @@ pub enum EspLine {
     /// `Notify,<type>[,<message>...]`: the message is the remaining fields
     /// joined with `,`, with every `;` turned into a newline.
     Notify(MachineNotify),
+    /// Exactly `Standby,<event>,<detail>`: the ESP32 entering, refusing or
+    /// waking from the ErP standby light sleep. New in the Rust backend.
+    Standby { event: String, detail: String },
     /// `HeaterTimeoutInfo,...`. On `Err` Python logs
     /// `Error processing HeaterTimeoutInfo: <e>` at ERROR; the line is still
     /// valid traffic.
@@ -220,6 +223,10 @@ pub fn classify_line(data_str: &str) -> EspLine {
         }
         ["Log", log_data @ ..] => EspLine::Log(EspLog::from_args(log_data)),
         ["MileageRequest"] => EspLine::MileageRequest,
+        ["Standby", event, detail] => EspLine::Standby {
+            event: owned(event),
+            detail: owned(detail),
+        },
         // PARITY: exactly three fields; a value with a comma in it is an
         // nvs_response error, although the firmware sends it as the rest of
         // the line.
@@ -250,6 +257,7 @@ impl EspLine {
             EspLine::HeaterTimeoutInfo(_) => Some("HeaterTimeoutInfo"),
             EspLine::Log(_) => Some("Log"),
             EspLine::MileageRequest => Some("MileageRequest"),
+            EspLine::Standby { .. } => Some("Standby"),
             EspLine::Unknown | EspLine::Uncaught(_) => None,
         }
     }
@@ -325,6 +333,28 @@ mod tests {
             classify_line("Log,info"),
             EspLine::Log(Err(LogWithoutMessage))
         );
+    }
+
+    /// The standby service follows the ESP32 through these three lines
+    /// (`Standby` in the firmware's UART contract); any other shape is free
+    /// text, so a malformed one can never put the backend to sleep.
+    #[test]
+    fn standby_lines() {
+        assert_eq!(
+            classify_line("Standby,entering,light_sleep\n"),
+            EspLine::Standby {
+                event: "entering".to_string(),
+                detail: "light_sleep".to_string(),
+            }
+        );
+        assert_eq!(
+            classify_line("Standby,refused,not idle\r\n"),
+            EspLine::Standby {
+                event: "refused".to_string(),
+                detail: "not idle".to_string(),
+            }
+        );
+        assert_eq!(classify_line("Standby,entering\n"), EspLine::Unknown);
     }
 
     #[test]

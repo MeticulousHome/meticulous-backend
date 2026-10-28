@@ -56,6 +56,7 @@ mod smoke_validation;
 mod socketio_types;
 mod sounds;
 mod ssh_manager;
+mod standby;
 mod system_services;
 #[cfg(test)]
 mod testing;
@@ -252,5 +253,6 @@ fn after_listen(app: &Arc<app::App>) {
         app.wifi.start_in_background();
     }
     tokio::spawn(events::live(app.clone()));
+    standby::start(app.clone());
     app.imager.flash_if_required();
 }
