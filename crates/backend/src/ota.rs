@@ -42,6 +42,23 @@ impl BuildTimestamp {
         )
     }
 
+    /// What sentry-sdk writes for the `build-timestamp` tag of this
+    /// `datetime` (`format_timestamp`): in UTC, with microseconds and `Z`.
+    pub fn sentry_tag(&self) -> String {
+        use chrono::{Datelike, Timelike};
+        let t = self.local - chrono::TimeDelta::seconds(i64::from(self.offset_seconds));
+        format!(
+            "{}-{:02}-{:02}T{:02}:{:02}:{:02}.{:06}Z",
+            t.year(),
+            t.month(),
+            t.day(),
+            t.hour(),
+            t.minute(),
+            t.second(),
+            t.nanosecond() / 1000
+        )
+    }
+
     /// `strftime("%Y%m%d_%H%M%S")`, the version history's stamp.
     pub fn compact(&self) -> String {
         use chrono::{Datelike, Timelike};
@@ -777,6 +794,26 @@ mod tests {
         assert!(parse_build_date("Tue, 06 Oct 2026 12:34:60 +0000").is_none());
         assert!(parse_build_date("Tue, 06 Oct 2026 12:34:56 +2400").is_none());
         assert!(parse_build_date("Tue, 06 Oct 2026 12:34:56 +0000 x").is_none());
+    }
+
+    /// sentry-sdk's `format_timestamp` of the parsed build date, the
+    /// `build-timestamp` tag a Python machine sends: stable's `Fri, 16 Oct
+    /// 2026 23:17:41 +0000` arrives as `2026-10-16T23:17:41.000000Z`.
+    #[test]
+    fn build_timestamp_as_sentry_writes_it() {
+        let tag = |s| parse_build_date(s).expect("parsed").sentry_tag();
+        assert_eq!(
+            tag("Fri, 16 Oct 2026 23:17:41 +0000"),
+            "2026-10-16T23:17:41.000000Z"
+        );
+        assert_eq!(
+            tag("tue,  6 OCT 2026 01:02:03 -05:30"),
+            "2026-10-06T06:32:03.000000Z"
+        );
+        assert_eq!(
+            tag("Thu, 31 Dec 2026 23:30:00 -01:00"),
+            "2027-01-01T00:30:00.000000Z"
+        );
     }
 
     #[test]

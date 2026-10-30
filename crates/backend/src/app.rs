@@ -108,6 +108,24 @@ impl App {
             let sio = sio.clone();
             config.on_save(move || sio.emit("settings", &config::settings_event_payload()));
         }
+        // sentry_sdk.set_context("config", get_reportable_config(self)), once
+        // loaded and on every save.
+        let report_config = {
+            let reporting = reporting.clone();
+            move |config: &ConfigStore| {
+                let reportable = redactor::get_reportable_config(&config.snapshot());
+                reporting.set_context("config", &reportable);
+            }
+        };
+        report_config(&config);
+        {
+            let weak = Arc::downgrade(&config);
+            config.on_save(move || {
+                if let Some(config) = weak.upgrade() {
+                    report_config(&config);
+                }
+            });
+        }
         let host = Arc::new(Host::default());
         let sounds = Arc::new(SoundPlayer::new(
             config.clone(),
