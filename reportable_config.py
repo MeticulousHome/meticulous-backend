@@ -42,6 +42,7 @@ _APPROVED_PATHS: tuple[tuple[tuple[str, ...], Validator], ...] = (
     (("user", "auto_start_shot"), _is_bool),
     (("user", "auto_purge_after_shot"), _is_bool),
     (("user", "tare_behavior"), _is_string),
+    (("user", "disturbance_resilience"), _is_bool),
     (("user", "partial_retraction"), _is_number),
     (("user", "heat_on_boot"), _is_bool),
     (("user", "heating_timeout"), _is_number),

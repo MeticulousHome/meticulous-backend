@@ -16,6 +16,7 @@ import json
 import queue
 import subprocess
 import tempfile
+import threading
 import uuid
 from pathlib import Path
 from types import SimpleNamespace
@@ -27,6 +28,7 @@ import yaml
 from tornado.testing import AsyncHTTPTestCase
 from tornado.web import Application
 
+import machine as machine_module
 import ota
 import system_services
 import timezone_manager
@@ -67,6 +69,7 @@ USER_BASELINE = {
     "partial_retraction": 45.33,
     "auto_purge_after_shot": False,
     "tare_behavior": "after_retraction",
+    "disturbance_resilience": False,
     "shot_data_sharing": None,
     "report_contact_mail": None,
     "update_channel": "",
@@ -196,6 +199,7 @@ class MachineBoundaryTestCase(AsyncHTTPTestCase):
         self.mp.setattr(Machine, "_stopESPcomm", False)
         self.mp.setattr(Machine, "esp_info", None)
         self.mp.setattr(Machine, "_pending_tare_behavior_writes", [])
+        self.mp.setattr(Machine, "_pending_disturbance_resilience_writes", [])
         self.mp.setattr(Machine, "enable_manufacturing", False)
 
         self.mp.setattr(NotificationManager, "_notifications", [])
@@ -462,6 +466,118 @@ class TestSettingsAPI(MachineBoundaryTestCase):
         response = self.post_settings({"tare_behavior": "sideways"})
 
         self.assert_rejected(response, 400, "unsupported tare behavior: sideways")
+
+    # disturbance_resilience: the ESP32 owns the value (EspressoFirmware
+    # contracts/uart/protocol.json, NVS key disturbance_resilience_key), so the
+    # backend stores it only after the ESP answered SUCCESS. Messages and the 400
+    # come from Machine.writeDisturbanceResilience and SettingsHandler.post.
+
+    def answer_disturbance_writes_with(self, status):
+        """Answer each disturbance_resilience write from another thread, as the UART reader does."""
+
+        def write(content):
+            self.port.writes.append(content)
+            if content.startswith(b"nvs_request,write,disturbance_resilience_key,"):
+                threading.Thread(
+                    target=Machine.handleDisturbanceResilienceNVSResponse, args=(status,)
+                ).start()
+
+        self.port.write = write
+
+    def test_post_disturbance_resilience_is_saved_after_the_esp32_confirms_it(self):
+        self.mp.setattr(Machine, "esp_info", ESPInfo(disturbanceResilience=False))
+        self.answer_disturbance_writes_with("SUCCESS")
+
+        response = self.post_settings({"disturbance_resilience": True})
+
+        assert response.code == 200
+        assert json.loads(response.body)["disturbance_resilience"] is True
+        assert self.port.writes == [b"nvs_request,write,disturbance_resilience_key,true\x03"]
+        assert Machine.esp_info.disturbanceResilience is True
+        assert Machine._pending_disturbance_resilience_writes == []
+        self.assert_saved(disturbance_resilience=True)
+
+    def test_post_disturbance_resilience_equal_to_the_esp32_value_still_writes_it(self):
+        self.mp.setattr(Machine, "esp_info", ESPInfo(disturbanceResilience=False))
+        self.answer_disturbance_writes_with("SUCCESS")
+
+        response = self.post_settings({"disturbance_resilience": False})
+
+        assert response.code == 200
+        assert self.port.writes == [b"nvs_request,write,disturbance_resilience_key,false\x03"]
+        self.assert_saved(disturbance_resilience=False)
+
+    def test_post_disturbance_resilience_rejected_by_the_esp32_changes_nothing(self):
+        self.mp.setattr(Machine, "esp_info", ESPInfo(disturbanceResilience=False))
+        self.answer_disturbance_writes_with("ERROR")
+
+        response = self.post_settings({"disturbance_resilience": True})
+
+        self.assert_rejected(
+            response, 400, "failed to save disturbance_resilience on the machine: ERROR"
+        )
+        assert Machine.esp_info.disturbanceResilience is False
+
+    def test_post_disturbance_resilience_times_out_without_an_esp32_answer(self):
+        self.mp.setattr(machine_module, "DISTURBANCE_RESILIENCE_WRITE_TIMEOUT_SECONDS", 0.2)
+        self.mp.setattr(Machine, "esp_info", ESPInfo(disturbanceResilience=False))
+
+        response = self.post_settings({"disturbance_resilience": True})
+
+        self.assert_rejected(
+            response, 400, "timed out waiting for the machine to save disturbance_resilience"
+        )
+        assert self.port.writes == [b"nvs_request,write,disturbance_resilience_key,true\x03"]
+        assert Machine._pending_disturbance_resilience_writes == []
+
+    def test_post_disturbance_resilience_to_older_firmware_sends_nothing(self):
+        # ESPInfo without the trailing field, and no ESPInfo at all.
+        for esp_info in (ESPInfo(tareBehavior="after_retraction"), None):
+            self.mp.setattr(Machine, "esp_info", esp_info)
+
+            response = self.post_settings({"disturbance_resilience": True})
+
+            self.assert_rejected(
+                response, 400, "disturbance_resilience is not supported by the machine firmware"
+            )
+            assert self.port.writes == []
+
+    def test_post_disturbance_resilience_without_serial_connection_changes_nothing(self):
+        self.mp.setattr(Machine, "esp_info", ESPInfo(disturbanceResilience=False))
+        self.mp.setattr(Machine, "_stopESPcomm", True)
+
+        response = self.post_settings({"disturbance_resilience": True})
+
+        self.assert_rejected(
+            response,
+            400,
+            "failed to save disturbance_resilience on the machine: no serial connection",
+        )
+        assert self.port.writes == []
+
+    def test_post_disturbance_resilience_is_not_written_when_a_sibling_setting_fails(self):
+        self.mp.setattr(Machine, "esp_info", ESPInfo(disturbanceResilience=False))
+        self.answer_disturbance_writes_with("SUCCESS")
+
+        response = self.post_settings(
+            {"disturbance_resilience": True, "tare_behavior": "sideways"}
+        )
+
+        self.assert_rejected(response, 400, "unsupported tare behavior: sideways")
+        assert self.port.writes == []
+        assert Machine.esp_info.disturbanceResilience is False
+
+    def test_post_non_bool_disturbance_resilience_returns_404(self):
+        self.mp.setattr(Machine, "esp_info", ESPInfo(disturbanceResilience=False))
+
+        response = self.post_settings({"disturbance_resilience": "true"})
+
+        self.assert_rejected(
+            response,
+            404,
+            "\"setting value invalid, received <class 'str'> and expected <class 'bool'>\"",
+        )
+        assert self.port.writes == []
 
     def test_post_shot_data_sharing_opt_in_generates_a_sharing_id(self):
         response = self.post_settings({"shot_data_sharing": True})

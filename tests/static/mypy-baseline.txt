@@ -52,13 +52,7 @@
 1 api/history.py: [override] Signature of "get" incompatible with supertype "tornado.web.StaticFileHandler"
 1 api/history.py: [union-attr] Item "None" of "str | None" has no attribute "endswith"
 1 api/machine.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
-1 api/machine.py: [assignment] Incompatible types in assignment (expression has type "None", target has type "str")
 1 api/machine.py: [assignment] Incompatible types in assignment (expression has type "None", variable has type "str")
-4 api/machine.py: [assignment] Incompatible types in assignment (expression has type "bool", target has type "str")
-1 api/machine.py: [assignment] Incompatible types in assignment (expression has type "dict[Never, Never]", target has type "str")
-1 api/machine.py: [assignment] Incompatible types in assignment (expression has type "int | None", target has type "str")
-2 api/machine.py: [assignment] Incompatible types in assignment (expression has type "list[Never]", target has type "str")
-1 api/machine.py: [index] Unsupported target for indexed assignment ("str")
 1 api/machine.py: [union-attr] Item "None" of "Any | None" has no attribute "emit"
 1 api/notifications.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
 1 api/password_handler.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
@@ -166,8 +160,6 @@
 2 esp_serial/data.py: [arg-type] Argument 1 to "append" of "list" has incompatible type "ControlTypes"; expected "str"
 1 esp_serial/data.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
 1 esp_serial/data.py: [arg-type] Argument 1 to "len" has incompatible type "ButtonEventData"; expected "Sized"
-5 esp_serial/data.py: [arg-type] Argument 1 to "len" has incompatible type "ESPInfo"; expected "Sized"
-1 esp_serial/data.py: [arg-type] Argument 1 to "len" has incompatible type "SensorData"; expected "Sized"
 1 esp_serial/data.py: [arg-type] Argument 1 to "len" has incompatible type "ShotData"; expected "Sized"
 1 esp_serial/data.py: [arg-type] Argument 6 to "ShotData" has incompatible type "str | None"; expected "str"
 1 esp_serial/data.py: [arg-type] Argument 7 to "ShotData" has incompatible type "str | None"; expected "str"
@@ -177,9 +169,7 @@
 1 esp_serial/data.py: [attr-defined] "SensorData" has no attribute "split"
 1 esp_serial/data.py: [call-overload] No overload variant of "sub" of "Pattern" matches argument types "str", "SensorData"
 3 esp_serial/data.py: [index] Value of type "ButtonEventData" is not indexable
-58 esp_serial/data.py: [index] Value of type "ESPInfo" is not indexable
 1 esp_serial/data.py: [index] Value of type "MachineNotify" is not indexable
-23 esp_serial/data.py: [index] Value of type "SensorData" is not indexable
 13 esp_serial/data.py: [index] Value of type "ShotData" is not indexable
 1 esp_serial/esp_tool_wrapper.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
 1 esp_serial/esp_tool_wrapper.py: [misc] Method must have at least one argument. Did you forget the "self" argument?
@@ -212,8 +202,6 @@
 1 machine.py: [arg-type] Argument 1 to "capture_event" of "Scope" has incompatible type "dict[str, Sequence[str]]"; expected "Event"
 1 machine.py: [arg-type] Argument 1 to "encode" of "str" has incompatible type "Machine"; expected "str"
 1 machine.py: [arg-type] Argument 1 to "from_args" has incompatible type "list[Any]"; expected "ButtonEventData"
-1 machine.py: [arg-type] Argument 1 to "from_args" has incompatible type "list[Any]"; expected "ESPInfo"
-1 machine.py: [arg-type] Argument 1 to "from_args" has incompatible type "list[Any]"; expected "SensorData"
 1 machine.py: [arg-type] Argument 1 to "from_args" has incompatible type "list[Any]"; expected "ShotData"
 1 machine.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
 6 machine.py: [arg-type] Argument 1 to "write" has incompatible type "bytes"; expected "Machine"
