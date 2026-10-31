@@ -644,10 +644,8 @@ class ProfileManager:
                     continue
 
                 ProfileManager._known_profiles[profile["id"]] = profile
-                if profile["id"] not in MeticulousConfig[CONFIG_USER][PROFILE_ORDER]:
-                    MeticulousConfig[CONFIG_USER][PROFILE_ORDER].append(profile["id"])
-                    MeticulousConfig.save()
 
+        ProfileManager._repair_profile_order()
         end = time.time()
         time_ms = (end - start) * 1000
         if time_ms > 10:
@@ -730,20 +728,34 @@ class ProfileManager:
     def get_default_images():
         return ProfileManager._profile_default_images
 
-    def list_profiles():
-        profile_list = []
-        all_profiles = ProfileManager._known_profiles.copy()
-        for id in MeticulousConfig[CONFIG_USER][PROFILE_ORDER]:
-            if id in all_profiles.keys():
-                profile = all_profiles[id]
-                profile_list.append(profile)
-                del all_profiles[id]
-
-        for profile in all_profiles.values():
-            profile_list.append(profile)
-            MeticulousConfig[CONFIG_USER][PROFILE_ORDER].append(id)
+    @staticmethod
+    def _repair_profile_order() -> list:
+        stored_order = MeticulousConfig[CONFIG_USER][PROFILE_ORDER]
+        # Preserve unknown IDs: a partial inventory must not erase saved membership.
+        order: list = []
+        seen: set[str] = set()
+        for profile_id in stored_order:
+            if not isinstance(profile_id, str):
+                order.append(profile_id)
+            elif profile_id not in seen:
+                order.append(profile_id)
+                seen.add(profile_id)
+        for profile in ProfileManager._known_profiles.values():
+            if profile["id"] not in seen:
+                order.append(profile["id"])
+                seen.add(profile["id"])
+        if order != stored_order:
+            MeticulousConfig[CONFIG_USER][PROFILE_ORDER] = order
             MeticulousConfig.save()
-        return profile_list
+        return order
+
+    def list_profiles():
+        order = ProfileManager._repair_profile_order()
+        return [
+            ProfileManager._known_profiles[profile_id]
+            for profile_id in order
+            if isinstance(profile_id, str) and profile_id in ProfileManager._known_profiles
+        ]
 
     def get_last_profile():
         return MeticulousConfig[CONFIG_PROFILES][PROFILE_LAST]
