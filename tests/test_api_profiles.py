@@ -568,14 +568,6 @@ class TestEspressoProfileRoutes(AsyncHTTPTestCase):
         assert [p["id"] for p in self.get_json("/profile/list")] == [second["id"], first["id"]]
         assert self.get_json("/profile/list?full=true") == [second, first]
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "backend bug: ProfileManager.list_profiles appends the stale loop variable `id` "
-            "(profiles.py:744) instead of profile['id'] for a profile missing from "
-            "profile_order, so the order gains a duplicate and never the missing profile"
-        ),
-    )
     def test_list_appends_a_profile_missing_from_the_order_to_the_order(self):
         first = example_profile()
         second = simple_profile()
@@ -587,14 +579,6 @@ class TestEspressoProfileRoutes(AsyncHTTPTestCase):
         assert [p["id"] for p in self.get_json("/profile/list")] == [first["id"], second["id"]]
         assert MeticulousConfig[CONFIG_USER][PROFILE_ORDER] == [first["id"], second["id"]]
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "backend bug: with an empty profile_order, ProfileManager.list_profiles reads the "
-            "never-bound loop variable `id` (profiles.py:744), raising UnboundLocalError, "
-            "so GET /profile/list answers 500"
-        ),
-    )
     def test_list_with_an_empty_order_still_lists_the_profiles(self):
         profile = example_profile()
         self.save(profile)
@@ -605,6 +589,68 @@ class TestEspressoProfileRoutes(AsyncHTTPTestCase):
         assert response.code == 200
         assert [p["id"] for p in json.loads(response.body)] == [profile["id"]]
         assert MeticulousConfig[CONFIG_USER][PROFILE_ORDER] == [profile["id"]]
+
+    def test_list_repairs_duplicate_order_ids_without_merging_same_name_profiles(self):
+        """The Dial/settings order is an identity list, not a list of profile names.
+
+        The save route assigns distinct IDs; each must appear once in list and
+        persisted order. This catches existing duplicate membership left by the
+        stale loop variable, including an unknown ID a partial inventory omits.
+        """
+        first = example_profile()
+        second = simple_profile()
+        second["name"] = first["name"]
+        self.save(first)
+        self.save(second)
+        MeticulousConfig[CONFIG_USER][PROFILE_ORDER] = [
+            second["id"],
+            UNKNOWN_ID,
+            second["id"],
+            UNKNOWN_ID,
+            42,
+            None,
+            42,
+        ]
+
+        assert self.get_json("/profile/list?full=true") == [second, first]
+        repaired = [second["id"], UNKNOWN_ID, 42, None, 42, first["id"]]
+        assert MeticulousConfig[CONFIG_USER][PROFILE_ORDER] == repaired
+        assert (
+            yaml.safe_load(self.config_file.read_text())[CONFIG_USER][PROFILE_ORDER] == repaired
+        )
+        repaired_mtime = self.config_file.stat().st_mtime_ns
+        assert self.get_json("/profile/list?full=true") == [second, first]
+        assert self.config_file.stat().st_mtime_ns == repaired_mtime
+
+    def test_refresh_repairs_existing_duplicate_order_before_clients_list(self):
+        """Startup refresh must repair on-disk legacy order, preserving first IDs.
+
+        Expected membership comes from the saved profile identities and the
+        configured first occurrence. Existing list-only tests miss startup repair.
+        """
+        first = example_profile()
+        second = simple_profile()
+        self.save(first)
+        self.save(second)
+        MeticulousConfig[CONFIG_USER][PROFILE_ORDER] = [
+            second["id"],
+            second["id"],
+            first["id"],
+            UNKNOWN_ID,
+            UNKNOWN_ID,
+        ]
+
+        ProfileManager.refresh_profile_list()
+
+        repaired = [second["id"], first["id"], UNKNOWN_ID]
+        assert MeticulousConfig[CONFIG_USER][PROFILE_ORDER] == repaired
+        assert (
+            yaml.safe_load(self.config_file.read_text())[CONFIG_USER][PROFILE_ORDER] == repaired
+        )
+        assert [p["id"] for p in self.get_json("/profile/list?full=true")] == [
+            second["id"],
+            first["id"],
+        ]
 
     # --- load ------------------------------------------------------------------
 
