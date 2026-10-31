@@ -44,6 +44,9 @@ pub const MILEAGE_RETRY_INTERVAL_SECONDS: f64 = 5.0;
 pub const ESP_INFO_RETRY_INTERVAL_SECONDS: f64 = 2.0;
 pub const DEVICE_UUID_RETRY_DELAY: Duration = Duration::from_secs(2);
 const HAWKBIT_UPDATER_RESTART_TIMEOUT: Duration = Duration::from_secs(5);
+/// How long a settings request waits for the ESP32 to store disturbance
+/// resilience.
+pub const DISTURBANCE_RESILIENCE_TIMEOUT: Duration = Duration::from_secs(5);
 /// Seconds of stable weight while retracting before a shot counts as over.
 const STABLE_TIME_THRESHOLD: f64 = 2.0;
 
@@ -74,6 +77,8 @@ pub(crate) struct State {
     pub observability: EspObservability,
     uuid: DeviceUuidEnrollment,
     tare: TareBehaviorSync,
+    /// The disturbance resilience write a settings request waits on.
+    disturbance_resilience: Option<PendingNvsWrite>,
     pub heater_timeout_info: Option<HeaterTimeoutInfo>,
     /// The notification the ESP's `Notify` messages update while the user
     /// has not acknowledged it (`Machine._espNotification`).
@@ -121,6 +126,7 @@ impl State {
             observability: EspObservability::new(now_mono),
             uuid: DeviceUuidEnrollment::new(),
             tare: TareBehaviorSync::new(),
+            disturbance_resilience: None,
             heater_timeout_info: None,
             esp_notification: None,
             esp_notification_shown: false,
@@ -136,6 +142,26 @@ impl State {
     }
 }
 
+/// A write to the ESP32's NVS that a request waits on until the ESP32
+/// answers, resets or the request gives up.
+struct PendingNvsWrite {
+    value: bool,
+    /// `Err` carries the status the ESP32 answered, or why there is none.
+    reply: tokio::sync::oneshot::Sender<Result<(), String>>,
+}
+
+/// Why `POST /settings` could not change disturbance resilience. The text is
+/// the error of the 400 reply.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum DisturbanceResilienceError {
+    #[error("disturbance_resilience is not supported by the machine firmware")]
+    NotSupported,
+    #[error("failed to save disturbance_resilience on the machine: {0}")]
+    Failed(String),
+    #[error("timed out waiting for the machine to save disturbance_resilience")]
+    TimedOut,
+}
+
 pub struct Machine {
     pub emulated: bool,
     backend: BackendMode,
@@ -147,6 +173,9 @@ pub struct Machine {
     /// that fires late does nothing.
     uuid_timer_generation: AtomicU64,
     clock: Instant,
+    /// One disturbance resilience write in flight at a time: the ESP32's
+    /// answer names the key, not the request.
+    disturbance_resilience_writes: tokio::sync::Mutex<()>,
     /// Signalled each time a data frame from the ESP has been applied, so the
     /// status stream goes out with it instead of on a timer of its own.
     pub frames: tokio::sync::Notify,
@@ -173,6 +202,7 @@ impl Machine {
             energy: Mutex::new(EnergyCalculator::motor()),
             uuid_timer_generation: AtomicU64::new(0),
             clock,
+            disturbance_resilience_writes: tokio::sync::Mutex::new(()),
             frames: tokio::sync::Notify::new(),
             #[cfg(test)]
             recording_port: Mutex::new(None),
@@ -526,6 +556,7 @@ impl Machine {
 
     /// `Machine.reset`.
     pub fn reset(&self) {
+        self.fail_disturbance_resilience_write("machine restarted");
         {
             let mut state = self.state.lock();
             state.esp_restart_request = true;
@@ -600,6 +631,7 @@ impl Machine {
             now,
         );
         self.report_esp_diagnostics(app, diagnostics);
+        self.fail_disturbance_resilience_write("firmware update started");
         self.stop_comm.store(true, Ordering::Relaxed);
         self.state.lock().esp_restart_request = true;
 
@@ -952,6 +984,106 @@ impl Machine {
                 tracing::info!("ESP32 confirmed tare_behavior NVS write: {value}");
             }
         }
+    }
+
+    /// Whether the connected firmware reports disturbance resilience in its
+    /// ESPInfo (false before the first ESPInfo).
+    pub fn disturbance_resilience_supported(&self) -> bool {
+        self.state
+            .lock()
+            .esp_info
+            .as_ref()
+            .is_some_and(|i| i.disturbance_resilience.is_some())
+    }
+
+    /// Write disturbance resilience to the ESP32 and wait until it stored it.
+    /// The write goes out even when the ESP32 already holds the value: the
+    /// user asked to save it. On `Ok` the cached ESPInfo holds the value;
+    /// saving the setting is the caller's.
+    pub async fn save_disturbance_resilience(
+        &self,
+        value: bool,
+    ) -> Result<(), DisturbanceResilienceError> {
+        let _one_at_a_time = self.disturbance_resilience_writes.lock().await;
+        if !self.disturbance_resilience_supported() {
+            return Err(DisturbanceResilienceError::NotSupported);
+        }
+        if !self.connected() {
+            return Err(DisturbanceResilienceError::Failed(
+                "no serial connection".into(),
+            ));
+        }
+        let (reply, answer) = tokio::sync::oneshot::channel();
+        // Registered before the write, so the answer cannot arrive first.
+        self.state.lock().disturbance_resilience = Some(PendingNvsWrite { value, reply });
+        self.write(&encode::disturbance_resilience_write(value));
+        tracing::info!("Sent disturbance_resilience to ESP32: requested={value}");
+        match tokio::time::timeout(DISTURBANCE_RESILIENCE_TIMEOUT, answer).await {
+            Ok(Ok(Ok(()))) => Ok(()),
+            Ok(Ok(Err(status))) => Err(DisturbanceResilienceError::Failed(status)),
+            // The sender went away without an answer: nothing does that but
+            // a replaced write, which the lock above rules out.
+            Ok(Err(_)) => Err(DisturbanceResilienceError::Failed("no answer".into())),
+            Err(_) => {
+                // A late answer must not be taken for the next request's.
+                self.state.lock().disturbance_resilience = None;
+                tracing::warn!("ESP32 did not answer the disturbance_resilience write");
+                Err(DisturbanceResilienceError::TimedOut)
+            }
+        }
+    }
+
+    /// `nvs_response,disturbance_resilience_key,<status>`.
+    fn handle_disturbance_resilience_response(&self, status: &str) {
+        let pending = {
+            let mut state = self.state.lock();
+            let pending = state.disturbance_resilience.take();
+            if let Some(write) = &pending
+                && esp::sync::disturbance_resilience_status_ok(status)
+                && let Some(info) = state.esp_info.as_mut()
+            {
+                info.disturbance_resilience = Some(write.value);
+            }
+            pending
+        };
+        let Some(write) = pending else {
+            tracing::warn!("Received disturbance_resilience NVS response without a pending write");
+            return;
+        };
+        let result = if esp::sync::disturbance_resilience_status_ok(status) {
+            tracing::info!(
+                "ESP32 confirmed disturbance_resilience NVS write: {}",
+                write.value
+            );
+            Ok(())
+        } else {
+            tracing::error!(
+                "ESP32 rejected disturbance_resilience NVS write: requested={}, status={status}",
+                write.value
+            );
+            Err(status.to_string())
+        };
+        // The request may have given up already.
+        let _ = write.reply.send(result);
+    }
+
+    /// An `nvs_response` without a key, a reset or a firmware update ends
+    /// the pending disturbance resilience write without the ESP32 storing it.
+    fn fail_disturbance_resilience_write(&self, reason: &str) {
+        let Some(write) = self.state.lock().disturbance_resilience.take() else {
+            return;
+        };
+        tracing::warn!(
+            "disturbance_resilience NVS write failed: requested={}, {reason}",
+            write.value
+        );
+        let _ = write.reply.send(Err(reason.to_string()));
+    }
+
+    /// Feed one line from the ESP32 as the reader thread would.
+    #[cfg(test)]
+    pub(crate) fn handle_line_for_test(app: &Arc<App>, line: &str) {
+        reader::handle_line(app, line);
     }
 
     /// `stopMotorIfHot`: too much energy through the motor in the last ten

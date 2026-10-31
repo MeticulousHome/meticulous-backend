@@ -1500,3 +1500,248 @@ async fn root_password_returns_the_configured_password() {
         json!({"status": "success", "root_password": "s3cretpw9"})
     );
 }
+
+// Disturbance resilience. Not ports: the behaviour is the cross-repo
+// disturbance resilience contract (the same in the Python backend), and the
+// UART lines are the firmware's `contracts/uart/protocol.json`.
+
+const RESILIENCE_ON: &[u8] = b"nvs_request,write,disturbance_resilience_key,true\x03";
+
+/// Firmware that reports disturbance resilience in its ESPInfo.
+fn resilience_firmware(value: bool) -> esp::EspInfo {
+    esp::EspInfo {
+        tare_behavior: Some("after_retraction".into()),
+        device_uuid_supported: true,
+        disturbance_resilience: Some(value),
+        ..esp::EspInfo::default()
+    }
+}
+
+impl Bench {
+    /// POST the payload; once the disturbance resilience write reached the
+    /// ESP32, feed `answer` to the reader as the ESP32 would send it.
+    async fn post_answered(&self, payload: Value, answer: &str) -> Reply {
+        let esp32 = async {
+            for _ in 0..3000 {
+                if self
+                    .writes()
+                    .iter()
+                    .any(|w| w.starts_with(b"nvs_request,write,disturbance_resilience_key,"))
+                {
+                    crate::machine::Machine::handle_line_for_test(&self.app, answer);
+                    return;
+                }
+                tokio::time::sleep(Duration::from_millis(1)).await;
+            }
+        };
+        let (reply, ()) = tokio::join!(self.post_settings(payload), esp32);
+        reply
+    }
+
+    fn esp_resilience(&self) -> Option<bool> {
+        self.app
+            .machine
+            .esp_info()
+            .and_then(|i| i.disturbance_resilience)
+    }
+}
+
+/// The setting is saved, and the reply sent, only after the ESP32 answered
+/// SUCCESS; the cached ESPInfo follows. Without the wait the Dial would show
+/// a value the ESP32 never stored.
+#[tokio::test]
+async fn post_disturbance_resilience_is_saved_once_the_esp32_stored_it() {
+    let bench = Bench::new();
+    bench.set_esp_info(resilience_firmware(false));
+
+    let reply = bench
+        .post_answered(
+            json!({"disturbance_resilience": true}),
+            "nvs_response,disturbance_resilience_key,SUCCESS\r\n",
+        )
+        .await;
+
+    assert_eq!(reply.status_code(), 200);
+    assert_eq!(bench.writes(), vec![RESILIENCE_ON.to_vec()]);
+    assert_eq!(body(&reply)["disturbance_resilience"], json!(true));
+    bench.assert_saved(json!({"disturbance_resilience": true}));
+    assert_eq!(bench.esp_resilience(), Some(true));
+}
+
+/// Saving the value the ESP32 already holds still writes it: the user asked
+/// to save, and the reply must reflect what the ESP32 confirmed.
+#[tokio::test]
+async fn post_disturbance_resilience_writes_even_when_unchanged() {
+    let bench = Bench::new();
+    bench.set_esp_info(resilience_firmware(true));
+
+    let reply = bench
+        .post_answered(
+            json!({"disturbance_resilience": true}),
+            "nvs_response,disturbance_resilience_key,SUCCESS\n",
+        )
+        .await;
+
+    assert_eq!(reply.status_code(), 200);
+    assert_eq!(bench.writes(), vec![RESILIENCE_ON.to_vec()]);
+    bench.assert_saved(json!({"disturbance_resilience": true}));
+}
+
+/// The ESP32 refusing the write (`ERROR`, or old firmware's key-less
+/// `ERROR: key not found`) is a 400 with its status, and nothing changes.
+#[tokio::test]
+async fn post_disturbance_resilience_refused_by_the_esp32_is_not_saved() {
+    for (answer, status) in [
+        ("nvs_response,disturbance_resilience_key,ERROR\n", "ERROR"),
+        (
+            "nvs_response,ERROR: key not found\n",
+            "ERROR: key not found",
+        ),
+    ] {
+        let bench = Bench::new();
+        bench.set_esp_info(resilience_firmware(false));
+
+        let reply = bench
+            .post_answered(json!({"disturbance_resilience": true}), answer)
+            .await;
+
+        bench.assert_rejected(
+            &reply,
+            400,
+            &format!("failed to save disturbance_resilience on the machine: {status}"),
+        );
+        assert_eq!(bench.user()["disturbance_resilience"], json!(false));
+        assert_eq!(bench.esp_resilience(), Some(false), "{answer}");
+    }
+}
+
+/// An ESP32 reset while the write is pending fails it at once instead of
+/// waiting out the timeout.
+#[tokio::test]
+async fn post_disturbance_resilience_fails_when_the_esp32_resets() {
+    let bench = Bench::new();
+    bench.set_esp_info(resilience_firmware(false));
+
+    let reply = bench
+        .post_answered(
+            json!({"disturbance_resilience": true}),
+            "rst:0x1 (POWERON_RESET),boot:0x8 (SPI_FAST_FLASH_BOOT)\n",
+        )
+        .await;
+
+    bench.assert_rejected(
+        &reply,
+        400,
+        "failed to save disturbance_resilience on the machine: machine restarted",
+    );
+}
+
+/// No answer within `DISTURBANCE_RESILIENCE_TIMEOUT` (5 s): 400 and nothing
+/// saved; a late SUCCESS afterwards is not taken for a later request's.
+#[tokio::test(start_paused = true)]
+async fn post_disturbance_resilience_times_out_without_an_answer() {
+    let bench = Bench::new();
+    bench.set_esp_info(resilience_firmware(false));
+
+    let started = tokio::time::Instant::now();
+    let reply = bench
+        .post_settings(json!({"disturbance_resilience": true}))
+        .await;
+
+    assert!(started.elapsed() >= crate::machine::DISTURBANCE_RESILIENCE_TIMEOUT);
+    bench.assert_rejected(
+        &reply,
+        400,
+        "timed out waiting for the machine to save disturbance_resilience",
+    );
+    crate::machine::Machine::handle_line_for_test(
+        &bench.app,
+        "nvs_response,disturbance_resilience_key,SUCCESS\n",
+    );
+    assert_eq!(bench.esp_resilience(), Some(false));
+}
+
+/// Firmware without the setting (no ESPInfo yet, or ESPInfo without the
+/// field): 400, nothing written to the ESP32, nothing saved.
+#[tokio::test]
+async fn post_disturbance_resilience_on_unsupported_firmware_returns_400() {
+    for info in [None, Some(esp::EspInfo::default())] {
+        let bench = Bench::new();
+        bench.app.machine.state.lock().esp_info = info;
+
+        let reply = bench
+            .post_settings(json!({"disturbance_resilience": true}))
+            .await;
+
+        bench.assert_rejected(
+            &reply,
+            400,
+            "disturbance_resilience is not supported by the machine firmware",
+        );
+        assert_eq!(bench.writes(), no_writes());
+    }
+}
+
+/// A refused sibling setting fails the request before the ESP32 is written,
+/// whatever the key order, so the ESP32 never holds a value the request
+/// reported as failed.
+#[tokio::test]
+async fn post_disturbance_resilience_with_a_refused_sibling_writes_nothing() {
+    let bench = Bench::new();
+    bench.set_esp_info(resilience_firmware(false));
+
+    let reply = bench
+        .post(
+            "/api/v1/settings",
+            r#"{"disturbance_resilience": true, "heating_timeout": true}"#,
+        )
+        .await;
+
+    assert_eq!(reply.status_code(), 404);
+    assert_eq!(bench.writes(), no_writes());
+    bench.assert_not_saved();
+}
+
+/// Not a bool: the usual type check, 404, nothing written.
+#[tokio::test]
+async fn post_disturbance_resilience_must_be_a_bool() {
+    let bench = Bench::new();
+    bench.set_esp_info(resilience_firmware(false));
+
+    let reply = bench
+        .post_settings(json!({"disturbance_resilience": "on"}))
+        .await;
+
+    bench.assert_rejected(
+        &reply,
+        404,
+        "\"setting value invalid, received <class 'str'> and expected <class 'bool'>\"",
+    );
+    assert_eq!(bench.writes(), no_writes());
+}
+
+/// The ESP32 is the source of truth: an ESPInfo with the field overwrites
+/// the setting and saves it, and the backend never writes its own value
+/// back. An ESPInfo without the field (older firmware) leaves it alone.
+#[tokio::test]
+async fn esp_info_overwrites_the_disturbance_resilience_setting() {
+    const INFO: &str = "ESPInfo,1.2.3,off,120,NOT_ASSIGNED,NOT_ASSIGNED,NOT_ASSIGNED,NOT_ASSIGNED,scale1,45.33,false,after_retraction,123e4567-e89b-42d3-a456-426614174000";
+    let bench = Bench::new();
+
+    crate::machine::Machine::handle_line_for_test(&bench.app, &format!("{INFO},true\n"));
+
+    bench.assert_saved(json!({"disturbance_resilience": true}));
+    assert!(
+        !bench
+            .writes()
+            .iter()
+            .any(|w| w.starts_with(b"nvs_request,write,disturbance_resilience_key"))
+    );
+
+    crate::machine::Machine::handle_line_for_test(&bench.app, &format!("{INFO}\n"));
+    assert_eq!(bench.user()["disturbance_resilience"], json!(true));
+    assert_eq!(
+        bench.saved_config()[keys::USER]["disturbance_resilience"],
+        json!(true)
+    );
+}

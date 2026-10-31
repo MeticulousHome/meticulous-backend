@@ -70,6 +70,15 @@ pub fn machine_info(app: &App) -> Value {
         "tare_behavior_supported".into(),
         json!(esp_info.as_ref().is_some_and(|i| i.tare_behavior.is_some())),
     );
+    let disturbance_resilience = esp_info.as_ref().and_then(|i| i.disturbance_resilience);
+    response.insert(
+        "disturbance_resilience".into(),
+        json!(disturbance_resilience),
+    );
+    response.insert(
+        "disturbance_resilience_supported".into(),
+        json!(disturbance_resilience.is_some()),
+    );
     let pour_over = app.pour_over.is_available();
     response.insert("pour_over_profiles_supported".into(), json!(pour_over));
     response.insert(

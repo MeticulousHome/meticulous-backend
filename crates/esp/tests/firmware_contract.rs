@@ -42,14 +42,14 @@ const KNOWN: &[Known] = &[
     Known {
         name: "Sensors",
         token: "Sensors",
-        fields_read: 23,
+        fields_read: 25,
         exact: false,
         rest: false,
     },
     Known {
         name: "ESPInfo",
         token: "ESPInfo",
-        fields_read: 12,
+        fields_read: 13,
         exact: false,
         rest: false,
     },

@@ -69,6 +69,11 @@ pub fn sensor_dict(s: &SensorData) -> Value {
     map.insert("water_status".into(), Value::Bool(s.water_status));
     map.insert("motor_thermistor".into(), s.motor_thermistor.to_json());
     map.insert("weight_prediction".into(), s.weight_prediction.to_json());
+    map.insert("kalman_weight".into(), s.kalman_weight.to_json());
+    map.insert(
+        "predicted_kalman_weight".into(),
+        s.predicted_kalman_weight.to_json(),
+    );
     Value::Object(map)
 }
 

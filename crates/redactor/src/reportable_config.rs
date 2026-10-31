@@ -47,6 +47,7 @@ const APPROVED_PATHS: &[(&[&str], Validator)] = &[
     (&["user", "auto_start_shot"], is_bool),
     (&["user", "auto_purge_after_shot"], is_bool),
     (&["user", "tare_behavior"], is_string),
+    (&["user", "disturbance_resilience"], is_bool),
     (&["user", "partial_retraction"], is_number),
     (&["user", "heat_on_boot"], is_bool),
     (&["user", "heating_timeout"], is_number),

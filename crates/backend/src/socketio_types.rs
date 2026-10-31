@@ -172,6 +172,12 @@ mod tests {
             // A motor thermistor out of range.
             "Sensors,90.1,91.2,92,93,94,95,85,40,50,10.5,100,5,2.5,1,3,9,0.1,0.2,0.3,0.4,true,inf,18.5"
                 .to_string(),
+            // The Kalman readings of disturbance resilience firmware, not a
+            // number ("NaN") and infinite (null) each way round.
+            "Sensors,90.1,91.2,92,93,94,95,85,40,50,10.5,100,5,2.5,1,3,9,0.1,0.2,0.3,0.4,true,40,18.5,nan,inf,"
+                .to_string(),
+            "Sensors,90.1,91.2,92,93,94,95,85,40,50,10.5,100,5,2.5,1,3,9,0.1,0.2,0.3,0.4,true,40,18.5,inf,nan,"
+                .to_string(),
         ];
         for (i, line) in golden_lines().iter().chain(&extra).enumerate() {
             match esp::classify_line(line) {

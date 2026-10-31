@@ -72,7 +72,10 @@ pub(super) fn run(app: Arc<App>, port: Box<dyn SerialPort>) {
 
 /// One decoded line. Returns the valid message type (and the firmware
 /// version an ESPInfo carried) when the line counts as valid traffic.
-fn handle_line(app: &Arc<App>, data_str: &str) -> Option<(&'static str, Option<String>)> {
+pub(super) fn handle_line(
+    app: &Arc<App>,
+    data_str: &str,
+) -> Option<(&'static str, Option<String>)> {
     let machine = &app.machine;
     if app
         .config
@@ -105,6 +108,7 @@ fn handle_line(app: &Arc<App>, data_str: &str) -> Option<(&'static str, Option<S
             state.profile_ready = false;
         }
         machine.reset_device_uuid_enrollment();
+        machine.fail_disturbance_resilience_write("machine restarted");
         is_valid_message = false;
     }
 
@@ -169,6 +173,10 @@ fn handle_line(app: &Arc<App>, data_str: &str) -> Option<(&'static str, Option<S
             machine.handle_tare_behavior_response(&status);
             valid_message_type = Some("NVSResponse");
         }
+        EspLine::DisturbanceResilienceNvsResponse(status) => {
+            machine.handle_disturbance_resilience_response(&status);
+            valid_message_type = Some("NVSResponse");
+        }
         EspLine::Notify(parsed) => {
             notify = Some(parsed);
             valid_message_type = Some("Notify");
@@ -209,6 +217,10 @@ fn handle_line(app: &Arc<App>, data_str: &str) -> Option<(&'static str, Option<S
         }
         EspLine::NvsError(text) => {
             tracing::warn!("ESP nvs_response error: {text}");
+            // Firmware without the key answers the write without naming it.
+            if esp::sync::is_keyless_nvs_error(&text) {
+                machine.fail_disturbance_resilience_write(&text);
+            }
             valid_message_type = Some("NVSResponse");
         }
         EspLine::Unknown => {
@@ -478,6 +490,18 @@ fn handle_esp_info(app: &Arc<App>, info: esp::EspInfo) {
         other => crate::metconfig::py_repr(&other),
     };
     machine.set_tare_behavior(&tare);
+    // The ESP32 is the source of truth for disturbance resilience: its value
+    // is copied into the settings, never the other way round.
+    if let Some(resilience) = info.disturbance_resilience
+        && app.config.get(keys::USER, keys::DISTURBANCE_RESILIENCE) != Value::Bool(resilience)
+    {
+        app.config.set(
+            keys::USER,
+            keys::DISTURBANCE_RESILIENCE,
+            Value::Bool(resilience),
+        );
+        app.config.save();
+    }
     machine.sync_device_uuid(app, &info.device_uuid, info.device_uuid_supported);
 
     let assigned = |v: &str| !v.is_empty() && v != "NOT_ASSIGNED";

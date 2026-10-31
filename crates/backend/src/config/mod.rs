@@ -46,6 +46,10 @@ pub mod keys {
     pub const PROFILE_AUTO_START: &str = "auto_start_shot";
     pub const PROFILE_AUTO_PURGE: &str = "auto_purge_after_shot";
     pub const PROFILE_TARE_BEHAVIOR: &str = "tare_behavior";
+    /// Mirrors the ESP32's `disturbance_resilience_key`, which is the source
+    /// of truth: ESPInfo overwrites it, a change is saved only once the
+    /// ESP32 stored it.
+    pub const DISTURBANCE_RESILIENCE: &str = "disturbance_resilience";
     pub const PROFILE_PARTIAL_RETRACTION: &str = "partial_retraction";
     pub const MACHINE_HEAT_ON_BOOT: &str = "heat_on_boot";
     pub const MACHINE_HEATING_TIMEOUT: &str = "heating_timeout";
@@ -149,6 +153,7 @@ pub fn defaults() -> Value {
             PROFILE_AUTO_START: false,
             PROFILE_AUTO_PURGE: false,
             PROFILE_TARE_BEHAVIOR: TARE_BEHAVIOR_AFTER_RETRACTION,
+            DISTURBANCE_RESILIENCE: false,
             PROFILE_PARTIAL_RETRACTION: PARTIAL_RETRACTION_DEFAULT,
             MACHINE_HEAT_ON_BOOT: true,
             MACHINE_HEATING_TIMEOUT: 10,

@@ -98,6 +98,19 @@ pub fn tare_behavior_status_ok(status: &str) -> bool {
     status.to_uppercase() == "SUCCESS"
 }
 
+/// `nvs_response,disturbance_resilience_key,<status>`: only `SUCCESS` means
+/// the ESP32 stored the value; `ERROR` and anything else fail the write.
+pub fn disturbance_resilience_status_ok(status: &str) -> bool {
+    status == "SUCCESS"
+}
+
+/// An `nvs_response` without a key (`nvs_response,ERROR: key not found` from
+/// firmware that does not know `disturbance_resilience_key`) is the ESP32
+/// refusing the request it is answering.
+pub fn is_keyless_nvs_error(text: &str) -> bool {
+    text.starts_with("ERROR")
+}
+
 /// The outcome of `Machine.setTareBehavior`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TareBehaviorPlan {

@@ -55,11 +55,12 @@ pub enum NvsKey {
     PartialRetraction,
     AutoPurgeAfterShot,
     TareBehavior,
+    DisturbanceResilience,
     Mileage,
 }
 
 impl NvsKey {
-    pub const ALL: [NvsKey; 8] = [
+    pub const ALL: [NvsKey; 9] = [
         NvsKey::Color,
         NvsKey::SerialNumber,
         NvsKey::BatchNumber,
@@ -67,6 +68,7 @@ impl NvsKey {
         NvsKey::PartialRetraction,
         NvsKey::AutoPurgeAfterShot,
         NvsKey::TareBehavior,
+        NvsKey::DisturbanceResilience,
         NvsKey::Mileage,
     ];
 
@@ -80,6 +82,7 @@ impl NvsKey {
             NvsKey::PartialRetraction => "partial_retraction_key",
             NvsKey::AutoPurgeAfterShot => "auto_purge_after_shot_key",
             NvsKey::TareBehavior => "tare_behavior_key",
+            NvsKey::DisturbanceResilience => "disturbance_resilience_key",
             NvsKey::Mileage => "mileage_key",
         }
     }
@@ -115,6 +118,15 @@ pub fn auto_purge_write(value: bool) -> Vec<u8> {
 /// `Machine.setTareBehavior`.
 pub fn tare_behavior_write(value: &str) -> Vec<u8> {
     nvs_write(NvsKey::TareBehavior, value)
+}
+
+/// The disturbance resilience write the settings handler waits on:
+/// `true`/`false`.
+pub fn disturbance_resilience_write(value: bool) -> Vec<u8> {
+    nvs_write(
+        NvsKey::DisturbanceResilience,
+        if value { "true" } else { "false" },
+    )
 }
 
 /// `Machine._handleMileageRequest`: the shot count that seeds the counter.
