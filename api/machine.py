@@ -63,6 +63,12 @@ def get_machine_info():
     response["tare_behavior_supported"] = bool(
         Machine.esp_info is not None and Machine.esp_info.tareBehavior is not None
     )
+    response["disturbance_resilience"] = (
+        Machine.esp_info.disturbanceResilience if Machine.esp_info is not None else None
+    )
+    response["disturbance_resilience_supported"] = (
+        response["disturbance_resilience"] is not None
+    )
     response["pour_over_profiles_supported"] = PourOverProfileManager.is_available()
     response["pour_over_profile_schema_version"] = (
         1 if PourOverProfileManager.is_available() else None

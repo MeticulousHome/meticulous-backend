@@ -164,7 +164,11 @@ class TestMachineInfoRoute(ApiTestCase):
             {"version": "2026M1400-beta", "date": "2026-09-01"}
         ]
         Machine.esp_info = ESPInfo(
-            firmwareV="1.2.3", espPinout=1, mainVoltage=230.5, tareBehavior="auto"
+            firmwareV="1.2.3",
+            espPinout=1,
+            mainVoltage=230.5,
+            tareBehavior="auto",
+            disturbanceResilience=True,
         )
         Machine.enable_manufacturing = True
         UpdateManager.is_changed = True
@@ -181,6 +185,8 @@ class TestMachineInfoRoute(ApiTestCase):
             "firmware": "1.2.3",
             "mainVoltage": 230.5,
             "tare_behavior_supported": True,
+            "disturbance_resilience": True,
+            "disturbance_resilience_supported": True,
             "pour_over_profiles_supported": True,
             "pour_over_profile_schema_version": 1,
             "serial": "1234",
@@ -220,6 +226,8 @@ class TestMachineInfoRoute(ApiTestCase):
             "name": "MeticulousEspresso",
             "hostname": "meticulousAromaticbean-1234",
             "tare_behavior_supported": False,
+            "disturbance_resilience": None,
+            "disturbance_resilience_supported": False,
             "pour_over_profiles_supported": False,
             "pour_over_profile_schema_version": None,
             "serial": None,
@@ -243,6 +251,8 @@ class TestMachineInfoRoute(ApiTestCase):
         assert body["firmware"] == "1.0.0"
         assert body["mainVoltage"] == 120.0
         assert body["tare_behavior_supported"] is False
+        assert body["disturbance_resilience"] is None
+        assert body["disturbance_resilience_supported"] is False
 
     def test_unparseable_build_date_reports_null_software_version(self):
         self.build_date_file.write_text("2026-10-06 12:34:56\n")

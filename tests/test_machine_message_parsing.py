@@ -118,6 +118,38 @@ class TestSensorData:
         assert reparsed.pressure_sensor == data.pressure_sensor
         assert reparsed.water_status == data.water_status
 
+    # Sensors lines end with a comma (EspressoFirmware contracts/uart/protocol.json),
+    # so the split leaves an empty last element.
+
+    def test_parse_kalman_weights_from_new_firmware(self):
+        args = self.make_args() + ["18.2", "19.7", ""]
+        data = SensorData.from_args(args)
+        assert data.weight_prediction == 18.5
+        assert data.kalman_weight == 18.2
+        assert data.predicted_kalman_weight == 19.7
+        sio = data.to_sio_sensors()
+        assert sio["weight_pred"] == 18.5
+        assert sio["weight_kalman"] == 18.2
+        assert sio["weight_pred_kalman"] == 19.7
+
+    def test_older_23_field_line_keeps_kalman_defaults(self):
+        data = SensorData.from_args(self.make_args() + [""])
+        assert data is not None
+        assert data.weight_prediction == 18.5
+        assert data.kalman_weight == 0.0
+        assert data.predicted_kalman_weight == 0.0
+
+    def test_nan_kalman_weights(self):
+        data = SensorData.from_args(self.make_args() + ["nan", "nan", ""])
+        assert data.kalman_weight == "NaN"
+        assert data.predicted_kalman_weight == "NaN"
+
+    def test_roundtrip_kalman_weights(self):
+        data = SensorData.from_args(self.make_args() + ["18.2", "19.7", ""])
+        reparsed = SensorData.from_args(data.to_args())
+        assert reparsed.kalman_weight == 18.2
+        assert reparsed.predicted_kalman_weight == 19.7
+
     def test_to_sio_sensors_keys(self):
         args = self.make_args()
         data = SensorData.from_args(args)
@@ -378,6 +410,8 @@ class TestESPInfo:
             "auto_purge_after_shot",
             "tare_behavior",
             "tare_behavior_supported",
+            "disturbance_resilience",
+            "disturbance_resilience_supported",
         }
         assert not contains_value(payload)
 
@@ -401,6 +435,49 @@ class TestESPInfo:
 
         assert info.deviceUUID == ""
         assert info.deviceUUIDSupported
+
+    def espinfo_args(self, *trailing):
+        return [
+            "1.2.3",
+            "2",
+            "24.5",
+            "black",
+            "SN123",
+            "B456",
+            "2024-01-01",
+            "scale1",
+            "45.0",
+            "false",
+            "before_retraction",
+            "",
+            *trailing,
+        ]
+
+    @pytest.mark.parametrize("value, expected", [("true", True), ("false", False)])
+    def test_parse_disturbance_resilience_from_new_firmware(self, value, expected):
+        info = ESPInfo.from_args(self.espinfo_args(value))
+
+        assert info.disturbanceResilience is expected
+        assert info.tareBehavior == "before_retraction"
+        assert info.deviceUUIDSupported
+        assert info.to_sio()["disturbance_resilience"] is expected
+        assert info.to_sio()["disturbance_resilience_supported"] is True
+
+    def test_firmware_without_disturbance_resilience_reports_it_unsupported(self):
+        info = ESPInfo.from_args(self.espinfo_args())
+
+        assert info.disturbanceResilience is None
+        assert info.to_sio()["disturbance_resilience"] is None
+        assert info.to_sio()["disturbance_resilience_supported"] is False
+
+    def test_roundtrip_to_args_with_disturbance_resilience(self):
+        for value in (True, False):
+            info = ESPInfo(disturbanceResilience=value)
+
+            reparsed = ESPInfo.from_args(info.to_args())
+
+            assert reparsed.disturbanceResilience is value
+            assert reparsed.tareBehavior is None
 
     def test_roundtrip_to_args_with_tare_behavior(self):
         info = ESPInfo(tareBehavior="after_retraction")

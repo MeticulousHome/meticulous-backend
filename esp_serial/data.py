@@ -33,6 +33,16 @@ def safe_float_with_nan(value):
         return "NaN"
 
 
+def _parse_nvs_bool(value: str) -> Optional[bool]:
+    """Read a boolean the firmware reports from its NVS; None when it is not one."""
+    normalized = value.strip().lower()
+    if normalized == "true":
+        return True
+    if normalized == "false":
+        return False
+    return None
+
+
 @dataclass
 class SensorData:
     """Class respresenting the current state of all sensors"""
@@ -60,6 +70,10 @@ class SensorData:
     water_status: bool = False
     motor_thermistor: float = 0.0
     weight_prediction: float = 0.0
+    # Sent by firmware with disturbance resilience; older firmware stops at
+    # weight_prediction and these keep their defaults.
+    kalman_weight: float = 0.0
+    predicted_kalman_weight: float = 0.0
 
     def from_color_coded_args(colorSeperatedArgs):
         global colorSensorRegex
@@ -100,6 +114,12 @@ class SensorData:
                 motor_thermistor=safe_float_with_nan(args[21]),
                 weight_prediction=safe_float_with_nan(args[22]),
             )
+            # The firmware ends the line with a comma, so an older 23-field line
+            # arrives with an empty 24th element.
+            if len(args) > 23 and args[23] != "":
+                data.kalman_weight = safe_float_with_nan(args[23])
+            if len(args) > 24 and args[24] != "":
+                data.predicted_kalman_weight = safe_float_with_nan(args[24])
 
         except Exception as e:
             logger.warning(f"Failed to parse SensorData ({len(args)}): {args}", exc_info=e)
@@ -132,6 +152,8 @@ class SensorData:
             "true" if self.water_status else "false",
             str(self.motor_thermistor),
             str(self.weight_prediction),
+            str(self.kalman_weight),
+            str(self.predicted_kalman_weight),
         ]
         return args
 
@@ -160,6 +182,8 @@ class SensorData:
             "w_stat": self.water_status,
             "motor_temp": self.motor_thermistor,
             "weight_pred": self.weight_prediction,
+            "weight_kalman": self.kalman_weight,
+            "weight_pred_kalman": self.predicted_kalman_weight,
         }
 
 
@@ -181,6 +205,8 @@ class ESPInfo:
     tareBehavior: Optional[str] = None
     deviceUUID: str = ""
     deviceUUIDSupported: bool = False
+    # None when the firmware does not report it (older than disturbance resilience).
+    disturbanceResilience: Optional[bool] = None
 
     def from_args(args):
         espPinout = 0
@@ -206,6 +232,8 @@ class ESPInfo:
                     args[11],
                     True,
                 )
+                if len(args) >= 13:
+                    info.disturbanceResilience = _parse_nvs_bool(args[12])
             elif len(args) >= 11:
                 if deviceUUIDRegex.fullmatch(args[10]):
                     info = ESPInfo(
@@ -296,10 +324,12 @@ class ESPInfo:
         ]
         if self.tareBehavior is not None:
             args.append(self.tareBehavior)
-        if self.deviceUUIDSupported:
+        if self.deviceUUIDSupported or self.disturbanceResilience is not None:
             if self.tareBehavior is None:
                 args.append("")
             args.append(self.deviceUUID)
+        if self.disturbanceResilience is not None:
+            args.append("true" if self.disturbanceResilience else "false")
         return args
 
     def to_sio(self):
@@ -317,6 +347,8 @@ class ESPInfo:
             "auto_purge_after_shot": self.autoPurgeAfterShot,
             "tare_behavior": self.tareBehavior,
             "tare_behavior_supported": self.tareBehavior is not None,
+            "disturbance_resilience": self.disturbanceResilience,
+            "disturbance_resilience_supported": self.disturbanceResilience is not None,
         }
 
 
