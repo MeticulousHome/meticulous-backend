@@ -87,6 +87,7 @@ class SensorData:
             args = args[1:]
         return SensorData.from_args(args)
 
+    @staticmethod
     def from_args(args):
         try:
             data = SensorData(
@@ -208,6 +209,7 @@ class ESPInfo:
     # None when the firmware does not report it (older than disturbance resilience).
     disturbanceResilience: Optional[bool] = None
 
+    @staticmethod
     def from_args(args):
         espPinout = 0
         try:

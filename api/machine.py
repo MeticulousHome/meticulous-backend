@@ -1,4 +1,5 @@
 import json
+from typing import Any
 from pathlib import Path
 import shutil
 import subprocess
@@ -51,7 +52,7 @@ def cleanup_factory_reset_data(root: Path = FACTORY_RESET_ROOT):
 
 
 def get_machine_info():
-    response = {}
+    response: dict[str, Any] = {}
     config = WifiManager.getCurrentConfig()
     response["name"] = HostnameManager.generateDeviceName()
     response["hostname"] = config.hostname
