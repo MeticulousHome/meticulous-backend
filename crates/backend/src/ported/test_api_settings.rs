@@ -29,6 +29,30 @@ use crate::timezone::TIMEZONE_STATUS_COMMAND;
 
 const TIMEZONE_URL: &str = "https://analytics.meticulousespresso.com/timezone_ip";
 
+/// Settings clients use profile IDs as row identities. An older profile-order
+/// client must not restore duplicated rows after startup repaired the config.
+/// The expected order preserves the client's first occurrence of every ID,
+/// including unknown IDs, rather than depending on the loaded profile list.
+#[tokio::test]
+async fn profile_order_write_repairs_duplicates_in_response_and_on_disk() {
+    let bench = Bench::new();
+    let reply = bench
+        .post_settings(json!({"profile_order": ["second", "first", "second", "unknown", "first"]}))
+        .await;
+    let expected = json!(["second", "first", "unknown"]);
+
+    assert_eq!(reply.status_code(), 200);
+    assert_eq!(body(&reply)["profile_order"], expected);
+    assert_eq!(
+        bench.saved_config()[keys::USER][keys::PROFILE_ORDER],
+        expected
+    );
+    assert_eq!(
+        body(&bench.get("/api/v1/settings").await)["profile_order"],
+        expected
+    );
+}
+
 /// Values every test starts from (`USER_BASELINE`).
 fn user_baseline() -> Value {
     json!({
