@@ -192,8 +192,34 @@ fn rendered(fields: Value, to_args: Option<Vec<String>>, to_sio: &Value) -> Valu
     Value::Object(out)
 }
 
+/// The goldens come from the Python before disturbance resilience: its
+/// additions (the Kalman readings after `predicted_weight`, the ESPInfo field
+/// after the UUID, and their payload keys) are taken out of the Rust output
+/// before the comparison. `tests/disturbance_resilience.rs` covers them.
+pub fn without_disturbance_resilience(
+    mut to_args: Vec<String>,
+    first_new_arg: usize,
+    to_sio: &Value,
+    new_keys: &[&str],
+) -> (Vec<String>, Value) {
+    to_args.truncate(first_new_arg.min(to_args.len()));
+    let mut to_sio = to_sio.clone();
+    if let Some(payload) = to_sio.as_object_mut() {
+        for key in new_keys {
+            payload.shift_remove(*key);
+        }
+    }
+    (to_args, to_sio)
+}
+
 pub fn render_sensors(s: &SensorData) -> Value {
-    rendered(sensor_fields(s), Some(s.to_args()), &s.to_sio_sensors())
+    let (to_args, to_sio) = without_disturbance_resilience(
+        s.to_args(),
+        23,
+        &s.to_sio_sensors(),
+        &["weight_kalman", "weight_pred_kalman"],
+    );
+    rendered(sensor_fields(s), Some(to_args), &to_sio)
 }
 
 pub fn render_shot(s: &ShotData) -> Value {
@@ -201,7 +227,13 @@ pub fn render_shot(s: &ShotData) -> Value {
 }
 
 pub fn render_info(i: &EspInfo) -> Value {
-    rendered(info_fields(i), Some(i.to_args()), &i.to_sio())
+    let (to_args, to_sio) = without_disturbance_resilience(
+        i.to_args(),
+        12,
+        &i.to_sio(),
+        &["disturbance_resilience", "disturbance_resilience_supported"],
+    );
+    rendered(info_fields(i), Some(to_args), &to_sio)
 }
 
 pub fn render_button(b: &ButtonEventData) -> Value {

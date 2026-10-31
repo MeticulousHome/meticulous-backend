@@ -334,6 +334,9 @@ fn info_device_uuid_not_exposed_to_sio() {
         "auto_purge_after_shot",
         "tare_behavior",
         "tare_behavior_supported",
+        // Added with disturbance resilience (the firmware's ESPInfo field 12).
+        "disturbance_resilience",
+        "disturbance_resilience_supported",
     ];
     expected.sort_unstable();
     assert_eq!(sorted, expected);

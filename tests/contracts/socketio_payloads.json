@@ -41,7 +41,9 @@
     "t_motor_temp",
     "t_tube",
     "w_stat",
-    "weight_pred"
+    "weight_kalman",
+    "weight_pred",
+    "weight_pred_kalman"
   ],
   "button": [
     "time_since_last_event",

@@ -114,6 +114,12 @@ pub struct SensorData {
     pub water_status: bool,
     pub motor_thermistor: PyNum,
     pub weight_prediction: PyNum,
+    /// The tared weight after the firmware's Kalman filter. Firmware without
+    /// disturbance resilience does not send it: 0.0.
+    pub kalman_weight: PyNum,
+    /// `kalman_weight` plus its dripping prediction, which ends the shot when
+    /// disturbance resilience is on. 0.0 from older firmware.
+    pub predicted_kalman_weight: PyNum,
 }
 
 impl Default for SensorData {
@@ -143,6 +149,8 @@ impl Default for SensorData {
             water_status: false,
             motor_thermistor: zero,
             weight_prediction: zero,
+            kalman_weight: zero,
+            predicted_kalman_weight: zero,
         }
     }
 }
@@ -191,6 +199,8 @@ impl SensorData {
             water_status: arg(args, 20)?.to_lowercase() == "true",
             motor_thermistor: PyNum::safe_float_with_nan(arg(args, 21)?),
             weight_prediction: PyNum::safe_float_with_nan(arg(args, 22)?),
+            kalman_weight: optional_reading(args, 23),
+            predicted_kalman_weight: optional_reading(args, 24),
         })
     }
 
@@ -224,6 +234,8 @@ impl SensorData {
         args.push(bool_arg(self.water_status));
         args.push(self.motor_thermistor.to_py_string());
         args.push(self.weight_prediction.to_py_string());
+        args.push(self.kalman_weight.to_py_string());
+        args.push(self.predicted_kalman_weight.to_py_string());
         args
     }
 
@@ -253,6 +265,8 @@ impl SensorData {
             ("w_stat", Value::Bool(self.water_status)),
             ("motor_temp", self.motor_thermistor.to_json()),
             ("weight_pred", self.weight_prediction.to_json()),
+            ("weight_kalman", self.kalman_weight.to_json()),
+            ("weight_pred_kalman", self.predicted_kalman_weight.to_json()),
         ])
     }
 
@@ -283,7 +297,7 @@ impl SensorData {
         Ts::named(
             "SensorsPayload",
             "The `sensors` event, after each `Sensors` frame. `safeFloat` sends 0 for a value that is\n\
-             not finite, except in `motor_temp` and `weight_pred`.",
+             not finite, except in `motor_temp` and the `weight_*` readings.",
             Ts::object(
                 clamped
                     .into_iter()
@@ -292,9 +306,22 @@ impl SensorData {
                         field("w_stat", Ts::Boolean),
                         field("motor_temp", sensor_reading_type()),
                         field("weight_pred", sensor_reading_type()),
+                        field("weight_kalman", sensor_reading_type()),
+                        field("weight_pred_kalman", sensor_reading_type()),
                     ]),
             ),
         )
+    }
+}
+
+/// A reading only newer firmware sends after the 23 fields every firmware
+/// sends. Older firmware ends the line with a comma, so the field is then
+/// missing or empty: 0.0, like the dataclass default. `nan` is `"NaN"`, as
+/// for `weight_prediction`.
+fn optional_reading<S: AsRef<str>>(args: &[S], index: usize) -> PyNum {
+    match arg(args, index) {
+        Some(value) if !value.is_empty() => PyNum::safe_float_with_nan(value),
+        _ => PyNum::Float(0.0),
     }
 }
 
@@ -321,6 +348,9 @@ pub struct EspInfo {
     pub tare_behavior: Option<String>,
     pub device_uuid: String,
     pub device_uuid_supported: bool,
+    /// `disturbance_resilience_key` as the ESP32 stores it; `None` when the
+    /// firmware does not send the field (it does not support the setting).
+    pub disturbance_resilience: Option<bool>,
 }
 
 impl Default for EspInfo {
@@ -339,6 +369,7 @@ impl Default for EspInfo {
             tare_behavior: None,
             device_uuid: String::new(),
             device_uuid_supported: false,
+            disturbance_resilience: None,
         }
     }
 }
@@ -378,6 +409,9 @@ impl EspInfo {
             info.tare_behavior = (!tare.is_empty()).then_some(tare);
             info.device_uuid = text(11);
             info.device_uuid_supported = true;
+            if n >= 13 {
+                info.disturbance_resilience = Some(text(12).to_lowercase() == "true");
+            }
         } else if n == 11 {
             // The device UUID arrived before tare behaviour existed: an
             // eleventh field that is a UUID is the UUID.
@@ -411,11 +445,15 @@ impl EspInfo {
         if let Some(tare) = &self.tare_behavior {
             args.push(tare.clone());
         }
-        if self.device_uuid_supported {
+        // The field after the UUID needs the tare and UUID fields before it.
+        if self.device_uuid_supported || self.disturbance_resilience.is_some() {
             if self.tare_behavior.is_none() {
                 args.push(String::new());
             }
             args.push(self.device_uuid.clone());
+        }
+        if let Some(resilience) = self.disturbance_resilience {
+            args.push(bool_arg(resilience));
         }
         args
     }
@@ -445,6 +483,14 @@ impl EspInfo {
             (
                 "tare_behavior_supported",
                 Value::Bool(self.tare_behavior.is_some()),
+            ),
+            (
+                "disturbance_resilience",
+                self.disturbance_resilience.map_or(Value::Null, Value::Bool),
+            ),
+            (
+                "disturbance_resilience_supported",
+                Value::Bool(self.disturbance_resilience.is_some()),
             ),
         ])
     }

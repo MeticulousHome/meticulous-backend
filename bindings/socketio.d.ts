@@ -106,7 +106,7 @@ export type ReportFinalStage = "submitted" | "failed" | "cancelled";
 
 /**
  * The `sensors` event, after each `Sensors` frame. `safeFloat` sends 0 for a value that is
- * not finite, except in `motor_temp` and `weight_pred`.
+ * not finite, except in `motor_temp` and the `weight_*` readings.
  */
 export interface SensorsPayload {
   t_ext_1: number;
@@ -132,6 +132,8 @@ export interface SensorsPayload {
   w_stat: boolean;
   motor_temp: SensorReading;
   weight_pred: SensorReading;
+  weight_kalman: SensorReading;
+  weight_pred_kalman: SensorReading;
 }
 
 /**

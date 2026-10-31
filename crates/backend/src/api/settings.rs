@@ -202,6 +202,9 @@ async fn post(app: Arc<App>, req: Request) -> Reply {
         }
     };
     let mut reply = Reply::base();
+    // Written to the ESP32 once every other setting passed, so a refused
+    // sibling does not leave the ESP32 changed.
+    let mut disturbance_resilience = None;
     for (target, mut value) in entries {
         if target == keys::PROFILE_PARTIAL_RETRACTION {
             // isinstance(True, int) holds in Python.
@@ -320,9 +323,21 @@ async fn post(app: Arc<App>, req: Request) -> Reply {
                 .machine
                 .set_tare_behavior(value.as_str().unwrap_or_default()),
             keys::SHOT_DATA_SHARING => app.shot_sharing.on_setting_changed(&app, &value),
+            keys::DISTURBANCE_RESILIENCE => {
+                // Firmware support is checked by the write, like the Python.
+                disturbance_resilience = value.as_bool();
+                continue;
+            }
             _ => {}
         }
         work.insert(target, value);
+    }
+    if let Some(value) = disturbance_resilience {
+        // Saved only once the ESP32 stored it: it is the source of truth.
+        if let Err(error) = app.machine.save_disturbance_resilience(value).await {
+            return refuse(Refusal::Other(error.to_string()));
+        }
+        work.insert(keys::DISTURBANCE_RESILIENCE.into(), Value::Bool(value));
     }
     app.config.set_section(keys::USER, Value::Object(work));
     app.config.save();

@@ -113,6 +113,8 @@ async fn reports_every_machine_field_from_esp_config_and_image_metadata() {
             "firmware": "1.2.3",
             "mainVoltage": 230.5,
             "tare_behavior_supported": true,
+            "disturbance_resilience": null,
+            "disturbance_resilience_supported": false,
             "pour_over_profiles_supported": true,
             "pour_over_profile_schema_version": 1,
             "serial": "1234",
@@ -164,6 +166,8 @@ async fn fresh_machine_without_esp_or_image_metadata_reports_empty_defaults() {
             "name": "MeticulousEspresso",
             "hostname": "meticulousAromaticbean-1234",
             "tare_behavior_supported": false,
+            "disturbance_resilience": null,
+            "disturbance_resilience_supported": false,
             "pour_over_profiles_supported": false,
             "pour_over_profile_schema_version": null,
             "serial": null,
@@ -201,6 +205,27 @@ async fn firmware_without_tare_behavior_reports_tare_behavior_unsupported() {
     assert_eq!(machine["firmware"], json!("1.0.0"));
     assert_eq!(machine["mainVoltage"], json!(120.0));
     assert_eq!(machine["tare_behavior_supported"], json!(false));
+}
+
+/// Not a port: `disturbance_resilience_supported` is true once the
+/// firmware's ESPInfo carries the field (the disturbance resilience
+/// contract), so the Dial can show the setting.
+#[tokio::test]
+async fn firmware_with_disturbance_resilience_reports_it_supported() {
+    let (_dir, app) = app();
+    machine_on_home_network(&app);
+    esp_reports(
+        &app,
+        Some(esp::EspInfo {
+            disturbance_resilience: Some(false),
+            ..esp::EspInfo::default()
+        }),
+    );
+
+    let machine = body(&get_machine(&app).await);
+
+    assert_eq!(machine["disturbance_resilience"], json!(false));
+    assert_eq!(machine["disturbance_resilience_supported"], json!(true));
 }
 
 /// Deliberate fix (machine_info.rs): when the network configuration cannot

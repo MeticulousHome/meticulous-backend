@@ -155,6 +155,9 @@ pub enum EspLine {
     /// Exactly `nvs_response,tare_behavior_key,<status>`, for
     /// `Machine.handleTareBehaviorNVSResponse`.
     TareBehaviorNvsResponse(String),
+    /// Exactly `nvs_response,disturbance_resilience_key,<status>`: the
+    /// answer to the write a settings request waits on.
+    DisturbanceResilienceNvsResponse(String),
     /// `Notify,<type>[,<message>...]`: the message is the remaining fields
     /// joined with `,`, with every `;` turned into a newline.
     Notify(MachineNotify),
@@ -167,7 +170,7 @@ pub enum EspLine {
     /// Exactly `MileageRequest`.
     MileageRequest,
     /// Exactly `nvs_response,<key>,<value>` (any key but
-    /// `tare_behavior_key`), for `Machine._handleNvsResponse`
+    /// `tare_behavior_key` and `disturbance_resilience_key`), for `Machine._handleNvsResponse`
     /// (see `sync::NvsReply`).
     NvsResponse { key: String, value: String },
     /// Any other `nvs_response` line, logged as a warning
@@ -208,6 +211,9 @@ pub fn classify_line(data_str: &str) -> EspLine {
         ["nvs_response", "tare_behavior_key", status] => {
             EspLine::TareBehaviorNvsResponse(owned(status))
         }
+        ["nvs_response", "disturbance_resilience_key", status] => {
+            EspLine::DisturbanceResilienceNvsResponse(owned(status))
+        }
         ["Notify", notify_args @ ..] => match notify_args.split_first() {
             Some((notification_type, rest)) => EspLine::Notify(MachineNotify {
                 notification_type: owned(notification_type),
@@ -244,6 +250,7 @@ impl EspLine {
             EspLine::EspBoot { .. } => Some("ESPBoot"),
             EspLine::DeviceUuidResponse(_) => Some("DeviceUUIDResponse"),
             EspLine::TareBehaviorNvsResponse(_)
+            | EspLine::DisturbanceResilienceNvsResponse(_)
             | EspLine::NvsResponse { .. }
             | EspLine::NvsError(_) => Some("NVSResponse"),
             EspLine::Notify(_) => Some("Notify"),
