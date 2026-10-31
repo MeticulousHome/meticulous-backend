@@ -80,6 +80,8 @@ SHARED_SENSOR_FIELDS = {
     "water_status": KEEP,
     "motor_thermistor": KEEP,
     "weight_prediction": KEEP,
+    "kalman_weight": KEEP,
+    "predicted_kalman_weight": KEEP,
 }
 
 SHARED_SHOT_SCHEMA = {
@@ -104,6 +106,8 @@ SHARED_SHOT_SCHEMA = {
         "auto_purge_after_shot": KEEP,
         "tare_behavior": KEEP,
         "tare_behavior_supported": KEEP,
+        "disturbance_resilience": KEEP,
+        "disturbance_resilience_supported": KEEP,
     },
     # The brew recipe without its author or identifiers.
     "profile": {
@@ -120,6 +124,7 @@ SHARED_SHOT_SCHEMA = {
         "auto_purge_after_shot": KEEP,
         "auto_start_shot": KEEP,
         "tare_behavior": KEEP,
+        "disturbance_resilience": KEEP,
         "partial_retraction": KEEP,
         "heat_on_boot": KEEP,
         "heating_timeout": KEEP,

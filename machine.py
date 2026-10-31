@@ -27,6 +27,7 @@ from config import (
     MACHINE_BATCH_NUMBER,
     MACHINE_HEAT_ON_BOOT,
     PROFILE_AUTO_PURGE,
+    PROFILE_DISTURBANCE_RESILIENCE,
     PROFILE_TARE_BEHAVIOR,
     PROFILE_PARTIAL_RETRACTION,
     MeticulousConfig,
@@ -118,6 +119,38 @@ MILEAGE_RETRY_INTERVAL_SECONDS = 5
 # would otherwise leave the firmware version and identity unknown.
 ESP_INFO_RETRY_INTERVAL_SECONDS = 2
 
+# How long POST /settings waits for the ESP to confirm a disturbance_resilience write.
+DISTURBANCE_RESILIENCE_WRITE_TIMEOUT_SECONDS = 5.0
+
+
+class DisturbanceResilienceWriteError(Exception):
+    """The ESP did not store a requested disturbance_resilience value."""
+
+
+class _PendingNvsWrite:
+    """A write waiting for its nvs_response, resolved from the UART thread.
+
+    The future belongs to the loop of the caller (the tornado loop); the UART
+    reader runs its own loop on the MachineSerial thread, so it resolves the
+    future through call_soon_threadsafe on the caller's loop.
+    """
+
+    def __init__(self, value):
+        self.value = value
+        self.loop = asyncio.get_running_loop()
+        self.future = self.loop.create_future()
+
+    def resolve(self, status: str):
+        def _set():
+            if not self.future.done():
+                self.future.set_result(status)
+
+        try:
+            self.loop.call_soon_threadsafe(_set)
+        except RuntimeError:
+            # The caller's loop is gone; nobody is waiting any more.
+            pass
+
 
 class esp_nvs_keys(Enum):
     color = "color_key"
@@ -127,6 +160,7 @@ class esp_nvs_keys(Enum):
     partial_retraction = "partial_retraction_key"
     auto_purge_after_shot = "auto_purge_after_shot_key"
     tare_behavior = "tare_behavior_key"
+    disturbance_resilience = "disturbance_resilience_key"
     mileage = "mileage_key"
 
 
@@ -204,6 +238,10 @@ class Machine:
     DEVICE_UUID_RETRY_DELAY_SECONDS = 2.0
     HAWKBIT_UPDATER_RESTART_TIMEOUT_SECONDS = 5
     _pending_tare_behavior_writes = []
+    # Writes of disturbance_resilience awaiting their nvs_response, oldest first.
+    # Touched by the tornado loop and the UART thread, hence the lock.
+    _pending_disturbance_resilience_writes: list[_PendingNvsWrite] = []
+    _pending_disturbance_resilience_lock = threading.Lock()
 
     @staticmethod
     def _capture_esp_diagnostic(diagnostic: ESPDiagnostic):
@@ -494,6 +532,7 @@ class Machine:
                     Machine.startTime = time.time()
                     Machine.esp_info = None
                     Machine._pending_tare_behavior_writes = []
+                    Machine._failPendingDisturbanceResilienceWrites("machine restarted")
                     Machine._info_requested_at = None
                     Machine.infoReady = False
                     Machine.profileReady = False
@@ -554,6 +593,9 @@ class Machine:
                         valid_message_type = "DeviceUUIDResponse"
                     case ["nvs_response", "tare_behavior_key", status]:
                         Machine.handleTareBehaviorNVSResponse(status)
+                        valid_message_type = "NVSResponse"
+                    case ["nvs_response", "disturbance_resilience_key", status]:
+                        Machine.handleDisturbanceResilienceNVSResponse(status)
                         valid_message_type = "NVSResponse"
                     case ["Notify", *notifyArgs]:
                         notify = MachineNotify(
@@ -660,6 +702,9 @@ class Machine:
                         valid_message_type = "NVSResponse"
                     case ["nvs_response", *nvs_error]:
                         logger.warning(f"ESP nvs_response error: {','.join(nvs_error)}")
+                        # Firmware without disturbance resilience answers its write
+                        # with "ERROR: key not found", which names no key.
+                        Machine._failOldestDisturbanceResilienceWrite(",".join(nvs_error))
                         valid_message_type = "NVSResponse"
                     case [*_]:
                         logger.info(data_str.strip("\r\n"))
@@ -821,6 +866,8 @@ class Machine:
                         MeticulousConfig[CONFIG_USER][PROFILE_TARE_BEHAVIOR]
                     )
                     Machine.setTareBehavior(backend_tare_behavior)
+                    # The ESP owns disturbance_resilience: adopt its value, never push ours.
+                    Machine._adoptDisturbanceResilience(info.disturbanceResilience)
                     Machine.syncDeviceUUID(info.deviceUUID, info.deviceUUIDSupported)
 
                     if (
@@ -960,6 +1007,7 @@ class Machine:
             )
         )
         Machine._stopESPcomm = True
+        Machine._failPendingDisturbanceResilienceWrites("firmware update started")
         Machine.esp_restart_request = True
         error_msg = None
         try:
@@ -1122,6 +1170,7 @@ class Machine:
             logger.warning(f"Unparseable mileage from ESP: {nvs_value}")
 
     def reset():
+        Machine._failPendingDisturbanceResilienceWrites("machine restarted")
         Machine.esp_restart_request = True
         Machine.esp_observability.begin_expected_reset(time.monotonic())
         Machine._connection.reset()
@@ -1493,6 +1542,125 @@ Build Date: {build_date}
         if Machine.esp_info is not None:
             Machine.esp_info.tareBehavior = pending_value
         logger.info("ESP32 confirmed tare_behavior NVS write: " + pending_value)
+
+    @staticmethod
+    def _adoptDisturbanceResilience(esp_value):
+        """Store the ESP's disturbance_resilience in the user config when it differs."""
+        if esp_value is None:
+            return
+        if MeticulousConfig[CONFIG_USER].get(PROFILE_DISTURBANCE_RESILIENCE) == esp_value:
+            return
+        MeticulousConfig[CONFIG_USER][PROFILE_DISTURBANCE_RESILIENCE] = esp_value
+        MeticulousConfig.save()
+        logger.info(f"Adopted disturbance_resilience={esp_value} from the ESP32")
+
+    @staticmethod
+    def disturbanceResilienceSupported() -> bool:
+        return (
+            Machine.esp_info is not None and Machine.esp_info.disturbanceResilience is not None
+        )
+
+    @staticmethod
+    async def writeDisturbanceResilience(value: bool):
+        """Write disturbance_resilience to the ESP's NVS and wait for its answer.
+
+        Returns once the ESP replied SUCCESS. Raises DisturbanceResilienceWriteError
+        when the firmware does not support it, the serial link is down, the ESP
+        rejects the write, or no answer arrives within the timeout.
+        """
+        desired_value = bool(value)
+        if not Machine.disturbanceResilienceSupported():
+            raise DisturbanceResilienceWriteError(
+                "disturbance_resilience is not supported by the machine firmware"
+            )
+
+        if (
+            Machine._connection is None
+            or Machine._connection.port is None
+            or Machine._stopESPcomm
+        ):
+            raise DisturbanceResilienceWriteError(
+                "failed to save disturbance_resilience on the machine: " "no serial connection"
+            )
+
+        pending = _PendingNvsWrite(desired_value)
+        payload = (
+            "nvs_request,write,"
+            + esp_nvs_keys.disturbance_resilience.value
+            + ","
+            + ("true" if desired_value else "false")
+            + "\x03"
+        )
+        # Queue before writing so a fast reply always finds its request.
+        with Machine._pending_disturbance_resilience_lock:
+            Machine._pending_disturbance_resilience_writes.append(pending)
+        try:
+            Machine.write(payload.encode("utf-8"))
+            logger.info(f"Writing disturbance_resilience={desired_value} to the ESP32")
+            status = await asyncio.wait_for(
+                asyncio.shield(pending.future),
+                DISTURBANCE_RESILIENCE_WRITE_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            logger.error("Timed out waiting for the ESP32 to save disturbance_resilience")
+            raise DisturbanceResilienceWriteError(
+                "timed out waiting for the machine to save disturbance_resilience"
+            )
+        finally:
+            with Machine._pending_disturbance_resilience_lock:
+                if pending in Machine._pending_disturbance_resilience_writes:
+                    Machine._pending_disturbance_resilience_writes.remove(pending)
+
+        if status != "SUCCESS":
+            raise DisturbanceResilienceWriteError(
+                f"failed to save disturbance_resilience on the machine: {status}"
+            )
+
+    @staticmethod
+    def handleDisturbanceResilienceNVSResponse(status: str):
+        if status in ("true", "false"):
+            # Reply to a read: the value the ESP holds.
+            value = status == "true"
+            if Machine.esp_info is not None:
+                Machine.esp_info.disturbanceResilience = value
+            Machine._adoptDisturbanceResilience(value)
+            return
+
+        with Machine._pending_disturbance_resilience_lock:
+            if not Machine._pending_disturbance_resilience_writes:
+                logger.warning(
+                    f"Received disturbance_resilience NVS response without a pending write: {status}"
+                )
+                return
+            pending = Machine._pending_disturbance_resilience_writes.pop(0)
+
+        if status == "SUCCESS":
+            if Machine.esp_info is not None:
+                Machine.esp_info.disturbanceResilience = pending.value
+            logger.info(f"ESP32 saved disturbance_resilience={pending.value}")
+        else:
+            logger.error(
+                "ESP32 rejected disturbance_resilience NVS write: "
+                + f"requested={pending.value}, status={status}"
+            )
+        pending.resolve(status)
+
+    @staticmethod
+    def _failOldestDisturbanceResilienceWrite(status: str):
+        with Machine._pending_disturbance_resilience_lock:
+            if not Machine._pending_disturbance_resilience_writes:
+                return
+            pending = Machine._pending_disturbance_resilience_writes.pop(0)
+        logger.error(f"ESP32 could not save disturbance_resilience: {status}")
+        pending.resolve(status)
+
+    @staticmethod
+    def _failPendingDisturbanceResilienceWrites(status: str):
+        with Machine._pending_disturbance_resilience_lock:
+            pending_writes = Machine._pending_disturbance_resilience_writes
+            Machine._pending_disturbance_resilience_writes = []
+        for pending in pending_writes:
+            pending.resolve(status)
 
     def _parseVersionString(version_str: str):
         release = None

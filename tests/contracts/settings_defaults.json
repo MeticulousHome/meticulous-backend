@@ -26,6 +26,7 @@
     "debug_shot_data_retention_days": 31,
     "disable_ui_features": false,
     "disallow_firmware_flashing": false,
+    "disturbance_resilience": false,
     "enable_sounds": true,
     "heat_on_boot": true,
     "heating_timeout": 10,

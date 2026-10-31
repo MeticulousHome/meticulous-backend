@@ -87,6 +87,13 @@ class PourOverFileHandler(BaseHandler):
 
 
 class PourOverHistoryHandler(LocalAccessHandler):
+    def prepare(self):
+        # History reads, like espresso history and Pour Over files, are available
+        # to LAN clients. Only the Dial's history writes require local access.
+        if self.request.method in ("GET", "OPTIONS"):
+            return BaseHandler.prepare(self)
+        return super().prepare()
+
     async def post(self):
         if len(self.request.body) > MAX_POUR_OVER_BODY_BYTES:
             self.set_status(413)

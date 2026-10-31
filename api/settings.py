@@ -13,6 +13,7 @@ from config import (
     SSH_ENABLED,
     PROFILE_ORDER,
     PROFILE_AUTO_PURGE,
+    PROFILE_DISTURBANCE_RESILIENCE,
     PROFILE_TARE_BEHAVIOR,
     PROFILE_PARTIAL_RETRACTION,
     REPORT_CONTACT_MAIL,
@@ -120,6 +121,9 @@ class SettingsHandler(BaseHandler):
             return
 
         workConfig = copy.deepcopy(MeticulousConfig[CONFIG_USER])
+        # Written to the ESP only once every other setting validated, so a bad
+        # sibling setting cannot leave the ESP changed while the request fails.
+        disturbance_resilience_request = None
 
         try:
             for setting_target in settings:
@@ -190,8 +194,17 @@ class SettingsHandler(BaseHandler):
                 if setting_target == SHOT_DATA_SHARING:
                     ShotDataSharing.on_setting_changed(value)
 
+                if setting_target == PROFILE_DISTURBANCE_RESILIENCE:
+                    # Stored only after the ESP confirmed the write, below.
+                    disturbance_resilience_request = value
+                    continue
+
                 # If we made it here without exception we can update the setting
                 workConfig[setting_target] = value
+
+            if disturbance_resilience_request is not None:
+                await Machine.writeDisturbanceResilience(disturbance_resilience_request)
+                workConfig[PROFILE_DISTURBANCE_RESILIENCE] = disturbance_resilience_request
 
         except KeyError as e:  # The variable is invalid in some way
             self.set_status(404)
