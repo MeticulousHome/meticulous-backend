@@ -8,6 +8,7 @@
 
 mod yaml;
 
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -414,6 +415,10 @@ fn normalize(tree: &mut Value) {
     user.shift_remove("telemetry_service_enabled");
     user.shift_remove("allow_debug_sending");
 
+    if let Some(order) = user.get_mut(keys::PROFILE_ORDER) {
+        deduplicate_profile_order(order);
+    }
+
     let stored = user
         .get(keys::PROFILE_PARTIAL_RETRACTION)
         .cloned()
@@ -451,6 +456,19 @@ fn normalize(tree: &mut Value) {
             json!(TARE_BEHAVIOR_AFTER_RETRACTION),
         );
         tracing::warn!("Reset unsupported tare_behavior to after_retraction");
+    }
+}
+
+/// Older Python profile-list reads could append the previous profile's ID.
+/// Keep first positions and unknown IDs: startup has not loaded the inventory,
+/// and the web profile list deliberately omits the manual-mode profile.
+pub(crate) fn deduplicate_profile_order(value: &mut Value) {
+    if let Some(order) = value.as_array_mut() {
+        let mut seen = HashSet::new();
+        order.retain(|entry| match entry.as_str() {
+            Some(id) => seen.insert(id.to_owned()),
+            None => true,
+        });
     }
 }
 

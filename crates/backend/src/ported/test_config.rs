@@ -60,6 +60,22 @@ fn load_removes_retired_telemetry_settings() {
     assert_eq!(persisted[keys::USER].get("allow_debug_sending"), None);
 }
 
+/// An older Python profile-list read appended a stale ID repeatedly. The
+/// profile-order UI uses these IDs as row identities: keep each first position,
+/// including unknown IDs (the profile inventory is not loaded yet). Unlike the
+/// existing empty-order test, this catches duplicates surviving an OTA/restart.
+#[test]
+fn load_repairs_duplicate_profile_order_and_persists_it() {
+    let disk = "user:\n  profile_order: [second, first, second, unknown, first, 42, null, 42]\n";
+    let (_dir, path, store) = load(disk);
+    let expected = json!(["second", "first", "unknown", 42, null, 42]);
+
+    assert_eq!(store.get(keys::USER, keys::PROFILE_ORDER), expected);
+    assert_eq!(read_yaml(&path)[keys::USER][keys::PROFILE_ORDER], expected);
+    let reopened = ConfigStore::open(&path, config::defaults());
+    assert_eq!(reopened.get(keys::USER, keys::PROFILE_ORDER), expected);
+}
+
 /// tests/test_config.py::test_load_replaces_non_string_tare_behavior
 #[test]
 fn load_replaces_non_string_tare_behavior() {

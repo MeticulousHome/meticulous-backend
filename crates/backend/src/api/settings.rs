@@ -224,6 +224,9 @@ async fn post(app: Arc<App>, req: Request) -> Reply {
         if let Err(refusal) = validate(&user_now, &target, &value) {
             return refuse(refusal);
         }
+        if target == keys::PROFILE_ORDER {
+            config::deduplicate_profile_order(&mut value);
+        }
         match target.as_str() {
             keys::SSH_ENABLED => {
                 let enabled = value.as_bool().unwrap_or(false);
