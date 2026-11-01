@@ -216,4 +216,5 @@ class SoundPlayer:
 
     @staticmethod
     def is_playing():
-        return get_sound_player_status() == SoundPlayerStatus.PLAYING
+        sound = SoundPlayer._current_sound
+        return sound is not None and sound.is_alive()
