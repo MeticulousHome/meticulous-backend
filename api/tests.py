@@ -40,6 +40,8 @@ class TestsHandler(LocalAccessHandler):
                 return
 
         logger.debug("Playing audio stream")
+        # playsound3 has the kernel SIGTERM gst-play when the thread that started it
+        # exits (PR_SET_PDEATHSIG), so this thread must outlive the sound.
         while SoundPlayer.is_playing() or time.monotonic() - start < 1:
             time.sleep(0.1)
         logger.debug("speaker test finished")
