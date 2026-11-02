@@ -50,14 +50,17 @@ class PourOverFileHandler(BaseHandler):
                     reverse=True,
                 )[:MAX_DIRECTORY_RESULTS],
             )
+            self.set_header("Content-Type", "application/json")
             self.write(
-                [
-                    {
-                        "name": entry.name.removesuffix(".zst"),
-                        "url": entry.name,
-                    }
-                    for entry in entries
-                ]
+                json.dumps(
+                    [
+                        {
+                            "name": entry.name.removesuffix(".zst"),
+                            "url": entry.name,
+                        }
+                        for entry in entries
+                    ]
+                )
             )
             return
 
