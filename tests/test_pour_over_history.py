@@ -1,3 +1,10 @@
+"""Protect public Pour Over history reads and local-only history writes.
+
+Real Tornado routes must serve directory arrays (the same name/url contract as
+espresso history), not fail on Tornado's rejection of raw list writes. Existing
+record/index tests did not exercise root/day traversal used by older LAN clients.
+"""
+
 import json
 import tempfile
 from pathlib import Path
@@ -144,6 +151,72 @@ class TestPourOverHistoryAPI(AsyncHTTPTestCase):
         raw = self.fetch(f"/api/v1/history/pour-over/files/{relative_path}")
         assert raw.code == 200
         assert json.loads(raw.body)["id"] == free_pour_session()["id"]
+
+    def test_lan_directory_traversal_returns_json_arrays_and_downloadable_record(self):
+        """Root/day listings must preserve the history name/url array contract.
+
+        Names come from the save route's actual stored filename; a raw list passed
+        to Tornado.write raises TypeError and turns both listings into HTTP 500.
+        """
+        saved = self.save()
+        assert saved.code == 201
+        relative_path = json.loads(saved.body)["history"]["file"]
+        date, filename = relative_path.split("/")
+        headers = {"Host": "machine.local", "X-Real-IP": "192.168.10.20"}
+
+        root = self.fetch("/api/v1/history/pour-over/files/", headers=headers)
+        assert root.code == 200
+        assert root.headers["Content-Type"].startswith("application/json")
+        assert root.headers["Access-Control-Allow-Origin"] == "*"
+        assert json.loads(root.body) == [{"name": date, "url": date}]
+
+        for suffix in (date, f"{date}/"):
+            directory = self.fetch(f"/api/v1/history/pour-over/files/{suffix}", headers=headers)
+            assert directory.code == 200
+            assert directory.headers["Content-Type"].startswith("application/json")
+            assert json.loads(directory.body) == [
+                {"name": filename.removesuffix(".zst"), "url": filename}
+            ]
+
+        record = self.fetch(f"/api/v1/history/pour-over/files/{relative_path}", headers=headers)
+        assert record.code == 200
+        assert record.headers["Content-Type"].startswith("application/json")
+        assert json.loads(record.body) == json.loads(
+            zstd.ZstdDecompressor().decompress(
+                self.history_path.joinpath(relative_path).read_bytes()
+            )
+        )
+
+    def test_existing_empty_directory_returns_empty_json_array(self):
+        """Before any records, an existing directory is [], never a list-write 500."""
+        self.history_path.mkdir()
+        response = self.fetch("/api/v1/history/pour-over/files/")
+        assert response.code == 200
+        assert response.headers["Content-Type"].startswith("application/json")
+        assert json.loads(response.body) == []
+
+    def test_remote_mutations_remain_local_only_even_with_loopback_host_header(self):
+        """The proxy's X-Real-IP controls write permission, never client Host.
+
+        LocalAccessHandler rejects remote mutation methods before their bodies or
+        unsupported-method handling; allowing history GET must not widen writes.
+        """
+        for host in ("machine.local", "localhost", "127.0.0.1"):
+            for method in ("POST", "PUT", "DELETE"):
+                response = self.fetch(
+                    "/api/v1/history/pour-over",
+                    method=method,
+                    headers={"Host": host, "X-Real-IP": "192.168.10.20"},
+                    body="{}" if method in ("POST", "PUT") else None,
+                )
+                assert response.code == 403
+                assert response.headers["Access-Control-Allow-Origin"] == "*"
+                assert (
+                    json.loads(response.body)["error"]
+                    == "This endpoint can only be accessed locally"
+                )
+        assert PourOverHistoryManager.search() == []
+        assert not list(self.history_path.rglob("*.zst"))
 
     def test_duplicate_session_is_idempotent(self):
         first = self.save()

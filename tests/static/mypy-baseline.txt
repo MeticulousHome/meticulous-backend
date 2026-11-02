@@ -58,7 +58,6 @@
 1 api/password_handler.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
 1 api/pour_over_history.py: [arg-type] Argument "mode" to "search" of "PourOverHistoryManager" has incompatible type "str | None"; expected "Literal['free_pour', 'profile'] | None"
 1 api/pour_over_history.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
-1 api/pour_over_history.py: [arg-type] Argument 1 to "write" of "RequestHandler" has incompatible type "list[dict[str, str]]"; expected "str | bytes | dict[Any, Any]"
 1 api/pour_over_profiles.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
 1 api/profiles.py: [arg-type] Argument 1 to "_set_last_profile" of "ProfileManager" has incompatible type "dict[str, object]"; expected "ProfileManager"
 1 api/profiles.py: [arg-type] Argument 1 to "getLogger" has incompatible type "str"; expected "MeticulousLogger"
