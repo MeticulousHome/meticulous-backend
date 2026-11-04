@@ -57,7 +57,11 @@ pub struct FakeState {
     pub now: f64,
     /// Real time a scan takes, for the shared cold-start scan.
     pub scan_delay: std::time::Duration,
+    /// What NetworkManager does on its own while the next scan runs.
+    pub during_scan: Option<ScanHook>,
 }
+
+pub type ScanHook = Box<dyn FnOnce(&FakeNetwork) + Send>;
 
 pub struct FakeNetwork {
     pub state: Mutex<FakeState>,
@@ -88,6 +92,7 @@ impl FakeNetwork {
                 internet_ok: true,
                 now: 1_800_000_000.0,
                 scan_delay: std::time::Duration::ZERO,
+                during_scan: None,
             }),
             device_wifi_calls: AtomicUsize::new(0),
         });
@@ -281,16 +286,19 @@ impl Nmcli for FakeNetwork {
 
     fn device_wifi(&self, rescan: Option<bool>) -> PyResult<Vec<ScanEntry>> {
         self.device_wifi_calls.fetch_add(1, Ordering::SeqCst);
-        let delay = {
+        let (delay, during_scan) = {
             let mut state = self.state.lock();
             state.calls.push(Call::DeviceWifi(rescan));
             if let Some(error) = state.scan_error.clone() {
                 return Err(error);
             }
-            state.scan_delay
+            (state.scan_delay, state.during_scan.take())
         };
         if !delay.is_zero() {
             std::thread::sleep(delay);
+        }
+        if let Some(hook) = during_scan {
+            hook(self);
         }
         Ok(self.state.lock().scan.clone())
     }
