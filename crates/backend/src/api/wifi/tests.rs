@@ -1447,7 +1447,8 @@ async fn routes_are_registered() {
             "/wifi/list",
             "/wifi/connect",
             "/wifi/repair",
-            "/wifi/delete"
+            "/wifi/delete",
+            "/wifi/group-rx"
         ]
     );
 }

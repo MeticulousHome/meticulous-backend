@@ -66,7 +66,10 @@ fn emulation_routes_replace_the_real_ones_without_networking() {
         .iter()
         .filter(|r| r.pattern.starts_with("/api/v1/wifi/"))
         .count();
-    assert_eq!(count, 6);
+    assert_eq!(
+        count, 7,
+        "the six of api/wifi.py and the group reception counters"
+    );
 
     app.wifi.set_networking_available(true);
     let router = crate::api::router(&app);

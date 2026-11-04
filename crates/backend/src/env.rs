@@ -40,6 +40,8 @@ pub struct Paths {
     pub device_uuid_cache: PathBuf,
     pub smoke_validation_state: PathBuf,
     pub smoke_validation_version: PathBuf,
+    /// The Wi-Fi group reception diagnostics' episode and 24 h counters.
+    pub wifi_group_rx_state: PathBuf,
     pub redaction_key: PathBuf,
     /// The Dial's timezone table, generated here on first use from the
     /// image's tzdata (the package's `UI_timezones.json` is not read).
@@ -240,6 +242,10 @@ impl Env {
                 "SMOKE_VALIDATION_VERSION_FILE",
                 "/opt/image-build-version",
             ),
+            wifi_group_rx_state: path(
+                "WIFI_GROUP_RX_STATE_PATH",
+                "/meticulous-user/syslog/wifi-group-rx.json",
+            ),
             redaction_key: path("REDACTION_KEY_PATH", "/root/.redaction_key"),
             timezone_json: path(
                 "TIMEZONE_JSON_FILE_PATH",
@@ -314,6 +320,7 @@ impl Env {
                 device_uuid_cache: user.join(".device-identity/device-uuid"),
                 smoke_validation_state: user.join("smoke-validation.json"),
                 smoke_validation_version: root.join("opt/image-build-version"),
+                wifi_group_rx_state: user.join("syslog/wifi-group-rx.json"),
                 redaction_key: root.join("root/.redaction_key"),
                 timezone_json: root.join("usr/share/zoneinfo/UI_timezones.json"),
                 firmware: root.join("opt/meticulous-firmware"),

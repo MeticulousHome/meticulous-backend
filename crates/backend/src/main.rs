@@ -23,6 +23,7 @@ mod device_identity;
 mod env;
 mod esp_tool;
 mod events;
+mod group_rx;
 mod host;
 mod hostname;
 mod http;
@@ -250,6 +251,7 @@ fn after_listen(app: &Arc<app::App>) {
     // `start_wifi_manager_in_background()`, which the boot harness patches out.
     if !app.emulated() && !app.env.hooks.fake_hardware {
         app.wifi.start_in_background();
+        app.group_rx.start();
     }
     tokio::spawn(events::live(app.clone()));
     app.imager.flash_if_required();

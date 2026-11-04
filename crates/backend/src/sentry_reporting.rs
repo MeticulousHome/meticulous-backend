@@ -20,6 +20,31 @@ const ESP_DSN: &str = "https://57bd3ab95e32eda7af5fca189527c235@sentry.meticulou
 
 type Scrubber = Arc<dyn Fn(Value) -> Option<Value> + Send + Sync>;
 
+/// A diagnostic event for the backend project, with its own grouping, tags,
+/// contexts and text attachments.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EventReport {
+    pub message: String,
+    pub level: Level,
+    pub fingerprint: Vec<String>,
+    pub tags: Vec<(String, String)>,
+    pub contexts: Vec<(String, Value)>,
+    /// (file name, text). Attachments do not go through the privacy
+    /// scrubber: redact them before they get here.
+    pub attachments: Vec<(String, String)>,
+}
+
+/// Where diagnostics send their events; tests record them instead.
+pub trait EventSink: Send + Sync {
+    fn send(&self, report: EventReport);
+}
+
+impl EventSink for Reporting {
+    fn send(&self, report: EventReport) {
+        self.capture_event(&report);
+    }
+}
+
 /// Shared state of both clients.
 pub struct Reporting {
     enabled: bool,
@@ -151,6 +176,19 @@ impl Reporting {
         );
     }
 
+    /// `report` to the backend project in a scope of its own.
+    pub fn capture_event(&self, report: &EventReport) {
+        if !self.enabled {
+            return;
+        }
+        sentry::with_scope(
+            |scope| scope_for(scope, report),
+            || {
+                sentry::capture_event(event_for(report));
+            },
+        );
+    }
+
     /// An event for the ESP32's project with its own tags, context and
     /// release (`espresso-firmware@<version>`).
     pub fn capture_esp_event(
@@ -199,6 +237,47 @@ impl Reporting {
             },
         );
     }
+}
+
+fn scope_for(scope: &mut sentry::Scope, report: &EventReport) {
+    for (key, value) in &report.tags {
+        if !value.is_empty() {
+            scope.set_tag(key, value);
+        }
+    }
+    for (name, value) in &report.contexts {
+        if let Value::Object(map) = value {
+            scope.set_context(
+                name,
+                sentry::protocol::Context::Other(map.clone().into_iter().collect()),
+            );
+        }
+    }
+    for (filename, text) in &report.attachments {
+        scope.add_attachment(sentry::protocol::Attachment {
+            buffer: text.clone().into_bytes(),
+            filename: filename.clone(),
+            content_type: Some("text/plain".into()),
+            ty: None,
+        });
+    }
+}
+
+fn event_for(report: &EventReport) -> Event<'static> {
+    let mut event = Event {
+        message: Some(report.message.clone()),
+        level: report.level,
+        ..Default::default()
+    };
+    if !report.fingerprint.is_empty() {
+        event.fingerprint = report
+            .fingerprint
+            .iter()
+            .map(|part| part.clone().into())
+            .collect::<Vec<_>>()
+            .into();
+    }
+    event
 }
 
 /// What both Python clients pass: no PII, no breadcrumbs, no tracing, and
@@ -301,6 +380,74 @@ mod tests {
                 .is_some_and(|id| !id.to_string().is_empty())
         );
         assert!(!own.id.is_nil());
+    }
+
+    /// A diagnostic event reaches Sentry with its grouping, tags, contexts
+    /// and attachments, and still through the privacy scrubber: a sensitive
+    /// tag or context key never leaves the machine. The event goes to the
+    /// test transport only.
+    #[test]
+    fn capture_event_keeps_grouping_and_attachments_through_the_scrubber() {
+        let reporting = Arc::new(Reporting {
+            enabled: true,
+            paused: AtomicBool::new(false),
+            scrubber: RwLock::new(None),
+            esp: None,
+            _guard: None,
+        });
+        reporting.set_scrubber(|event| redactor::sanitize_sentry_event(&event));
+        let weak = Arc::downgrade(&reporting);
+        let report = super::EventReport {
+            message: "diagnostic".into(),
+            level: super::Level::Warning,
+            fingerprint: vec!["diagnostic".into(), "moal".into()],
+            tags: vec![
+                ("wifi.driver".into(), "moal".into()),
+                ("wifi.dtim".into(), String::new()),
+                ("hostname".into(), "machine-1".into()),
+            ],
+            contexts: vec![(
+                "wifi_link".into(),
+                serde_json::json!({"channel": 36, "ssid": "HomeNet"}),
+            )],
+            attachments: vec![("wifi-log.txt".into(), "one\ntwo\n".into())],
+        };
+        let envelopes = sentry::test::with_captured_envelopes_options(
+            || reporting.capture_event(&report),
+            sentry::apply_defaults(options(move |event| filter(&weak, event))),
+        );
+
+        assert_eq!(envelopes.len(), 1);
+        let event = envelopes[0].event().expect("an event");
+        assert_eq!(event.message.as_deref(), Some("diagnostic"));
+        assert_eq!(event.level, super::Level::Warning);
+        assert_eq!(event.fingerprint.as_ref(), ["diagnostic", "moal"]);
+        assert_eq!(
+            event.tags.get("wifi.driver").map(String::as_str),
+            Some("moal")
+        );
+        assert!(
+            !event.tags.contains_key("wifi.dtim"),
+            "empty tags are left out"
+        );
+        assert!(
+            !event.tags.contains_key("hostname"),
+            "the scrubber drops it"
+        );
+        let Some(sentry::protocol::Context::Other(link)) = event.contexts.get("wifi_link") else {
+            panic!("the wifi_link context: {:?}", event.contexts);
+        };
+        assert_eq!(link.get("channel"), Some(&serde_json::json!(36)));
+        assert!(!link.contains_key("ssid"), "the scrubber drops it");
+        let attachment = envelopes[0]
+            .items()
+            .find_map(|item| match item {
+                sentry::protocol::EnvelopeItem::Attachment(a) => Some(a),
+                _ => None,
+            })
+            .expect("the attachment");
+        assert_eq!(attachment.filename, "wifi-log.txt");
+        assert_eq!(attachment.buffer, b"one\ntwo\n");
     }
 
     /// tests/test_sentry_offline.py::test_the_esp32_sentry_client_has_no_dsn_and_no_transport:

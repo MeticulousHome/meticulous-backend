@@ -6,6 +6,6 @@ Description: Meticulous Espresso Machine Backend
  Backend service for the Meticulous espresso machine: the HTTP and Socket.IO
  API for the Dial and the mobile app, the UART link to the ESP32 firmware, shot
  history and the machine's OS integration.
-Depends: libc6 (>= 2.36), python3, bluez, dbus, gstreamer1.0-plugins-base, gstreamer1.0-plugins-base-apps
+Depends: libc6 (>= 2.36), python3, bluez, dbus, gstreamer1.0-plugins-base, gstreamer1.0-plugins-base-apps, iw, wpasupplicant, ethtool
 Section: misc
 Priority: optional
