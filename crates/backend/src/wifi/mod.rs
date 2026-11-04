@@ -521,12 +521,18 @@ impl WifiManager {
         for network in networks {
             // The factory's test network.
             if manufacturing && network.ssid == "MeticulousEPW" {
+                if self.station_up_or_activating() {
+                    break;
+                }
                 let credentials = psk_credentials(&network.ssid, "23456789");
                 if self.connect_to_wifi(&credentials, "auto")? {
                     break;
                 }
             }
             if known.contains_key(&network.ssid) {
+                if self.station_up_or_activating() {
+                    break;
+                }
                 tracing::info!(
                     "Found known WIFI {}. Connecting",
                     self.redact_ssid(&network.ssid)
@@ -542,6 +548,38 @@ impl WifiManager {
             }
         }
         Ok(())
+    }
+
+    /// Whether NetworkManager brought a Wi-Fi device up, or is bringing one
+    /// up, since the pass found it disconnected: it retries its profiles on
+    /// its own while the pass scans or waits on a join.
+    ///
+    /// Deliberate fix: `tryAutoConnect` checks the connection only before its
+    /// scan, so a profile NetworkManager reactivated meanwhile was torn down
+    /// ("disconnecting for new activation request") for the first known
+    /// network the scan listed.
+    fn station_up_or_activating(&self) -> bool {
+        let devices = match self.host().nmcli().device_status() {
+            Ok(devices) => devices,
+            Err(error) => {
+                tracing::warn!("Failed to read WiFi device state: {error}");
+                return false;
+            }
+        };
+        // `parse_device` keeps the first word of "connecting (configuring)"
+        // and the other activation stages.
+        match devices.into_iter().find(|d| {
+            d.device_type == "wifi" && matches!(d.state.as_str(), "connected" | "connecting")
+        }) {
+            Some(device) => {
+                tracing::info!(
+                    "WiFi device is already {}, skipping auto-connect",
+                    device.state
+                );
+                true
+            }
+            None => false,
+        }
     }
 
     // ---- the current configuration ----
