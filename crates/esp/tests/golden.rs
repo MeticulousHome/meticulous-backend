@@ -179,21 +179,11 @@ fn constructed_messages_match_data_py() {
             }
             "SensorData" => {
                 let sensors = build_sensors(kwargs);
-                without_disturbance_resilience(
-                    sensors.to_args(),
-                    23,
-                    &sensors.to_sio_sensors(),
-                    &["weight_kalman", "weight_pred_kalman"],
-                )
+                without_kalman_readings(&sensors)
             }
             "ESPInfo" => {
                 let info = build_info(kwargs);
-                without_disturbance_resilience(
-                    info.to_args(),
-                    12,
-                    &info.to_sio(),
-                    &["disturbance_resilience", "disturbance_resilience_supported"],
-                )
+                (info.to_args(), info.to_sio())
             }
             other => panic!("type {other}"),
         };

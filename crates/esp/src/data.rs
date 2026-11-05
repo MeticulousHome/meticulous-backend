@@ -115,10 +115,10 @@ pub struct SensorData {
     pub motor_thermistor: PyNum,
     pub weight_prediction: PyNum,
     /// The tared weight after the firmware's Kalman filter. Firmware without
-    /// disturbance resilience does not send it: 0.0.
+    /// the filter does not send it: 0.0.
     pub kalman_weight: PyNum,
-    /// `kalman_weight` plus its dripping prediction, which ends the shot when
-    /// disturbance resilience is on. 0.0 from older firmware.
+    /// `kalman_weight` plus its dripping prediction, which ends the shot.
+    /// 0.0 from older firmware.
     pub predicted_kalman_weight: PyNum,
 }
 
@@ -348,9 +348,6 @@ pub struct EspInfo {
     pub tare_behavior: Option<String>,
     pub device_uuid: String,
     pub device_uuid_supported: bool,
-    /// `disturbance_resilience_key` as the ESP32 stores it; `None` when the
-    /// firmware does not send the field (it does not support the setting).
-    pub disturbance_resilience: Option<bool>,
 }
 
 impl Default for EspInfo {
@@ -369,7 +366,6 @@ impl Default for EspInfo {
             tare_behavior: None,
             device_uuid: String::new(),
             device_uuid_supported: false,
-            disturbance_resilience: None,
         }
     }
 }
@@ -409,9 +405,8 @@ impl EspInfo {
             info.tare_behavior = (!tare.is_empty()).then_some(tare);
             info.device_uuid = text(11);
             info.device_uuid_supported = true;
-            if n >= 13 {
-                info.disturbance_resilience = Some(text(12).to_lowercase() == "true");
-            }
+            // Firmware that still has the retired disturbance resilience
+            // setting sends it after the UUID: it is ignored.
         } else if n == 11 {
             // The device UUID arrived before tare behaviour existed: an
             // eleventh field that is a UUID is the UUID.
@@ -445,15 +440,11 @@ impl EspInfo {
         if let Some(tare) = &self.tare_behavior {
             args.push(tare.clone());
         }
-        // The field after the UUID needs the tare and UUID fields before it.
-        if self.device_uuid_supported || self.disturbance_resilience.is_some() {
+        if self.device_uuid_supported {
             if self.tare_behavior.is_none() {
                 args.push(String::new());
             }
             args.push(self.device_uuid.clone());
-        }
-        if let Some(resilience) = self.disturbance_resilience {
-            args.push(bool_arg(resilience));
         }
         args
     }
@@ -483,14 +474,6 @@ impl EspInfo {
             (
                 "tare_behavior_supported",
                 Value::Bool(self.tare_behavior.is_some()),
-            ),
-            (
-                "disturbance_resilience",
-                self.disturbance_resilience.map_or(Value::Null, Value::Bool),
-            ),
-            (
-                "disturbance_resilience_supported",
-                Value::Bool(self.disturbance_resilience.is_some()),
             ),
         ])
     }

@@ -60,6 +60,31 @@ fn load_removes_retired_telemetry_settings() {
     assert_eq!(persisted[keys::USER].get("allow_debug_sending"), None);
 }
 
+/// Machines that ran a release with the disturbance resilience setting have it
+/// in their file. Unknown keys survive a load, so without the removal in
+/// `normalize` the file would keep it and `GET /settings` would serve it again.
+/// The expected file is the retired-key rule above.
+#[test]
+fn load_removes_retired_disturbance_resilience_setting() {
+    for stored in [true, false] {
+        let mut disk = config::defaults();
+        disk[keys::USER]["disturbance_resilience"] = json!(stored);
+        let (dir, path, store) = load(&config::to_yaml(&disk));
+
+        assert!(!store.has_error());
+        assert!(broken_backups(dir.path()).is_empty());
+        assert!(!store.contains(keys::USER, "disturbance_resilience"));
+        assert_eq!(
+            read_yaml(&path)[keys::USER].get("disturbance_resilience"),
+            None
+        );
+        assert_eq!(
+            store.get(keys::USER, keys::PROFILE_TARE_BEHAVIOR),
+            json!(config::TARE_BEHAVIOR_AFTER_RETRACTION)
+        );
+    }
+}
+
 /// tests/test_config.py::test_load_replaces_non_string_tare_behavior
 #[test]
 fn load_replaces_non_string_tare_behavior() {
