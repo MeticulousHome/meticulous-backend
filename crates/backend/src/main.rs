@@ -195,6 +195,10 @@ async fn start(app: &Arc<app::App>) -> Result<(), String> {
     app.dbus.init().await;
     blocking(app, |app| app.hostname.init()).await;
     app.ota.init();
+    let serial = app
+        .config
+        .get(config::keys::SYSTEM, config::keys::MACHINE_SERIAL_NUMBER);
+    app.reporting.tag_build(&app.ota, &serial);
     app.alarms.init();
     app.machine.init(app)?;
     let machine = Arc::downgrade(app);
