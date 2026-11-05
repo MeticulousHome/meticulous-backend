@@ -1020,6 +1020,23 @@ impl Machine {
             && !self.stop_comm.load(Ordering::Relaxed)
     }
 
+    /// The machine may be switched off: nothing is brewing, heating or moving
+    /// and the ESP32 is not being flashed. Unlike standby this does not need
+    /// an ESP32 that answers: switching off is how a hung one gets cleared.
+    pub fn ready_for_power_off(&self) -> bool {
+        let state = self.state.lock();
+        (state.is_idle || !state.info_ready)
+            && !state.time_flag
+            && !state.observability.update_in_progress()
+            && !self.stop_comm.load(Ordering::Relaxed)
+    }
+
+    pub fn set_esp_power(&self, on: bool) {
+        if let Some(link) = self.link.lock().as_mut() {
+            link.set_power(on);
+        }
+    }
+
     pub fn mileage(&self) -> Option<i64> {
         self.state.lock().mileage
     }

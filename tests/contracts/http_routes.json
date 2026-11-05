@@ -180,6 +180,14 @@
     ]
   },
   {
+    "path": "/api/v1/machine/power_off",
+    "handler": "MachinePowerOffHandler",
+    "module": "api.machine",
+    "methods": [
+      "post"
+    ]
+  },
+  {
     "path": "/api/v1/machine/root-password",
     "handler": "RootPasswordHandler",
     "module": "api.password_handler",

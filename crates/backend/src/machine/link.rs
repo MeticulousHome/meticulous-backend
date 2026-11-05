@@ -177,6 +177,20 @@ impl EspLink {
         }
     }
 
+    /// Switch the ESP32's supply. Assumption from the first Python backend's
+    /// `turn_off()`, not a schematic: GPIO5_IO09 and the UART buffer high mean
+    /// off. Validate it on a board when changing this.
+    pub fn set_power(&mut self, on: bool) {
+        if let (LinkKind::Fika, Some(pins)) = (&self.kind, &self.pins) {
+            tracing::info!(
+                "Switching the ESP32 supply {}",
+                if on { "on" } else { "off" }
+            );
+            pins.set("en", !on);
+            pins.set("buffer_pin", !on);
+        }
+    }
+
     pub fn set_baud_rate(&mut self, baud: u32) {
         let _ = self.port.set_baud_rate(baud);
     }

@@ -7,6 +7,9 @@
 //! The Dial's quick settings can also ask for it at any time, even with
 //! `standby_timeout` off.
 //!
+//! It can also ask for the machine to be switched off: the ESP32's supply is
+//! cut and the SoC powers down, and only a power cycle starts it again.
+//!
 //! New in the Rust backend: the Python backend has no standby.
 
 use std::sync::Arc;
@@ -67,10 +70,17 @@ pub enum Phase {
     Waking,
 }
 
+/// What the Dial asked of the standby thread.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Requested {
+    Standby,
+    PowerOff,
+}
+
 pub struct Standby {
     last_activity: Mutex<Instant>,
     phase: Mutex<Phase>,
-    requested: Mutex<bool>,
+    requested: Mutex<Option<Requested>>,
     request_signal: Condvar,
     timings: Timings,
 }
@@ -86,7 +96,7 @@ impl Standby {
         Standby {
             last_activity: Mutex::new(Instant::now()),
             phase: Mutex::new(Phase::Awake),
-            requested: Mutex::new(false),
+            requested: Mutex::new(None),
             request_signal: Condvar::new(),
             timings,
         }
@@ -173,22 +183,30 @@ impl Standby {
     /// Go to standby now rather than after the idle timeout. Returns false
     /// when the machine is busy.
     pub fn request(&self, app: &App) -> bool {
-        if !self.can_enter(app) {
-            return false;
-        }
-        *self.requested.lock() = true;
+        self.can_enter(app) && self.ask(Requested::Standby)
+    }
+
+    /// Switch the machine off. Returns false when the machine is busy.
+    pub fn request_power_off(&self, app: &App) -> bool {
+        self.phase() == Phase::Awake
+            && app.machine.ready_for_power_off()
+            && !app.os_update.in_progress()
+            && self.ask(Requested::PowerOff)
+    }
+
+    fn ask(&self, what: Requested) -> bool {
+        *self.requested.lock() = Some(what);
         self.request_signal.notify_all();
         true
     }
 
-    /// Wait for the next look at the idle timer, or for a request; true for a
-    /// request.
-    fn wait_for_check(&self) -> bool {
+    /// Wait for the next look at the idle timer, or for a request.
+    fn wait_for_check(&self) -> Option<Requested> {
         let mut requested = self.requested.lock();
-        if !*requested {
+        if requested.is_none() {
             self.request_signal.wait_for(&mut requested, CHECK_INTERVAL);
         }
-        std::mem::take(&mut *requested)
+        requested.take()
     }
 
     fn due(&self, app: &App) -> bool {
@@ -220,6 +238,41 @@ impl Standby {
         self.wake(app);
         runtime.block_on(app.gatt.set_radio_powered(true));
         true
+    }
+
+    /// Cut the ESP32's supply, then power the SoC down. The ESP32 first gets
+    /// the chance to turn its heater and motor drivers off through standby,
+    /// but one that refuses or does not answer is switched off all the same.
+    /// Returns false when the SoC would not power down, with the ESP32 back on.
+    pub fn power_off(&self, app: &Arc<App>) -> bool {
+        tracing::info!("Powering off");
+        *self.phase.lock() = Phase::Requested;
+        app.machine.action(app, "standby");
+        if !self.wait_while(Phase::Requested, self.timings.esp_reply) {
+            tracing::warn!("The ESP32 did not answer action,standby before powering off");
+        }
+        // Whatever it answered, it is about to go silent on purpose.
+        *self.phase.lock() = Phase::Asleep;
+
+        let leave_hardware_alone = app.machine.emulated || app.env.hooks.fake_hardware;
+        app.backlight
+            .dim(&json!(0), &Value::Null, &Value::Null, leave_hardware_alone);
+        app.machine.set_esp_power(false);
+
+        let argv = ["systemctl", "poweroff"];
+        let failure = match app.host.run_with_timeout(&argv, SUSPEND_TIMEOUT) {
+            Ok(output) if output.success() => return true,
+            Ok(output) => crate::host::describe_failure(&argv, &output),
+            Err(error) => error.to_string(),
+        };
+        tracing::error!("Power off failed: {failure}");
+        app.machine.set_esp_power(true);
+        app.machine.reset();
+        app.backlight
+            .dim(&json!(1), &Value::Null, &Value::Null, leave_hardware_alone);
+        *self.phase.lock() = Phase::Awake;
+        self.note_activity();
+        false
     }
 
     /// Suspend to RAM through systemd directly rather than logind: logind's
@@ -282,14 +335,20 @@ pub fn start(app: Arc<App>) {
         .name("standby".into())
         .spawn(move || {
             loop {
-                let requested = app.standby.wait_for_check();
-                let enter = if requested {
-                    app.standby.can_enter(&app)
-                } else {
-                    app.standby.due(&app)
-                };
-                if enter {
-                    app.standby.enter(&app, &runtime);
+                match app.standby.wait_for_check() {
+                    Some(Requested::PowerOff) => {
+                        app.standby.power_off(&app);
+                    }
+                    Some(Requested::Standby) => {
+                        if app.standby.can_enter(&app) {
+                            app.standby.enter(&app, &runtime);
+                        }
+                    }
+                    None => {
+                        if app.standby.due(&app) {
+                            app.standby.enter(&app, &runtime);
+                        }
+                    }
                 }
             }
         });
@@ -402,8 +461,8 @@ mod tests {
             json!(STANDBY_TIMEOUT_OFF),
         );
         assert!(standby.request(&app));
-        assert!(standby.wait_for_check());
-        assert!(!*standby.requested.lock());
+        assert_eq!(standby.wait_for_check(), Some(Requested::Standby));
+        assert_eq!(*standby.requested.lock(), None);
 
         app.machine.state.lock().time_flag = true;
         assert!(!standby.request(&app));
@@ -415,6 +474,52 @@ mod tests {
 
         *standby.phase.lock() = Phase::Asleep;
         assert!(!standby.request(&app));
+    }
+
+    /// Switching off must not cut a shot or an update short, but a hung ESP32
+    /// that never reported ready is exactly what it may be needed for.
+    #[test]
+    fn power_off_is_taken_unless_the_machine_is_busy() {
+        let (_dir, app) = ready_app();
+        let standby = Standby::with_timings(FAST);
+        assert!(standby.request_power_off(&app));
+        assert_eq!(standby.wait_for_check(), Some(Requested::PowerOff));
+
+        app.machine.state.lock().time_flag = true;
+        assert!(!standby.request_power_off(&app));
+        app.machine.state.lock().time_flag = false;
+
+        app.os_update.set_last(OsStatus::Installing, 10.0);
+        assert!(!standby.request_power_off(&app));
+        app.os_update.set_last(OsStatus::Idle, 0.0);
+
+        {
+            let mut state = app.machine.state.lock();
+            state.info_ready = false;
+            state.is_idle = false;
+        }
+        assert!(standby.request_power_off(&app));
+    }
+
+    /// The ESP32 is told first, and the SoC goes down even when it does not
+    /// answer; nothing may wake or re-enter standby afterwards.
+    #[test]
+    fn power_off_tells_the_esp32_then_powers_the_soc_down() {
+        let (_dir, app) = ready_app();
+        app.machine.record_writes();
+        let runner = Arc::new(FakeRunner::default());
+        app.host.replace(runner.clone());
+        let standby = Standby::with_timings(FAST);
+
+        assert!(standby.power_off(&app));
+
+        assert_eq!(runner.argvs(), [["systemctl", "poweroff"]]);
+        assert_eq!(
+            app.machine.writes().first().map(Vec::as_slice),
+            Some(&b"action,standby\x03"[..])
+        );
+        assert_eq!(standby.phase(), Phase::Asleep);
+        assert!(!standby.due_after(&app, TIMEOUT));
     }
 
     /// The ESP32 answers `Standby,entering`, the SoC suspends through

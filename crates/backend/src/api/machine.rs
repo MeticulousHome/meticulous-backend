@@ -1,5 +1,6 @@
 //! `api/machine.py`: unlocking a limited-access machine, the backlight, the
-//! factory reset, the OS update status, the system clock and asking for standby.
+//! factory reset, the OS update status, the system clock and asking for standby
+//! or to be switched off.
 //!
 //! `GET /machine` (`MachineInfoHandler`) belongs here too; it is added with
 //! the machine runtime it reads.
@@ -40,7 +41,27 @@ pub fn routes() -> Vec<Route> {
         Route::new("/machine/standby", Kind::Base, m, "MachineStandbyHandler")
             .prepare(local_only)
             .post(standby),
+        Route::new(
+            "/machine/power_off",
+            Kind::Base,
+            m,
+            "MachinePowerOffHandler",
+        )
+        .prepare(local_only)
+        .post(power_off),
     ]
+}
+
+/// The Dial's "power off": on the machine only, since nothing can start it
+/// again but a power cycle. Refused while the machine is busy.
+async fn power_off(app: Arc<App>, _req: Request) -> Reply {
+    if crate::standby::available(&app) && app.standby.request_power_off(&app) {
+        Reply::base().json(json!({"status": "ok"}))
+    } else {
+        Reply::base()
+            .status(409)
+            .json(json!({"status": "error", "error": "The machine cannot power off now"}))
+    }
 }
 
 /// The Dial's "suspend": on the machine only, since the app could not wake a
@@ -443,6 +464,25 @@ mod tests {
         assert_eq!(remote.status_code(), 403);
 
         let local = call(&app, http::Method::POST, "/api/v1/machine/standby", "").await;
+        assert_eq!(local.status_code(), 409);
+    }
+
+    /// Nothing but a power cycle starts the machine again: the network must
+    /// not be able to do this.
+    #[tokio::test]
+    async fn power_off_is_local_only_and_refused_when_the_machine_cannot_do_it() {
+        let (_dir, app) = crate::testing::app();
+        let remote = crate::testing::call_with_headers(
+            &app,
+            http::Method::POST,
+            "/api/v1/machine/power_off",
+            "",
+            &[("X-Real-IP", "192.168.1.20")],
+        )
+        .await;
+        assert_eq!(remote.status_code(), 403);
+
+        let local = call(&app, http::Method::POST, "/api/v1/machine/power_off", "").await;
         assert_eq!(local.status_code(), 409);
     }
 
