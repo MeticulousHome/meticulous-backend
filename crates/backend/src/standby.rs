@@ -4,13 +4,15 @@
 //! (through the ESP32), the app's WoWLAN magic packet or the power key wake it.
 //! The image's systemd-sleep hook (meticulous-machine,
 //! `meticulous-standby`) arms those wake-up sources and the Wi-Fi power save.
+//! The Dial's quick settings can also ask for it at any time, even with
+//! `standby_timeout` off.
 //!
 //! New in the Rust backend: the Python backend has no standby.
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use parking_lot::Mutex;
+use parking_lot::{Condvar, Mutex};
 use serde_json::{Value, json};
 
 use crate::app::App;
@@ -68,6 +70,8 @@ pub enum Phase {
 pub struct Standby {
     last_activity: Mutex<Instant>,
     phase: Mutex<Phase>,
+    requested: Mutex<bool>,
+    request_signal: Condvar,
     timings: Timings,
 }
 
@@ -82,6 +86,8 @@ impl Standby {
         Standby {
             last_activity: Mutex::new(Instant::now()),
             phase: Mutex::new(Phase::Awake),
+            requested: Mutex::new(false),
+            request_signal: Condvar::new(),
             timings,
         }
     }
@@ -142,7 +148,7 @@ impl Standby {
     /// Whether the machine should go to standby now, after `idle` without
     /// activity.
     pub fn due_after(&self, app: &App, idle: Duration) -> bool {
-        if self.phase() != Phase::Awake {
+        if !self.can_enter(app) {
             return false;
         }
         let minutes = app
@@ -154,7 +160,35 @@ impl Standby {
         }
         let minutes = minutes.clamp(STANDBY_TIMEOUT_MIN, STANDBY_TIMEOUT_MAX);
         let timeout = Duration::from_secs(u64::try_from(minutes).unwrap_or(1) * 60);
-        idle >= timeout && app.machine.ready_for_standby() && !app.os_update.in_progress()
+        idle >= timeout
+    }
+
+    /// Nothing the machine is doing stands in the way of sleeping.
+    fn can_enter(&self, app: &App) -> bool {
+        self.phase() == Phase::Awake
+            && app.machine.ready_for_standby()
+            && !app.os_update.in_progress()
+    }
+
+    /// Go to standby now rather than after the idle timeout. Returns false
+    /// when the machine is busy.
+    pub fn request(&self, app: &App) -> bool {
+        if !self.can_enter(app) {
+            return false;
+        }
+        *self.requested.lock() = true;
+        self.request_signal.notify_all();
+        true
+    }
+
+    /// Wait for the next look at the idle timer, or for a request; true for a
+    /// request.
+    fn wait_for_check(&self) -> bool {
+        let mut requested = self.requested.lock();
+        if !*requested {
+            self.request_signal.wait_for(&mut requested, CHECK_INTERVAL);
+        }
+        std::mem::take(&mut *requested)
     }
 
     fn due(&self, app: &App) -> bool {
@@ -166,7 +200,7 @@ impl Standby {
     /// resumed. Returns false when the ESP32 did not go to sleep.
     pub fn enter(&self, app: &Arc<App>, runtime: &tokio::runtime::Handle) -> bool {
         *self.phase.lock() = Phase::Requested;
-        tracing::info!("No activity, entering standby");
+        tracing::info!("Entering standby");
         app.machine.action(app, "standby");
         if !self.wait_while(Phase::Requested, self.timings.esp_reply) {
             tracing::warn!("The ESP32 did not answer action,standby");
@@ -240,7 +274,7 @@ impl Standby {
 /// Start the idle timer, on real hardware only: the emulated ESP32 does not
 /// sleep.
 pub fn start(app: Arc<App>) {
-    if app.emulated() || app.env.hooks.fake_hardware {
+    if !available(&app) {
         return;
     }
     let runtime = tokio::runtime::Handle::current();
@@ -248,8 +282,13 @@ pub fn start(app: Arc<App>) {
         .name("standby".into())
         .spawn(move || {
             loop {
-                std::thread::sleep(CHECK_INTERVAL);
-                if app.standby.due(&app) {
+                let requested = app.standby.wait_for_check();
+                let enter = if requested {
+                    app.standby.can_enter(&app)
+                } else {
+                    app.standby.due(&app)
+                };
+                if enter {
                     app.standby.enter(&app, &runtime);
                 }
             }
@@ -257,6 +296,12 @@ pub fn start(app: Arc<App>) {
     if let Err(error) = spawned {
         tracing::error!("Could not start the standby timer: {error}");
     }
+}
+
+/// Whether this backend runs on hardware that can sleep: the emulated ESP32
+/// does not.
+pub fn available(app: &App) -> bool {
+    !app.emulated() && !app.env.hooks.fake_hardware
 }
 
 /// The settings handler's check for `standby_timeout`: off, or 1 to 20 minutes.
@@ -343,6 +388,33 @@ mod tests {
             json!(STANDBY_TIMEOUT_OFF),
         );
         assert!(!standby.due_after(&app, TIMEOUT * 4));
+    }
+
+    /// A request needs the same quiet machine as the idle timer, but not the
+    /// timeout: `standby_timeout` off only turns the timer off.
+    #[test]
+    fn a_request_is_taken_only_while_the_machine_can_sleep() {
+        let (_dir, app) = ready_app();
+        let standby = Standby::with_timings(FAST);
+        app.config.set_and_save(
+            keys::USER,
+            keys::STANDBY_TIMEOUT,
+            json!(STANDBY_TIMEOUT_OFF),
+        );
+        assert!(standby.request(&app));
+        assert!(standby.wait_for_check());
+        assert!(!*standby.requested.lock());
+
+        app.machine.state.lock().time_flag = true;
+        assert!(!standby.request(&app));
+        app.machine.state.lock().time_flag = false;
+
+        app.os_update.set_last(OsStatus::Installing, 10.0);
+        assert!(!standby.request(&app));
+        app.os_update.set_last(OsStatus::Idle, 0.0);
+
+        *standby.phase.lock() = Phase::Asleep;
+        assert!(!standby.request(&app));
     }
 
     /// The ESP32 answers `Standby,entering`, the SoC suspends through

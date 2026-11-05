@@ -1,5 +1,5 @@
 //! `api/machine.py`: unlocking a limited-access machine, the backlight, the
-//! factory reset, the OS update status and the system clock.
+//! factory reset, the OS update status, the system clock and asking for standby.
 //!
 //! `GET /machine` (`MachineInfoHandler`) belongs here too; it is added with
 //! the machine runtime it reads.
@@ -37,7 +37,22 @@ pub fn routes() -> Vec<Route> {
         Route::new("/machine/OS_update_status", Kind::Base, m, "UpdateOSStatus")
             .get(os_update_status),
         Route::new("/machine/time", Kind::Base, m, "MachineTimeHandler").post(set_time),
+        Route::new("/machine/standby", Kind::Base, m, "MachineStandbyHandler")
+            .prepare(local_only)
+            .post(standby),
     ]
+}
+
+/// The Dial's "suspend": on the machine only, since the app could not wake a
+/// v1 board it put to sleep. Refused while the machine is busy.
+async fn standby(app: Arc<App>, _req: Request) -> Reply {
+    if crate::standby::available(&app) && app.standby.request(&app) {
+        Reply::base().json(json!({"status": "ok"}))
+    } else {
+        Reply::base()
+            .status(409)
+            .json(json!({"status": "error", "error": "The machine cannot go to standby now"}))
+    }
 }
 
 /// `MachineInfoHandler`: `self.write(json.dumps(get_machine_info()))`.
@@ -410,6 +425,25 @@ mod tests {
         std::fs::write(dir.join("brightness"), "20\n").expect("write");
         std::fs::write(dir.join("max_brightness"), "200\n").expect("write");
         dir
+    }
+
+    /// The Dial's "suspend" must not be reachable from the network, and a
+    /// machine that cannot sleep says so instead of pretending it will.
+    #[tokio::test]
+    async fn standby_is_local_only_and_refused_when_the_machine_cannot_sleep() {
+        let (_dir, app) = crate::testing::app();
+        let remote = crate::testing::call_with_headers(
+            &app,
+            http::Method::POST,
+            "/api/v1/machine/standby",
+            "",
+            &[("X-Real-IP", "192.168.1.20")],
+        )
+        .await;
+        assert_eq!(remote.status_code(), 403);
+
+        let local = call(&app, http::Method::POST, "/api/v1/machine/standby", "").await;
+        assert_eq!(local.status_code(), 409);
     }
 
     async fn post_backlight(app: &Arc<App>, body: &str) -> Reply {

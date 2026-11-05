@@ -188,6 +188,14 @@
     ]
   },
   {
+    "path": "/api/v1/machine/standby",
+    "handler": "MachineStandbyHandler",
+    "module": "api.machine",
+    "methods": [
+      "post"
+    ]
+  },
+  {
     "path": "/api/v1/machine/time",
     "handler": "MachineTimeHandler",
     "module": "api.machine",
