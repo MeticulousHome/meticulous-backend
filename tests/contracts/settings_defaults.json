@@ -45,7 +45,8 @@
     "time_zone": null,
     "timezone_sync": "automatic",
     "update_channel": "",
-    "usb_mode": "host"
+    "usb_mode": "host",
+    "wifi_group_rx_diagnostics": true
   },
   "wifi": [
     "APName",

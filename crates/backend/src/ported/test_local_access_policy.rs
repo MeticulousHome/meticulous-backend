@@ -23,13 +23,15 @@ const LAN_CLIENT: &[(&str, &str)] = &[("Host", "meticulous.local"), ("X-Real-IP"
 const LAN_CLIENT_NAMING_LOCALHOST: &[(&str, &str)] =
     &[("Host", "localhost"), ("X-Real-IP", "192.168.1.42")];
 
-const LOCAL_ONLY: [&str; 5] = [
+const LOCAL_ONLY: [&str; 6] = [
     // The Dial writes Pour Over history; LAN clients only read and sync it.
     "POST /api/v1/history/pour-over",
     "GET /api/v1/history/upload-index",
     "GET /api/v1/machine/factory_reset",
     "GET /api/v1/machine/root-password",
     "GET /api/v1/smoke-validation",
+    // Read on the machine by the hawkBit attribute publisher.
+    "GET /api/v1/wifi/group-rx",
 ];
 
 /// `served_methods`: the verbs among get, post, put, patch, delete and

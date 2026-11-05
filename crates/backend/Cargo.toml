@@ -28,7 +28,7 @@ md-5 = "0.11.0"
 mdns-sd = { version = "0.21.6", default-features = false }
 mime_guess = "2.0.5"
 multer = "3.1.0"
-nix = { version = "0.31.3", features = ["term", "fs", "process", "signal", "hostname", "time", "user"] }
+nix = { version = "0.31.3", features = ["term", "fs", "process", "signal", "hostname", "time", "user", "net"] }
 parking_lot = "0.13"
 percent-encoding = "2.3.2"
 pyfmt = { path = "../pyfmt" }
@@ -49,6 +49,8 @@ serde_norway = "0.9.42"
 serialport = { version = "4.10.1", default-features = false }
 sha1 = "0.11.0"
 sha2 = "0.11.1"
+# "all": packet sockets' BPF filters (the Wi-Fi group reception counter).
+socket2 = { version = "0.6.5", features = ["all"] }
 socketioxide = { version = "0.18", features = ["state", "extensions"] }
 thiserror.workspace = true
 tokio = { version = "1.54.1", features = ["full"] }

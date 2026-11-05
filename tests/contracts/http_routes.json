@@ -626,6 +626,14 @@
     ]
   },
   {
+    "path": "/api/v1/wifi/group-rx",
+    "handler": "WiFiGroupRxHandler",
+    "module": "api.wifi",
+    "methods": [
+      "get"
+    ]
+  },
+  {
     "path": "/api/v1/wifi/list",
     "handler": "WiFiListHandler",
     "module": "api.emulation",

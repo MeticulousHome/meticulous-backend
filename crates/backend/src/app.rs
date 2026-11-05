@@ -16,6 +16,7 @@ use crate::config::{self, ConfigStore};
 use crate::dbus_monitor::DbusMonitor;
 use crate::debug_shots::ShotDebugManager;
 use crate::env::Env;
+use crate::group_rx::{GroupRxMonitor, SystemGroupRxHost};
 use crate::host::Host;
 use crate::hostname::HostnameManager;
 use crate::http_client::{HttpClient, ReqwestClient};
@@ -90,6 +91,8 @@ pub struct App {
     pub timezone: Arc<TimezoneManager>,
     pub wifi: Arc<WifiManager>,
     pub gatt: Arc<GattServer>,
+    /// Diagnostics of group-addressed Wi-Fi reception; never acts on the link.
+    pub group_rx: Arc<GroupRxMonitor>,
 }
 
 impl App {
@@ -195,6 +198,17 @@ impl App {
             mdns_announcer(),
         );
         let gatt = GattServer::new(wifi.clone(), hostname.clone(), config.clone(), env.port);
+        let group_rx = {
+            let redaction = redaction.clone();
+            Arc::new(GroupRxMonitor::new(
+                Arc::new(SystemGroupRxHost::default()),
+                config.clone(),
+                reporting.clone(),
+                Arc::new(move |text: &str| redaction.redact_text(text)),
+                env.paths.wifi_group_rx_state.clone(),
+                env.paths.system.image_build_version.clone(),
+            ))
+        };
         // Tests never read the developer's environment.
         let lookup = |name: &str| {
             if cfg!(test) {
@@ -240,6 +254,7 @@ impl App {
             timezone,
             wifi,
             gatt,
+            group_rx,
         })
     }
 

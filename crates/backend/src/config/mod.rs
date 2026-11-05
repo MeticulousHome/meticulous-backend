@@ -63,6 +63,9 @@ pub mod keys {
     pub const PROFILE_ORDER: &str = "profile_order";
     pub const HOSTNAME_OVERRIDE: &str = "hostname_override";
     pub const CLOCK_FORMAT_24_HOUR: &str = "clock_format_24_hour";
+    /// The Wi-Fi group reception diagnostics (`group_rx`): off stops the
+    /// sniffer, the probes and the reports. They never change the link.
+    pub const WIFI_GROUP_RX_DIAGNOSTICS: &str = "wifi_group_rx_diagnostics";
 
     // logging
     pub const LOGGING_SENSOR_MESSAGES: &str = "log_all_sensor_messages";
@@ -166,6 +169,7 @@ pub fn defaults() -> Value {
             PROFILE_ORDER: [],
             HOSTNAME_OVERRIDE: null,
             CLOCK_FORMAT_24_HOUR: true,
+            WIFI_GROUP_RX_DIAGNOSTICS: true,
         },
         WIFI: {
             WIFI_MODE: WIFI_MODE_AP,

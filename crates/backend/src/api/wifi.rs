@@ -22,7 +22,21 @@ pub fn routes() -> Vec<Route> {
         Route::new("/wifi/connect", Kind::Base, m, "WiFiConnectHandler").post(post_connect),
         Route::new("/wifi/repair", Kind::Base, m, "WiFiRepairHandler").post(post_repair),
         Route::new("/wifi/delete", Kind::Base, m, "WiFiDeleteHandler").post(post_delete),
+        // Not in the Python: the group reception diagnostics, read on the
+        // machine by the hawkBit attribute publisher.
+        Route::new("/wifi/group-rx", Kind::Base, m, "WiFiGroupRxHandler")
+            .prepare(crate::api::local_only)
+            .get(get_group_rx),
     ]
+}
+
+/// The 24 h counters of the group reception diagnostics.
+async fn get_group_rx(app: Arc<App>, req: Request) -> Reply {
+    let monitor = app.group_rx.clone();
+    match tokio::task::spawn_blocking(move || monitor.status()).await {
+        Ok(status) => Reply::base().json(status),
+        Err(_) => Reply::error(Kind::Base, 500, &req),
+    }
 }
 
 /// `loop.run_in_executor(None, f)`.
