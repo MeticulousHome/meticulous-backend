@@ -518,6 +518,50 @@ fn auto_connect_joins_a_known_network() {
     assert!(!app.wifi.is_auto_connect_suppressed());
 }
 
+/// NetworkManager brings a saved profile back on its own while the pass
+/// scans, as after the network moved to another access point: the pass joins
+/// nothing. Before, it brought up the first known network of the scan, which
+/// tore the new connection down and moved the machine to another network.
+#[test]
+fn auto_connect_keeps_a_connection_made_during_the_scan() {
+    let (_dir, app, f) = setup();
+    f.network.add_connection("Office", "wifi");
+    f.network.add_connection("Office-5G", "wifi");
+    {
+        let mut state = f.network.state.lock();
+        state.scan = vec![wpa2("Office", 80), wpa2("Office-5G", 70)];
+        state.during_scan = Some(Box::new(|network| {
+            network.connect_home_station("Office-5G");
+        }));
+    }
+
+    app.wifi.auto_connect_iteration().expect("pass");
+
+    assert_eq!(f.network.calls(), vec![Call::DeviceWifi(Some(true))]);
+    let current = app.wifi.get_current_config().expect("config");
+    assert_eq!(current.connection_name.as_deref(), Some("Office-5G"));
+}
+
+/// The same while NetworkManager is still activating the profile:
+/// `nmcli device status` shows `connecting (...)`, and a join now would
+/// replace that activation.
+#[test]
+fn auto_connect_leaves_an_activation_started_during_the_scan() {
+    let (_dir, app, f) = setup();
+    f.network.add_connection("Office", "wifi");
+    {
+        let mut state = f.network.state.lock();
+        state.scan = vec![wpa2("Office", 80)];
+        state.during_scan = Some(Box::new(|network| {
+            network.disconnect_station("connecting");
+        }));
+    }
+
+    app.wifi.auto_connect_iteration().expect("pass");
+
+    assert_eq!(f.network.calls(), vec![Call::DeviceWifi(Some(true))]);
+}
+
 /// Hotspot mode, a manual connect in progress: the pass does nothing.
 #[test]
 fn auto_connect_skips_hotspot_mode_and_suppression() {
