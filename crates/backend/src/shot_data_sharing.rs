@@ -96,11 +96,10 @@ pub const SHARED_SENSOR_FIELDS: [&str; 25] = [
 
 /// The settings of `SHARED_SHOT_SCHEMA["config"]`: only those that change
 /// how a brew runs.
-pub const SHARED_CONFIG_FIELDS: [&str; 8] = [
+pub const SHARED_CONFIG_FIELDS: [&str; 7] = [
     "auto_purge_after_shot",
     "auto_start_shot",
     "tare_behavior",
-    "disturbance_resilience",
     "partial_retraction",
     "heat_on_boot",
     "heating_timeout",
@@ -135,8 +134,6 @@ pub fn shared_shot_schema() -> &'static Schema {
                     "auto_purge_after_shot",
                     "tare_behavior",
                     "tare_behavior_supported",
-                    "disturbance_resilience",
-                    "disturbance_resilience_supported",
                 ]),
             ),
             // The brew recipe without its author or identifiers.

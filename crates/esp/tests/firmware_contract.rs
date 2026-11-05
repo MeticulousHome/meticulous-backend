@@ -49,7 +49,7 @@ const KNOWN: &[Known] = &[
     Known {
         name: "ESPInfo",
         token: "ESPInfo",
-        fields_read: 13,
+        fields_read: 12,
         exact: false,
         rest: false,
     },
