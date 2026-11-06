@@ -351,12 +351,12 @@ pub fn parse_details_all(text: &str) -> Vec<DeviceDetails> {
     all
 }
 
-/// `DeviceWifi.parse(row)`: terse output, `\:` escapes a colon.
+/// `DeviceWifi.parse(row)`: terse output.
 pub fn parse_scan_entry(text: &str) -> PyResult<ScanEntry> {
-    let t = text
-        .replace("\\:", "\u{FFFE}")
-        .replace(':', "\u{FFFF}")
-        .replace('\u{FFFE}', ":");
+    // Deliberate fix: python-nmcli unescapes only `\:`, so an SSID holding a
+    // `\` came back with it doubled and matched no profile, and one ending in
+    // `\` read the next `:` as escaped and failed the whole scan.
+    let t = terse_values(text).join("\u{FFFF}");
     let caps = SCAN_ROW.captures(&t).ok_or_else(|| parse_failed(text))?;
     let number = |i: usize| -> PyResult<i64> {
         caps[i].parse::<i64>().map_err(|_| {
@@ -511,6 +511,24 @@ mod tests {
         assert_eq!(e.signal, 70);
         assert_eq!(e.security, "WPA2");
         assert!(parse_scan_entry("garbage").is_err());
+    }
+
+    /// A scanned SSID holding a `\` keeps a single one, so it matches its
+    /// saved profile and joins under its real name, and an SSID ending in
+    /// `\` no longer fails the scan. The rows are nmcli 1.42's terse output
+    /// (`src/nmcli/utils.c` puts a `\` before each `:` and `\` in a value).
+    #[test]
+    fn scan_rows_keep_backslashes_in_the_ssid() {
+        let bssid = "AA\\:BB\\:CC\\:DD\\:EE\\:FF";
+        let row = |ssid: &str| format!(" :{ssid}:{bssid}:Infra:6:2437 MHz:130 Mbit/s:70:WPA2");
+
+        let e = parse_scan_entry(&row("a\\:b\\\\c")).expect("row");
+        assert_eq!(e.ssid, "a:b\\c");
+        assert_eq!(e.bssid, "AA:BB:CC:DD:EE:FF");
+        let e = parse_scan_entry(&row("Net\\\\")).expect("row");
+        assert_eq!(e.ssid, "Net\\");
+        assert_eq!(e.bssid, "AA:BB:CC:DD:EE:FF");
+        assert_eq!(e.signal, 70);
     }
 
     #[test]

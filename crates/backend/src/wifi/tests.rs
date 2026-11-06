@@ -519,14 +519,15 @@ fn auto_connect_joins_a_known_network() {
 }
 
 /// A disconnected machine (after a reboot, say) joins a saved network whose
-/// name starts or ends with a space once a scan sees it: the scanned SSID
-/// and the profile's name agree. With the name trimmed, no scanned network
-/// was known and the machine stayed off Wi-Fi unless NetworkManager
-/// connected it by itself. nmcli's own text goes through the real `nmcli`
-/// package here (`parse_nmcli_output`).
+/// name starts or ends with a space, or holds `:` or `\`, once a scan sees
+/// it: the scanned SSID and the profile's name agree. With the name trimmed,
+/// or a scanned `\` doubled, no scanned network was known and the machine
+/// stayed off Wi-Fi unless NetworkManager connected it by itself. nmcli's
+/// own text goes through the real `nmcli` package here
+/// (`parse_nmcli_output`).
 #[test]
 fn auto_connect_joins_a_known_network_named_with_spaces() {
-    for name in [" Home", "Home "] {
+    for name in [" Home", "Home ", "a:b\\c", "Net\\"] {
         let (_dir, app, f) = setup();
         app.config
             .set(keys::USER, keys::TIMEZONE_SYNC, json!("manual"));
