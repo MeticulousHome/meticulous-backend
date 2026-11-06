@@ -398,7 +398,6 @@
 6 wifi.py: [assignment] Incompatible types in assignment (expression has type "float", variable has type "int")
 3 wifi.py: [assignment] Incompatible types in assignment (expression has type "str | None", variable has type "str")
 2 wifi.py: [assignment] Incompatible types in assignment (expression has type "str", variable has type "WifiWpaEnterpriseCredentials | WifiOpenCredentials | WifiWpaPskCredentials | WifiWpaSaeCredentials")
-2 wifi.py: [attr-defined] "WifiHealthStatus" has no attribute "connected"; maybe "link_connected"?
 2 wifi.py: [index] Unsupported target for indexed assignment ("WifiWpaEnterpriseCredentials | WifiOpenCredentials | WifiWpaPskCredentials | WifiWpaSaeCredentials")
 24 wifi.py: [misc] Method must have at least one argument. Did you forget the "self" argument?
 23 wifi.py: [misc] Self argument missing for a non-static method (or an invalid type for self)
