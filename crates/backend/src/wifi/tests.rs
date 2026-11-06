@@ -518,6 +518,35 @@ fn auto_connect_joins_a_known_network() {
     assert!(!app.wifi.is_auto_connect_suppressed());
 }
 
+/// A disconnected machine (after a reboot, say) joins a saved network whose
+/// name starts or ends with a space once a scan sees it: the scanned SSID
+/// and the profile's name agree. With the name trimmed, no scanned network
+/// was known and the machine stayed off Wi-Fi unless NetworkManager
+/// connected it by itself. nmcli's own text goes through the real `nmcli`
+/// package here (`parse_nmcli_output`).
+#[test]
+fn auto_connect_joins_a_known_network_named_with_spaces() {
+    for name in [" Home", "Home "] {
+        let (_dir, app, f) = setup();
+        app.config
+            .set(keys::USER, keys::TIMEZONE_SYNC, json!("manual"));
+        f.parse_nmcli_output(&app);
+        f.network.add_connection(name, "wifi");
+        f.network.state.lock().scan = vec![wpa2("Neighbor", 80), wpa2(name, 70)];
+
+        app.wifi.auto_connect_iteration().expect("pass");
+
+        assert_eq!(
+            f.network.calls(),
+            vec![
+                Call::DeviceWifi(Some(true)),
+                Call::Up(name.into(), Some(12))
+            ],
+            "{name:?}"
+        );
+    }
+}
+
 /// Hotspot mode, a manual connect in progress: the pass does nothing.
 #[test]
 fn auto_connect_skips_hotspot_mode_and_suppression() {

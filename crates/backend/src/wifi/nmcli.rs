@@ -186,9 +186,13 @@ impl Nmcli for NmcliCli {
     }
 
     fn connections(&self) -> PyResult<Vec<Connection>> {
-        let out = self.nmcli(&["connection"])?;
+        // Deliberate fix: python-nmcli parses the padded table `nmcli
+        // connection` prints and strips each name, so a profile named
+        // " Home" or "Home " was listed as "Home", and `connection up` or
+        // `delete` of that name exited 10 (NotExistException). Terse output
+        // keeps every character of the name.
+        let out = self.nmcli(&["-t", "-f", "NAME,UUID,TYPE,DEVICE", "connection", "show"])?;
         out.split('\n')
-            .skip(1)
             .filter(|row| !row.is_empty())
             .map(parse_connection)
             .collect()
@@ -225,9 +229,6 @@ fn parse_failed(text: &str) -> PyError {
 
 static DEVICE_ROW: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^(\S*)\s+(\S*)\s+(\S*)\s+([\S\s]+)\s*$").expect("static regex"));
-static CONNECTION_ROW: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^([\S\s]+)\s{2}(\S+)\s{2}(\S+)\s+(\S+)\s*").expect("static regex")
-});
 static DETAIL_ROW: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^(\S+):\s*([\S\s]+)\s*").expect("static regex"));
 static SCAN_ROW: LazyLock<Regex> = LazyLock::new(|| {
@@ -251,16 +252,45 @@ pub fn parse_device(text: &str) -> PyResult<Device> {
     })
 }
 
-/// `Connection.parse(row)`.
+/// The values of a terse (`-t`) row: nmcli separates them with `:` and puts
+/// a `\` before each `:` or `\` inside a value.
+fn terse_values(row: &str) -> Vec<String> {
+    let mut values = vec![String::new()];
+    let mut chars = row.chars();
+    while let Some(c) = chars.next() {
+        match c {
+            ':' => values.push(String::new()),
+            '\\' => {
+                let escaped = chars.next().unwrap_or('\\');
+                values.last_mut().expect("never empty").push(escaped);
+            }
+            c => values.last_mut().expect("never empty").push(c),
+        }
+    }
+    values
+}
+
+/// A row of `nmcli -t -f NAME,UUID,TYPE,DEVICE connection show`, as
+/// `Connection.parse` reads the table row: a Wi-Fi profile's type is the
+/// alias the table prints (`wifi`, not `802-11-wireless`) and no device is
+/// `--`.
 pub fn parse_connection(text: &str) -> PyResult<Connection> {
-    let caps = CONNECTION_ROW
-        .captures(text)
-        .ok_or_else(|| parse_failed(text))?;
+    let [name, uuid, conn_type, device]: [String; 4] = terse_values(text)
+        .try_into()
+        .map_err(|_| parse_failed(text))?;
     Ok(Connection {
-        name: caps[1].trim().to_string(),
-        uuid: caps[2].to_string(),
-        conn_type: caps[3].to_string(),
-        device: caps[4].to_string(),
+        name,
+        uuid,
+        conn_type: if conn_type == "802-11-wireless" {
+            "wifi".to_string()
+        } else {
+            conn_type
+        },
+        device: if device.is_empty() {
+            "--".to_string()
+        } else {
+            device
+        },
     })
 }
 
@@ -268,12 +298,31 @@ fn detail_value(value: &str) -> Option<String> {
     (value != "--" && value != "\"\"").then(|| value.to_string())
 }
 
+/// The column nmcli pads a multiline row's `KEY:` to (`ML_VALUE_INDENT`).
+const VALUE_COLUMN: usize = 40;
+
+/// The key and value of a `KEY:   value` row of `nmcli device show`.
+fn detail_row(row: &str) -> Option<(&str, &str)> {
+    let key = DETAIL_ROW.captures(row)?.get(1)?.as_str();
+    // Deliberate fix: python-nmcli's `:\s*` also eats the value's own leading
+    // spaces, so the device of a profile named " Home" reported "Home" and
+    // the joined network never matched. Only nmcli's padding is dropped.
+    let rest = &row[key.len() + 1..];
+    let padding = VALUE_COLUMN.saturating_sub(key.len() + 1);
+    let skip = rest
+        .bytes()
+        .take(padding)
+        .take_while(|b| *b == b' ')
+        .count();
+    Some((key, &rest[skip..]))
+}
+
 /// `DeviceControl.show`'s parsing.
 pub fn parse_details(text: &str) -> DeviceDetails {
     let mut details = DeviceDetails::default();
     for row in text.split('\n') {
-        if let Some(caps) = DETAIL_ROW.captures(row) {
-            details.insert(&caps[1], detail_value(&caps[2]));
+        if let Some((key, value)) = detail_row(row) {
+            details.insert(key, detail_value(value));
         }
     }
     details
@@ -285,10 +334,10 @@ pub fn parse_details_all(text: &str) -> Vec<DeviceDetails> {
     let mut current: Option<usize> = None;
     let mut orphan = DeviceDetails::default();
     for row in text.split('\n') {
-        let Some(caps) = DETAIL_ROW.captures(row) else {
+        let Some((key, value)) = detail_row(row) else {
             continue;
         };
-        if &caps[1] == "GENERAL.DEVICE" {
+        if key == "GENERAL.DEVICE" {
             all.push(DeviceDetails::default());
             current = Some(all.len() - 1);
         }
@@ -297,7 +346,7 @@ pub fn parse_details_all(text: &str) -> Vec<DeviceDetails> {
             // Rows before the first device go to a dict nobody keeps.
             None => &mut orphan,
         };
-        target.insert(&caps[1], detail_value(&caps[2]));
+        target.insert(key, detail_value(value));
     }
     all
 }
@@ -346,14 +395,105 @@ mod tests {
         assert_eq!(idle.connection, None);
     }
 
+    /// Saved profiles keep their exact names, so Known Wi-Fis can connect to
+    /// and forget a network named " Home", "Cafe " or `a:b\c`; trimmed, the
+    /// name matched no profile and nmcli exited 10. The rows are nmcli
+    /// 1.42's terse output (`src/nmcli/utils.c` escapes `:` and `\` with
+    /// `\`; `connections.c` prints the setting name, not the `wifi` alias,
+    /// outside pretty mode, and nothing for no device).
     #[test]
-    fn connection_rows_parse_like_python_nmcli() {
-        let row = "My Home  0f6b8c1e-1111-2222-3333-444455556666  wifi      wlan0  ";
-        let c = parse_connection(row).expect("row");
-        assert_eq!(c.name, "My Home");
-        assert_eq!(c.uuid, "0f6b8c1e-1111-2222-3333-444455556666");
-        assert_eq!(c.conn_type, "wifi");
-        assert_eq!(c.device, "wlan0");
+    fn connection_rows_keep_the_exact_profile_names() {
+        let rows = [
+            " Home:0f6b8c1e-1111-2222-3333-444455556666:802-11-wireless:wlan0",
+            "Cafe :1a2b3c4d-1111-2222-3333-444455556666:802-11-wireless:",
+            "a\\:b\\\\c:5e6f7a8b-1111-2222-3333-444455556666:802-11-wireless:",
+            "lo:9c0d1e2f-1111-2222-3333-444455556666:loopback:lo",
+        ];
+        let stdout = rows.join("\n") + "\n";
+        let runner = crate::py::fake::RecordingRunner::new(move |_, _| {
+            Ok(crate::py::Completed {
+                stdout: stdout.clone(),
+                ..Default::default()
+            })
+        });
+
+        let connections = NmcliCli::with_runner(runner.clone())
+            .connections()
+            .expect("listed");
+
+        assert_eq!(
+            runner.calls(),
+            vec![(
+                "nmcli -t -f NAME,UUID,TYPE,DEVICE connection show".to_string(),
+                false
+            )]
+        );
+        let fields: Vec<(&str, &str, &str, &str)> = connections
+            .iter()
+            .map(|c| (&*c.name, &*c.uuid, &*c.conn_type, &*c.device))
+            .collect();
+        assert_eq!(
+            fields,
+            vec![
+                (
+                    " Home",
+                    "0f6b8c1e-1111-2222-3333-444455556666",
+                    "wifi",
+                    "wlan0"
+                ),
+                (
+                    "Cafe ",
+                    "1a2b3c4d-1111-2222-3333-444455556666",
+                    "wifi",
+                    "--"
+                ),
+                (
+                    "a:b\\c",
+                    "5e6f7a8b-1111-2222-3333-444455556666",
+                    "wifi",
+                    "--"
+                ),
+                (
+                    "lo",
+                    "9c0d1e2f-1111-2222-3333-444455556666",
+                    "loopback",
+                    "lo"
+                ),
+            ]
+        );
+        assert_eq!(
+            parse_connection("a:b:uuid:802-11-wireless:").unwrap_err(),
+            parse_failed("a:b:uuid:802-11-wireless:")
+        );
+    }
+
+    /// The connection a device reports keeps its own leading and trailing
+    /// spaces, so after joining " Home " the backend sees " Home " connected
+    /// instead of reporting the join preempted. nmcli 1.42 pads a multiline
+    /// `KEY:` to column 40 (`ML_VALUE_INDENT`, `src/nmcli/utils.c`); the
+    /// rest of the row is the value.
+    #[test]
+    fn device_details_keep_the_spaces_of_a_connection_name() {
+        let row = |key: &str, value: &str| format!("{:<40}{value}", format!("{key}:"));
+        let text = [
+            row("GENERAL.DEVICE", "wlan0"),
+            row("GENERAL.CONNECTION", " Home "),
+            row("IP4.ADDRESS[1]", "192.168.1.42/24"),
+        ]
+        .join("\n");
+
+        assert_eq!(
+            parse_details(&text).get("GENERAL.CONNECTION"),
+            Some(" Home ")
+        );
+        assert_eq!(
+            parse_details_all(&text)[0].get("GENERAL.CONNECTION"),
+            Some(" Home ")
+        );
+        assert_eq!(
+            parse_details(&text).get("IP4.ADDRESS[1]"),
+            Some("192.168.1.42/24")
+        );
     }
 
     #[test]

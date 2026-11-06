@@ -933,6 +933,33 @@ async fn saved_network_without_password_is_brought_up_from_its_profile() {
     );
 }
 
+/// Connecting to a saved network named " Home" from Known Wi-Fis (the
+/// Dial's PSK request without a password) brings up that profile and
+/// answers the join. With the name trimmed, `connection up` failed with
+/// NotExistException; and with the device's connection read as "Home", the
+/// join was reported preempted. nmcli's own text goes through the real
+/// `nmcli` package here (`parse_nmcli_output`).
+#[tokio::test]
+async fn saved_network_named_with_a_leading_space_is_brought_up_from_its_profile() {
+    let (_dir, app, f) = setup();
+    f.parse_nmcli_output(&app);
+    app.wifi.set_scan_cache(vec![wpa2(" Home", 70)]);
+    f.network.add_connection(" Home", "wifi");
+
+    let reply = post(
+        &app,
+        "/api/v1/wifi/connect",
+        json!({"type": "PSK", "ssid": " Home"}),
+    )
+    .await;
+
+    assert_eq!(reply.status_code(), 200, "{}", body_text(&reply));
+    assert_eq!(json(&reply)["status"], "ok");
+    assert_eq!(f.network.calls(), vec![Call::Up(" Home".into(), Some(12))]);
+    let status = json(&get(&app, "/api/v1/wifi/config").await)["status"].clone();
+    assert_eq!(status["connection_name"], " Home");
+}
+
 /// test_api_wifi.py::TestWifiConnect::test_wrong_password_is_reported_as_invalid_credentials
 #[tokio::test]
 async fn wrong_password_is_reported_as_invalid_credentials() {
@@ -1173,6 +1200,40 @@ async fn saved_network_manager_profile_is_deleted() {
     assert_eq!(json(&reply), json!({"status": "ok"}));
     assert_eq!(f.network.calls(), vec![Call::Delete("HomeNet".into())]);
     assert_eq!(f.saves.get(), 0);
+}
+
+/// Known Wi-Fis lists a network whose name starts or ends with a space, or
+/// holds `:` or `\`, under the profile's exact name, and forgetting it by
+/// that name deletes the profile. With the name trimmed, the delete failed
+/// with NotExistException, as on a customer machine. nmcli's own text goes
+/// through the real `nmcli` package here (`parse_nmcli_output`); the names
+/// are the profiles'.
+#[tokio::test]
+async fn saved_networks_named_with_spaces_are_listed_and_deleted_by_their_exact_names() {
+    let (_dir, app, f) = setup();
+    f.parse_nmcli_output(&app);
+    for name in [" Home", "Cafe ", "a:b\\c"] {
+        f.network.add_connection(name, "wifi");
+    }
+
+    let reply = get(&app, "/api/v1/wifi/config").await;
+
+    assert_eq!(reply.status_code(), 200);
+    let known = json(&reply)["known_wifis"].clone();
+    assert_eq!(
+        known,
+        json!({
+            " Home": {"ssid": " Home", "type": "PSK"},
+            "Cafe ": {"ssid": "Cafe ", "type": "PSK"},
+            "a:b\\c": {"ssid": "a:b\\c", "type": "PSK"},
+        })
+    );
+    for ssid in known.as_object().expect("object").keys() {
+        let reply = post(&app, "/api/v1/wifi/delete", json!({"ssid": ssid})).await;
+        assert_eq!(reply.status_code(), 200, "deleting {ssid:?}");
+        assert_eq!(json(&reply), json!({"status": "ok"}));
+    }
+    assert!(f.network.state.lock().connections.is_empty());
 }
 
 /// test_api_wifi.py::TestWifiDelete::test_legacy_config_entry_is_removed_and_saved

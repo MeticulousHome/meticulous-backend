@@ -11,10 +11,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use parking_lot::Mutex;
 
 use super::host::{Task, WifiHost};
-use super::nmcli::Nmcli;
+use super::nmcli::{Nmcli, NmcliCli};
 use super::types::{AP_CONNECTION, Connection, Device, DeviceDetails, ScanEntry};
 use crate::http_client::HttpError;
-use crate::py::{Completed, PyError, PyResult, RunError};
+use crate::py::{CommandRunner, Completed, PyError, PyResult, RunError};
 use crate::zeroconf::Announcer;
 
 pub const STATION: &str = "wlan0";
@@ -438,6 +438,230 @@ impl WifiHost for FakeNetwork {
     }
 }
 
+/// The `nmcli` binary over a [`FakeNetwork`], for the real [`NmcliCli`] to
+/// parse: it prints the fake's state as nmcli 1.42 does
+/// (`src/nmcli/utils.c`). A table pads each column to its widest cell plus
+/// one and prints an unset cell as `--`; a multiline `KEY:` is padded to
+/// column 40; a terse row separates values with `:` and puts a `\` before a
+/// `:` or `\` inside one, and names a type by its setting. A profile that
+/// does not exist exits 10, a command it does not know 2.
+pub struct NmcliBinary(pub Arc<FakeNetwork>);
+
+const SCAN_FIELDS: &str = "IN-USE,SSID,BSSID,MODE,CHAN,FREQ,RATE,SIGNAL,SECURITY";
+
+fn nmcli_table(header: &[&str], rows: &[Vec<String>]) -> String {
+    let widths: Vec<usize> = (0..header.len())
+        .map(|i| {
+            rows.iter()
+                .map(|row| row[i].len().max(2))
+                .fold(header[i].len(), usize::max)
+                + 1
+        })
+        .collect();
+    let line = |cells: Vec<&str>| {
+        let padded: Vec<String> = cells
+            .iter()
+            .zip(&widths)
+            .map(|(cell, width)| format!("{:<width$}", if cell.is_empty() { "--" } else { cell }))
+            .collect();
+        padded.join(" ") + "\n"
+    };
+    let mut out = line(header.to_vec());
+    for row in rows {
+        out += &line(row.iter().map(String::as_str).collect());
+    }
+    out
+}
+
+fn nmcli_terse(values: &[&str]) -> String {
+    let escaped: Vec<String> = values
+        .iter()
+        .map(|v| v.replace('\\', "\\\\").replace(':', "\\:"))
+        .collect();
+    escaped.join(":") + "\n"
+}
+
+impl NmcliBinary {
+    fn has_profile(&self, id: &str) -> bool {
+        let state = self.0.state.lock();
+        state
+            .connections
+            .iter()
+            .any(|c| c.name == id || c.uuid == id)
+    }
+
+    /// Standard output, or the exit code.
+    fn answer(&self, args: &[&str]) -> Result<String, i32> {
+        let network = &self.0;
+        match args {
+            ["device", "status"] => {
+                let rows: Vec<Vec<String>> = network
+                    .state
+                    .lock()
+                    .devices
+                    .iter()
+                    .map(|(d, _)| {
+                        let connection = d.connection.clone().unwrap_or_default();
+                        vec![
+                            d.device.clone(),
+                            d.device_type.clone(),
+                            d.state.clone(),
+                            connection,
+                        ]
+                    })
+                    .collect();
+                Ok(nmcli_table(
+                    &["DEVICE", "TYPE", "STATE", "CONNECTION"],
+                    &rows,
+                ))
+            }
+            ["device", "show", ifname] => {
+                let details = network.device_show(ifname).map_err(|_| 10)?;
+                Ok(details
+                    .0
+                    .iter()
+                    .map(|(key, value)| {
+                        format!(
+                            "{:<40}{}\n",
+                            format!("{key}:"),
+                            value.as_deref().unwrap_or("--")
+                        )
+                    })
+                    .collect())
+            }
+            [
+                "-t",
+                "-f",
+                SCAN_FIELDS,
+                "device",
+                "wifi",
+                "list",
+                rescan @ ..,
+            ] => {
+                let rescan = match rescan {
+                    ["--rescan", yes_no] => Some(*yes_no == "yes"),
+                    _ => None,
+                };
+                let scan = network.device_wifi(rescan).map_err(|_| 1)?;
+                Ok(scan
+                    .iter()
+                    .map(|e| {
+                        nmcli_terse(&[
+                            if e.in_use { "*" } else { " " },
+                            e.ssid.as_str(),
+                            e.bssid.as_str(),
+                            e.mode.as_str(),
+                            e.chan.to_string().as_str(),
+                            format!("{} MHz", e.freq).as_str(),
+                            format!("{} Mbit/s", e.rate).as_str(),
+                            e.signal.to_string().as_str(),
+                            e.security.as_str(),
+                        ])
+                    })
+                    .collect())
+            }
+            ["-t", "-f", "NAME,UUID,TYPE,DEVICE", "connection", "show"] => {
+                let connections = network.connections().map_err(|_| 8)?;
+                Ok(connections
+                    .iter()
+                    .map(|c| {
+                        let setting = match c.conn_type.as_str() {
+                            "wifi" => "802-11-wireless",
+                            "ethernet" => "802-3-ethernet",
+                            other => other,
+                        };
+                        let device = if c.device == "--" { "" } else { &c.device };
+                        nmcli_terse(&[c.name.as_str(), c.uuid.as_str(), setting, device])
+                    })
+                    .collect())
+            }
+            ["connection", "delete", id] if self.has_profile(id) => {
+                network.connection_delete(id).map_err(|_| 7)?;
+                Ok(String::new())
+            }
+            [wait @ .., "connection", "up", id] if self.has_profile(id) => {
+                let wait = match wait {
+                    ["--wait", seconds] => seconds.parse().ok(),
+                    _ => None,
+                };
+                network.connection_up(id, wait).map_err(|_| 4)?;
+                Ok(String::new())
+            }
+            [.., "connection", "delete" | "up", _] => Err(10),
+            _ => Err(2),
+        }
+    }
+}
+
+impl CommandRunner for NmcliBinary {
+    fn run(
+        &self,
+        argv: &[String],
+        _timeout: Option<std::time::Duration>,
+    ) -> Result<Completed, RunError> {
+        let args: Vec<&str> = argv[1..].iter().map(String::as_str).collect();
+        Ok(match self.answer(&args) {
+            Ok(stdout) => Completed {
+                returncode: 0,
+                stdout,
+                stderr: String::new(),
+            },
+            Err(returncode) => Completed {
+                returncode,
+                stdout: String::new(),
+                stderr: format!("Error: nmcli {} failed.", args.join(" ")),
+            },
+        })
+    }
+
+    fn run_shell(&self, script: &str) -> Result<Completed, RunError> {
+        panic!("nmcli runs no shell: {script}")
+    }
+}
+
+/// A [`FakeNetwork`] host whose `nmcli` package is the real one, reading
+/// [`NmcliBinary`].
+pub struct NmcliBinaryHost {
+    network: Arc<FakeNetwork>,
+    nmcli: NmcliCli,
+}
+
+impl WifiHost for NmcliBinaryHost {
+    fn nmcli(&self) -> &dyn Nmcli {
+        &self.nmcli
+    }
+    fn run(&self, argv: &[String], timeout: Option<f64>) -> Result<Completed, RunError> {
+        self.network.run(argv, timeout)
+    }
+    fn which(&self, name: &str) -> bool {
+        self.network.which(name)
+    }
+    fn path_exists(&self, path: &str) -> bool {
+        self.network.path_exists(path)
+    }
+    fn getaddrinfo(&self, host: &str, port: u16) -> Result<(), String> {
+        self.network.getaddrinfo(host, port)
+    }
+    fn http_status(&self, url: &str, timeout: f64, agent: &str) -> Result<u16, HttpError> {
+        self.network.http_status(url, timeout, agent)
+    }
+    fn gethostname(&self) -> String {
+        self.network.gethostname()
+    }
+    fn time(&self) -> f64 {
+        self.network.time()
+    }
+    fn monotonic(&self) -> f64 {
+        self.network.monotonic()
+    }
+    fn sleep(&self, seconds: f64) {
+        self.network.sleep(seconds)
+    }
+    fn spawn(&self, name: &str, task: Task) {
+        self.network.spawn(name, task)
+    }
+}
+
 /// A `MagicMock` zeroconf: counts calls.
 #[derive(Default)]
 pub struct FakeAnnouncer {
@@ -517,6 +741,16 @@ impl WifiFixture {
 
     pub fn restarts(&self) -> usize {
         self.zeroconf.restarts.load(Ordering::SeqCst)
+    }
+
+    /// Hand the manager the `nmcli` package over [`NmcliBinary`], so what it
+    /// sees went through nmcli's text and the package's parsing.
+    pub fn parse_nmcli_output(&self, app: &crate::app::App) {
+        let binary = Arc::new(NmcliBinary(self.network.clone()));
+        app.wifi.set_host(Arc::new(NmcliBinaryHost {
+            network: self.network.clone(),
+            nmcli: NmcliCli::with_runner(binary),
+        }));
     }
 
     /// `connect_home()`.
