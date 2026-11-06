@@ -1319,12 +1319,81 @@ class WifiManager:
         return cached
 
     @staticmethod
+    def readNmcli(arguments: list[str]) -> str:
+        # Same locale as the nmcli package, so names read here compare equal to the
+        # SSIDs its scans return.
+        return subprocess.run(
+            ["nmcli", *arguments],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=10,
+            env=dict(os.environ, LANG="C.UTF-8"),
+        ).stdout
+
+    @staticmethod
+    def listWifiProfiles(active: bool = False):
+        """Saved Wi-Fi profiles as {"name", "uuid"}, names exactly as NetworkManager has them.
+
+        nmcli.connection() parses the padded table output and strips each name, so a
+        profile saved as "MyWifi " came back as "MyWifi", which NetworkManager does not
+        know. Terse output with escaping off and NAME as the last field keeps the whole
+        name, spaces, ':' and '\\' included.
+        """
+        arguments = ["-e", "no", "-t", "-f", "UUID,TYPE,NAME", "connection", "show"]
+        if active:
+            arguments.append("--active")
+
+        profiles = []
+        for line in WifiManager.readNmcli(arguments).split("\n"):
+            if not line:
+                continue
+            profile_uuid, conn_type, name = line.split(":", 2)
+            # Terse output names the type by its setting; "wifi" is the table's alias.
+            if conn_type in ("802-11-wireless", "wifi"):
+                profiles.append({"name": name, "uuid": profile_uuid})
+        return profiles
+
+    @staticmethod
+    def getNetworkManagerWifiProfiles(active: bool = False):
+        """Saved client Wi-Fi profiles with the SSID each one joins.
+
+        The SSID is what scans report and what the Dial sends back; a profile name
+        usually matches it, but NetworkManager names copies "<ssid> 1".
+        """
+        profiles = []
+        for profile in WifiManager.listWifiProfiles(active):
+            if profile["name"] == WifiManager._conname:
+                continue
+            profile["ssid"] = WifiManager.readNmcli(
+                ["-e", "no", "-g", "802-11-wireless.ssid"]
+                + ["connection", "show", "uuid", profile["uuid"]]
+            ).removesuffix("\n")
+            profiles.append(profile)
+        return profiles
+
+    @staticmethod
+    def findKnownWifiProfile(ssid: str):
+        try:
+            profiles = [
+                profile
+                for profile in WifiManager.getNetworkManagerWifiProfiles()
+                if profile["ssid"] == ssid
+            ]
+        except Exception as e:
+            logger.warning(f"Failed to list saved Wi-Fi profiles ({exception_metadata(e)})")
+            return None
+        # Prefer the profile named after the network, the one this used to bring up.
+        profiles.sort(key=lambda profile: profile["name"] != ssid)
+        return profiles[0] if profiles else None
+
+    @staticmethod
     def deleteConnectionProfile(name: str) -> bool:
         deleted = False
-        for connection in nmcli.connection():
-            if connection.name == name and connection.conn_type == "wifi":
+        for profile in WifiManager.listWifiProfiles():
+            if profile["name"] == name:
                 logger.info(f"Deleting Wi-Fi connection profile: {name}")
-                nmcli.connection.delete(name)
+                nmcli.connection.delete(profile["uuid"])
                 deleted = True
         return deleted
 
@@ -1337,13 +1406,9 @@ class WifiManager:
 
             deleted = True
 
-        for connection in nmcli.connection():
-            if (
-                connection.name == ssid
-                and connection.conn_type == "wifi"
-                and connection.name != WifiManager._conname
-            ):
-                nmcli.connection.delete(ssid)
+        for profile in WifiManager.getNetworkManagerWifiProfiles():
+            if profile["ssid"] == ssid:
+                nmcli.connection.delete(profile["uuid"])
                 deleted = True
 
         return deleted
@@ -1352,18 +1417,18 @@ class WifiManager:
     def getNetworkManagerWifiConnections():
         known_wifis = {}
         try:
-            for connection in nmcli.connection():
-                if connection.conn_type == "wifi" and connection.name != WifiManager._conname:
-                    known_wifis[connection.name] = {
-                        "ssid": connection.name,
-                        "type": WifiManager.getSavedWifiType(connection.name),
+            for profile in WifiManager.getNetworkManagerWifiProfiles():
+                if profile["ssid"] not in known_wifis:
+                    known_wifis[profile["ssid"]] = {
+                        "ssid": profile["ssid"],
+                        "type": WifiManager.getSavedWifiType(profile["uuid"]),
                     }
         except Exception as e:
             logger.warning(f"Failed to list known Wi-Fi connections: {e}")
         return known_wifis
 
     @staticmethod
-    def getSavedWifiType(ssid: str):
+    def getSavedWifiType(profile_uuid: str):
         try:
             result = subprocess.run(
                 [
@@ -1372,7 +1437,8 @@ class WifiManager:
                     "802-11-wireless-security.key-mgmt",
                     "connection",
                     "show",
-                    ssid,
+                    "uuid",
+                    profile_uuid,
                 ],
                 capture_output=True,
                 text=True,
@@ -1389,8 +1455,8 @@ class WifiManager:
                 return WifiType.Enterprise.value
         except Exception as e:
             logger.warning(
-                "Failed to read saved Wi-Fi type for "
-                f"{redact_ssid(ssid)} ({exception_metadata(e)})"
+                f"Failed to read saved Wi-Fi type for profile {profile_uuid} "
+                f"({exception_metadata(e)})"
             )
         return WifiType.PreSharedKey.value
 
@@ -1572,10 +1638,6 @@ class WifiManager:
         return WifiManager.getNetworkManagerWifiConnections()
 
     @staticmethod
-    def hasKnownWifiConnection(ssid: str) -> bool:
-        return ssid in WifiManager.getNetworkManagerWifiConnections()
-
-    @staticmethod
     def persistClientModeAfterManualConnect(ssid: str):
         if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_CLIENT:
             return
@@ -1614,11 +1676,29 @@ class WifiManager:
         )
         nmcli.connection.up(ssid, wait=10)
 
+    @staticmethod
+    def isConnectedTo(ssid: str, config: WifiSystemConfig) -> bool:
+        if not config.connected:
+            return False
+        if config.connection_name == ssid:
+            return True
+
+        # The connection name nmcli reports has lost its leading spaces, and a profile
+        # can be named differently from its network: ask which network is active.
+        try:
+            return any(
+                profile["ssid"] == ssid
+                for profile in WifiManager.getNetworkManagerWifiProfiles(active=True)
+            )
+        except Exception as e:
+            logger.warning(f"Failed to read the active Wi-Fi profile ({exception_metadata(e)})")
+            return False
+
     def waitForConnection(ssid: str, timeout: int = 8) -> bool:
         target_timeout = time.time() + timeout
         while time.time() < target_timeout:
             current = WifiManager.getCurrentConfig()
-            if current.connected and current.connection_name == ssid:
+            if WifiManager.isConnectedTo(ssid, current):
                 return True
             time.sleep(0.5)
         return False
@@ -1669,7 +1749,7 @@ class WifiManager:
         logger.info(f"Connecting to wifi: {redact_ssid(ssid)}")
 
         current = WifiManager.getCurrentConfig()
-        if current.connected and current.connection_name == ssid:
+        if WifiManager.isConnectedTo(ssid, current):
             logger.info("Already connected")
             if not is_auto_connect:
                 WifiManager.persistClientModeAfterManualConnect(ssid)
@@ -1689,7 +1769,8 @@ class WifiManager:
             return False
 
         password = credentials.get("password")
-        has_known_profile = WifiManager.hasKnownWifiConnection(ssid)
+        known_profile = WifiManager.findKnownWifiProfile(ssid)
+        has_known_profile = known_profile is not None
         cached_networks = [
             network
             for network in WifiManager.getAvailableNetworks(refresh=True)
@@ -1718,7 +1799,7 @@ class WifiManager:
             elif wifi_type == WifiType.PreSharedKey or wifi_type == WifiType.PSK_SAE:
                 if password is None and has_known_profile:
                     logger.info(f"Connecting to known Wi-Fi profile: {redact_ssid(ssid)}")
-                    nmcli.connection.up(ssid, wait=12)
+                    nmcli.connection.up(known_profile["uuid"], wait=12)
                 elif password is None:
                     WifiManager.setLastConnectionError(
                         "missing_credentials",

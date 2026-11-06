@@ -9,12 +9,14 @@ for its wait loops, its background threads, zeroconf and the BLE advertisement.
 import copy
 import json
 import subprocess
+import threading
+import uuid
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pyqrcode
 import pytest
-from nmcli import Connection, Device, DeviceWifi
+from nmcli import ConnectionControl, Device, DeviceControl, DeviceWifi, NotExistException
 from tornado.testing import AsyncHTTPTestCase
 from tornado.web import Application
 
@@ -38,6 +40,12 @@ HOSTNAME = "meticulousAromaticbean-1234"
 AP_NAME = "MeticulousAromaticbean"
 AP_PASSWORD = "espresso-1234"
 HOME_ROUTE = "dst = 192.168.1.0/24, nh = 0.0.0.0, mt = 600"
+# Terse nmcli output names a profile type by its setting; the table uses an alias.
+TABLE_TYPES = {"802-11-wireless": "wifi", "802-3-ethernet": "ethernet"}
+
+
+def profile_uuid(name):
+    return str(uuid.uuid5(uuid.NAMESPACE_OID, name))
 
 
 def import_api_wifi():
@@ -82,7 +90,13 @@ class FakeDeviceControl:
         return [device for device, _ in self.network.devices.values()]
 
     def show(self, name):
-        return dict(self.network.devices[name][1])
+        # `nmcli device show` output, parsed by the nmcli package itself: its parser
+        # drops the leading spaces of every value, GENERAL.CONNECTION included.
+        output = "".join(
+            f"{key + ':':<40}{'--' if value is None else value}\n"
+            for key, value in self.network.devices[name][1].items()
+        )
+        return DeviceControl(SimpleNamespace(nmcli=lambda _: output)).show(name)
 
     def show_all(self):
         return [details for _, details in self.network.devices.values()]
@@ -95,6 +109,9 @@ class FakeDeviceControl:
         self.network.calls.append(("device.wifi_connect", ssid, password))
         if self.network.join_error is not None:
             raise self.network.join_error
+        # NetworkManager saves the joined network as a profile named after its SSID.
+        if not any(c.ssid == ssid for c in self.network.connections):
+            self.network.add_connection(ssid)
         self.network.join(ssid)
 
 
@@ -103,19 +120,31 @@ class FakeConnectionControl:
         self.network = network
 
     def __call__(self):
-        return list(self.network.connections)
+        # The padded `nmcli connection` table, parsed by the nmcli package itself.
+        rows = [("NAME", "UUID", "TYPE", "DEVICE")] + [
+            (c.name, c.uuid, TABLE_TYPES[c.conn_type], c.device or "--")
+            for c in self.network.connections
+        ]
+        widths = [max(len(row[i]) for row in rows) + 2 for i in range(3)]
+        output = "".join(
+            "".join(f"{value:<{width}}" for value, width in zip(row, widths)) + row[3] + "\n"
+            for row in rows
+        )
+        return ConnectionControl(SimpleNamespace(nmcli=lambda _: output))()
 
     def delete(self, name):
+        # `nmcli connection delete <ID>` takes a name or a UUID.
         self.network.calls.append(("connection.delete", name))
-        self.network.connections = [c for c in self.network.connections if c.name != name]
-        if self.network.active_connection() == name:
+        profile = self.network.profile(name)
+        self.network.connections.remove(profile)
+        if self.network.active_connection() == profile.name:
             self.network.disconnect_station()
 
     def up(self, name, wait=None):
         self.network.calls.append(("connection.up", name, wait))
         if self.network.up_error is not None:
             raise self.network.up_error
-        self.network.join(name)
+        self.network.join(self.network.profile(name).name)
 
     def down(self, name, wait=None):
         self.network.calls.append(("connection.down", name))
@@ -169,8 +198,22 @@ class FakeNetworkManager:
         details = {"GENERAL.DEVICE": STATION, "GENERAL.HWADDR": MAC, "GENERAL.CONNECTION": None}
         self.devices[STATION] = (Device(STATION, "wifi", state, None), details)
 
-    def add_connection(self, name, conn_type="wifi"):
-        self.connections.append(Connection(name, f"uuid-{name}", conn_type, None))
+    def add_connection(self, name, conn_type="802-11-wireless", ssid=None):
+        profile = SimpleNamespace(
+            name=name,
+            uuid=profile_uuid(name),
+            conn_type=conn_type,
+            ssid=ssid or name,
+            device=None,
+        )
+        self.connections.append(profile)
+        return profile
+
+    def profile(self, name_or_uuid):
+        for profile in self.connections:
+            if name_or_uuid in (profile.uuid, profile.name):
+                return profile
+        raise NotExistException("Connection, device, or access point does not exist")
 
     def activate_hotspot(self):
         self.connect_station(AP_CONNECTION, ip4="10.42.0.1/24", gateway=None)
@@ -184,18 +227,38 @@ class FakeNetworkManager:
         prefix = self.failing_command_prefix
         if prefix is not None and command[: len(prefix[0])] == prefix[0]:
             returncode, stderr = 1, prefix[1]
+        elif command[:7] == ["nmcli", "-e", "no", "-t", "-f", "UUID,TYPE,NAME", "connection"]:
+            profiles = self.connections
+            if command[-1] == "--active":
+                profiles = [c for c in profiles if c.name == self.active_connection()]
+            # Terse rows, escaping off: the name is the last field and stays raw.
+            stdout = "".join(f"{c.uuid}:{c.conn_type}:{c.name}\n" for c in profiles)
+        elif command[:5] == ["nmcli", "-e", "no", "-g", "802-11-wireless.ssid"]:
+            profiles = [c for c in self.connections if c.uuid == command[-1]]
+            if profiles:
+                stdout = profiles[0].ssid + "\n"
+            else:
+                returncode, stderr = 10, f"Error: {command[-1]} - no such connection profile."
         elif command[:3] == ["nmcli", "-g", "802-11-wireless-security.key-mgmt"]:
-            stdout = self.saved_key_mgmt.get(command[-1], "wpa-psk") + "\n"
+            profiles = [c for c in self.connections if command[-1] in (c.uuid, c.name)]
+            if profiles:
+                stdout = self.saved_key_mgmt.get(profiles[0].name, "wpa-psk") + "\n"
+            else:
+                returncode, stderr = 10, f"Error: {command[-1]} - no such connection profile."
         elif command[0] == "ping":
             returncode = self.ping_returncodes.pop(0) if self.ping_returncodes else 0
         elif command[:3] == ["nmcli", "connection", "add"]:
-            self.add_connection(command[command.index("con-name") + 1])
+            self.add_connection(
+                command[command.index("con-name") + 1], ssid=command[command.index("ssid") + 1]
+            )
         elif command == ["nmcli", "--wait", "35", "connection", "up", AP_CONNECTION]:
             self.activate_hotspot()
+        if kwargs.get("check") and returncode != 0:
+            raise subprocess.CalledProcessError(returncode, command, stdout, stderr)
         return subprocess.CompletedProcess(command, returncode, stdout, stderr)
 
     def commands_except_type_lookups(self):
-        return [c for c in self.commands if c[:2] != ["nmcli", "-g"]]
+        return [c for c in self.commands if c[:2] != ["nmcli", "-g"] and c[1:3] != ["-e", "no"]]
 
 
 def scan_entry(ssid, signal, security="WPA2", in_use=False, bssid="00:11:22:33:44:55"):
@@ -404,7 +467,7 @@ class TestWifiConfigGet(WifiApiTestCase):
     def test_client_mode_reports_config_status_shallow_health_and_saved_networks(self):
         self.connect_home()
         self.network.add_connection("CafeOpen")
-        self.network.add_connection("Wired connection 1", conn_type="ethernet")
+        self.network.add_connection("Wired connection 1", conn_type="802-3-ethernet")
         self.network.add_connection(AP_CONNECTION)
         self.network.saved_key_mgmt = {"HomeNet": "wpa-psk", "CafeOpen": ""}
 
@@ -424,23 +487,15 @@ class TestWifiConfigGet(WifiApiTestCase):
         assert self.threads == ["WifiHealthRefresh"]
         assert [c for c in self.network.commands if c[0] == "ping"] == []
         self.internet.assert_not_called()
+        home, cafe = profile_uuid("HomeNet"), profile_uuid("CafeOpen")
+        ssid = ["nmcli", "-e", "no", "-g", "802-11-wireless.ssid", "connection", "show", "uuid"]
+        key_mgmt = ["nmcli", "-g", "802-11-wireless-security.key-mgmt", "connection", "show"]
         assert self.network.commands == [
-            [
-                "nmcli",
-                "-g",
-                "802-11-wireless-security.key-mgmt",
-                "connection",
-                "show",
-                "HomeNet",
-            ],
-            [
-                "nmcli",
-                "-g",
-                "802-11-wireless-security.key-mgmt",
-                "connection",
-                "show",
-                "CafeOpen",
-            ],
+            ["nmcli", "-e", "no", "-t", "-f", "UUID,TYPE,NAME", "connection", "show"],
+            ssid + [home],
+            ssid + [cafe],
+            key_mgmt + ["uuid", home],
+            key_mgmt + ["uuid", cafe],
         ]
 
     def test_hotspot_mode_reports_the_active_hotspot(self):
@@ -864,7 +919,7 @@ class TestWifiConnect(WifiApiTestCase):
         response = self.post("/api/v1/wifi/connect", {"ssid": "HomeNet"})
 
         assert response.code == 200
-        assert self.network.calls == [("connection.up", "HomeNet", 12)]
+        assert self.network.calls == [("connection.up", profile_uuid("HomeNet"), 12)]
 
     def test_wrong_password_is_reported_as_invalid_credentials(self):
         self.network.join_error = Exception(
@@ -986,7 +1041,7 @@ class TestWifiDelete(WifiApiTestCase):
 
         assert response.code == 200
         assert self.json(response) == {"status": "ok"}
-        assert self.network.calls == [("connection.delete", "HomeNet")]
+        assert self.network.calls == [("connection.delete", profile_uuid("HomeNet"))]
         self.config_save.assert_not_called()
 
     def test_legacy_config_entry_is_removed_and_saved(self):
@@ -1088,7 +1143,7 @@ class TestWifiRepair(WifiApiTestCase):
             ),
         }
         assert self.network.calls == []
-        assert self.network.commands == []
+        assert self.network.commands_except_type_lookups() == []
         assert WifiManager.isAutoConnectSuppressed() is False
 
     def test_repair_while_another_repair_runs_reports_generic_failure(self):
@@ -1160,3 +1215,152 @@ class TestWifiRepair(WifiApiTestCase):
             ("connection.up", "HomeNet", 15),
         ]
         self.zeroconf.restart.assert_called_once_with()
+
+
+class StopAutoConnect(Exception):
+    pass
+
+
+class TestSavedNetworkNames(WifiApiTestCase):
+    """Saved networks whose name has a leading or trailing space, ':' or a backslash.
+
+    Regression: Known Wi-Fis came from nmcli.connection(), which strips every
+    profile name, so a network saved as "Trail " was listed as "Trail", a profile
+    NetworkManager does not have. Joining or forgetting it from Known Wi-Fis failed
+    with "Connection, device, or access point does not exist", and the auto-connect
+    loop never matched it against the scan, so after a reboot the machine stayed
+    offline. Expected values come from NetworkManager: the SSID each profile stores
+    (802-11-wireless.ssid), which the Dial sends back as the known_wifis key, and the
+    profile UUID, which identifies the profile whatever its name.
+    """
+
+    def run_auto_connect_once(self):
+        # tryAutoConnect never returns: its second 10 s nap ends the run. It runs in a
+        # thread, as on the machine, because it installs its own asyncio loop.
+        sleep = self.clock.sleep
+        naps = []
+
+        def stop_on_second_round(seconds):
+            if seconds == 10:
+                naps.append(seconds)
+                if len(naps) == 2:
+                    raise StopAutoConnect
+            sleep(seconds)
+
+        self.monkeypatch.setattr(self.clock, "sleep", stop_on_second_round)
+        errors = []
+
+        def run():
+            try:
+                WifiManager.tryAutoConnect()
+            except StopAutoConnect:
+                pass
+            except Exception as error:
+                errors.append(error)
+
+        thread = threading.Thread(target=run)
+        thread.start()
+        thread.join(timeout=10)
+        assert not thread.is_alive()
+        assert errors == []
+
+    def test_saved_networks_are_listed_under_their_exact_ssid(self):
+        for name in (" Lead", "Trail ", "Cafe:Bar", "Back\\slash"):
+            self.network.add_connection(name)
+        self.network.add_connection("Wired connection 1", conn_type="802-3-ethernet")
+        self.network.add_connection(AP_CONNECTION, ssid=AP_NAME)
+
+        body = self.json(self.fetch("/api/v1/wifi/config"))
+
+        assert body["known_wifis"] == {
+            " Lead": {"ssid": " Lead", "type": "PSK"},
+            "Trail ": {"ssid": "Trail ", "type": "PSK"},
+            "Cafe:Bar": {"ssid": "Cafe:Bar", "type": "PSK"},
+            "Back\\slash": {"ssid": "Back\\slash", "type": "PSK"},
+        }
+
+    def test_profiles_of_one_network_are_listed_once_under_its_ssid(self):
+        self.network.add_connection("HomeNet")
+        self.network.add_connection("HomeNet 1", ssid="HomeNet")
+        self.network.add_connection("Office profile", ssid="Office")
+
+        body = self.json(self.fetch("/api/v1/wifi/config"))
+
+        assert body["known_wifis"] == {
+            "HomeNet": {"ssid": "HomeNet", "type": "PSK"},
+            "Office": {"ssid": "Office", "type": "PSK"},
+        }
+
+    def test_known_network_is_rejoined_by_uuid_without_a_password(self):
+        trail = self.network.add_connection("Trail ")
+        self.network.add_connection("Trail  1", ssid="Trail ")
+        WifiManager._scan_cache = [scan_entry("Trail ", 70)]
+
+        response = self.post("/api/v1/wifi/connect", {"type": "PSK", "ssid": "Trail "})
+
+        assert response.code == 200
+        assert self.json(response)["status"] == "ok"
+        # The profile named exactly like the network wins over NetworkManager's copy.
+        assert self.network.calls == [("connection.up", trail.uuid, 12)]
+
+    def test_joining_a_network_whose_name_starts_with_a_space_reports_success(self):
+        WifiManager._scan_cache = [scan_entry(" Lead", 70)]
+
+        response = self.post(
+            "/api/v1/wifi/connect", {"type": "PSK", "ssid": " Lead", "password": "hunter22"}
+        )
+
+        assert response.code == 200
+        assert self.json(response)["status"] == "ok"
+        assert self.network.calls == [("device.wifi_connect", " Lead", "hunter22")]
+        assert self.network.active_connection() == " Lead"
+
+    def test_forgetting_a_network_deletes_each_of_its_profiles_by_uuid(self):
+        trail = self.network.add_connection("Trail ")
+        trail_copy = self.network.add_connection("Trail  1", ssid="Trail ")
+        neighbour = self.network.add_connection("Trail")
+
+        response = self.post("/api/v1/wifi/delete", {"ssid": "Trail "})
+
+        assert response.code == 200
+        assert self.json(response) == {"status": "ok"}
+        assert self.network.calls == [
+            ("connection.delete", trail.uuid),
+            ("connection.delete", trail_copy.uuid),
+        ]
+        assert self.network.connections == [neighbour]
+
+    def test_auto_connect_rejoins_a_saved_network_whose_name_ends_in_a_space(self):
+        trail = self.network.add_connection("Trail ")
+        self.network.scan = [scan_entry("Trail ", 70)]
+
+        self.run_auto_connect_once()
+
+        assert ("connection.up", trail.uuid, 12) in self.network.calls
+        assert self.network.active_connection() == "Trail "
+
+    def test_legacy_entry_of_a_network_already_in_network_manager_is_not_migrated_again(self):
+        self.network.add_connection("Trail ")
+        MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS] = {"Trail ": "legacy-pass"}
+
+        body = self.json(self.fetch("/api/v1/wifi/config"))
+
+        assert self.network.commands_except_type_lookups() == []
+        assert len(self.network.connections) == 1
+        assert MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS] == {
+            "Trail ": {"ssid": "Trail ", "type": "PSK"}
+        }
+        assert body["known_wifis"] == {"Trail ": {"ssid": "Trail ", "type": "PSK"}}
+
+    def test_failed_migration_removes_the_profile_it_created(self):
+        MeticulousConfig[CONFIG_WIFI][WIFI_KNOWN_WIFIS] = {" Lead": "legacy-pass"}
+        self.network.failing_command_prefix = (
+            ["nmcli", "connection", "modify"],
+            "Error: invalid property",
+        )
+
+        body = self.json(self.fetch("/api/v1/wifi/config"))
+
+        assert ("connection.delete", profile_uuid(" Lead")) in self.network.calls
+        assert self.network.connections == []
+        assert body["known_wifis"] == {}
