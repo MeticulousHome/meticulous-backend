@@ -506,6 +506,28 @@ async fn saved_profile_survives_a_profile_manager_refresh() {
     );
 }
 
+/// tests/test_api_profiles.py::TestEspressoProfileRoutes::test_unreadable_profile_keeps_its_json_and_image_through_the_boot_sequence
+#[tokio::test]
+async fn unreadable_profile_keeps_its_json_and_image_through_the_boot_sequence() {
+    let fx = Fx::new();
+    std::fs::write(fx.images_dir().join("kept.png"), PNG_BYTES).expect("write image");
+    let broken = fx.profiles_dir().join("broken.json");
+    let content = json!({
+        "id": "00000000-0000-4000-8000-000000000001",
+        "name": "x",
+        "display": {"image": "/api/v1/profile/image/kept.png"},
+        "stages": null,
+    });
+    std::fs::write(&broken, content.to_string()).expect("write profile");
+    fx.app.profiles.refresh_image_list();
+
+    fx.app.profiles.refresh_profile_list(&fx.app);
+    fx.app.profiles.delete_unused_images();
+
+    assert!(broken.exists());
+    assert!(fx.images_dir().join("kept.png").exists());
+}
+
 /// tests/test_api_profiles.py::TestEspressoProfileRoutes::test_refresh_stamps_last_changed_on_a_profile_saved_without_one
 #[tokio::test]
 async fn refresh_stamps_last_changed_on_a_profile_saved_without_one() {
