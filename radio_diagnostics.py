@@ -6,6 +6,7 @@ _SAFE_CODES = {
     "already_in_progress",
     "ap",
     "apply_ap_mode",
+    "background_repair_disabled",
     "client",
     "completed",
     "dns_unreachable",

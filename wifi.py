@@ -1028,7 +1028,25 @@ class WifiManager:
             logger.warning("WiFi recovery skipped due to cooldown")
             return False
 
-        return WifiManager.repairWifiConnection(reason=health.last_error)
+        # The repair ladder restarts the connection and then resets the radio
+        # that WiFi and Bluetooth share. It has never completed in the field:
+        # until the link_connected fix every repair raised before its first
+        # step, and 679 machines got this far between 2026-07 and 2026-11
+        # (Sentry METICULOUS-BACKEND-15SZ). Until we know which checks fail on
+        # those connections, the background check only records the problem;
+        # the Repair button still runs the full repair.
+        emit_radio_recovery_event(
+            logger,
+            "rejected",
+            operation_id=uuid.uuid4().hex[:12],
+            elapsed_ms=0,
+            reason=health.last_error,
+            mode=MeticulousConfig[CONFIG_WIFI][WIFI_MODE],
+            connected=health.link_connected,
+            has_ipv4=health.has_ipv4,
+            result="background_repair_disabled",
+        )
+        return False
 
     def repairWifiConnection(reason: str = "manual"):
         operation_id = uuid.uuid4().hex[:12]

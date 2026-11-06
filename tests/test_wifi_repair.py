@@ -212,39 +212,67 @@ def test_repair_records_the_link_state_of_each_health_check(monkeypatch):
     assert recorded["completed"]["result"] == "recovered"
 
 
-def test_background_repair_keeps_the_auto_connect_loop_running(monkeypatch):
-    # The health monitor repairs from inside the WifiAutoConnect loop, so an
-    # exception out of repairWifiConnection ends that thread until reboot.
+def test_manual_repair_escalates_to_the_radio_when_restarting_the_connection_fails(
+    monkeypatch,
+):
     module = _load_wifi_module(monkeypatch)
     manager = module.WifiManager
     current = _wifi_config(module, connected=True, connection_name="Home")
     degraded = _health(module, degraded=True, last_error="gateway_unreachable")
     healthy = _health(module, degraded=False)
+
+    with (
+        patch.object(module.time, "sleep"),
+        patch.object(manager, "getCurrentConfig", return_value=current),
+        patch.object(manager, "getHealthStatus", side_effect=[degraded, degraded, healthy]),
+        patch.object(manager, "restartActiveConnection") as restart_connection,
+        patch.object(manager, "restartWifiRadio") as restart_radio,
+        patch.object(manager, "driverInBandReset") as reset_driver,
+        patch.object(manager, "_zeroconf"),
+        patch.object(manager, "update_gatt_advertisement"),
+        patch.object(manager, "invalidateHealthCache"),
+    ):
+        result = manager.repairWifiConnection(reason="manual")
+
+    assert result is True
+    restart_connection.assert_called_once_with(current)
+    restart_radio.assert_called_once_with()
+    reset_driver.assert_not_called()
+    assert manager._last_recovery_action == "restart_wifi_radio"
+    assert manager._last_recovery_result == "recovered"
+
+
+def test_background_health_check_records_without_repairing(monkeypatch):
+    # The health check runs inside the WifiAutoConnect loop: it must neither
+    # start the repair ladder nor raise, or the thread ends until reboot.
+    module = _load_wifi_module(monkeypatch)
+    manager = module.WifiManager
+    current = _wifi_config(module, connected=True, connection_name="Home")
+    degraded = _health(module, degraded=True, last_error="gateway_unreachable")
     manager._health_failures = manager._health_failure_threshold - 1
     loop_passes = []
 
     def sleep(seconds):
-        # Every pass of the loop starts with sleep(10); the repair's own pauses
-        # are shorter. Stop at the start of the second pass.
-        if seconds == 10:
-            loop_passes.append(seconds)
-            if len(loop_passes) == 2:
-                raise StopAutoConnect()
+        # Every pass of the loop starts with a sleep: stop at the second pass.
+        loop_passes.append(seconds)
+        if len(loop_passes) == 2:
+            raise StopAutoConnect()
 
     with (
         patch.object(module.time, "sleep", side_effect=sleep),
         patch.object(module.asyncio, "new_event_loop"),
         patch.object(module.asyncio, "set_event_loop"),
         patch.object(manager, "getCurrentConfig", return_value=current),
-        patch.object(manager, "getHealthStatus", side_effect=[degraded, degraded, healthy]),
-        patch.object(manager, "restartActiveConnection") as restart_connection,
-        patch.object(manager, "_zeroconf"),
-        patch.object(manager, "update_gatt_advertisement"),
-        patch.object(manager, "invalidateHealthCache"),
+        patch.object(manager, "getHealthStatus", return_value=degraded),
+        patch.object(manager, "repairWifiConnection") as repair,
+        patch.object(module, "emit_radio_recovery_event") as emit,
         pytest.raises(StopAutoConnect),
     ):
         manager.tryAutoConnect()
 
-    restart_connection.assert_called_once_with(current)
-    assert manager._last_recovery_result == "recovered"
-    assert manager._health_failures == 0
+    repair.assert_not_called()
+    emit.assert_called_once()
+    assert emit.call_args.args[1] == "rejected"
+    assert emit.call_args.kwargs["reason"] == "gateway_unreachable"
+    assert emit.call_args.kwargs["result"] == "background_repair_disabled"
+    assert manager._health_failures == manager._health_failure_threshold
