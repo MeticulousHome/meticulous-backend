@@ -13,7 +13,7 @@ use super::{
     HEALTH_CACHE_TTL, HEALTH_CHECK_INTERVAL, HEALTH_FAILURE_THRESHOLD, RECOVERY_COOLDOWN,
     WifiManager, cmd,
 };
-use crate::py::{PyError, PyResult, py_repr, py_str};
+use crate::py::{PyResult, py_repr, py_str};
 
 const DRIVER_RESET_SCRIPT: &str = "/etc/wifi/variscite-wifi.d/iw612-wifi";
 const HOTSPOT_ACTIVE_MESSAGE: &str =
@@ -294,8 +294,8 @@ impl WifiManager {
     }
 
     /// `maybeRecoverCurrentConnection(config)`: called every auto-connect
-    /// pass while connected; acts at most once a minute and repairs after
-    /// three degraded checks, five minutes apart at least.
+    /// pass while connected; acts at most once a minute and, after three
+    /// degraded checks, records the problem instead of repairing it.
     pub(crate) fn maybe_recover_current_connection(
         &self,
         config: Option<WifiSystemConfig>,
@@ -351,7 +351,27 @@ impl WifiManager {
             tracing::warn!("WiFi recovery skipped due to cooldown");
             return Ok(false);
         }
-        self.repair_wifi_connection(&health.last_error)
+        // The repair ladder restarts the connection and then resets the radio
+        // that Wi-Fi and Bluetooth share. It has never completed in the field:
+        // every repair failed before its first step, and 679 machines got this
+        // far between 2026-07 and 2026-11 (Sentry METICULOUS-BACKEND-15SZ).
+        // Until we know which checks fail on those connections, the background
+        // check only records the problem; the Repair button still runs the
+        // full repair.
+        let operation_id: String = uuid::Uuid::new_v4().simple().to_string()[..12].to_string();
+        self.record(
+            "rejected",
+            &operation_id,
+            self.host().monotonic(),
+            &health.last_error,
+            RecoveryEvent {
+                connected: Some(health.link_connected),
+                has_ipv4: Some(health.has_ipv4),
+                result: Some("background_repair_disabled"),
+                ..RecoveryEvent::default()
+            },
+        );
+        Ok(false)
     }
 
     fn record(
@@ -476,11 +496,6 @@ impl WifiManager {
         );
 
         let initial = self.get_health_status(Some(current.clone()), true, true)?;
-        if self.health_has_no_connected.load(Ordering::Relaxed) {
-            // PARITY: `initial_health.connected` raises; the repair never
-            // gets further in Python.
-            return Err(no_connected_attribute());
-        }
         self.record(
             "health_assessed",
             operation_id,
@@ -737,9 +752,4 @@ impl WifiManager {
 
 fn non_empty_or<'a>(value: &'a str, fallback: &'a str) -> &'a str {
     if value.is_empty() { fallback } else { value }
-}
-
-/// The `AttributeError` every repair hits in Python.
-pub(crate) fn no_connected_attribute() -> PyError {
-    PyError::attribute_error("'WifiHealthStatus' object has no attribute 'connected'")
 }

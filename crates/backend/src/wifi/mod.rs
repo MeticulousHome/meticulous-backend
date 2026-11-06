@@ -119,11 +119,6 @@ pub struct WifiManager {
     announcer_factory: RwLock<AnnouncerFactory>,
     gatt_hook: RwLock<Option<Hook>>,
     manufacturing: RwLock<Probe>,
-    /// PARITY: `repairWifiConnection` reads `.connected` on a
-    /// `WifiHealthStatus`, which only has `link_connected`, so every repair
-    /// that gets past the guards raises `AttributeError`. Tests turn this off
-    /// to exercise the repair steps the Python intends.
-    health_has_no_connected: AtomicBool,
 }
 
 impl WifiManager {
@@ -158,7 +153,6 @@ impl WifiManager {
             announcer_factory: RwLock::new(announcer_factory),
             gatt_hook: RwLock::new(None),
             manufacturing: RwLock::new(Arc::new(|| false)),
-            health_has_no_connected: AtomicBool::new(true),
         })
     }
 
@@ -189,11 +183,6 @@ impl WifiManager {
     #[cfg(test)]
     pub(crate) fn set_repair_in_progress(&self, value: bool) {
         self.repair_in_progress.store(value, Ordering::Relaxed);
-    }
-
-    #[cfg(test)]
-    pub(crate) fn set_health_has_no_connected(&self, value: bool) {
-        self.health_has_no_connected.store(value, Ordering::Relaxed);
     }
 
     /// Where `update_gatt_advertisement` goes once the BLE server runs.

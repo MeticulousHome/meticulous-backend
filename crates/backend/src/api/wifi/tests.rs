@@ -479,48 +479,11 @@ async fn switching_to_hotspot_mode_creates_and_starts_the_access_point() {
 
 /// test_api_wifi.py::TestWifiConfigPost::test_failed_hotspot_start_rolls_back_to_client_mode_and_reports_why
 ///
-/// An xfail in Python. PARITY: after the hotspot fails on every channel the
-/// AP recovery raises `AttributeError` (`initial_health.connected`), so the
-/// answer is `400 Failed to write config` and the mode stays AP in memory.
+/// The AP recovery cannot start the hotspot either, so the settings roll
+/// back to client mode.
 #[tokio::test]
-async fn failed_hotspot_start_answers_failed_to_write_config() {
+async fn failed_hotspot_start_rolls_back_to_client_mode_and_reports_why() {
     let (_dir, app, f) = setup();
-    f.connect_home();
-    f.network.state.lock().failing_command_prefix = Some((
-        strings(&[
-            "nmcli",
-            "connection",
-            "add",
-            "type",
-            "wifi",
-            "ifname",
-            STATION,
-        ]),
-        "Error: device busy".into(),
-    ));
-
-    let reply = post(&app, "/api/v1/wifi/config", json!({"mode": WIFI_MODE_AP})).await;
-
-    assert_eq!(reply.status_code(), 400);
-    assert_eq!(body_text(&reply), "Failed to write config");
-    assert_eq!(
-        app.config.get(keys::WIFI, keys::WIFI_MODE),
-        json!(WIFI_MODE_AP)
-    );
-    assert_eq!(
-        app.wifi.last_health_error(),
-        "hotspot_start_failed: channel=11: Error: device busy"
-    );
-    assert_eq!(f.saves.get(), 0);
-}
-
-/// The same request once `repairWifiConnection` reads `link_connected`:
-/// what the xfail test expects. The AP recovery cannot start the hotspot
-/// either, so the settings roll back to client mode.
-#[tokio::test]
-async fn failed_hotspot_start_rolls_back_to_client_mode_once_repair_works() {
-    let (_dir, app, f) = setup();
-    app.wifi.set_health_has_no_connected(false);
     f.connect_home();
     f.network.state.lock().failing_command_prefix = Some((
         strings(&[
@@ -1351,32 +1314,9 @@ async fn repair_while_another_repair_runs_reports_generic_failure() {
 }
 
 /// test_api_wifi.py::TestWifiRepair::test_repair_of_a_healthy_connection_reports_ok
-///
-/// An xfail in Python. PARITY: the repair reads `.connected` on the health
-/// report and raises, so the answer is the handler's exception path.
 #[tokio::test]
-async fn repair_of_a_healthy_connection_raises_attribute_error() {
+async fn repair_of_a_healthy_connection_reports_ok() {
     let (_dir, app, f) = setup();
-    f.connect_home();
-
-    let reply = repair(&app).await;
-
-    assert_eq!(reply.status_code(), 400);
-    assert_eq!(
-        json(&reply),
-        json!({
-            "status": "error",
-            "error": "failed to repair wifi: 'WifiHealthStatus' object has no attribute 'connected'",
-        })
-    );
-    assert!(f.network.calls().is_empty());
-}
-
-/// What the xfail test expects once the repair reads `link_connected`.
-#[tokio::test]
-async fn repair_of_a_healthy_connection_reports_ok_once_fixed() {
-    let (_dir, app, f) = setup();
-    app.wifi.set_health_has_no_connected(false);
     f.connect_home();
 
     let reply = repair(&app).await;
@@ -1391,31 +1331,10 @@ async fn repair_of_a_healthy_connection_reports_ok_once_fixed() {
 
 /// test_api_wifi.py::TestWifiRepair::test_repair_restarts_a_connection_whose_gateway_stopped_answering
 ///
-/// An xfail in Python: PARITY, the same `AttributeError` answer.
+/// Restarting the connection brings the gateway back.
 #[tokio::test]
-async fn repair_of_a_degraded_connection_raises_attribute_error() {
+async fn repair_restarts_a_connection_whose_gateway_stopped_answering() {
     let (_dir, app, f) = setup();
-    f.connect_home();
-    f.network.state.lock().ping_returncodes = [1, 0].into();
-
-    let reply = repair(&app).await;
-
-    assert_eq!(reply.status_code(), 400);
-    assert_eq!(
-        json(&reply)["error"],
-        json!("failed to repair wifi: 'WifiHealthStatus' object has no attribute 'connected'")
-    );
-    assert!(f.network.calls().is_empty());
-    // The `finally` still ran.
-    assert_eq!(app.wifi.auto_connect_suppression_remaining(), 15);
-}
-
-/// What the xfail test expects once the repair reads `link_connected`:
-/// restarting the connection brings the gateway back.
-#[tokio::test]
-async fn repair_restarts_a_connection_whose_gateway_stopped_answering_once_fixed() {
-    let (_dir, app, f) = setup();
-    app.wifi.set_health_has_no_connected(false);
     f.connect_home();
     f.network.state.lock().ping_returncodes = [1, 0].into();
 
