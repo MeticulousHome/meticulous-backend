@@ -10,6 +10,8 @@ from pathlib import Path
 from types import ModuleType
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 
 def _module(name: str, **attributes):
     module = ModuleType(name)
@@ -87,6 +89,29 @@ def _wifi_config(module, *, connected, connection_name):
     )
 
 
+def _health(module, *, degraded, last_error=""):
+    # A real WifiHealthStatus, never a MagicMock: a mock answers any attribute,
+    # which is how repairWifiConnection reading a nonexistent .connected field
+    # went unnoticed.
+    return module.WifiHealthStatus(
+        mode="client",
+        link_connected=True,
+        has_ipv4=True,
+        gateway_reachable=not degraded,
+        dns_resolves=True,
+        internet_reachable=True,
+        ap_active=False,
+        degraded=degraded,
+        last_error=last_error,
+        last_recovery_action="",
+        last_recovery_result="",
+    )
+
+
+class StopAutoConnect(Exception):
+    pass
+
+
 def test_repair_without_saved_client_connection_never_resets_hardware(monkeypatch):
     module = _load_wifi_module(monkeypatch)
     manager = module.WifiManager
@@ -118,7 +143,7 @@ def test_disconnected_saved_connection_keeps_existing_repair_path(monkeypatch):
     module = _load_wifi_module(monkeypatch)
     manager = module.WifiManager
     current = _wifi_config(module, connected=False, connection_name=None)
-    healthy = MagicMock(degraded=False)
+    healthy = _health(module, degraded=False)
 
     with (
         patch.object(manager, "getCurrentConfig", return_value=current),
@@ -142,7 +167,7 @@ def test_repair_health_check_still_runs_for_active_connection(monkeypatch):
     module = _load_wifi_module(monkeypatch)
     manager = module.WifiManager
     current = _wifi_config(module, connected=True, connection_name="Home")
-    healthy = MagicMock(degraded=False)
+    healthy = _health(module, degraded=False)
 
     with (
         patch.object(manager, "getCurrentConfig", return_value=current),
@@ -155,3 +180,71 @@ def test_repair_health_check_still_runs_for_active_connection(monkeypatch):
     assert result is True
     get_health.assert_called_once_with(current, force=True)
     assert manager._last_recovery_result == "not_needed"
+
+
+def test_repair_records_the_link_state_of_each_health_check(monkeypatch):
+    module = _load_wifi_module(monkeypatch)
+    manager = module.WifiManager
+    current = _wifi_config(module, connected=True, connection_name="Home")
+    degraded = _health(module, degraded=True, last_error="gateway_unreachable")
+    healthy = _health(module, degraded=False)
+
+    with (
+        patch.object(module.time, "sleep"),
+        patch.object(manager, "getCurrentConfig", return_value=current),
+        patch.object(manager, "getHealthStatus", side_effect=[degraded, healthy]),
+        patch.object(manager, "restartActiveConnection") as restart_connection,
+        patch.object(manager, "restartWifiRadio") as restart_radio,
+        patch.object(manager, "_zeroconf"),
+        patch.object(manager, "update_gatt_advertisement"),
+        patch.object(manager, "invalidateHealthCache"),
+        patch.object(module, "emit_radio_recovery_event") as emit,
+    ):
+        result = manager.repairWifiConnection(reason="manual")
+
+    assert result is True
+    assert manager._last_recovery_result == "recovered"
+    restart_connection.assert_called_once_with(current)
+    restart_radio.assert_not_called()
+    recorded = {call.args[1]: call.kwargs for call in emit.call_args_list}
+    assert recorded["health_assessed"]["connected"] is True
+    assert recorded["step_assessed"]["connected"] is True
+    assert recorded["completed"]["result"] == "recovered"
+
+
+def test_background_repair_keeps_the_auto_connect_loop_running(monkeypatch):
+    # The health monitor repairs from inside the WifiAutoConnect loop, so an
+    # exception out of repairWifiConnection ends that thread until reboot.
+    module = _load_wifi_module(monkeypatch)
+    manager = module.WifiManager
+    current = _wifi_config(module, connected=True, connection_name="Home")
+    degraded = _health(module, degraded=True, last_error="gateway_unreachable")
+    healthy = _health(module, degraded=False)
+    manager._health_failures = manager._health_failure_threshold - 1
+    loop_passes = []
+
+    def sleep(seconds):
+        # Every pass of the loop starts with sleep(10); the repair's own pauses
+        # are shorter. Stop at the start of the second pass.
+        if seconds == 10:
+            loop_passes.append(seconds)
+            if len(loop_passes) == 2:
+                raise StopAutoConnect()
+
+    with (
+        patch.object(module.time, "sleep", side_effect=sleep),
+        patch.object(module.asyncio, "new_event_loop"),
+        patch.object(module.asyncio, "set_event_loop"),
+        patch.object(manager, "getCurrentConfig", return_value=current),
+        patch.object(manager, "getHealthStatus", side_effect=[degraded, degraded, healthy]),
+        patch.object(manager, "restartActiveConnection") as restart_connection,
+        patch.object(manager, "_zeroconf"),
+        patch.object(manager, "update_gatt_advertisement"),
+        patch.object(manager, "invalidateHealthCache"),
+        pytest.raises(StopAutoConnect),
+    ):
+        manager.tryAutoConnect()
+
+    restart_connection.assert_called_once_with(current)
+    assert manager._last_recovery_result == "recovered"
+    assert manager._health_failures == 0

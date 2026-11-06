@@ -1089,7 +1089,7 @@ class WifiManager:
             initial_health = WifiManager.getHealthStatus(current, force=True)
             record(
                 "health_assessed",
-                connected=initial_health.connected,
+                connected=initial_health.link_connected,
                 has_ipv4=initial_health.has_ipv4,
                 result=initial_health.last_error or "healthy",
             )
@@ -1147,7 +1147,7 @@ class WifiManager:
                 record(
                     "step_assessed",
                     action=action,
-                    connected=health.connected,
+                    connected=health.link_connected,
                     has_ipv4=health.has_ipv4,
                     result=health.last_error or "healthy",
                 )

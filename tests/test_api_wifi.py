@@ -568,16 +568,6 @@ class TestWifiConfigPost(WifiApiTestCase):
         assert MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP
         self.config_save.assert_called_once_with()
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "backend bug: WifiManager.repairWifiConnection (wifi.py:1092) reads "
-            "initial_health.connected, but WifiHealthStatus only has link_connected. When "
-            "the hotspot fails to start, applyWifiSettings' AP recovery raises "
-            "AttributeError, so POST /wifi/config answers 400 'Failed to write config' and "
-            "never rolls the in-memory mode back to client"
-        ),
-    )
     def test_failed_hotspot_start_rolls_back_to_client_mode_and_reports_why(self):
         self.connect_home()
         self.network.failing_command_prefix = (
@@ -1115,15 +1105,6 @@ class TestWifiRepair(WifiApiTestCase):
         self.dns_lookup.assert_called_once_with("meticuloushome.com", 443)
         assert self.network.calls == []
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "backend bug: WifiManager.repairWifiConnection (wifi.py:1092) reads "
-            "initial_health.connected, but WifiHealthStatus only has link_connected, so "
-            "POST /wifi/repair with a saved or active connection always answers 400 "
-            "'failed to repair wifi: ... has no attribute connected'"
-        ),
-    )
     def test_repair_of_a_healthy_connection_reports_ok(self):
         self.connect_home()
 
@@ -1136,15 +1117,6 @@ class TestWifiRepair(WifiApiTestCase):
         assert body["health"]["verified"] is True
         assert self.network.calls == []
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "backend bug: WifiManager.repairWifiConnection reads .connected on "
-            "WifiHealthStatus (wifi.py:1092 and, after each repair step, wifi.py:1150), "
-            "which has only link_connected, so a degraded connection is never repaired "
-            "through POST /wifi/repair"
-        ),
-    )
     def test_repair_restarts_a_connection_whose_gateway_stopped_answering(self):
         self.connect_home()
         self.network.ping_returncodes = [1, 0]
