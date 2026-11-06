@@ -481,13 +481,22 @@ impl WifiManager {
     }
 
     /// `tryAutoConnect()`: every ten seconds, outside hotspot mode, keep the
-    /// current connection healthy or join a known network. Returns only when
-    /// an iteration raises, which in Python ends the thread.
+    /// current connection healthy or join a known network. It never returns:
+    /// an iteration that raises is logged (once per streak) and retried after
+    /// the next sleep.
     fn try_auto_connect(&self) -> PyResult<()> {
         tracing::info!("Starting Networking background Thread");
+        let mut failing = false;
         loop {
             self.host().sleep(10.0);
-            self.auto_connect_iteration()?;
+            match self.auto_connect_iteration() {
+                Ok(()) => failing = false,
+                Err(error) if !failing => {
+                    failing = true;
+                    tracing::error!("WiFi auto-connect failed, retrying every tick: {error}");
+                }
+                Err(_) => {}
+            }
         }
     }
 

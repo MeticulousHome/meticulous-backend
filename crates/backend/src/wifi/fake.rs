@@ -55,6 +55,8 @@ pub struct FakeState {
     pub internet_calls: usize,
     pub internet_ok: bool,
     pub now: f64,
+    /// Panics once slept past, to end an endless loop under test.
+    pub stop_after: Option<f64>,
     /// Real time a scan takes, for the shared cold-start scan.
     pub scan_delay: std::time::Duration,
 }
@@ -87,6 +89,7 @@ impl FakeNetwork {
                 internet_calls: 0,
                 internet_ok: true,
                 now: 1_800_000_000.0,
+                stop_after: None,
                 scan_delay: std::time::Duration::ZERO,
             }),
             device_wifi_calls: AtomicUsize::new(0),
@@ -428,7 +431,11 @@ impl WifiHost for FakeNetwork {
     }
 
     fn sleep(&self, seconds: f64) {
-        self.state.lock().now += seconds;
+        let mut state = self.state.lock();
+        state.now += seconds;
+        if state.stop_after.is_some_and(|limit| state.now > limit) {
+            panic!("fake clock reached its stop");
+        }
     }
 
     fn spawn(&self, name: &str, _task: Task) {
