@@ -461,7 +461,7 @@ impl Machine {
     /// loaded profile first sends the last one.
     pub fn action(&self, app: &App, action: &str) -> bool {
         let alarm = app.alarms.end_time(AlarmType::MotorStressed);
-        if action == "purge"
+        if matches!(action, "purge" | "start")
             && let Some(end) = alarm
         {
             let warning =
