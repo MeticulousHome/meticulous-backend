@@ -334,6 +334,45 @@ fn repair_health_check_still_runs_for_active_connection() {
     assert_eq!(app.wifi.state.lock().last_recovery_result, "not_needed");
 }
 
+/// On the IW612 the driver in-band reset left the firmware dead until reboot,
+/// with Bluetooth, so a repair whose every step fails must still never run it.
+#[test]
+fn repair_never_runs_the_driver_in_band_reset() {
+    let (_dir, app, f) = setup();
+    f.network.add_connection("Home", "wifi");
+    let logs = crate::bug_report::test_support::capture_logs();
+
+    let result = app
+        .wifi
+        .repair_wifi_connection("manual")
+        .expect("no exception");
+
+    assert!(!result);
+    assert_eq!(app.wifi.state.lock().last_recovery_result, "failed");
+    let steps: Vec<String> = logs
+        .messages(tracing::Level::INFO, "wifi::radio")
+        .iter()
+        .filter_map(|message| message.strip_prefix("RADIO_RECOVERY "))
+        .map(|payload| serde_json::from_str::<serde_json::Value>(payload).expect("json"))
+        .filter(|event| event["event"] == "step_started")
+        .map(|event| event["action"].as_str().expect("action").to_string())
+        .collect();
+    assert_eq!(
+        steps,
+        [
+            "restart_connection",
+            "restart_wifi_radio",
+            "restart_wifi_service"
+        ]
+    );
+    let commands = f.network.commands();
+    assert!(
+        !commands
+            .iter()
+            .any(|command| command.iter().any(|arg| arg == "in-band-reset"))
+    );
+}
+
 /// `maybeRecoverCurrentConnection`: once a minute, three strikes, and it
 /// never repairs: the third strike is only recorded.
 #[test]

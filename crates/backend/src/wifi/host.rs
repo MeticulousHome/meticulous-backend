@@ -22,8 +22,6 @@ pub trait WifiHost: Send + Sync {
     fn run(&self, argv: &[String], timeout: Option<f64>) -> Result<Completed, RunError>;
     /// `shutil.which(name) is not None`.
     fn which(&self, name: &str) -> bool;
-    /// `os.path.exists(path)`.
-    fn path_exists(&self, path: &str) -> bool;
     /// `socket.getaddrinfo(host, port)`, the error as `str(e)`.
     fn getaddrinfo(&self, host: &str, port: u16) -> Result<(), String>;
     /// `urllib.request.urlopen(Request(url, headers=...), timeout=...)`:
@@ -69,10 +67,6 @@ impl WifiHost for SystemWifiHost {
 
     fn which(&self, name: &str) -> bool {
         crate::py::which(name).is_some()
-    }
-
-    fn path_exists(&self, path: &str) -> bool {
-        std::path::Path::new(path).exists()
     }
 
     fn getaddrinfo(&self, host: &str, port: u16) -> Result<(), String> {

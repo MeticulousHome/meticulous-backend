@@ -383,9 +383,6 @@ impl crate::wifi::WifiHost for BrokenNmcli {
     fn which(&self, name: &str) -> bool {
         self.0.which(name)
     }
-    fn path_exists(&self, path: &str) -> bool {
-        self.0.path_exists(path)
-    }
     fn getaddrinfo(&self, host: &str, port: u16) -> Result<(), String> {
         self.0.getaddrinfo(host, port)
     }

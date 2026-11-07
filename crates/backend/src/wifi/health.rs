@@ -15,7 +15,6 @@ use super::{
 };
 use crate::py::{PyResult, py_repr, py_str};
 
-const DRIVER_RESET_SCRIPT: &str = "/etc/wifi/variscite-wifi.d/iw612-wifi";
 const HOTSPOT_ACTIVE_MESSAGE: &str =
     "Hotspot active. Connect your phone or computer to the machine's Wi-Fi network.";
 const INTERNET_PROBES: [&str; 2] = [
@@ -47,7 +46,6 @@ enum Step {
     StartHotspot,
     RestartConnection,
     RestartWifiRadio,
-    DriverInBandReset,
     RestartWifiService,
 }
 
@@ -57,7 +55,6 @@ impl Step {
             Step::StartHotspot => "start_hotspot",
             Step::RestartConnection => "restart_connection",
             Step::RestartWifiRadio => "restart_wifi_radio",
-            Step::DriverInBandReset => "driver_in_band_reset",
             Step::RestartWifiService => "restart_wifi_service",
         }
     }
@@ -550,19 +547,20 @@ impl WifiManager {
             return Ok(false);
         }
 
+        // No driver in-band reset step: on the IW612 it leaves the firmware
+        // dead until reboot, Bluetooth included, and restarting the Wi-Fi
+        // service does not bring it back.
         let ap = self.is_ap_mode();
         let steps = if ap {
             [
                 Step::StartHotspot,
                 Step::RestartWifiRadio,
-                Step::DriverInBandReset,
                 Step::RestartWifiService,
             ]
         } else {
             [
                 Step::RestartConnection,
                 Step::RestartWifiRadio,
-                Step::DriverInBandReset,
                 Step::RestartWifiService,
             ]
         };
@@ -693,10 +691,6 @@ impl WifiManager {
                 self.restart_wifi_radio();
                 Ok(())
             }
-            Step::DriverInBandReset => {
-                self.driver_in_band_reset();
-                Ok(())
-            }
             Step::RestartWifiService => {
                 self.restart_wifi_service();
                 Ok(())
@@ -728,16 +722,6 @@ impl WifiManager {
         self.run_command(&cmd(&["nmcli", "radio", "wifi", "off"]), 10.0);
         self.host().sleep(3.0);
         self.run_command(&cmd(&["nmcli", "radio", "wifi", "on"]), 10.0);
-    }
-
-    /// `driverInBandReset()`.
-    fn driver_in_band_reset(&self) {
-        if !self.host().path_exists(DRIVER_RESET_SCRIPT) {
-            tracing::warn!("WiFi driver reset script not found: {DRIVER_RESET_SCRIPT}");
-            return;
-        }
-        tracing::warn!("Running WiFi driver in-band reset");
-        self.run_command(&cmd(&[DRIVER_RESET_SCRIPT, "in-band-reset"]), 15.0);
     }
 
     /// `restartWifiService()`.

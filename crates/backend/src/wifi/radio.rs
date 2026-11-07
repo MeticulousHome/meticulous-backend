@@ -3,7 +3,7 @@
 
 use serde_json::{Map, Value, json};
 
-const SAFE_CODES: [&str; 33] = [
+const SAFE_CODES: [&str; 32] = [
     "already_in_progress",
     "ap",
     "apply_ap_mode",
@@ -11,7 +11,6 @@ const SAFE_CODES: [&str; 33] = [
     "client",
     "completed",
     "dns_unreachable",
-    "driver_in_band_reset",
     "failed",
     "gateway_unreachable",
     "health_assessed",
