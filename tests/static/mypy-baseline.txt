@@ -399,7 +399,7 @@
 3 wifi.py: [assignment] Incompatible types in assignment (expression has type "str | None", variable has type "str")
 2 wifi.py: [assignment] Incompatible types in assignment (expression has type "str", variable has type "WifiWpaEnterpriseCredentials | WifiOpenCredentials | WifiWpaPskCredentials | WifiWpaSaeCredentials")
 2 wifi.py: [index] Unsupported target for indexed assignment ("WifiWpaEnterpriseCredentials | WifiOpenCredentials | WifiWpaPskCredentials | WifiWpaSaeCredentials")
-24 wifi.py: [misc] Method must have at least one argument. Did you forget the "self" argument?
+23 wifi.py: [misc] Method must have at least one argument. Did you forget the "self" argument?
 23 wifi.py: [misc] Self argument missing for a non-static method (or an invalid type for self)
 1 wifi.py: [return-value] Incompatible return value type (got "dict[str, Any]", expected "str")
 8 wifi.py: [union-attr] Item "None" of "ZeroConfAnnouncement | None" has no attribute "restart"

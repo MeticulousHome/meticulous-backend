@@ -123,7 +123,6 @@ def test_repair_without_saved_client_connection_never_resets_hardware(monkeypatc
         patch.object(manager, "suppressAutoConnect") as suppress_auto_connect,
         patch.object(manager, "restartActiveConnection") as restart_connection,
         patch.object(manager, "restartWifiRadio") as restart_radio,
-        patch.object(manager, "driverInBandReset") as reset_driver,
         patch.object(manager, "restartWifiService") as restart_service,
     ):
         result = manager.repairWifiConnection(reason="manual")
@@ -135,7 +134,6 @@ def test_repair_without_saved_client_connection_never_resets_hardware(monkeypatc
     suppress_auto_connect.assert_not_called()
     restart_connection.assert_not_called()
     restart_radio.assert_not_called()
-    reset_driver.assert_not_called()
     restart_service.assert_not_called()
 
 
@@ -227,7 +225,7 @@ def test_manual_repair_escalates_to_the_radio_when_restarting_the_connection_fai
         patch.object(manager, "getHealthStatus", side_effect=[degraded, degraded, healthy]),
         patch.object(manager, "restartActiveConnection") as restart_connection,
         patch.object(manager, "restartWifiRadio") as restart_radio,
-        patch.object(manager, "driverInBandReset") as reset_driver,
+        patch.object(manager, "restartWifiService") as restart_service,
         patch.object(manager, "_zeroconf"),
         patch.object(manager, "update_gatt_advertisement"),
         patch.object(manager, "invalidateHealthCache"),
@@ -237,9 +235,51 @@ def test_manual_repair_escalates_to_the_radio_when_restarting_the_connection_fai
     assert result is True
     restart_connection.assert_called_once_with(current)
     restart_radio.assert_called_once_with()
-    reset_driver.assert_not_called()
+    restart_service.assert_not_called()
     assert manager._last_recovery_action == "restart_wifi_radio"
     assert manager._last_recovery_result == "recovered"
+
+
+@pytest.mark.parametrize(
+    ("mode", "last_error", "first_step"),
+    [
+        ("client", "gateway_unreachable", "restart_connection"),
+        ("ap", "hotspot_not_active", "start_hotspot"),
+    ],
+)
+def test_repair_never_runs_the_driver_in_band_reset(monkeypatch, mode, last_error, first_step):
+    # On the IW612 the in-band reset left the firmware dead until reboot, with
+    # Bluetooth, so a repair whose every step fails must still never run it.
+    module = _load_wifi_module(monkeypatch)
+    module.MeticulousConfig["wifi"]["mode"] = mode
+    manager = module.WifiManager
+    current = _wifi_config(module, connected=True, connection_name="Home")
+    degraded = _health(module, degraded=True, last_error=last_error)
+
+    with (
+        patch.object(module.time, "sleep"),
+        # The reset script is present on IW612 images.
+        patch.object(module.os.path, "exists", return_value=True),
+        patch.object(manager, "getCurrentConfig", return_value=current),
+        patch.object(manager, "getHealthStatus", return_value=degraded),
+        patch.object(manager, "restartActiveConnection"),
+        patch.object(manager, "startHotspot"),
+        patch.object(manager, "runCommand") as run_command,
+        patch.object(manager, "update_gatt_advertisement"),
+        patch.object(manager, "invalidateHealthCache"),
+        patch.object(module, "emit_radio_recovery_event") as emit,
+    ):
+        result = manager.repairWifiConnection(reason="manual")
+
+    assert result is False
+    assert manager._last_recovery_result == "failed"
+    steps = [
+        call.kwargs["action"] for call in emit.call_args_list if call.args[1] == "step_started"
+    ]
+    assert steps == [first_step, "restart_wifi_radio", "restart_wifi_service"]
+    commands = [call.args[0] for call in run_command.call_args_list]
+    assert ["systemctl", "restart", "variscite-wifi.service"] in commands
+    assert not any("in-band-reset" in command for command in commands)
 
 
 def test_background_health_check_records_without_repairing(monkeypatch):

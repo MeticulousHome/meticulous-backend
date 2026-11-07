@@ -10,7 +10,6 @@ _SAFE_CODES = {
     "client",
     "completed",
     "dns_unreachable",
-    "driver_in_band_reset",
     "failed",
     "gateway_unreachable",
     "health_assessed",

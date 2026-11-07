@@ -1127,11 +1127,13 @@ class WifiManager:
                 record("completed", result="not_recoverable")
                 return False
 
+            # No driver in-band reset step: on the IW612 it leaves the firmware
+            # dead until reboot, Bluetooth included, and restarting the WiFi
+            # service does not bring it back.
             if MeticulousConfig[CONFIG_WIFI][WIFI_MODE] == WIFI_MODE_AP:
                 steps = [
                     ("start_hotspot", WifiManager.startHotspot),
                     ("restart_wifi_radio", WifiManager.restartWifiRadio),
-                    ("driver_in_band_reset", WifiManager.driverInBandReset),
                     ("restart_wifi_service", WifiManager.restartWifiService),
                 ]
             else:
@@ -1141,7 +1143,6 @@ class WifiManager:
                         lambda: WifiManager.restartActiveConnection(current),
                     ),
                     ("restart_wifi_radio", WifiManager.restartWifiRadio),
-                    ("driver_in_band_reset", WifiManager.driverInBandReset),
                     ("restart_wifi_service", WifiManager.restartWifiService),
                 ]
 
@@ -1217,14 +1218,6 @@ class WifiManager:
         WifiManager.runCommand(["nmcli", "radio", "wifi", "off"], timeout=10)
         time.sleep(3)
         WifiManager.runCommand(["nmcli", "radio", "wifi", "on"], timeout=10)
-
-    def driverInBandReset():
-        reset_script = "/etc/wifi/variscite-wifi.d/iw612-wifi"
-        if not os.path.exists(reset_script):
-            logger.warning(f"WiFi driver reset script not found: {reset_script}")
-            return
-        logger.warning("Running WiFi driver in-band reset")
-        WifiManager.runCommand([reset_script, "in-band-reset"], timeout=15)
 
     def restartWifiService():
         logger.warning("Restarting variscite WiFi service")
