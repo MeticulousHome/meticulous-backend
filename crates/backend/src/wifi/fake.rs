@@ -396,10 +396,6 @@ impl WifiHost for FakeNetwork {
         true
     }
 
-    fn path_exists(&self, _path: &str) -> bool {
-        false
-    }
-
     fn getaddrinfo(&self, host: &str, port: u16) -> Result<(), String> {
         self.state.lock().dns_lookups.push((host.into(), port));
         Ok(())

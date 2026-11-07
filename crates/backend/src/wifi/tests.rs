@@ -285,29 +285,11 @@ fn repair_without_saved_client_connection_never_resets_hardware() {
 
 /// test_wifi_repair.py::test_disconnected_saved_connection_keeps_existing_repair_path
 ///
-/// The Python test mocks `getHealthStatus`, which hides the `.connected`
-/// bug. PARITY: the repair goes past the guard, assesses health with
-/// `force=True` and raises.
+/// The Python test mocks `getHealthStatus`; here the real health check finds
+/// the radio disconnected, so the repair goes through the reset steps.
 #[test]
 fn disconnected_saved_connection_keeps_existing_repair_path() {
     let (_dir, app, f) = setup();
-    f.network.add_connection("Home", "wifi");
-
-    let result = app.wifi.repair_wifi_connection("manual");
-
-    assert_eq!(result, Err(health::no_connected_attribute()));
-    let state = app.wifi.state.lock().clone();
-    assert!(state.last_recovery_attempt > 0.0);
-    assert_eq!(app.wifi.auto_connect_suppression_remaining(), 15);
-    assert!(!app.wifi.repair_in_progress.load(Ordering::Relaxed));
-}
-
-/// The same repair once the health report is read correctly: a
-/// disconnected radio goes through the reset steps.
-#[test]
-fn disconnected_saved_connection_runs_the_reset_steps_once_fixed() {
-    let (_dir, app, f) = setup();
-    app.wifi.set_health_has_no_connected(false);
     f.network.add_connection("Home", "wifi");
 
     let result = app
@@ -331,6 +313,9 @@ fn disconnected_saved_connection_runs_the_reset_steps_once_fixed() {
     let state = app.wifi.state.lock().clone();
     assert_eq!(state.last_recovery_result, "failed");
     assert_eq!(state.last_health_error, "wifi_not_connected");
+    assert!(state.last_recovery_attempt > 0.0);
+    assert_eq!(app.wifi.auto_connect_suppression_remaining(), 15);
+    assert!(!app.wifi.repair_in_progress.load(Ordering::Relaxed));
 }
 
 /// test_wifi_repair.py::test_repair_health_check_still_runs_for_active_connection
@@ -338,7 +323,6 @@ fn disconnected_saved_connection_runs_the_reset_steps_once_fixed() {
 fn repair_health_check_still_runs_for_active_connection() {
     let (_dir, app, f) = setup();
     f.connect_home();
-    app.wifi.set_health_has_no_connected(false);
 
     let result = app
         .wifi
@@ -348,18 +332,49 @@ fn repair_health_check_still_runs_for_active_connection() {
     assert!(result);
     assert_eq!(ping_count(&f.network), 1);
     assert_eq!(app.wifi.state.lock().last_recovery_result, "not_needed");
-
-    // PARITY: as shipped, the same call raises after the health check.
-    app.wifi.set_health_has_no_connected(true);
-    assert_eq!(
-        app.wifi.repair_wifi_connection("manual"),
-        Err(health::no_connected_attribute())
-    );
-    assert_eq!(ping_count(&f.network), 2);
 }
 
-/// `maybeRecoverCurrentConnection`: once a minute, three strikes, and a
-/// non-recoverable error never resets the radio.
+/// On the IW612 the driver in-band reset left the firmware dead until reboot,
+/// with Bluetooth, so a repair whose every step fails must still never run it.
+#[test]
+fn repair_never_runs_the_driver_in_band_reset() {
+    let (_dir, app, f) = setup();
+    f.network.add_connection("Home", "wifi");
+    let logs = crate::bug_report::test_support::capture_logs();
+
+    let result = app
+        .wifi
+        .repair_wifi_connection("manual")
+        .expect("no exception");
+
+    assert!(!result);
+    assert_eq!(app.wifi.state.lock().last_recovery_result, "failed");
+    let steps: Vec<String> = logs
+        .messages(tracing::Level::INFO, "wifi::radio")
+        .iter()
+        .filter_map(|message| message.strip_prefix("RADIO_RECOVERY "))
+        .map(|payload| serde_json::from_str::<serde_json::Value>(payload).expect("json"))
+        .filter(|event| event["event"] == "step_started")
+        .map(|event| event["action"].as_str().expect("action").to_string())
+        .collect();
+    assert_eq!(
+        steps,
+        [
+            "restart_connection",
+            "restart_wifi_radio",
+            "restart_wifi_service"
+        ]
+    );
+    let commands = f.network.commands();
+    assert!(
+        !commands
+            .iter()
+            .any(|command| command.iter().any(|arg| arg == "in-band-reset"))
+    );
+}
+
+/// `maybeRecoverCurrentConnection`: once a minute, three strikes, and it
+/// never repairs: the third strike is only recorded.
 #[test]
 fn recovery_counts_degraded_checks() {
     let (_dir, app, f) = setup();
@@ -384,7 +399,7 @@ fn recovery_counts_degraded_checks() {
     );
     assert_eq!(app.wifi.state.lock().health_failures, 1);
 
-    // A recoverable error repairs on the third strike; PARITY: which raises.
+    // A recoverable error reaches the third strike without a repair.
     f.network.state.lock().internet_ok = true;
     f.network.state.lock().ping_returncodes = [1, 1, 1].into();
     let strike = || {
@@ -395,8 +410,37 @@ fn recovery_counts_degraded_checks() {
     };
     assert_eq!(strike(), Ok(false));
     assert_eq!(app.wifi.state.lock().health_failures, 2);
-    assert_eq!(strike(), Err(health::no_connected_attribute()));
+    assert_eq!(strike(), Ok(false));
     assert_eq!(app.wifi.state.lock().health_failures, 3);
+    assert!(f.network.calls().is_empty());
+    assert!(!app.wifi.is_auto_connect_suppressed());
+}
+
+/// A connection whose gateway stops answering: every auto-connect pass
+/// keeps going, and none restarts the connection or resets the radio.
+#[test]
+fn auto_connect_records_a_degraded_connection_without_repairing() {
+    let (_dir, app, f) = setup();
+    app.config
+        .set(keys::USER, keys::TIMEZONE_SYNC, json!("manual"));
+    f.connect_home();
+    f.network.state.lock().ping_returncodes = [1, 1, 1, 1].into();
+
+    for _ in 0..4 {
+        f.network.sleep(60.0);
+        app.wifi
+            .auto_connect_iteration()
+            .expect("the pass never raises");
+    }
+
+    assert_eq!(app.wifi.state.lock().health_failures, 4);
+    assert_eq!(
+        app.wifi.state.lock().last_health_error,
+        "gateway_unreachable"
+    );
+    assert!(f.network.calls().is_empty());
+    assert_eq!(ping_count(&f.network), 4);
+    assert_eq!(f.network.commands().len(), 4);
 }
 
 // ---- init and the auto-connect thread ----
