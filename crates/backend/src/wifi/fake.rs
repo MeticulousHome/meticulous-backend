@@ -632,9 +632,6 @@ impl WifiHost for NmcliBinaryHost {
     fn which(&self, name: &str) -> bool {
         self.network.which(name)
     }
-    fn path_exists(&self, path: &str) -> bool {
-        self.network.path_exists(path)
-    }
     fn getaddrinfo(&self, host: &str, port: u16) -> Result<(), String> {
         self.network.getaddrinfo(host, port)
     }
