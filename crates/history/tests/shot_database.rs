@@ -577,6 +577,60 @@ fn dump_data_reads_compressed_file() {
     assert_eq!(results[0]["data"], shot["data"]);
 }
 
+fn insert_shots_with_bad_files(env: &Env, db: &HistoryDb) {
+    // shot_0..3 are good, shot_5 and shot_7 are corrupt, the rest are missing
+    for i in 0..10 {
+        let name = format!("shot_{i}.json.zst");
+        if i < 4 {
+            write_compressed_shot(env, &name, &json!({"data": [{"time": i}]}));
+        } else if i % 2 == 1 {
+            std::fs::write(env.paths().shot_dir().join(&name), b"not zstd").unwrap();
+        }
+        db.insert_history(&make_history_entry(
+            None,
+            json!({"id": format!("h{i}"), "file": name, "time": 1000000.0 + f64::from(i) * 100.0}),
+        ))
+        .unwrap();
+    }
+}
+
+/// TestSearchHistoryBadFiles.test_page_fills_past_missing_and_corrupt_files
+#[test]
+fn page_fills_past_missing_and_corrupt_files() {
+    let (env, db) = shot_db();
+    insert_shots_with_bad_files(&env, &db);
+    let results = search(
+        &db,
+        SearchParams {
+            max_results: 3,
+            ..SearchParams::default()
+        },
+    );
+    let files: Vec<_> = results
+        .iter()
+        .map(|r| r["file"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        files,
+        ["shot_3.json.zst", "shot_2.json.zst", "shot_1.json.zst"]
+    );
+}
+
+/// TestSearchHistoryBadFiles.test_single_result_lookup_does_not_skip_to_older_shot
+#[test]
+fn single_result_lookup_does_not_skip_to_older_shot() {
+    let (env, db) = shot_db();
+    insert_shots_with_bad_files(&env, &db);
+    let results = search(
+        &db,
+        SearchParams {
+            max_results: 1,
+            ..SearchParams::default()
+        },
+    );
+    assert!(results.is_empty());
+}
+
 /// TestSearchHistoryDumpData.test_dump_data_false_returns_none
 #[test]
 fn dump_data_false_returns_none() {
