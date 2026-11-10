@@ -64,10 +64,22 @@ async fn power_off(app: Arc<App>, _req: Request) -> Reply {
     }
 }
 
-/// The Dial's "suspend": on the machine only, since the app could not wake a
-/// v1 board it put to sleep. Refused while the machine is busy.
-async fn standby(app: Arc<App>, _req: Request) -> Reply {
-    if crate::standby::available(&app) && app.standby.request(&app) {
+/// The Dial's "networked standby" and, with `{"network": false}`, its
+/// "standby": on the machine only, since the app could not wake a v1 board it
+/// put to sleep, nor any board it took off the network. Refused while the
+/// machine is busy.
+async fn standby(app: Arc<App>, req: Request) -> Reply {
+    let network = req
+        .json()
+        .ok()
+        .and_then(|body| body.get("network").and_then(Value::as_bool))
+        .unwrap_or(true);
+    let depth = if network {
+        crate::standby::Depth::Networked
+    } else {
+        crate::standby::Depth::Plain
+    };
+    if crate::standby::available(&app) && app.standby.request(&app, depth) {
         Reply::base().json(json!({"status": "ok"}))
     } else {
         Reply::base()

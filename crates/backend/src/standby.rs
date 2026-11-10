@@ -4,7 +4,12 @@
 //! (through the ESP32), the app's WoWLAN magic packet or the power key wake it.
 //! The image's systemd-sleep hook (meticulous-machine,
 //! `meticulous-standby`) arms those wake-up sources and the Wi-Fi power save.
-//! The Dial's quick settings can also ask for it at any time, even with
+//!
+//! That is networked standby: Wi-Fi stays up for the app. After
+//! min(`standby_timeout`, 5) more minutes the RTC alarm wakes the SoC, which
+//! turns Wi-Fi off and suspends again: plain standby, where only the machine
+//! itself wakes it. On wake the radios come back as `radios_enabled` has them.
+//! The Dial's quick settings can ask for either at any time, even with
 //! `standby_timeout` off.
 //!
 //! It can also ask for the machine to be switched off: the ESP32's supply is
@@ -12,8 +17,9 @@
 //!
 //! New in the Rust backend: the Python backend has no standby.
 
+use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 use parking_lot::{Condvar, Mutex};
 use serde_json::{Value, json};
@@ -35,6 +41,8 @@ const CHECK_INTERVAL: Duration = Duration::from_secs(5);
 /// `systemctl start suspend.target` returns once the SoC resumed; the clock
 /// of this timeout stops while it is suspended.
 const SUSPEND_TIMEOUT: Duration = Duration::from_secs(120);
+/// The longest networked standby before the radios go off.
+const NETWORKED_STANDBY_MAX_MINUTES: i64 = 5;
 /// Where the Dial posts its own dimming: not a person.
 const BACKLIGHT_PATH: &str = "/api/v1/machine/backlight";
 
@@ -73,8 +81,17 @@ pub enum Phase {
 /// What the Dial asked of the standby thread.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Requested {
-    Standby,
+    Standby(Depth),
     PowerOff,
+}
+
+/// How far standby goes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Depth {
+    /// Wi-Fi stays up, so the app can wake the machine.
+    Networked,
+    /// Wi-Fi goes off as well: only the machine itself wakes it.
+    Plain,
 }
 
 pub struct Standby {
@@ -83,6 +100,8 @@ pub struct Standby {
     requested: Mutex<Option<Requested>>,
     request_signal: Condvar,
     timings: Timings,
+    /// Where the RTC that ends networked standby lives.
+    sysfs: PathBuf,
 }
 
 impl Default for Standby {
@@ -99,6 +118,7 @@ impl Standby {
             requested: Mutex::new(None),
             request_signal: Condvar::new(),
             timings,
+            sysfs: PathBuf::from("/sys"),
         }
     }
 
@@ -182,8 +202,8 @@ impl Standby {
 
     /// Go to standby now rather than after the idle timeout. Returns false
     /// when the machine is busy.
-    pub fn request(&self, app: &App) -> bool {
-        self.can_enter(app) && self.ask(Requested::Standby)
+    pub fn request(&self, app: &App, depth: Depth) -> bool {
+        self.can_enter(app) && self.ask(Requested::Standby(depth))
     }
 
     /// Switch the machine off. Returns false when the machine is busy.
@@ -214,9 +234,28 @@ impl Standby {
         self.due_after(app, idle)
     }
 
+    /// How long the idle timer's networked standby lasts before the radios go
+    /// off: min(`standby_timeout`, 5) minutes.
+    fn networked_standby_time(app: &App) -> Duration {
+        let minutes = app
+            .config
+            .get_i64(keys::USER, keys::STANDBY_TIMEOUT)
+            .unwrap_or(STANDBY_TIMEOUT_DEFAULT)
+            .clamp(STANDBY_TIMEOUT_MIN, NETWORKED_STANDBY_MAX_MINUTES);
+        Duration::from_secs(u64::try_from(minutes).unwrap_or(1) * 60)
+    }
+
     /// Put the ESP32 and the SoC to sleep, and bring them back once the SoC
-    /// resumed. Returns false when the ESP32 did not go to sleep.
-    pub fn enter(&self, app: &Arc<App>, runtime: &tokio::runtime::Handle) -> bool {
+    /// resumed. Networked standby turns into plain standby after
+    /// `plain_after`, when given. Returns false when the ESP32 did not go to
+    /// sleep.
+    pub fn enter(
+        &self,
+        app: &Arc<App>,
+        runtime: &tokio::runtime::Handle,
+        depth: Depth,
+        plain_after: Option<Duration>,
+    ) -> bool {
         *self.phase.lock() = Phase::Requested;
         tracing::info!("Entering standby");
         app.machine.action(app, "standby");
@@ -234,10 +273,71 @@ impl Standby {
         app.backlight
             .dim(&json!(0), &Value::Null, &Value::Null, leave_hardware_alone);
         runtime.block_on(app.gatt.set_radio_powered(false));
-        self.suspend(app);
+
+        // Radios the user turned off are off already: nothing to switch.
+        let radios = crate::radios::enabled(&app.config);
+        let mut wifi_off = false;
+        if radios && depth == Depth::Plain {
+            crate::radios::set_wifi(app, false);
+            wifi_off = true;
+        }
+        let plain_at = plain_after
+            .filter(|_| radios && !wifi_off)
+            .map(|after| SystemTime::now() + after);
+        loop {
+            if let Some(at) = plain_at.filter(|_| !wifi_off) {
+                self.set_wake_alarm(Some(at));
+            }
+            self.suspend(app);
+            // The RTC woke it: networked standby is over.
+            if !wifi_off && plain_at.is_some_and(|at| SystemTime::now() >= at) {
+                tracing::info!("Networked standby over, turning Wi-Fi off");
+                crate::radios::set_wifi(app, false);
+                wifi_off = true;
+                continue;
+            }
+            break;
+        }
+        if plain_at.is_some() {
+            self.set_wake_alarm(None);
+        }
+
         self.wake(app);
-        runtime.block_on(app.gatt.set_radio_powered(true));
+        if wifi_off {
+            crate::radios::set_wifi(app, true);
+        }
+        if radios {
+            runtime.block_on(app.gatt.set_radio_powered(true));
+        }
         true
+    }
+
+    /// Arm the RTC alarm at `at`, or clear it. The first RTC with an alarm
+    /// (the SNVS one; the DS1337 has none) takes it.
+    fn set_wake_alarm(&self, at: Option<SystemTime>) {
+        let Some(path) = std::fs::read_dir(self.sysfs.join("class/rtc"))
+            .into_iter()
+            .flatten()
+            .filter_map(Result::ok)
+            .map(|entry| entry.path().join("wakealarm"))
+            .filter(|path| path.exists())
+            .min()
+        else {
+            tracing::warn!("No RTC alarm: networked standby will not end");
+            return;
+        };
+        // Writing an alarm over an armed one fails: clear it first.
+        let mut result = std::fs::write(&path, "0");
+        if let Some(at) = at {
+            let seconds = at
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            result = result.and_then(|()| std::fs::write(&path, seconds.to_string()));
+        }
+        if let Err(error) = result {
+            tracing::warn!("Could not set the RTC alarm {}: {error}", path.display());
+        }
     }
 
     /// Cut the ESP32's supply, then power the SoC down. The ESP32 first gets
@@ -339,14 +439,16 @@ pub fn start(app: Arc<App>) {
                     Some(Requested::PowerOff) => {
                         app.standby.power_off(&app);
                     }
-                    Some(Requested::Standby) => {
+                    Some(Requested::Standby(depth)) => {
                         if app.standby.can_enter(&app) {
-                            app.standby.enter(&app, &runtime);
+                            app.standby.enter(&app, &runtime, depth, None);
                         }
                     }
                     None => {
                         if app.standby.due(&app) {
-                            app.standby.enter(&app, &runtime);
+                            let plain_after = Standby::networked_standby_time(&app);
+                            app.standby
+                                .enter(&app, &runtime, Depth::Networked, Some(plain_after));
                         }
                     }
                 }
@@ -460,20 +562,23 @@ mod tests {
             keys::STANDBY_TIMEOUT,
             json!(STANDBY_TIMEOUT_OFF),
         );
-        assert!(standby.request(&app));
-        assert_eq!(standby.wait_for_check(), Some(Requested::Standby));
+        assert!(standby.request(&app, Depth::Networked));
+        assert_eq!(
+            standby.wait_for_check(),
+            Some(Requested::Standby(Depth::Networked))
+        );
         assert_eq!(*standby.requested.lock(), None);
 
         app.machine.state.lock().time_flag = true;
-        assert!(!standby.request(&app));
+        assert!(!standby.request(&app, Depth::Plain));
         app.machine.state.lock().time_flag = false;
 
         app.os_update.set_last(OsStatus::Installing, 10.0);
-        assert!(!standby.request(&app));
+        assert!(!standby.request(&app, Depth::Plain));
         app.os_update.set_last(OsStatus::Idle, 0.0);
 
         *standby.phase.lock() = Phase::Asleep;
-        assert!(!standby.request(&app));
+        assert!(!standby.request(&app, Depth::Plain));
     }
 
     /// Switching off must not cut a shot or an update short, but a hung ESP32
@@ -543,7 +648,7 @@ mod tests {
         };
         let runtime = tokio::runtime::Runtime::new().unwrap();
 
-        assert!(standby.enter(&app, runtime.handle()));
+        assert!(standby.enter(&app, runtime.handle(), Depth::Networked, None));
         esp.join().unwrap();
 
         assert_eq!(runner.argvs(), [["systemctl", "start", "suspend.target"]]);
@@ -555,6 +660,131 @@ mod tests {
         assert!(writes[1..].iter().all(|w| w == b"action,wake\x03") && writes.len() > 1);
         assert_eq!(standby.phase(), Phase::Awake);
         assert!(!standby.esp_asleep());
+    }
+
+    /// An ESP32 that goes to sleep when asked and talks again when woken.
+    fn sleepy_esp(app: &Arc<App>, standby: &Arc<Standby>) -> std::thread::JoinHandle<()> {
+        let (app, standby) = (app.clone(), standby.clone());
+        std::thread::spawn(move || {
+            wait_for_write(&app, "action,standby\x03");
+            standby.on_esp_line("entering", "light_sleep");
+            wait_for_write(&app, "action,wake\x03");
+            standby.on_esp_traffic();
+        })
+    }
+
+    fn standby_with_rtc() -> (tempfile::TempDir, Arc<Standby>, std::path::PathBuf) {
+        let sysfs = tempfile::tempdir().unwrap();
+        let rtc = sysfs.path().join("class/rtc/rtc1");
+        std::fs::create_dir_all(&rtc).unwrap();
+        std::fs::write(rtc.join("wakealarm"), "").unwrap();
+        let mut standby = Standby::with_timings(FAST);
+        standby.sysfs = sysfs.path().to_path_buf();
+        (sysfs, Arc::new(standby), rtc.join("wakealarm"))
+    }
+
+    /// Plain standby takes Wi-Fi down for the sleep and gives it back.
+    #[test]
+    fn plain_standby_turns_wifi_off_while_asleep() {
+        let (_dir, app) = ready_app();
+        app.machine.record_writes();
+        let runner = Arc::new(FakeRunner::default());
+        app.host.replace(runner.clone());
+        let (_sysfs, standby, _alarm) = standby_with_rtc();
+        let esp = sleepy_esp(&app, &standby);
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+
+        assert!(standby.enter(&app, runtime.handle(), Depth::Plain, None));
+        esp.join().unwrap();
+
+        assert_eq!(
+            runner.argvs(),
+            [
+                vec!["nmcli", "radio", "wifi", "off"],
+                vec!["systemctl", "start", "suspend.target"],
+                vec!["nmcli", "radio", "wifi", "on"],
+            ]
+        );
+        assert!(!app.wifi.radio_off());
+    }
+
+    /// Once networked standby has lasted its time, the RTC wake turns Wi-Fi
+    /// off and the SoC sleeps again; the alarm is cleared on the way out.
+    #[test]
+    fn networked_standby_turns_into_plain_standby_on_the_rtc_alarm() {
+        let (_dir, app) = ready_app();
+        app.machine.record_writes();
+        let runner = Arc::new(FakeRunner::default());
+        app.host.replace(runner.clone());
+        let (_sysfs, standby, alarm) = standby_with_rtc();
+        let esp = sleepy_esp(&app, &standby);
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+
+        assert!(standby.enter(
+            &app,
+            runtime.handle(),
+            Depth::Networked,
+            Some(Duration::ZERO)
+        ));
+        esp.join().unwrap();
+
+        assert_eq!(
+            runner.argvs(),
+            [
+                vec!["systemctl", "start", "suspend.target"],
+                vec!["nmcli", "radio", "wifi", "off"],
+                vec!["systemctl", "start", "suspend.target"],
+                vec!["nmcli", "radio", "wifi", "on"],
+            ]
+        );
+        assert_eq!(std::fs::read_to_string(alarm).unwrap(), "0");
+    }
+
+    /// A wake before the alarm ends standby in networked standby, and radios
+    /// the user turned off stay off.
+    #[test]
+    fn an_early_wake_or_radios_turned_off_leave_wifi_alone() {
+        let (_dir, app) = ready_app();
+        app.machine.record_writes();
+        let runner = Arc::new(FakeRunner::default());
+        app.host.replace(runner.clone());
+        let (_sysfs, standby, alarm) = standby_with_rtc();
+        let esp = sleepy_esp(&app, &standby);
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+
+        assert!(standby.enter(
+            &app,
+            runtime.handle(),
+            Depth::Networked,
+            Some(Duration::from_secs(300))
+        ));
+        esp.join().unwrap();
+        assert_eq!(runner.argvs(), [["systemctl", "start", "suspend.target"]]);
+        assert_eq!(std::fs::read_to_string(&alarm).unwrap(), "0");
+
+        app.config
+            .set_and_save(keys::USER, keys::RADIOS_ENABLED, json!(false));
+        let runner = Arc::new(FakeRunner::default());
+        app.host.replace(runner.clone());
+        let esp = sleepy_esp(&app, &standby);
+        assert!(standby.enter(&app, runtime.handle(), Depth::Plain, None));
+        esp.join().unwrap();
+        assert_eq!(runner.argvs(), [["systemctl", "start", "suspend.target"]]);
+    }
+
+    /// min(`standby_timeout`, 5) minutes of networked standby.
+    #[test]
+    fn networked_standby_lasts_at_most_five_minutes() {
+        let (_dir, app) = ready_app();
+        for (timeout, minutes) in [(1, 1), (3, 3), (5, 5), (15, 5), (20, 5)] {
+            app.config
+                .set_and_save(keys::USER, keys::STANDBY_TIMEOUT, json!(timeout));
+            assert_eq!(
+                Standby::networked_standby_time(&app),
+                Duration::from_secs(minutes * 60),
+                "{timeout} minutes"
+            );
+        }
     }
 
     /// A refusal or no answer leaves the SoC awake.
@@ -574,12 +804,12 @@ mod tests {
                 standby.on_esp_line("refused", "not idle");
             })
         };
-        assert!(!standby.enter(&app, runtime.handle()));
+        assert!(!standby.enter(&app, runtime.handle(), Depth::Plain, None));
         esp.join().unwrap();
         assert_eq!(standby.phase(), Phase::Awake);
 
         let silent = Standby::with_timings(FAST);
-        assert!(!silent.enter(&app, runtime.handle()));
+        assert!(!silent.enter(&app, runtime.handle(), Depth::Plain, None));
         assert_eq!(silent.phase(), Phase::Awake);
         assert!(runner.argvs().is_empty());
     }
