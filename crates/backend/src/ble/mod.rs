@@ -386,11 +386,8 @@ impl GattServer {
                         .iter()
                         .map(|ip| match ip.addr {
                             std::net::IpAddr::V6(v6) => format!("http://[{v6}]:{}", self.port),
-                            // Deliberate change: the Python answered
-                            // `http://<ipv4>:<port>`. Without the port the app
-                            // reaches the machine through nginx on port 80,
-                            // which proxies `/api` and `/socket.io` to the
-                            // backend.
+                            // No port: the backend no longer listens on it
+                            // directly, nginx proxies every request.
                             std::net::IpAddr::V4(v4) => format!("http://{v4}"),
                         })
                         .collect::<Vec<_>>(),
