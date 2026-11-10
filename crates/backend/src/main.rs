@@ -44,6 +44,7 @@ mod pour_over;
 mod profiles;
 mod py;
 mod qr;
+mod radios;
 mod redaction;
 mod sentry_reporting;
 mod server;
@@ -254,5 +255,6 @@ fn after_listen(app: &Arc<app::App>) {
     }
     tokio::spawn(events::live(app.clone()));
     standby::start(app.clone());
+    radios::start(app.clone());
     app.imager.flash_if_required();
 }

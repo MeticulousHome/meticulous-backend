@@ -51,6 +51,7 @@ const APPROVED_PATHS: &[(&[&str], Validator)] = &[
     (&["user", "heat_on_boot"], is_bool),
     (&["user", "heating_timeout"], is_number),
     (&["user", "standby_timeout"], is_number),
+    (&["user", "radios_enabled"], is_bool),
     (&["user", "update_channel"], is_string),
     (&["user", "idle_screen"], is_string),
     (&["user", "reverse_scrolling", "home"], is_bool),

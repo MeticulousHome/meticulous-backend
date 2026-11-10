@@ -323,6 +323,9 @@ async fn post(app: Arc<App>, req: Request) -> Reply {
                 .machine
                 .set_tare_behavior(value.as_str().unwrap_or_default()),
             keys::SHOT_DATA_SHARING => app.shot_sharing.on_setting_changed(&app, &value),
+            keys::RADIOS_ENABLED if crate::standby::available(&app) => {
+                crate::radios::apply(&app, value.as_bool().unwrap_or(true)).await;
+            }
             _ => {}
         }
         work.insert(target, value);

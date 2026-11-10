@@ -114,6 +114,8 @@ pub struct WifiManager {
     scan_lock: Mutex<()>,
     scan_in_progress: AtomicBool,
     repair_in_progress: AtomicBool,
+    /// The user, or plain standby, turned the radio off.
+    radio_off: AtomicBool,
     auto_connect_started: AtomicBool,
     zeroconf: Mutex<Option<Arc<dyn Announcer>>>,
     announcer_factory: RwLock<AnnouncerFactory>,
@@ -153,6 +155,7 @@ impl WifiManager {
             scan_lock: Mutex::new(()),
             scan_in_progress: AtomicBool::new(false),
             repair_in_progress: AtomicBool::new(false),
+            radio_off: AtomicBool::new(false),
             auto_connect_started: AtomicBool::new(false),
             zeroconf: Mutex::new(None),
             announcer_factory: RwLock::new(announcer_factory),
@@ -184,6 +187,14 @@ impl WifiManager {
     #[cfg(test)]
     pub(crate) fn set_zeroconf_overwrite(&self, value: &str) {
         *self.zeroconf_overwrite.write() = value.to_string();
+    }
+
+    pub fn set_radio_off(&self, off: bool) {
+        self.radio_off.store(off, Ordering::Relaxed);
+    }
+
+    pub fn radio_off(&self) -> bool {
+        self.radio_off.load(Ordering::Relaxed)
     }
 
     #[cfg(test)]
@@ -493,6 +504,10 @@ impl WifiManager {
 
     /// One pass of `tryAutoConnect`'s loop.
     pub(crate) fn auto_connect_iteration(&self) -> PyResult<()> {
+        // Nothing to join with the radio off.
+        if self.radio_off() {
+            return Ok(());
+        }
         let manufacturing = (self.manufacturing.read().clone())();
         if self.is_ap_mode() && !manufacturing {
             return Ok(());

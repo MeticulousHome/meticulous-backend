@@ -269,6 +269,10 @@ impl GattServer {
         };
         let app = self.app.get_or_init(|| app);
         app.start().await?;
+        // BlueZ powers the adapter on to register the application.
+        if !crate::radios::enabled(&self.config) {
+            self.set_radio_powered(false).await;
+        }
 
         tracing::info!("GATT Server started");
         self.update_trigger.notify_one();

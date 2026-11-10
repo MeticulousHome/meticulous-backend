@@ -33,6 +33,7 @@
     "idle_screen": "default",
     "partial_retraction": 45.33,
     "profile_order": [],
+    "radios_enabled": true,
     "report_contact_mail": null,
     "reverse_scrolling": {
       "home": false,

@@ -64,6 +64,7 @@ pub mod keys {
     pub const HOSTNAME_OVERRIDE: &str = "hostname_override";
     pub const CLOCK_FORMAT_24_HOUR: &str = "clock_format_24_hour";
     pub const STANDBY_TIMEOUT: &str = "standby_timeout";
+    pub const RADIOS_ENABLED: &str = "radios_enabled";
 
     // logging
     pub const LOGGING_SENSOR_MESSAGES: &str = "log_all_sensor_messages";
@@ -168,6 +169,7 @@ pub fn defaults() -> Value {
             HOSTNAME_OVERRIDE: null,
             CLOCK_FORMAT_24_HOUR: true,
             STANDBY_TIMEOUT: crate::standby::STANDBY_TIMEOUT_DEFAULT,
+            RADIOS_ENABLED: true,
         },
         WIFI: {
             WIFI_MODE: WIFI_MODE_AP,
