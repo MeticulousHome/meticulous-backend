@@ -196,7 +196,8 @@ fn ipv6_address_in_result() {
     let result = server.wifi_connect(b"Net", b"pass").expect("urls");
     assert_eq!(
         result,
-        vec!["http://192.168.1.100:8080", "http://[fe80::1]:8080"]
+        // IPv4 without the port (nginx serves it on 80); IPv6 keeps it.
+        vec!["http://192.168.1.100", "http://[fe80::1]:8080"]
     );
 }
 
@@ -417,7 +418,7 @@ fn provisioning_write_notifies_the_rpc_result() {
     assert_eq!(wifi.last()["ssid"], json!("HomeNet"));
     assert_eq!(notifications.len(), 1);
     assert_eq!(notifications[0].0, RPC_RESULT_UUID);
-    let url = b"http://192.168.1.100:8080";
+    let url = b"http://192.168.1.100";
     let mut expected = vec![0x01, (url.len() + 1) as u8, url.len() as u8];
     expected.extend_from_slice(url);
     expected.push(checksum(&expected));

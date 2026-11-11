@@ -386,7 +386,9 @@ impl GattServer {
                         .iter()
                         .map(|ip| match ip.addr {
                             std::net::IpAddr::V6(v6) => format!("http://[{v6}]:{}", self.port),
-                            std::net::IpAddr::V4(v4) => format!("http://{v4}:{}", self.port),
+                            // No port: the backend no longer listens on it
+                            // directly, nginx proxies every request.
+                            std::net::IpAddr::V4(v4) => format!("http://{v4}"),
                         })
                         .collect::<Vec<_>>(),
                 ))
