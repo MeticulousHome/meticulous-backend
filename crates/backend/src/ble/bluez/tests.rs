@@ -21,6 +21,22 @@ fn object_paths_like_bless() {
     assert_eq!(format!("char{:04}", 1), "char0001");
 }
 
+/// BlueZ lays the characteristics out in the order of the application's
+/// GetManagedObjects reply: it must be the export order, on every start, or
+/// a phone that kept the table it discovered reads the wrong attributes.
+#[test]
+fn application_lists_objects_in_export_order() {
+    let service = "/org/bluez/MeticulousEspresso/service0001";
+    let listed: Vec<String> = GattApplication::new(service)
+        .objects()
+        .keys()
+        .map(|p| p.as_str().to_string())
+        .collect();
+    let mut expected = vec![service.to_string()];
+    expected.extend((1..=CHARACTERISTICS.len()).map(|i| format!("{service}/char{i:04}")));
+    assert_eq!(listed, expected);
+}
+
 /// A `dbus-daemon` that is killed when dropped, also when a test panics.
 struct Daemon(std::process::Child);
 
@@ -112,6 +128,7 @@ async fn exported_objects(address: String) {
             Service {
                 uuid: SERVICE_UUID.into(),
                 primary: true,
+                handle: SERVICE_HANDLE,
             },
         )
         .await
@@ -133,6 +150,10 @@ async fn exported_objects(address: String) {
             .await
             .expect("characteristic");
     }
+    objects
+        .at(base.as_str(), GattApplication::new(&service_path))
+        .await
+        .expect("application");
     let ad_path = format!("{base}/advertisement0");
     objects
         .at(
@@ -161,7 +182,8 @@ async fn exported_objects(address: String) {
     let managed: Managed = reply.body().deserialize().expect("decode");
 
     let service = &managed[&path(&service_path)]["org.bluez.GattService1"];
-    assert_eq!(sorted_keys(service), ["Primary", "UUID"]);
+    assert_eq!(sorted_keys(service), ["Handle", "Primary", "UUID"]);
+    assert_eq!(service["Handle"].value_signature().to_string(), "q");
     assert_eq!(service["UUID"].value_signature().to_string(), "s");
     assert_eq!(service["Primary"].value_signature().to_string(), "b");
 
@@ -199,6 +221,44 @@ async fn exported_objects(address: String) {
     assert_eq!(ad["TxPower"].value_signature().to_string(), "n");
     assert_eq!(ad["MaxInterval"].value_signature().to_string(), "u");
     assert_eq!(ad["Type"].value_signature().to_string(), "s");
+
+    // What BlueZ reads on RegisterApplication(base): the service and its six
+    // characteristics only, the service at its fixed handle, and the same
+    // properties the objects themselves report.
+    let reply = client
+        .call_method(
+            Some(owner.as_str()),
+            base.as_str(),
+            Some("org.freedesktop.DBus.ObjectManager"),
+            "GetManagedObjects",
+            &(),
+        )
+        .await
+        .expect("application objects");
+    let application: Managed = reply.body().deserialize().expect("decode");
+    let mut listed: Vec<String> = application.keys().map(|p| p.as_str().to_string()).collect();
+    listed.sort();
+    let mut expected = vec![service_path.clone()];
+    expected.extend((1..=6).map(|i| format!("{service_path}/char{i:04}")));
+    assert_eq!(listed, expected);
+    let listed_service = &application[&path(&service_path)]["org.bluez.GattService1"];
+    assert_eq!(
+        u16::try_from(&listed_service["Handle"]).expect("u16"),
+        SERVICE_HANDLE
+    );
+    for (key, value) in service {
+        assert_eq!(
+            listed_service[key].value_signature(),
+            value.value_signature(),
+            "{key}"
+        );
+    }
+    let listed_rpc = &application[&path(&rpc_path)]["org.bluez.GattCharacteristic1"];
+    assert_eq!(sorted_keys(listed_rpc), sorted_keys(rpc));
+    assert_eq!(
+        Vec::<String>::try_from(listed_rpc["Flags"].try_clone().expect("clone")).expect("as"),
+        ["read", "write-without-response", "write"]
+    );
 
     let empty: HashMap<String, OwnedVariant> = HashMap::new();
     let ident = client
