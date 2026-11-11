@@ -1,10 +1,13 @@
 //! BlueZ's D-Bus GATT application and LE advertisement, as `bless`'s BlueZ
 //! backend exports them (paths, interfaces, properties), with `zbus`.
 //!
-//! - `/` serves `org.freedesktop.DBus.ObjectManager`; BlueZ reads the
-//!   application from it on `RegisterApplication("/")`.
-//! - `/org/bluez/<name>/service0001` is the Improv service and
-//!   `.../service0001/char000N` its characteristics, in `_build_gatt` order.
+//! - `/` serves `org.freedesktop.DBus.ObjectManager` for everything below.
+//! - `/org/bluez/<name>` is the GATT application BlueZ reads on
+//!   `RegisterApplication`: an ObjectManager of its own that lists the
+//!   service and its characteristics in path order ([`GattApplication`]).
+//! - `/org/bluez/<name>/service0001` is the Improv service, at
+//!   [`SERVICE_HANDLE`], and `.../service0001/char000N` its characteristics,
+//!   in `_build_gatt` order.
 //! - `/org/bluez/<name>/advertisement1` is the first advertisement (with the
 //!   service UUID), replaced by `.../advertisement0` (with manufacturer
 //!   data) on every update.
@@ -15,7 +18,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::Weak;
 
 use futures::StreamExt;
-use zbus::{Connection, OwnedObjectPath, OwnedVariant, Variant, interface};
+use zbus::{Connection, ObjectPath, OwnedObjectPath, OwnedVariant, Variant, interface};
 
 use super::improv::{
     CAPABILITIES_UUID, ERROR_UUID, RPC_COMMAND_UUID, RPC_RESULT_UUID, SERVICE_UUID, STATUS_UUID,
@@ -24,6 +27,14 @@ use super::{Advertisement, AdvertisingBackend, GattServer, MACHINE_IDENT_UUID};
 
 const BLUEZ: &str = "org.bluez";
 const AGENT_PATH: &str = "/com/meticulous/ble_agent";
+
+/// Where the Improv service starts in BlueZ's attribute table, on every
+/// start. Left to BlueZ, the service moves up 0x10 handles each time the
+/// backend registers it (BlueZ never reuses freed handles) and back down on
+/// a reboot, so phones bonded to the machine, which keep the table they
+/// discovered, read and write the wrong attributes. 0x0100 is clear of
+/// BlueZ's own services (GAP, GATT and Device Information end at 0x0014).
+pub const SERVICE_HANDLE: u16 = 0x0100;
 
 /// The characteristics in `_build_gatt` order, with their BlueZ flags.
 const CHARACTERISTICS: [(&str, &[&str]); 6] = [
@@ -109,6 +120,7 @@ impl BluezApp {
                 Service {
                     uuid: SERVICE_UUID.into(),
                     primary: true,
+                    handle: SERVICE_HANDLE,
                 },
             )
             .await
@@ -135,6 +147,10 @@ impl BluezApp {
                 .map_err(|e| SetupError::Failed(failed(e)))?;
             char_paths.push((uuid.to_string(), path));
         }
+        object_server
+            .at(base_path.as_str(), GattApplication::new(&service_path))
+            .await
+            .map_err(|e| SetupError::Failed(failed(e)))?;
 
         Ok(BluezApp {
             conn,
@@ -167,7 +183,7 @@ impl BluezApp {
     /// advertise; and watch devices connect.
     pub async fn start(&self) -> Result<(), String> {
         let empty: HashMap<String, OwnedVariant> = HashMap::new();
-        let root = OwnedObjectPath::try_from("/").map_err(failed)?;
+        let root = OwnedObjectPath::try_from(self.base_path.as_str()).map_err(failed)?;
         let registered = self
             .call(
                 self.adapter.as_str(),
@@ -232,7 +248,7 @@ impl BluezApp {
                 .remove::<AdvertisementObject, _>(path.as_str())
                 .await;
         }
-        let root = OwnedObjectPath::try_from("/").map_err(failed)?;
+        let root = OwnedObjectPath::try_from(self.base_path.as_str()).map_err(failed)?;
         self.call(
             self.adapter.as_str(),
             "org.bluez.GattManager1",
@@ -511,6 +527,8 @@ async fn register_pairing_agent() -> Option<Connection> {
 struct Service {
     uuid: String,
     primary: bool,
+    /// The handle BlueZ places the service at; see [`SERVICE_HANDLE`].
+    handle: u16,
 }
 
 #[interface(name = "org.bluez.GattService1")]
@@ -523,6 +541,90 @@ impl Service {
     #[zbus(property)]
     fn primary(&self) -> bool {
         self.primary
+    }
+
+    #[zbus(property)]
+    fn handle(&self) -> u16 {
+        self.handle
+    }
+}
+
+/// The GATT application's `org.freedesktop.DBus.ObjectManager`, which
+/// BlueZ reads on `RegisterApplication`. BlueZ lays the characteristics out
+/// in the order of this reply and expects that order to follow the handles;
+/// zbus's own ObjectManager answers from a hash map, a different order on
+/// every start. This one answers in path order: the service, then
+/// `char0001` to `char0006`, the same table every time.
+pub struct GattApplication {
+    service: String,
+}
+
+type GattObjects = BTreeMap<ObjectPath<'static>, HashMap<String, HashMap<String, OwnedVariant>>>;
+
+fn variant<'a>(value: impl Into<Variant<'a>>) -> Option<OwnedVariant> {
+    OwnedVariant::try_from(value.into()).ok()
+}
+
+fn properties(values: Vec<(&str, Option<OwnedVariant>)>) -> HashMap<String, OwnedVariant> {
+    values
+        .into_iter()
+        .filter_map(|(name, value)| Some((name.to_string(), value?)))
+        .collect()
+}
+
+impl GattApplication {
+    fn new(service_path: &str) -> GattApplication {
+        GattApplication {
+            service: service_path.to_string(),
+        }
+    }
+
+    /// The service and its characteristics, as `GetAll` reports them.
+    fn objects(&self) -> GattObjects {
+        let mut objects = GattObjects::new();
+        let Ok(service) = ObjectPath::try_from(self.service.clone()) else {
+            return objects;
+        };
+        objects.insert(
+            service.clone(),
+            HashMap::from([(
+                "org.bluez.GattService1".to_string(),
+                properties(vec![
+                    ("UUID", variant(SERVICE_UUID)),
+                    ("Primary", variant(true)),
+                    ("Handle", variant(SERVICE_HANDLE)),
+                ]),
+            )]),
+        );
+        for (index, (uuid, flags)) in CHARACTERISTICS.iter().enumerate() {
+            let Ok(path) = ObjectPath::try_from(format!("{}/char{:04}", self.service, index + 1))
+            else {
+                continue;
+            };
+            let flags: Vec<String> = flags.iter().map(|f| f.to_string()).collect();
+            let notifying = flags.iter().any(|f| f == "notify" || f == "indicate");
+            objects.insert(
+                path,
+                HashMap::from([(
+                    "org.bluez.GattCharacteristic1".to_string(),
+                    properties(vec![
+                        ("UUID", variant(*uuid)),
+                        ("Service", variant(service.clone())),
+                        ("Value", variant(Vec::<u8>::new())),
+                        ("Notifying", variant(notifying)),
+                        ("Flags", variant(flags)),
+                    ]),
+                )]),
+            );
+        }
+        objects
+    }
+}
+
+#[interface(name = "org.freedesktop.DBus.ObjectManager")]
+impl GattApplication {
+    fn get_managed_objects(&self) -> GattObjects {
+        self.objects()
     }
 }
 
