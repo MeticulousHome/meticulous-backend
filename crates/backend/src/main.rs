@@ -19,6 +19,7 @@ mod config;
 mod contract;
 mod dbus_monitor;
 mod debug_shots;
+mod device_auth;
 mod device_identity;
 mod env;
 mod esp_tool;

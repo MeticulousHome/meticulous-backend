@@ -15,6 +15,7 @@ use crate::bug_report::{BugReports, ReportsConfig};
 use crate::config::{self, ConfigStore};
 use crate::dbus_monitor::DbusMonitor;
 use crate::debug_shots::ShotDebugManager;
+use crate::device_auth::{DeviceAuth, NetworkState, NoNetwork};
 use crate::env::Env;
 use crate::host::Host;
 use crate::hostname::HostnameManager;
@@ -89,6 +90,8 @@ pub struct App {
     pub hostname: Arc<HostnameManager>,
     pub timezone: Arc<TimezoneManager>,
     pub wifi: Arc<WifiManager>,
+    /// Device authorization: tokens, pairing codes, access requests.
+    pub auth: Arc<DeviceAuth>,
     pub gatt: Arc<GattServer>,
 }
 
@@ -212,7 +215,28 @@ impl App {
             env.paths.redaction_key.clone(),
             mdns_announcer(),
         );
-        let gatt = GattServer::new(wifi.clone(), hostname.clone(), config.clone(), env.port);
+        // With the hardware faked there is no NetworkManager to read the
+        // hotspot or the address from.
+        let network: Arc<dyn NetworkState> = if env.hooks.fake_hardware {
+            Arc::new(NoNetwork)
+        } else {
+            wifi.clone()
+        };
+        let auth = DeviceAuth::new(
+            env.paths.config_dir.join(crate::device_auth::KEY_FILE),
+            config.clone(),
+            sio.clone(),
+            notifications.clone(),
+            network,
+        );
+        let gatt = GattServer::new(
+            wifi.clone(),
+            hostname.clone(),
+            config.clone(),
+            notifications.clone(),
+            auth.clone(),
+            env.port,
+        );
         // Tests never read the developer's environment.
         let lookup = |name: &str| {
             if cfg!(test) {
@@ -257,6 +281,7 @@ impl App {
             hostname,
             timezone,
             wifi,
+            auth,
             gatt,
         })
     }

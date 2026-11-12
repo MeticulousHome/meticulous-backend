@@ -94,6 +94,15 @@ from a checkout of `f403168`.
   `set_status`, and `Reply::error(Kind::Base, 500, &req)` is what tornado
   sends for an exception the Python handler does not catch.
   `api::local_only(&req)` is `LocalAccessHandler`.
+- **Device authorization** (`device_auth.rs`, `api/auth.rs`, no Python
+  counterpart): `api::router` installs a guard that runs after a route's
+  `prepare` and answers 401 to a LAN client without a valid token while
+  `require_authorization` is on; a route a client must reach without one
+  (discovery, images loaded by `<img>`, the pairing routes) is marked
+  `Route::public(&[methods])`. The machine itself and its hotspot's clients
+  never need a token. Socket.IO's handshake follows the same rule.
+  `testing::app()` is a fresh install, so the guard is on in tests: send
+  `testing::bearer(&app)` as `Authorization` for a paired LAN client.
 - **Blocking work** (files, SQLite, zstd, subprocesses, D-Bus calls) runs in
   `tokio::task::spawn_blocking`; the UART has its own threads.
 - **The host**: commands are run with `std::process::Command` with the

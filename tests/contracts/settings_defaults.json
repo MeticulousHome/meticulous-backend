@@ -6,6 +6,7 @@
   "system": [
     "always_allowed_networks",
     "auth_key",
+    "auth_token_lifetime",
     "batch_number",
     "build_date",
     "color",
@@ -34,6 +35,7 @@
     "partial_retraction": 45.33,
     "profile_order": [],
     "report_contact_mail": null,
+    "require_authorization": true,
     "reverse_scrolling": {
       "home": false,
       "keyboard": false,

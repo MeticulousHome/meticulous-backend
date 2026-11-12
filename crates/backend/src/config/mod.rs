@@ -39,6 +39,8 @@ pub mod keys {
     pub const SHOT_DATA_SHARING_ID: &str = "shot_data_sharing_id";
     pub const ROOT_PASSWORD: &str = "root_password";
     pub const LAST_SYSTEM_VERSIONS: &str = "last_system_versions";
+    /// Seconds a device token stays valid; 0 means it never expires.
+    pub const AUTH_TOKEN_LIFETIME: &str = "auth_token_lifetime";
 
     // user
     pub const SOUNDS_ENABLED: &str = "enable_sounds";
@@ -65,6 +67,8 @@ pub mod keys {
     pub const PROFILE_ORDER: &str = "profile_order";
     pub const HOSTNAME_OVERRIDE: &str = "hostname_override";
     pub const CLOCK_FORMAT_24_HOUR: &str = "clock_format_24_hour";
+    /// Whether LAN clients need a device token for the API and Socket.IO.
+    pub const REQUIRE_AUTHORIZATION: &str = "require_authorization";
 
     // logging
     pub const LOGGING_SENSOR_MESSAGES: &str = "log_all_sensor_messages";
@@ -142,6 +146,7 @@ pub fn defaults() -> Value {
             SHOT_DATA_SHARING_ID: null,
             ROOT_PASSWORD: null,
             LAST_SYSTEM_VERSIONS: [],
+            AUTH_TOKEN_LIFETIME: 0,
         },
         USER: {
             SOUNDS_ENABLED: true,
@@ -168,6 +173,9 @@ pub fn defaults() -> Value {
             PROFILE_ORDER: [],
             HOSTNAME_OVERRIDE: null,
             CLOCK_FORMAT_24_HOUR: true,
+            // A fresh install asks for a token; `ConfigStore::load` turns
+            // it off for a machine set up before this setting existed.
+            REQUIRE_AUTHORIZATION: true,
         },
         WIFI: {
             WIFI_MODE: WIFI_MODE_AP,
@@ -182,6 +190,25 @@ pub fn defaults() -> Value {
             SKIP_STAGE: false,
         },
     })
+}
+
+/// A machine whose config file predates device authorization keeps its API
+/// open after the update: its phones and browsers hold no token yet, and
+/// the Dial turns the setting on. Decided here, before the merge, because
+/// every open writes the merged file back and the key would then be there.
+fn keep_existing_machines_open(tree: &mut Value, disk: &Value) {
+    let stored = disk
+        .get(keys::USER)
+        .and_then(Value::as_object)
+        .is_some_and(|user| user.contains_key(keys::REQUIRE_AUTHORIZATION));
+    if stored {
+        return;
+    }
+    if let Some(user) = tree.get_mut(keys::USER).and_then(Value::as_object_mut)
+        && user.contains_key(keys::REQUIRE_AUTHORIZATION)
+    {
+        user.insert(keys::REQUIRE_AUTHORIZATION.into(), Value::Bool(false));
+    }
 }
 
 /// `mergedeep.merge(dst, src)`: nested dictionaries merge key by key, any
@@ -269,6 +296,7 @@ impl ConfigStore {
                 {
                     tracing::warn!("Config on disk is newer than this software");
                 }
+                keep_existing_machines_open(&mut tree, &disk);
                 merge(&mut tree, &disk);
                 normalize(&mut tree);
                 tracing::info!("Successfully loaded config from disk");

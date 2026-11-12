@@ -50,6 +50,21 @@ async fn acknowledge(app: Arc<App>, req: Request) -> Reply {
         Value::Null => None,
         other => Some(value_text(other)),
     });
+    // A question that lets a device in is answered on the machine only.
+    if let Some(id) = &id
+        && !crate::api::is_local(&req.headers)
+        && app.notifications.requires_local_answer(id)
+    {
+        tracing::warn!(
+            "Refused an answer to notification {id} from {}",
+            crate::api::redact_ip(req.header("X-Real-IP").unwrap_or_default())
+        );
+        return Reply::base().status(403).json(json!({
+            "status": "error",
+            "error": "This notification can only be answered on the machine",
+            "data": {"code": "LOCAL_ONLY"},
+        }));
+    }
     let known = match &id {
         Some(id) => app.notifications.acknowledge(id, response),
         None => false,

@@ -9,6 +9,7 @@ use axum::extract::ConnectInfo;
 use serde_json::Value;
 use socketioxide::SocketIo;
 use socketioxide::extract::{SocketRef, TryData};
+use socketioxide::handler::ConnectHandler;
 
 use crate::app::App;
 use crate::http::Router;
@@ -92,17 +93,64 @@ async fn socketio_cors(
     response
 }
 
-/// The Socket.IO events the Python's `backend.py` handles.
+/// The Socket.IO events the Python's `backend.py` handles, behind device
+/// authorization.
 fn register_socket_handlers(io: &SocketIo, app: Arc<App>) {
-    io.ns("/", move |socket: SocketRef| {
-        let app = app.clone();
+    let handler_app = app.clone();
+    let handler = move |socket: SocketRef| {
+        let app = handler_app.clone();
         async move { on_socket(app, socket) }
-    });
+    };
+    let authorize = move |socket: SocketRef, TryData::<Value>(auth): TryData<Value>| {
+        let app = app.clone();
+        async move { authorize_socket(&app, &socket, auth.ok()).await }
+    };
+    io.ns("/", handler.with(authorize));
+}
+
+/// The `connect_error` a client gets without a valid token; clients match
+/// its message exactly.
+#[derive(Debug)]
+struct Unauthorized;
+
+impl std::fmt::Display for Unauthorized {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("unauthorized")
+    }
+}
+
+/// The same rule as the API's guard, on the handshake: the socket keeps its
+/// standing so a later sign-out or the setting turning on can drop it.
+async fn authorize_socket(
+    app: &App,
+    socket: &SocketRef,
+    auth: Option<Value>,
+) -> Result<(), Unauthorized> {
+    let headers = &socket.req_parts().headers;
+    match app.auth.admit_socket(headers, auth.as_ref()).await {
+        Some(state) => {
+            socket.extensions.insert(state);
+            Ok(())
+        }
+        None => {
+            tracing::info!(
+                "Refused Socket.IO client {} without authorization",
+                crate::api::redact_ip(
+                    headers
+                        .get("X-Real-IP")
+                        .and_then(|v| v.to_str().ok())
+                        .unwrap_or_default()
+                )
+            );
+            Err(Unauthorized)
+        }
+    }
 }
 
 fn on_socket(app: Arc<App>, socket: SocketRef) {
     tracing::info!("connect {}", socket.id);
     crate::events::on_connect(&app, &socket.id.to_string());
+    let local = crate::api::is_local(&socket.req_parts().headers);
 
     let a = app.clone();
     socket.on("action", move |TryData::<Value>(data)| {
@@ -112,7 +160,7 @@ fn on_socket(app: Arc<App>, socket: SocketRef) {
     let a = app.clone();
     socket.on("notification", move |TryData::<Value>(data)| {
         let app = a.clone();
-        async move { crate::events::on_notification(&app, data.ok()) }
+        async move { crate::events::on_notification(&app, data.ok(), local) }
     });
     let a = app.clone();
     socket.on(
@@ -130,4 +178,17 @@ fn on_socket(app: Arc<App>, socket: SocketRef) {
     socket.on_disconnect(async |s: SocketRef| {
         tracing::info!("disconnect {}", s.id);
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Clients tell "needs pairing" from any other connect failure by this
+    /// exact `connect_error` message (device authorization contract,
+    /// section 7).
+    #[test]
+    fn refused_handshakes_say_unauthorized() {
+        assert_eq!(Unauthorized.to_string(), "unauthorized");
+    }
 }

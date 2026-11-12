@@ -5,7 +5,7 @@ use std::sync::Arc;
 use serde_json::{Value, json};
 
 use crate::app::App;
-use crate::http::{Kind, Reply, Request, Route, StaticOptions};
+use crate::http::{Kind, Method, Reply, Request, Route, StaticOptions};
 use crate::profiles::ProfileError;
 
 pub fn routes(app: &App) -> Vec<Route> {
@@ -35,7 +35,9 @@ pub fn routes(app: &App) -> Vec<Route> {
             }),
             m,
             "StaticFileHandler",
-        ),
+        )
+        // Public: `<img>` loads it and cannot send a token.
+        .public(&[Method::Get, Method::Head]),
         Route::new(
             "/profile/load/([0-9a-fA-F-]+)",
             Kind::Base,

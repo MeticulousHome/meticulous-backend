@@ -21,6 +21,127 @@ fn object_paths_like_bless() {
     assert_eq!(format!("char{:04}", 1), "char0001");
 }
 
+/// The pairing code goes out in a GATT notification, which BlueZ sends to
+/// every connected central that subscribed, so the server counts who is
+/// connected first. Without this filter a central BlueZ only remembers
+/// (bonded, out of range) or one on another adapter would count, and the
+/// code would be held back from a phone that is alone with the machine, or
+/// sent while someone else listens. The shape is BlueZ's: `Device1` objects
+/// below the adapter's path with a `Connected` property.
+#[test]
+fn connected_devices_are_this_adapters_connected_centrals() {
+    let device = |connected: Option<bool>| {
+        let mut properties = HashMap::new();
+        if let Some(connected) = connected {
+            properties.insert("Connected".to_string(), variant(connected).expect("bool"));
+        }
+        HashMap::from([("org.bluez.Device1".to_string(), properties)])
+    };
+    let objects: Managed = HashMap::from([
+        (
+            path("/org/bluez/hci0"),
+            HashMap::from([("org.bluez.Adapter1".to_string(), HashMap::new())]),
+        ),
+        (
+            path("/org/bluez/hci0/dev_00_00_00_00_00_01"),
+            device(Some(true)),
+        ),
+        (
+            path("/org/bluez/hci0/dev_00_00_00_00_00_02"),
+            device(Some(false)),
+        ),
+        (path("/org/bluez/hci0/dev_00_00_00_00_00_03"), device(None)),
+        (
+            path("/org/bluez/hci1/dev_00_00_00_00_00_04"),
+            device(Some(true)),
+        ),
+    ]);
+
+    // No per-transport interfaces anywhere: `Device1.Connected` decides.
+    assert_eq!(
+        connected_devices(&objects, "/org/bluez/hci0"),
+        (
+            vec!["/org/bluez/hci0/dev_00_00_00_00_00_01".to_string()],
+            false
+        )
+    );
+}
+
+/// Only a device's LE link makes it a central. The image runs PulseAudio's
+/// Bluetooth module and `obexd`, so a phone or speaker can hold a
+/// Bluetooth Classic link (audio, file transfer); counted, it would be
+/// disconnected, or keep every phone from getting its pairing code, though
+/// BlueZ never sends it a GATT notification. Where BlueZ exports
+/// `org.bluez.Bearer.LE1` and `org.bluez.Bearer.BREDR1` (each with its own
+/// `Connected`, `Device1.Connected` true for either), only a connected LE
+/// bearer counts. The shape is BlueZ's `GetManagedObjects` reply with those
+/// interfaces on the device objects.
+#[test]
+fn only_le_links_count_as_centrals_where_bluez_tells_them_apart() {
+    let connected =
+        |value: bool| HashMap::from([("Connected".to_string(), variant(value).expect("bool"))]);
+    let device = |le: Option<bool>, classic: Option<bool>| {
+        let mut interfaces = HashMap::from([(
+            "org.bluez.Device1".to_string(),
+            connected(le == Some(true) || classic == Some(true)),
+        )]);
+        if let Some(le) = le {
+            interfaces.insert("org.bluez.Bearer.LE1".to_string(), connected(le));
+        }
+        if let Some(classic) = classic {
+            interfaces.insert("org.bluez.Bearer.BREDR1".to_string(), connected(classic));
+        }
+        interfaces
+    };
+    let objects: Managed = HashMap::from([
+        (
+            path("/org/bluez/hci0"),
+            HashMap::from([("org.bluez.Adapter1".to_string(), HashMap::new())]),
+        ),
+        // An LE central.
+        (
+            path("/org/bluez/hci0/dev_00_00_00_00_00_01"),
+            device(Some(true), Some(false)),
+        ),
+        // A Classic link only (audio): not a central.
+        (
+            path("/org/bluez/hci0/dev_00_00_00_00_00_02"),
+            device(Some(false), Some(true)),
+        ),
+        // A Classic-only device BlueZ gives no LE bearer: not a central.
+        (
+            path("/org/bluez/hci0/dev_00_00_00_00_00_03"),
+            device(None, Some(true)),
+        ),
+        // Both links up: a central.
+        (
+            path("/org/bluez/hci0/dev_00_00_00_00_00_04"),
+            device(Some(true), Some(true)),
+        ),
+        // Remembered, nothing connected.
+        (
+            path("/org/bluez/hci0/dev_00_00_00_00_00_05"),
+            device(Some(false), Some(false)),
+        ),
+        // An LE central on another adapter.
+        (
+            path("/org/bluez/hci1/dev_00_00_00_00_00_06"),
+            device(Some(true), None),
+        ),
+    ]);
+
+    assert_eq!(
+        connected_devices(&objects, "/org/bluez/hci0"),
+        (
+            vec![
+                "/org/bluez/hci0/dev_00_00_00_00_00_01".to_string(),
+                "/org/bluez/hci0/dev_00_00_00_00_00_04".to_string(),
+            ],
+            true
+        )
+    );
+}
+
 /// BlueZ lays the characteristics out in the order of the application's
 /// GetManagedObjects reply: it must be the export order, on every start, or
 /// a phone that kept the table it discovered reads the wrong attributes.
@@ -74,8 +195,6 @@ fn path(text: &str) -> OwnedObjectPath {
     OwnedObjectPath::try_from(text).expect("object path")
 }
 
-type Managed = HashMap<OwnedObjectPath, HashMap<String, HashMap<String, OwnedVariant>>>;
-
 fn sorted_keys(map: &HashMap<String, OwnedVariant>) -> Vec<String> {
     let mut keys: Vec<String> = map.keys().cloned().collect();
     keys.sort();
@@ -105,6 +224,8 @@ async fn exported_objects(address: String) {
         FakeWifi::new(),
         app.hostname.clone(),
         app.config.clone(),
+        app.notifications.clone(),
+        app.auth.clone(),
         8080,
     );
     // Built as `BluezApp::setup` builds it: with `object_server().at("/")`

@@ -80,7 +80,14 @@ fn server() -> (
 ) {
     let (dir, app) = crate::testing::app();
     let wifi = FakeWifi::new();
-    let server = GattServer::new(wifi.clone(), app.hostname.clone(), app.config.clone(), 8080);
+    let server = GattServer::new(
+        wifi.clone(),
+        app.hostname.clone(),
+        app.config.clone(),
+        app.notifications.clone(),
+        app.auth.clone(),
+        8080,
+    );
     (dir, app, server, wifi)
 }
 
@@ -384,7 +391,7 @@ fn ble_write_does_not_log_raw_payload() {
     let (_dir, _app, server, _wifi) = server();
     let payload = b"SENTINEL-RAW-BLE-CREDENTIAL-PACKET";
 
-    let (_result, logged) = logged(|| server.write_request(RPC_COMMAND_UUID, payload));
+    let (_result, logged) = logged(|| server.write_request(RPC_COMMAND_UUID, payload, None));
 
     assert!(!logged.contains("SENTINEL-RAW-BLE-CREDENTIAL-PACKET"));
     assert!(!logged.contains(&hex::encode(payload)));
@@ -406,43 +413,554 @@ fn wifi_settings(ssid: &[u8], password: &[u8]) -> Vec<u8> {
     data
 }
 
-/// A provisioning write notifies RPC_RESULT with the URL packets.
+/// The Dial's question for the pending Wi-Fi request.
+fn wifi_question(app: &crate::app::App) -> crate::notifications::Notification {
+    let pending = app.notifications.unacknowledged();
+    assert_eq!(pending.len(), 1, "one question on the Dial");
+    pending[0].clone()
+}
+
+/// Waits until `count` notifications were sent after the write.
+fn pushed_after_write(server: &GattServer, count: usize) -> Vec<(String, Vec<u8>)> {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    loop {
+        let pushed = server.pushed.lock().clone();
+        if pushed.len() >= count || std::time::Instant::now() > deadline {
+            return pushed;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+}
+
+fn status(state: u8) -> (String, Vec<u8>) {
+    (STATUS_UUID.to_string(), vec![state])
+}
+
+fn error(code: u8) -> (String, Vec<u8>) {
+    (ERROR_UUID.to_string(), vec![code])
+}
+
+/// `Device1` paths of the provisioning phone and of another central.
+const PHONE: &str = "/org/bluez/hci0/dev_00_00_00_00_00_01";
+const OTHER: &str = "/org/bluez/hci0/dev_00_00_00_00_00_02";
+
+/// Where the server runs its BlueZ calls and sends, as `start` sets it up.
+static RUNTIME: std::sync::LazyLock<tokio::runtime::Runtime> = std::sync::LazyLock::new(|| {
+    tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .expect("runtime")
+});
+
+/// BlueZ answers as `fake` says, and making the writer the sole central
+/// (and the check after the send) is given up after `timeout`.
+fn fake_bluez(server: &GattServer, fake: FakeCentrals, timeout: Duration) {
+    *server.centrals.lock() = Some(fake);
+    let _ = server.runtime.set(RUNTIME.handle().clone());
+    server
+        .sole_central_timeout_ms
+        .store(timeout.as_millis() as u64, Ordering::Relaxed);
+}
+
+/// The RPC result a later read returns after joining with `base` only.
+fn url_only_result(base: &str) -> Vec<u8> {
+    let mut packet = vec![0x01, (base.len() + 1) as u8, base.len() as u8];
+    packet.extend_from_slice(base.as_bytes());
+    packet.push(checksum(&packet));
+    packet
+}
+
+/// WIFI_SETTINGS joins nothing until someone presses Connect on the Dial,
+/// which asks "<phone> is requesting connection to <SSID>"; then the app
+/// gets AUTHORIZED, PROVISIONING, PROVISIONED and the URL packets.
 #[test]
-fn provisioning_write_notifies_the_rpc_result() {
-    let (_dir, _app, server, wifi) = server();
+fn approved_wifi_request_provisions_and_notifies_the_rpc_result() {
+    let (_dir, app, server, wifi) = server();
+    let phone = BleClient {
+        name: Some("Ana's iPhone".into()),
+        device: Some(PHONE.into()),
+    };
+    // The phone is the only central connected.
+    fake_bluez(
+        &server,
+        FakeCentrals::new(vec![Ok(vec![PHONE.into()])]),
+        SOLE_CENTRAL_TIMEOUT,
+    );
 
     let notifications = server
-        .write_request(RPC_COMMAND_UUID, &wifi_settings(b"HomeNet", b"hunter22"))
+        .write_request(
+            RPC_COMMAND_UUID,
+            &wifi_settings(b"HomeNet", b"hunter22"),
+            Some(&phone),
+        )
         .expect("no exception");
 
+    // AUTHORIZATION_REQUIRED while the Dial asks; nothing joined yet, and a
+    // read does not authorize the request.
+    assert_eq!(notifications, vec![status(0x01)]);
+    assert_eq!(server.read_request(STATUS_UUID).expect("read"), vec![0x01]);
+    assert!(wifi.credentials.lock().is_empty());
+    let question = wifi_question(&app);
+    assert_eq!(
+        question.message,
+        "Ana's iPhone is requesting connection to HomeNet"
+    );
+    assert_eq!(question.responses, ["Connect", "Reject"]);
+    // Connect lets the phone use the machine: only the Dial may press it.
+    assert!(question.local_answer);
+
+    assert!(
+        app.notifications
+            .acknowledge(&question.id, Some("Connect".into()))
+    );
+    let pushed = pushed_after_write(&server, 4);
+
     assert_eq!(wifi.last()["ssid"], json!("HomeNet"));
-    assert_eq!(notifications.len(), 1);
-    assert_eq!(notifications[0].0, RPC_RESULT_UUID);
-    let url = b"http://192.168.1.100";
-    let mut expected = vec![0x01, (url.len() + 1) as u8, url.len() as u8];
-    expected.extend_from_slice(url);
+    assert_eq!(pushed[..3], [status(0x02), status(0x03), status(0x04)]);
+    // The result: the URL, then the pair URL with a code for this phone
+    // (device authorization contract, section 8).
+    let (uuid, packet) = &pushed[3];
+    assert_eq!(uuid, RPC_RESULT_UUID);
+    let base = "http://192.168.1.100";
+    let pair_url_length = packet[2 + 1 + base.len()];
+    let pair_url =
+        std::str::from_utf8(&packet[2 + 1 + base.len() + 1..][..usize::from(pair_url_length)])
+            .expect("utf8");
+    let code = pair_url
+        .strip_prefix(&format!("{base}/#pair="))
+        .expect("pair URL");
+    let mut expected = vec![0x01, 0];
+    for entry in [base, pair_url] {
+        expected.push(entry.len() as u8);
+        expected.extend_from_slice(entry.as_bytes());
+    }
+    expected[1] = (expected.len() - 2) as u8;
     expected.push(checksum(&expected));
-    assert_eq!(notifications[0].1, expected);
-    // PARITY: reading STATUS re-authorizes, so it says AUTHORIZED (2) even
-    // after provisioning.
+    assert_eq!(packet, &expected);
+    let pairing = app.auth.take_code(code).expect("a live code");
+    assert_eq!(pairing.source, crate::device_auth::CodeSource::Improv);
+    assert_eq!(pairing.name.as_deref(), Some("Ana's iPhone"));
+
+    // PARITY: once the request is done, reading STATUS re-authorizes, so it
+    // says AUTHORIZED (2) even after provisioning.
     assert_eq!(server.read_request(STATUS_UUID).expect("read"), vec![0x02]);
-    // RPC_RESULT reads back the first packet.
+    // A later read (any BLE client in range) gets the URL only.
     assert_eq!(
         server.read_request(RPC_RESULT_UUID).expect("read"),
-        notifications[0].1
+        url_only_result(base)
     );
 }
 
-/// A failed join notifies ERROR with UNABLE_TO_CONNECT.
+/// A Wi-Fi request from `writer`, approved and joined while BlueZ answers
+/// as the fake says.
+struct Joined {
+    /// The RPC result notified.
+    packet: Vec<u8>,
+    /// The pairing codes live once everything was sent and checked.
+    codes: usize,
+    /// What the server asked of BlueZ, in order, but the STATUS
+    /// notifications (`FakeCentrals::calls`).
+    calls: Vec<String>,
+    server: Arc<GattServer>,
+}
+
+const BASE: &str = "http://192.168.1.100";
+
+fn has_pair_url(packet: &[u8]) -> bool {
+    String::from_utf8_lossy(packet).contains(&format!("{BASE}/#pair="))
+}
+
+fn joined(writer: Option<&str>, fake: FakeCentrals, timeout: Duration) -> Joined {
+    let (_dir, app, server, _wifi) = server();
+    fake_bluez(&server, fake, timeout);
+    let phone = BleClient {
+        name: Some("Ana's iPhone".into()),
+        device: writer.map(str::to_string),
+    };
+    server
+        .write_request(
+            RPC_COMMAND_UUID,
+            &wifi_settings(b"HomeNet", b"x"),
+            Some(&phone),
+        )
+        .expect("no exception");
+    app.notifications
+        .acknowledge(&wifi_question(&app).id, Some("Connect".into()));
+    let pushed = pushed_after_write(&server, 4);
+    assert_eq!(pushed[3].0, RPC_RESULT_UUID);
+    // Every send, and the check after the result, is over.
+    let sends = std::mem::take(&mut *server.sends.lock());
+    for send in sends {
+        RUNTIME.block_on(send).expect("the send task");
+    }
+    Joined {
+        packet: pushed[3].1.clone(),
+        codes: app.auth.live_codes(),
+        calls: bluez_calls(&server),
+        server,
+    }
+}
+
+fn bluez_calls(server: &GattServer) -> Vec<String> {
+    server
+        .centrals
+        .lock()
+        .as_ref()
+        .expect("a fake BlueZ")
+        .calls
+        .iter()
+        .filter(|call| *call != "notify STATUS_UUID")
+        .cloned()
+        .collect()
+}
+
+fn listings(listings: &[&[&str]]) -> Vec<Result<Vec<String>, String>> {
+    listings
+        .iter()
+        .map(|listed| Ok(listed.iter().map(|path| path.to_string()).collect()))
+        .collect()
+}
+
+fn calls(calls: &[&str]) -> Vec<String> {
+    calls.iter().map(|call| call.to_string()).collect()
+}
+
+/// BlueZ notifies the result to every connected central that subscribed
+/// to RPC_RESULT, not only the phone that wrote WIFI_SETTINGS, and a code
+/// in it lets whoever exchanges it first use the machine. A bonded tablet
+/// left connected in the background kept every phone from getting a code,
+/// so the server disconnects the other centrals (never the writer) and
+/// the pairing URL, and the code, go out once BlueZ lists the writer alone
+/// (device authorization contract, section 8). A central that left on its
+/// own before its disconnect (BlueZ answers `NotConnected` or
+/// `UnknownObject`) is not a failure, and one that is back while the
+/// server waits for BlueZ is disconnected again. Expected values: the
+/// order of BlueZ calls `make_writer_sole_central` and
+/// `check_code_receivers` make, and the live codes
+/// (`DeviceAuth::live_codes`).
+#[test]
+fn pairing_code_goes_out_once_the_writer_is_the_sole_central() {
+    let timeout = Duration::from_secs(2);
+    for (case, fake, expected) in [
+        (
+            "the writer alone: nobody is disconnected",
+            FakeCentrals::new(listings(&[&[PHONE]])),
+            calls(&["list", "notify RPC_RESULT_UUID", "list"]),
+        ),
+        (
+            "another central: disconnected, then the code goes out",
+            FakeCentrals::new(listings(&[&[PHONE, OTHER], &[PHONE]])),
+            calls(&[
+                "list",
+                &format!("disconnect {OTHER}"),
+                "list",
+                "notify RPC_RESULT_UUID",
+                "list",
+            ]),
+        ),
+        (
+            "another central back during the wait: disconnected again",
+            FakeCentrals::new(listings(&[&[PHONE, OTHER], &[PHONE, OTHER], &[PHONE]])),
+            calls(&[
+                "list",
+                &format!("disconnect {OTHER}"),
+                "list",
+                &format!("disconnect {OTHER}"),
+                "list",
+                "notify RPC_RESULT_UUID",
+                "list",
+            ]),
+        ),
+        (
+            "another central already disconnected (NotConnected)",
+            FakeCentrals {
+                refusals: vec![(OTHER.into(), "org.bluez.Error.NotConnected".into())],
+                ..FakeCentrals::new(listings(&[&[PHONE, OTHER], &[PHONE]]))
+            },
+            calls(&[
+                "list",
+                &format!("disconnect {OTHER}"),
+                "list",
+                "notify RPC_RESULT_UUID",
+                "list",
+            ]),
+        ),
+        (
+            "another central already gone from BlueZ (UnknownObject)",
+            FakeCentrals {
+                refusals: vec![(
+                    OTHER.into(),
+                    "org.freedesktop.DBus.Error.UnknownObject".into(),
+                )],
+                ..FakeCentrals::new(listings(&[&[PHONE, OTHER], &[PHONE]]))
+            },
+            calls(&[
+                "list",
+                &format!("disconnect {OTHER}"),
+                "list",
+                "notify RPC_RESULT_UUID",
+                "list",
+            ]),
+        ),
+    ] {
+        let joined = joined(Some(PHONE), fake, timeout);
+        assert!(has_pair_url(&joined.packet), "{case}");
+        assert_eq!(joined.codes, 1, "{case}");
+        assert_eq!(joined.calls, expected, "{case}");
+    }
+}
+
+/// Without a writer BlueZ lists alone the result is the URL-only one, no
+/// code is minted and the app asks for access instead (device
+/// authorization contract, section 8): the writer unknown, gone from the
+/// start or gone after the others were disconnected, a disconnect BlueZ
+/// refuses, a listing BlueZ fails. Expected values: the URL-only layout
+/// the stored copy already has, the BlueZ calls `make_writer_sole_central`
+/// makes, and no live code.
+#[test]
+fn no_pairing_code_unless_the_writer_is_made_the_sole_central() {
+    let timeout = Duration::from_secs(2);
+    for (case, writer, fake, expected) in [
+        (
+            "the writer unknown",
+            None,
+            FakeCentrals::new(listings(&[&[PHONE, OTHER]])),
+            calls(&["notify RPC_RESULT_UUID"]),
+        ),
+        (
+            "the writer disconnected",
+            Some(PHONE),
+            FakeCentrals::new(listings(&[&[OTHER]])),
+            calls(&["list", "notify RPC_RESULT_UUID"]),
+        ),
+        (
+            "the writer gone once the others were disconnected",
+            Some(PHONE),
+            FakeCentrals::new(listings(&[&[PHONE, OTHER], &[]])),
+            calls(&[
+                "list",
+                &format!("disconnect {OTHER}"),
+                "list",
+                "notify RPC_RESULT_UUID",
+            ]),
+        ),
+        (
+            "a disconnect BlueZ refuses",
+            Some(PHONE),
+            FakeCentrals {
+                refusals: vec![(OTHER.into(), "org.bluez.Error.Failed".into())],
+                ..FakeCentrals::new(listings(&[&[PHONE, OTHER], &[PHONE]]))
+            },
+            calls(&[
+                "list",
+                &format!("disconnect {OTHER}"),
+                "notify RPC_RESULT_UUID",
+            ]),
+        ),
+        (
+            "the BlueZ listing fails",
+            Some(PHONE),
+            FakeCentrals::new(vec![Err("org.bluez.Error.Failed".into())]),
+            calls(&["list", "notify RPC_RESULT_UUID"]),
+        ),
+    ] {
+        let joined = joined(writer, fake, timeout);
+        assert_eq!(joined.packet, url_only_result(BASE), "{case}");
+        assert_eq!(joined.codes, 0, "{case}");
+        assert_eq!(joined.calls, expected, "{case}");
+    }
+}
+
+/// A central that stays connected (a bonded tablet that reconnects as
+/// soon as it is dropped) is disconnected again on every listing until
+/// [`SOLE_CENTRAL_TIMEOUT`] runs out; then the result is the URL-only one
+/// and no code is minted. Expected values: `disconnect_other_centrals`
+/// (disconnect, wait [`SOLE_CENTRAL_SETTLE`], list again) and no live
+/// code.
+#[test]
+fn a_central_that_stays_connected_is_disconnected_again_until_the_deadline() {
+    let joined = joined(
+        Some(PHONE),
+        FakeCentrals::new(listings(&[&[PHONE, OTHER]])),
+        Duration::from_millis(700),
+    );
+    assert_eq!(joined.packet, url_only_result(BASE));
+    assert_eq!(joined.codes, 0);
+    let (last, asked) = joined.calls.split_last().expect("calls");
+    assert_eq!(last, "notify RPC_RESULT_UUID");
+    let disconnects = asked.iter().filter(|call| *call != "list").count();
+    assert!(disconnects >= 2, "disconnected again: {asked:?}");
+    let expected: Vec<String> = ["list".to_string(), format!("disconnect {OTHER}")]
+        .into_iter()
+        .cycle()
+        .take(asked.len())
+        .collect();
+    assert_eq!(asked, expected);
+}
+
+/// The last listing before the code is minted does not see a central that
+/// connects again before BlueZ sends the result, and BlueZ keeps a bonded
+/// central's subscription, so it may get the code too. Once the result is
+/// handed to BlueZ the server lists the centrals again and revokes the
+/// code when anyone but the writer is connected, or when BlueZ cannot say
+/// (device authorization contract, section 8): the result still carried
+/// the pair URL, but its code no longer pairs. Expected values: the order
+/// `send_to_client` then `check_code_receivers` make the calls in (the
+/// listing after the RPC_RESULT notification), and no live code.
+#[test]
+fn pairing_code_is_revoked_when_another_central_was_there_at_the_send() {
+    for (case, after_send) in [
+        (
+            "another central connected",
+            Ok(vec![PHONE.into(), OTHER.into()]),
+        ),
+        (
+            "the BlueZ listing fails",
+            Err("org.bluez.Error.Failed".to_string()),
+        ),
+    ] {
+        let joined = joined(
+            Some(PHONE),
+            FakeCentrals::new(vec![Ok(vec![PHONE.into()]), after_send]),
+            Duration::from_secs(2),
+        );
+        assert!(has_pair_url(&joined.packet), "{case}");
+        assert_eq!(
+            joined.calls,
+            calls(&["list", "notify RPC_RESULT_UUID", "list"]),
+            "{case}"
+        );
+        assert_eq!(joined.codes, 0, "{case}");
+    }
+}
+
+/// A BlueZ that does not answer in time holds the result back no longer
+/// than [`SOLE_CENTRAL_TIMEOUT`], gives the URL-only result and mints no
+/// code; and the call is given up then (`on_bluez`), not left running on
+/// the runtime holding the server, one more for every Wi-Fi request.
+/// Expected values: the deadline `on_bluez` waits for and bounds the call
+/// by; the fake records `answered 0` when its held listing answers.
+#[test]
+fn bluez_not_answering_in_time_gives_no_code_and_leaves_no_call_behind() {
+    let hold = Duration::from_millis(600);
+    let joined = joined(
+        Some(PHONE),
+        FakeCentrals {
+            held: Some((0, hold)),
+            ..FakeCentrals::new(listings(&[&[PHONE]]))
+        },
+        Duration::from_millis(200),
+    );
+    assert_eq!(joined.packet, url_only_result(BASE));
+    assert_eq!(joined.codes, 0);
+    assert_eq!(joined.calls, calls(&["list", "notify RPC_RESULT_UUID"]));
+    // Past the time the held listing would have answered: it never did.
+    std::thread::sleep(hold);
+    assert_eq!(
+        bluez_calls(&joined.server),
+        calls(&["list", "notify RPC_RESULT_UUID"])
+    );
+}
+
+/// A join that leaves the machine without an address has no URL to pair
+/// against: no code is minted.
+#[test]
+fn approved_join_without_an_address_mints_no_code() {
+    let (_dir, app, server, wifi) = server();
+    *wifi.config.lock() = network_config(true, "HomeNet", &[]);
+    server
+        .write_request(RPC_COMMAND_UUID, &wifi_settings(b"HomeNet", b"x"), None)
+        .expect("no exception");
+    app.notifications
+        .acknowledge(&wifi_question(&app).id, Some("Connect".into()));
+    let pushed = pushed_after_write(&server, 4);
+    assert_eq!(
+        pushed[3],
+        (RPC_RESULT_UUID.to_string(), vec![0x01, 0x00, 0x01])
+    );
+    assert_eq!(app.auth.live_codes(), 0);
+}
+
+/// Reject on the Dial: NOT_AUTHORIZED to the app, back to AUTHORIZED, and
+/// the machine never touches the Wi-Fi.
+#[test]
+fn rejected_wifi_request_answers_not_authorized() {
+    let (_dir, app, server, wifi) = server();
+    server
+        .write_request(RPC_COMMAND_UUID, &wifi_settings(b"HomeNet", b"x"), None)
+        .expect("no exception");
+    let question = wifi_question(&app);
+    assert_eq!(
+        question.message,
+        "A device is requesting connection to HomeNet"
+    );
+
+    app.notifications
+        .acknowledge(&question.id, Some("Reject".into()));
+
+    assert_eq!(
+        pushed_after_write(&server, 2),
+        vec![error(0x04), status(0x02)]
+    );
+    assert!(wifi.credentials.lock().is_empty());
+    assert_eq!(server.read_request(ERROR_UUID).expect("read"), vec![0x04]);
+    assert_eq!(server.read_request(STATUS_UUID).expect("read"), vec![0x02]);
+}
+
+/// Nobody answers within the timeout (WIFI_APPROVAL_TIMEOUT, 60 s): the
+/// same as Reject, and the question on the Dial turns into a notice.
+#[test]
+fn unanswered_wifi_request_times_out_as_rejected() {
+    let (_dir, app, server, wifi) = server();
+    server.approval_timeout_ms.store(20, Ordering::Relaxed);
+    server
+        .write_request(RPC_COMMAND_UUID, &wifi_settings(b"HomeNet", b"x"), None)
+        .expect("no exception");
+    let question = wifi_question(&app);
+
+    assert_eq!(
+        pushed_after_write(&server, 2),
+        vec![error(0x04), status(0x02)]
+    );
+    assert!(wifi.credentials.lock().is_empty());
+    let notice = wifi_question(&app);
+    assert_eq!(notice.id, question.id);
+    assert_eq!(notice.responses, ["Ok"]);
+    assert_eq!(
+        notice.message,
+        "A device was not allowed to connect to HomeNet: nobody answered in time"
+    );
+}
+
+/// An approved join that fails notifies ERROR with UNABLE_TO_CONNECT.
 #[test]
 fn failed_join_notifies_the_error() {
-    let (_dir, _app, server, wifi) = server();
+    let (_dir, app, server, wifi) = server();
     *wifi.connect_result.lock() = Ok(false);
-    let notifications = server
-        .write_request(RPC_COMMAND_UUID, &wifi_settings(b"X", b"y"))
+    server
+        .write_request(RPC_COMMAND_UUID, &wifi_settings(b"X", b"y"), None)
         .expect("no exception");
-    assert_eq!(notifications, vec![(ERROR_UUID.to_string(), vec![0x03])]);
+    let question = wifi_question(&app);
+    app.notifications
+        .acknowledge(&question.id, Some("Connect".into()));
+    assert_eq!(
+        pushed_after_write(&server, 4),
+        vec![status(0x02), status(0x03), error(0x03), status(0x02)]
+    );
     assert_eq!(server.read_request(ERROR_UUID).expect("read"), vec![0x03]);
+}
+
+/// The question names the network, but the log redactor only knows saved
+/// networks: the notification's text stays out of the log.
+#[test]
+fn wifi_question_does_not_log_the_ssid() {
+    let (_dir, _app, server, _wifi) = server();
+    let ssid = b"SENTINEL-PRIVATE-NETWORK";
+    let (_result, logged) =
+        logged(|| server.write_request(RPC_COMMAND_UUID, &wifi_settings(ssid, b"pw"), None));
+    assert!(!logged.contains("SENTINEL-PRIVATE-NETWORK"));
+    assert!(logged.contains("message not logged"));
 }
 
 /// GET_WIFI_NETWORKS answers with every scanned SSID, empty ones included.
@@ -450,7 +968,7 @@ fn failed_join_notifies_the_error() {
 fn network_list_rpc() {
     let (_dir, _app, server, _wifi) = server();
     let notifications = server
-        .write_request(RPC_COMMAND_UUID, &[0x04])
+        .write_request(RPC_COMMAND_UUID, &[0x04], None)
         .expect("no exception");
     let packet = &notifications[0].1;
     assert_eq!(&packet[..2], &[0x04, 9]);
@@ -512,4 +1030,65 @@ fn subscriptions() {
     assert!(server.stop_notify(STATUS_UUID).is_ok());
     assert!(server.stop_notify(STATUS_UUID).is_err());
     assert!(!server.check_client_connections());
+}
+
+/// IDENTIFY shows the writing phone's name on the Dial, once per machine.
+#[test]
+fn identify_notifies_with_the_client_name() {
+    let (_dir, app, server, _wifi) = server();
+    let phone = BleClient {
+        name: Some("  Ana's\u{7}iPhone ".into()),
+        ..BleClient::default()
+    };
+    let packets = server
+        .write_request(RPC_COMMAND_UUID, &[0x02], Some(&phone))
+        .expect("no exception");
+    assert_eq!(
+        packets,
+        vec![(RPC_RESULT_UUID.to_string(), vec![0x02, 0x00, 0x02])]
+    );
+    let shown = app.notifications.unacknowledged();
+    assert_eq!(shown.len(), 1);
+    assert_eq!(shown[0].id, IDENTIFY_NOTIFICATION_ID);
+    assert_eq!(shown[0].responses, ["Ok"]);
+    assert_eq!(
+        shown[0].message,
+        "\u{201c}Ana'siPhone\u{201d} is connected to this machine over Bluetooth"
+    );
+
+    // Again, and from a client without a name: still one notification.
+    server
+        .write_request(RPC_COMMAND_UUID, &[0x02], Some(&BleClient::default()))
+        .expect("no exception");
+    server
+        .write_request(RPC_COMMAND_UUID, &[0x02], None)
+        .expect("no exception");
+    let shown = app.notifications.unacknowledged();
+    assert_eq!(shown.len(), 1);
+    assert_eq!(
+        shown[0].message,
+        "A device is connected to this machine over Bluetooth"
+    );
+}
+
+#[test]
+fn long_client_names_are_capped() {
+    let name = "x".repeat(MAX_CLIENT_NAME_CHARS + 10);
+    let shown = BleClient {
+        name: Some(name),
+        ..BleClient::default()
+    }
+    .display_name()
+    .expect("name");
+    // The ellipsis counts: a token carries the name and holds 48 at most.
+    assert_eq!(shown.chars().count(), MAX_CLIENT_NAME_CHARS);
+    assert!(shown.ends_with('…'));
+    assert_eq!(
+        BleClient {
+            name: Some(" \t".into()),
+            ..BleClient::default()
+        }
+        .display_name(),
+        None
+    );
 }

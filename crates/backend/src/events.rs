@@ -42,7 +42,9 @@ pub fn on_action(app: &Arc<App>, data: Option<Value>) {
 }
 
 /// `notification`: the payload is a JSON string `{"id", "response"}`.
-pub fn on_notification(app: &Arc<App>, data: Option<Value>) {
+/// `local` says whether the socket is on the machine itself: a question
+/// that lets a device in only takes the machine's answer.
+pub fn on_notification(app: &Arc<App>, data: Option<Value>, local: bool) {
     let parsed = match data {
         Some(Value::String(text)) => serde_json::from_str::<Value>(&text).ok(),
         Some(other) => {
@@ -66,6 +68,10 @@ pub fn on_notification(app: &Arc<App>, data: Option<Value>) {
             Value::Null => None,
             other => Some(other.to_string()),
         };
+        if !local && app.notifications.requires_local_answer(&id) {
+            tracing::warn!("Ignored a remote socket's answer to notification {id}");
+            return;
+        }
         app.notifications.acknowledge(&id, response);
     }
 }

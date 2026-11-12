@@ -454,10 +454,14 @@ async fn rejects_reused_session_id_with_different_measurements() {
     assert_eq!(records(&app, "").await.len(), 1);
 }
 
-/// tests/test_pour_over_history.py::TestPourOverHistoryAPI::test_lan_client_can_read_and_paginate_history_without_writing
+/// tests/test_pour_over_history.py::TestPourOverHistoryAPI::test_lan_client_can_read_and_paginate_history_without_writing.
+/// The test app is a fresh install, which asks LAN clients for a device
+/// token: the client here is a paired one, and writing stays refused.
 #[tokio::test]
 async fn lan_client_can_read_and_paginate_history_without_writing() {
     let (_dir, app) = app();
+    let token = crate::testing::bearer(&app);
+    let lan = [LAN[0], LAN[1], ("Authorization", token.as_str())];
     let first = default_session();
     let mut second = free_pour_session(SECOND_ID, "2026-08-16T09:00:00.000Z");
     second["completedAt"] = json!("2026-08-16T09:02:15.000Z");
@@ -467,7 +471,7 @@ async fn lan_client_can_read_and_paginate_history_without_writing() {
     let reply = history_get(
         &app,
         "/api/v1/history/pour-over?sort=asc&max_results=1",
-        &LAN,
+        &lan,
     )
     .await;
     assert_eq!(reply.status_code(), 200);
@@ -481,7 +485,7 @@ async fn lan_client_can_read_and_paginate_history_without_writing() {
     let record = history_get(
         &app,
         &format!("/api/v1/history/pour-over/files/{file}"),
-        &LAN,
+        &lan,
     )
     .await;
     assert_eq!(record.status_code(), 200);
@@ -490,7 +494,7 @@ async fn lan_client_can_read_and_paginate_history_without_writing() {
     let reply = history_get(
         &app,
         &format!("/api/v1/history/pour-over?sort=asc&max_results=1&after={file}"),
-        &LAN,
+        &lan,
     )
     .await;
     assert_eq!(reply.status_code(), 200);
@@ -503,7 +507,7 @@ async fn lan_client_can_read_and_paginate_history_without_writing() {
         "99999999-8888-4777-8666-555555555555",
         "2026-08-16T10:00:00.000Z",
     );
-    assert_eq!(save_session(&app, &rejected, &LAN).await.status_code(), 403);
+    assert_eq!(save_session(&app, &rejected, &lan).await.status_code(), 403);
     assert_eq!(records(&app, "").await.len(), 2);
     assert_eq!(zst_files(&app).len(), 2);
 }

@@ -11,13 +11,16 @@ use serde_json::{Value, json};
 
 use crate::api::{local_only, redact_ip};
 use crate::app::App;
-use crate::http::{Kind, Reply, Request, Route};
+use crate::http::{Kind, Method, Reply, Request, Route};
 use crate::limited_access;
 
 pub fn routes() -> Vec<Route> {
     let m = "api.machine";
     vec![
-        Route::new("/machine", Kind::Base, m, "MachineInfoHandler").get(info),
+        // Public: the app and the web UI identify a machine before pairing.
+        Route::new("/machine", Kind::Base, m, "MachineInfoHandler")
+            .get(info)
+            .public(&[Method::Get]),
         Route::new("/machine/unlock", Kind::Base, m, "MachineUnlockHandler").post(unlock),
         Route::new(
             "/machine/backlight",
