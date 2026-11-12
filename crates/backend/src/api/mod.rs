@@ -2,6 +2,7 @@
 //! tornado's route list.
 
 pub mod action;
+pub mod auth;
 pub mod bug_report;
 pub mod community_upload_diagnostics;
 pub mod emulation;
@@ -46,6 +47,17 @@ pub fn local_only(req: &Request) -> Option<Reply> {
         "status": "error",
         "error": "This endpoint can only be accessed locally",
     })))
+}
+
+/// Whether the request comes from the machine itself: no `X-Real-IP`
+/// (only nginx sets it), or a loopback one. Unlike [`local_only`], a header
+/// that is not text counts as remote. Device authorization never asks a
+/// local caller for a token.
+pub fn is_local(headers: &http::HeaderMap) -> bool {
+    match headers.get("X-Real-IP") {
+        None => true,
+        Some(value) => value.to_str().is_ok_and(is_loopback),
+    }
 }
 
 /// `is_loopback_address`: 127.0.0.0/8, `::1` and IPv4-mapped loopback.
@@ -107,6 +119,7 @@ pub fn contract_routes(app: &App) -> Vec<Route> {
 fn with_prefix(app: &App, wifi: Vec<Route>) -> Vec<Route> {
     let mut routes: Vec<Route> = wifi;
     routes.extend(action::routes());
+    routes.extend(auth::routes());
     routes.extend(bug_report::routes());
     routes.extend(history::routes());
     routes.extend(machine::routes());
@@ -130,7 +143,8 @@ fn with_prefix(app: &App, wifi: Vec<Route>) -> Vec<Route> {
 }
 
 /// `API.get_routes()` plus `WEB_UI_HANDLER`, in the order tornado tries them:
-/// the API routes sorted by pattern, then the web UI.
+/// the API routes sorted by pattern, then the web UI. Device authorization
+/// guards it (see [`auth::guard`]).
 pub fn router(app: &App) -> Router {
     let mut routes = api_routes(app);
     tracing::info!("API Routes registered:");
@@ -139,5 +153,5 @@ pub fn router(app: &App) -> Router {
         tracing::info!("    {}", route.pattern);
     }
     routes.extend(web_ui::routes(app));
-    Router::new(routes)
+    Router::new(routes).guarded(auth::guard)
 }

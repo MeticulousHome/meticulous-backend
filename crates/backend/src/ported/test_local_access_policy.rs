@@ -23,7 +23,9 @@ const LAN_CLIENT: &[(&str, &str)] = &[("Host", "meticulous.local"), ("X-Real-IP"
 const LAN_CLIENT_NAMING_LOCALHOST: &[(&str, &str)] =
     &[("Host", "localhost"), ("X-Real-IP", "192.168.1.42")];
 
-const LOCAL_ONLY: [&str; 5] = [
+const LOCAL_ONLY: [&str; 6] = [
+    // "Sign out all devices" is the Dial's.
+    "POST /api/v1/auth/sign_out_all",
     // The Dial writes Pour Over history; LAN clients only read and sync it.
     "POST /api/v1/history/pour-over",
     "GET /api/v1/history/upload-index",

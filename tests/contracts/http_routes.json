@@ -9,6 +9,54 @@
     ]
   },
   {
+    "path": "/api/v1/auth/pairing",
+    "handler": "PairingCodeHandler",
+    "module": "api.auth",
+    "methods": [
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/auth/request",
+    "handler": "AccessRequestHandler",
+    "module": "api.auth",
+    "methods": [
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/auth/request/([^/]+)",
+    "handler": "AccessRequestStatusHandler",
+    "module": "api.auth",
+    "methods": [
+      "get"
+    ]
+  },
+  {
+    "path": "/api/v1/auth/sign_out_all",
+    "handler": "SignOutAllHandler",
+    "module": "api.auth",
+    "methods": [
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/auth/token",
+    "handler": "TokenHandler",
+    "module": "api.auth",
+    "methods": [
+      "post"
+    ]
+  },
+  {
+    "path": "/api/v1/auth/validate",
+    "handler": "ValidateTokenHandler",
+    "module": "api.auth",
+    "methods": [
+      "get"
+    ]
+  },
+  {
     "path": "/api/v1/history",
     "handler": "HistoryHandler",
     "module": "api.history",

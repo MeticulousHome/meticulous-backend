@@ -17,6 +17,12 @@ pub mod responses {
     pub const UPDATE: &str = "Update";
     pub const SKIP: &str = "Skip";
     pub const ABORT: &str = "Abort";
+    pub const CONNECT: &str = "Connect";
+    pub const REJECT: &str = "Reject";
+    /// An access request's answers; Deny comes first so a stray press
+    /// refuses.
+    pub const DENY: &str = "Deny";
+    pub const ALLOW: &str = "Allow";
 }
 
 pub type Callback = Arc<dyn Fn() + Send + Sync>;
@@ -33,6 +39,13 @@ pub struct Notification {
     pub callback: Option<Callback>,
     /// `datetime.now()`: local wall time, naive.
     pub timestamp: chrono::NaiveDateTime,
+    /// The message names something private (a Wi-Fi network being set up,
+    /// which the log redactor does not know yet): the log gets the id only.
+    pub private: bool,
+    /// Only someone at the machine may answer (a question that lets a
+    /// device in): a LAN client's answer is refused. Server side only, like
+    /// `private`: clients never see it.
+    pub local_answer: bool,
 }
 
 impl Notification {
@@ -52,7 +65,22 @@ impl Notification {
             response: None,
             callback: None,
             timestamp: chrono::Local::now().naive_local(),
+            private: false,
+            local_answer: false,
         }
+    }
+
+    /// Accept an answer from the machine only; see
+    /// [`Notification::local_answer`].
+    pub fn answer_locally(mut self) -> Notification {
+        self.local_answer = true;
+        self
+    }
+
+    /// Keep the message out of the log; see [`Notification::private`].
+    pub fn private(mut self) -> Notification {
+        self.private = true;
+        self
     }
 
     pub fn image(mut self, image: impl Into<String>) -> Notification {
@@ -154,10 +182,17 @@ impl NotificationManager {
         };
         let payload = notification.to_sio();
         self.sio.emit("notification", &payload);
-        tracing::info!(
-            "send notification: {}",
-            payload.as_str().unwrap_or_default()
-        );
+        if notification.private {
+            tracing::info!(
+                "send notification: {} (message not logged)",
+                notification.id
+            );
+        } else {
+            tracing::info!(
+                "send notification: {}",
+                payload.as_str().unwrap_or_default()
+            );
+        }
         if updating {
             tracing::info!("Notification updated");
         } else {
@@ -187,6 +222,15 @@ impl NotificationManager {
             callback();
         }
         true
+    }
+
+    /// Whether the pending notification with this id may only be answered
+    /// on the machine.
+    pub fn requires_local_answer(&self, id: &str) -> bool {
+        self.list
+            .lock()
+            .iter()
+            .any(|n| n.id == id && !n.acknowledged && n.local_answer)
     }
 
     /// Whether the notification with this id is acknowledged; `None` when it

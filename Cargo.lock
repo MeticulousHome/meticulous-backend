@@ -1812,6 +1812,7 @@ dependencies = [
  "gpiocdev",
  "hex",
  "history",
+ "hmac 0.13.0",
  "http",
  "md-5 0.11.0",
  "mdns-sd",

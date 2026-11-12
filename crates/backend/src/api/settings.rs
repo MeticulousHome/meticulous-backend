@@ -201,6 +201,26 @@ async fn post(app: Arc<App>, req: Request) -> Reply {
             return refuse(Refusal::Other(format!("'{kind}' object is not iterable")));
         }
     };
+    // Device authorization is switched on the machine (the Dial), never by
+    // a client it is meant to keep out. Sending the stored value back, as a
+    // client saving every setting does, changes nothing and passes.
+    if !crate::api::is_local(&req.headers)
+        && entries.iter().any(|(target, value)| {
+            target == keys::REQUIRE_AUTHORIZATION && work.get(target) != Some(value)
+        })
+    {
+        tracing::warn!(
+            "Refused a change of {} from {}",
+            keys::REQUIRE_AUTHORIZATION,
+            crate::api::redact_ip(req.header("X-Real-IP").unwrap_or_default())
+        );
+        return Reply::base().status(403).json(json!({
+            "status": "error",
+            "error": "This setting can only be changed on the machine",
+            "data": {"code": "LOCAL_ONLY"},
+        }));
+    }
+    let was_required = app.auth.required();
     let mut reply = Reply::base();
     for (target, mut value) in entries {
         if target == keys::PROFILE_PARTIAL_RETRACTION {
@@ -326,6 +346,10 @@ async fn post(app: Arc<App>, req: Request) -> Reply {
     }
     app.config.set_section(keys::USER, Value::Object(work));
     app.config.save();
+    if !was_required && app.auth.required() {
+        // Clients that connected while no token was needed must pair now.
+        app.auth.sweep_sockets(false).await;
+    }
     reply.write_dumps(&app.config.section(keys::USER));
     reply
 }

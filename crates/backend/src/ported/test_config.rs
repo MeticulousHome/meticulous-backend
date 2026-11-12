@@ -213,3 +213,48 @@ fn an_empty_config_file_is_treated_as_damaged() {
     assert_eq!(broken_backups(dir.path()).len(), 1);
     assert_eq!(store.section(keys::USER), config::defaults()[keys::USER]);
 }
+
+/// Not a Python case (device authorization contract, section 2): a fresh
+/// install asks LAN clients for a token, and so does a machine whose config
+/// was damaged and set aside; a machine updated from a release without the
+/// setting keeps its API open (its phones hold no token yet) and says so in
+/// its file, so the next open does not flip it on.
+#[test]
+fn require_authorization_is_on_for_fresh_installs_only() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = dir.path().join("config.yml");
+    let fresh = ConfigStore::open(&path, config::defaults());
+    assert!(fresh.get_bool(keys::USER, keys::REQUIRE_AUTHORIZATION));
+    assert_eq!(
+        read_yaml(&path)[keys::USER][keys::REQUIRE_AUTHORIZATION],
+        json!(true)
+    );
+
+    let mut older = config::defaults();
+    older[keys::USER]
+        .as_object_mut()
+        .expect("user section")
+        .remove(keys::REQUIRE_AUTHORIZATION);
+    let (_dir, path, existing) = load(&config::to_yaml(&older));
+    assert!(!existing.get_bool(keys::USER, keys::REQUIRE_AUTHORIZATION));
+    assert_eq!(
+        read_yaml(&path)[keys::USER][keys::REQUIRE_AUTHORIZATION],
+        json!(false)
+    );
+    let reopened = ConfigStore::open(&path, config::defaults());
+    assert!(!reopened.get_bool(keys::USER, keys::REQUIRE_AUTHORIZATION));
+
+    // A file without a user section is still an existing machine.
+    let (_dir, _path, bare) = load("version: 1\n");
+    assert!(!bare.get_bool(keys::USER, keys::REQUIRE_AUTHORIZATION));
+
+    // Once someone turned it on, it stays on.
+    let mut enabled = older.clone();
+    enabled[keys::USER][keys::REQUIRE_AUTHORIZATION] = json!(true);
+    let (_dir, _path, on) = load(&config::to_yaml(&enabled));
+    assert!(on.get_bool(keys::USER, keys::REQUIRE_AUTHORIZATION));
+
+    let (_dir, _path, damaged) = load("user: {enable_sounds: [unterminated\n");
+    assert!(damaged.has_error());
+    assert!(damaged.get_bool(keys::USER, keys::REQUIRE_AUTHORIZATION));
+}

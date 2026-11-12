@@ -16,6 +16,7 @@
 
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Weak;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use futures::StreamExt;
 use zbus::{Connection, ObjectPath, OwnedObjectPath, OwnedVariant, Variant, interface};
@@ -23,10 +24,19 @@ use zbus::{Connection, ObjectPath, OwnedObjectPath, OwnedVariant, Variant, inter
 use super::improv::{
     CAPABILITIES_UUID, ERROR_UUID, RPC_COMMAND_UUID, RPC_RESULT_UUID, SERVICE_UUID, STATUS_UUID,
 };
-use super::{Advertisement, AdvertisingBackend, GattServer, MACHINE_IDENT_UUID};
+use super::{Advertisement, AdvertisingBackend, BleClient, GattServer, MACHINE_IDENT_UUID};
 
 const BLUEZ: &str = "org.bluez";
 const AGENT_PATH: &str = "/com/meticulous/ble_agent";
+/// A device's LE link, on a BlueZ that exports one interface per transport.
+const LE_BEARER: &str = "org.bluez.Bearer.LE1";
+/// What every per-transport interface's name starts with
+/// (`org.bluez.Bearer.LE1`, `org.bluez.Bearer.BREDR1`).
+const BEARER_PREFIX: &str = "org.bluez.Bearer.";
+
+/// `ObjectManager.GetManagedObjects`: interfaces and their properties, by
+/// object path.
+type Managed = HashMap<OwnedObjectPath, HashMap<String, HashMap<String, OwnedVariant>>>;
 
 /// Where the Improv service starts in BlueZ's attribute table, on every
 /// start. Left to BlueZ, the service moves up 0x10 handles each time the
@@ -69,6 +79,10 @@ pub struct BluezApp {
     char_paths: Vec<(String, String)>,
     advertisements: tokio::sync::Mutex<Vec<String>>,
     _agent: Option<Connection>,
+    /// Whether the last listing of the connected centrals found BlueZ's
+    /// per-transport interfaces, so a central's LE link alone can be
+    /// disconnected.
+    le_bearers: AtomicBool,
 }
 
 /// `BlueZGattApplication.base_path`.
@@ -160,6 +174,7 @@ impl BluezApp {
             char_paths,
             advertisements: tokio::sync::Mutex::new(Vec::new()),
             _agent: agent,
+            le_bearers: AtomicBool::new(false),
         })
     }
 
@@ -321,6 +336,52 @@ impl BluezApp {
         Ok(())
     }
 
+    /// The `Device1` paths of the BLE centrals connected to this adapter
+    /// now (see [`connected_devices`]).
+    pub async fn connected_devices(&self) -> Result<Vec<String>, String> {
+        let reply = self
+            .call(
+                "/",
+                "org.freedesktop.DBus.ObjectManager",
+                "GetManagedObjects",
+                &(),
+            )
+            .await?;
+        let objects: Managed = reply.body().deserialize().map_err(failed)?;
+        let (connected, le_bearers) = connected_devices(&objects, self.adapter.as_str());
+        self.le_bearers.store(le_bearers, Ordering::Relaxed);
+        Ok(connected)
+    }
+
+    /// Disconnect the central at `device`, a path from
+    /// [`Self::connected_devices`]: its LE link only
+    /// (`org.bluez.Bearer.LE1.Disconnect`) where BlueZ has per-transport
+    /// interfaces, so a Classic link the same device holds (audio, file
+    /// transfer) stays up; otherwise `Device1.Disconnect`, every link. BlueZ
+    /// answers once the link is down. A refusal is only its D-Bus error
+    /// name: the message may carry the address.
+    pub async fn disconnect_device(&self, device: &str) -> Result<(), String> {
+        if self.le_bearers.load(Ordering::Relaxed) {
+            match self.disconnect_on(device, LE_BEARER).await {
+                // A BlueZ whose LE bearer has no Disconnect method.
+                Err(error) if error == "org.freedesktop.DBus.Error.UnknownMethod" => {}
+                result => return result,
+            }
+        }
+        self.disconnect_on(device, "org.bluez.Device1").await
+    }
+
+    async fn disconnect_on(&self, device: &str, interface: &str) -> Result<(), String> {
+        self.conn
+            .call_method(Some(BLUEZ), device, Some(interface), "Disconnect", &())
+            .await
+            .map(|_| ())
+            .map_err(|error| match error {
+                zbus::Error::MethodError(name, _, _) => name.to_string(),
+                error => failed(error),
+            })
+    }
+
     pub fn char_path(&self, uuid: &str) -> Option<&str> {
         self.char_paths
             .iter()
@@ -405,7 +466,6 @@ impl AdvertisingBackend for BluezApp {
 /// `find_adapter(bus, "hci0")`: the first BlueZ object with a GATT manager
 /// whose path mentions the adapter.
 async fn find_adapter(conn: &Connection, adapter: &str) -> Result<OwnedObjectPath, String> {
-    type Managed = HashMap<OwnedObjectPath, HashMap<String, HashMap<String, OwnedVariant>>>;
     let reply = conn
         .call_method(
             Some(BLUEZ),
@@ -426,6 +486,47 @@ async fn find_adapter(conn: &Connection, adapter: &str) -> Result<OwnedObjectPat
         .into_values()
         .find(|path| path.as_str().contains(adapter))
         .ok_or_else(|| format!("No adapter named {adapter} found"))
+}
+
+/// The BLE centrals connected to `adapter`: the paths of the `Device1`
+/// objects below it with a connected LE link, sorted, and whether BlueZ
+/// told the links apart. A device BlueZ only remembers (bonded, out of
+/// range) is listed too, not connected.
+///
+/// A BlueZ with per-transport interfaces gives each device an
+/// `org.bluez.Bearer.LE1` and an `org.bluez.Bearer.BREDR1` with their own
+/// `Connected`; only the LE one makes a central, so a phone or speaker
+/// linked over Bluetooth Classic alone (audio, file transfer) is left out.
+/// A BlueZ without them (none in the whole reply) only has
+/// `Device1.Connected`, which a Classic link sets too: every connected
+/// device counts.
+fn connected_devices(objects: &Managed, adapter: &str) -> (Vec<String>, bool) {
+    let le_bearers = objects.values().any(|interfaces| {
+        interfaces
+            .keys()
+            .any(|interface| interface.starts_with(BEARER_PREFIX))
+    });
+    let link = if le_bearers {
+        LE_BEARER
+    } else {
+        "org.bluez.Device1"
+    };
+    let prefix = format!("{adapter}/");
+    let mut connected: Vec<String> = objects
+        .iter()
+        .filter(|(path, _)| path.as_str().starts_with(&prefix))
+        .filter(|(_, interfaces)| interfaces.contains_key("org.bluez.Device1"))
+        .filter(|(_, interfaces)| {
+            interfaces
+                .get(link)
+                .and_then(|link| link.get("Connected"))
+                .and_then(|value| bool::try_from(value).ok())
+                .unwrap_or(false)
+        })
+        .map(|(path, _)| path.as_str().to_string())
+        .collect();
+    connected.sort();
+    (connected, le_bearers)
 }
 
 async fn set_adapter_property(
@@ -692,19 +793,27 @@ impl Characteristic {
     async fn write_value(
         &self,
         value: Vec<u8>,
-        _options: HashMap<String, OwnedVariant>,
+        options: HashMap<String, OwnedVariant>,
+        #[zbus(connection)] conn: &Connection,
     ) -> zbus::fdo::Result<()> {
         let server = self
             .server
             .upgrade()
             .ok_or_else(|| dbus_failure("server gone"))?;
         let uuid = self.uuid.clone();
+        // Only Improv commands use the client (IDENTIFY names it).
+        let client = if uuid == RPC_COMMAND_UUID {
+            Some(write_client(conn, &options).await)
+        } else {
+            None
+        };
         let blocking = server.clone();
-        let notifications =
-            tokio::task::spawn_blocking(move || blocking.write_request(&uuid, &value))
-                .await
-                .map_err(|e| dbus_failure(e.to_string()))?
-                .map_err(|e| dbus_failure(format!("{}: {}", e.kind, e.message)))?;
+        let notifications = tokio::task::spawn_blocking(move || {
+            blocking.write_request(&uuid, &value, client.as_ref())
+        })
+        .await
+        .map_err(|e| dbus_failure(e.to_string()))?
+        .map_err(|e| dbus_failure(format!("{}: {}", e.kind, e.message)))?;
         if let Some(app) = server.app.get() {
             for (target, packet) in notifications {
                 if let Err(error) = app.update_value(&target, packet).await {
@@ -728,6 +837,38 @@ impl Characteristic {
             None => Ok(()),
         }
     }
+}
+
+/// The client behind a `WriteValue`: BlueZ puts its `Device1` path in the
+/// `device` option. Anything missing leaves the field empty; the write still
+/// goes through.
+async fn write_client(conn: &Connection, options: &HashMap<String, OwnedVariant>) -> BleClient {
+    let Some(device) = options
+        .get("device")
+        .and_then(|v| OwnedObjectPath::try_from(v.try_clone().ok()?).ok())
+    else {
+        return BleClient::default();
+    };
+    BleClient {
+        name: device_name(conn, &device).await,
+        device: Some(device.as_str().to_string()),
+    }
+}
+
+/// `Device1.Name`; `None` when the device never sent one.
+async fn device_name(conn: &Connection, device: &OwnedObjectPath) -> Option<String> {
+    let reply = conn
+        .call_method(
+            Some(BLUEZ),
+            device.as_str(),
+            Some("org.freedesktop.DBus.Properties"),
+            "Get",
+            &("org.bluez.Device1", "Name"),
+        )
+        .await
+        .ok()?;
+    let value: OwnedVariant = reply.body().deserialize().ok()?;
+    String::try_from(value).ok()
 }
 
 /// `org.bluez.LEAdvertisement1` (`BlueZLEAdvertisement`).

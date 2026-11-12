@@ -5,7 +5,7 @@ use std::sync::Arc;
 use serde_json::json;
 
 use crate::app::App;
-use crate::http::{Kind, Reply, Request, Route};
+use crate::http::{Kind, Method, Reply, Request, Route};
 use crate::pour_over::error_reply;
 
 pub fn routes() -> Vec<Route> {
@@ -31,7 +31,9 @@ pub fn routes() -> Vec<Route> {
             m,
             "GetPourOverProfileImageHandler",
         )
-        .get(image),
+        .get(image)
+        // Public: `<img>` loads it and cannot send a token.
+        .public(&[Method::Get]),
         Route::new(
             "/pour-over/profile/delete/([0-9a-fA-F-]+)",
             Kind::Base,

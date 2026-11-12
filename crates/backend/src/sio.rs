@@ -9,6 +9,7 @@ use std::sync::OnceLock;
 
 use serde_json::Value;
 use socketioxide::SocketIo;
+use socketioxide::extract::SocketRef;
 
 #[derive(Default)]
 pub struct Sio {
@@ -17,6 +18,10 @@ pub struct Sio {
     /// have received (the Python suite's `RecordingSocketIO`).
     #[cfg(test)]
     recorded: parking_lot::Mutex<Vec<Emitted>>,
+    /// How many times sockets were looked at for disconnecting: tests have
+    /// no socket to see dropped, but can see that a sweep ran.
+    #[cfg(test)]
+    disconnect_passes: std::sync::atomic::AtomicUsize,
 }
 
 /// One recorded emit and its `to=` / `skip_sid=`.
@@ -102,6 +107,12 @@ impl Sio {
         self.recorded.lock().clear();
     }
 
+    #[cfg(test)]
+    pub fn disconnect_passes(&self) -> usize {
+        self.disconnect_passes
+            .load(std::sync::atomic::Ordering::Relaxed)
+    }
+
     fn emit_where(&self, event: &str, data: &Value, select: impl Fn(&str) -> bool) {
         let Some(io) = self.io.get() else { return };
         let Some(ns) = io.of("/") else { return };
@@ -112,6 +123,27 @@ impl Sio {
                 tracing::debug!("emit {event} to {} failed: {error}", socket.id);
             }
         }
+    }
+
+    /// Disconnect every socket `select` picks; how many went.
+    pub fn disconnect_where(&self, select: impl Fn(&SocketRef) -> bool) -> usize {
+        #[cfg(test)]
+        self.disconnect_passes
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let Some(io) = self.io.get() else { return 0 };
+        let Some(ns) = io.of("/") else { return 0 };
+        let mut dropped = 0;
+        for socket in ns.sockets() {
+            if !select(&socket) {
+                continue;
+            }
+            let id = socket.id;
+            match socket.disconnect() {
+                Ok(()) => dropped += 1,
+                Err(error) => tracing::debug!("disconnecting {id} failed: {error}"),
+            }
+        }
+        dropped
     }
 
     pub fn client_count(&self) -> usize {

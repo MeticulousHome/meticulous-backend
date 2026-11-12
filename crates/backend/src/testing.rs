@@ -74,6 +74,13 @@ pub async fn call_with_headers(
     router.dispatch(app.clone(), req).await
 }
 
+/// An `Authorization` header value with a fresh device token: what a
+/// paired phone sends once the API asks for one.
+pub fn bearer(app: &App) -> String {
+    let (token, _) = app.auth.issue("Test device").expect("token");
+    format!("Bearer {token}")
+}
+
 /// The body parsed as JSON.
 pub fn json(reply: &Reply) -> Value {
     serde_json::from_slice(reply.body()).expect("JSON body")
