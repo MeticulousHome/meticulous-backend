@@ -1,0 +1,221 @@
+{
+  "id": "07c4eec6-caf1-410a-b3f5-40d437304567",
+  "name": "Traditional Lever",
+  "author": "Damian",
+  "stages": [
+    {
+      "key": "fill_start_1",
+      "name": "Fill start",
+      "type": "pressure",
+      "limits": [
+        {
+          "type": "flow",
+          "value": 8
+        }
+      ],
+      "dynamics": {
+        "over": "time",
+        "points": [
+          [
+            0,
+            2
+          ]
+        ],
+        "interpolation": "linear"
+      },
+      "exit_triggers": [
+        {
+          "type": "time",
+          "value": 2,
+          "relative": true,
+          "comparison": ">="
+        }
+      ]
+    },
+    {
+      "key": "fill_2",
+      "name": "Fill",
+      "type": "pressure",
+      "limits": [
+        {
+          "type": "flow",
+          "value": 8
+        }
+      ],
+      "dynamics": {
+        "over": "time",
+        "points": [
+          [
+            0,
+            2
+          ]
+        ],
+        "interpolation": "linear"
+      },
+      "exit_triggers": [
+        {
+          "type": "time",
+          "value": 25,
+          "relative": true,
+          "comparison": ">="
+        },
+        {
+          "type": "pressure",
+          "value": 1.5,
+          "relative": false,
+          "comparison": ">="
+        }
+      ]
+    },
+    {
+      "key": "infuse_3",
+      "name": "Infuse",
+      "type": "pressure",
+      "limits": [
+        {
+          "type": "flow",
+          "value": 8
+        }
+      ],
+      "dynamics": {
+        "over": "time",
+        "points": [
+          [
+            0,
+            3
+          ]
+        ],
+        "interpolation": "linear"
+      },
+      "exit_triggers": [
+        {
+          "type": "time",
+          "value": 12,
+          "relative": true,
+          "comparison": ">="
+        }
+      ]
+    },
+    {
+      "key": "pressure_up_4",
+      "name": "Pressure Up",
+      "type": "pressure",
+      "limits": [],
+      "dynamics": {
+        "over": "time",
+        "points": [
+          [
+            0,
+            "$pressure_1"
+          ]
+        ],
+        "interpolation": "linear"
+      },
+      "exit_triggers": [
+        {
+          "type": "time",
+          "value": 8,
+          "relative": true,
+          "comparison": ">="
+        }
+      ]
+    },
+    {
+      "key": "pressure_decline_5",
+      "name": "Pressure Decline",
+      "type": "pressure",
+      "limits": [],
+      "dynamics": {
+        "over": "time",
+        "points": [
+          [
+            0,
+            9
+          ],
+          [
+            55,
+            3
+          ]
+        ],
+        "interpolation": "linear"
+      },
+      "exit_triggers": [
+        {
+          "type": "time",
+          "value": 55,
+          "relative": true,
+          "comparison": ">="
+        },
+        {
+          "type": "flow",
+          "value": 2.8,
+          "relative": false,
+          "comparison": ">="
+        }
+      ]
+    },
+    {
+      "key": "pressure_hold_6",
+      "name": "Pressure Hold",
+      "type": "pressure",
+      "limits": [],
+      "dynamics": {
+        "over": "time",
+        "points": [
+          [
+            0,
+            3
+          ]
+        ],
+        "interpolation": "linear"
+      },
+      "exit_triggers": [
+        {
+          "type": "flow",
+          "value": 2.8,
+          "relative": false,
+          "comparison": ">="
+        }
+      ]
+    },
+    {
+      "key": "flow_limit_7",
+      "name": "Flow Limit",
+      "type": "flow",
+      "limits": [
+        {
+          "type": "pressure",
+          "value": 3
+        }
+      ],
+      "dynamics": {
+        "over": "time",
+        "points": [
+          [
+            0,
+            2.5
+          ]
+        ],
+        "interpolation": "linear"
+      },
+      "exit_triggers": []
+    }
+  ],
+  "display": {
+    "image": "",
+    "description": "Aims to replicate the nuanced extraction characteristics of traditional manual lever espresso machines. Opening the lever valve initiates a quick pre-infusion phase at low pressure, allowing the steam pressure in the boiler to evenly saturate the puck. After 10 seconds of pressure equilibrium, the pressure ramps up to the set 'Target Pressure' and then gradually declines. \n\nDial in a flow rate of 1.2 to 1.8 ml/s during extraction, with only a few drops in the cup during pre-infusion and blooming. Based on the original work by Damian Brakel https://www.diy.brakel.com.au",
+    "shortDescription": "Fast preinfusion and pressureized blooming"
+  },
+  "author_id": "48101eb2-0d54-4891-8434-d77e68f36610",
+  "variables": [
+    {
+      "key": "pressure_1",
+      "name": "Peak Pressure",
+      "type": "pressure",
+      "value": 9
+    }
+  ],
+  "temperature": 89,
+  "final_weight": 42,
+  "previous_authors": []
+}
