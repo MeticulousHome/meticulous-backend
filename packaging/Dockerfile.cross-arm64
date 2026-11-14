@@ -1,0 +1,23 @@
+# A bookworm toolchain that cross-compiles the backend for the machines
+# (aarch64) from an amd64 workstation, for trying a build on a machine without
+# an arm64 runner. CI builds natively instead (Dockerfile.deb).
+#
+#   docker build -f packaging/Dockerfile.cross-arm64 -t meticulous-cross .
+#   docker run --rm -v "$PWD:/src" -v meticulous-cross-target:/target \
+#       -v meticulous-cross-registry:/usr/local/cargo/registry \
+#       meticulous-cross packaging/build-deb-cross.sh
+FROM debian:bookworm
+RUN apt-get update -y && apt-get install -y --no-install-recommends \
+        ca-certificates curl build-essential pkg-config git dpkg-dev gettext-base \
+        gcc-aarch64-linux-gnu libc6-dev-arm64-cross \
+    && rm -rf /var/lib/apt/lists/*
+ENV RUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo PATH=/usr/local/cargo/bin:$PATH \
+    CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
+    CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc \
+    AR_aarch64_unknown_linux_gnu=aarch64-linux-gnu-ar \
+    CARGO_TARGET_DIR=/target
+WORKDIR /src
+COPY rust-toolchain.toml ./
+RUN curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none \
+    && rustup toolchain install \
+    && rustup target add aarch64-unknown-linux-gnu

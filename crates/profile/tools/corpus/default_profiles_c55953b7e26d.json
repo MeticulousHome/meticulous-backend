@@ -1,0 +1,90 @@
+{
+  "id": "274bed4e-fa55-4a89-87ce-fa8dcc96394d",
+  "name": "Ultra Low Contact",
+  "author": "John Barry",
+  "stages": [
+    {
+      "key": "fill_1",
+      "name": "Fill",
+      "type": "power",
+      "limits": [],
+      "dynamics": {
+        "over": "time",
+        "points": [
+          [
+            0,
+            100
+          ]
+        ],
+        "interpolation": "linear"
+      },
+      "exit_triggers": [
+        {
+          "type": "pressure",
+          "value": "$pressure_1",
+          "relative": false,
+          "comparison": ">"
+        }
+      ]
+    },
+    {
+      "key": "blooming_1",
+      "name": "Bloom",
+      "type": "flow",
+      "limits": [],
+      "dynamics": {
+        "over": "time",
+        "points": [
+          [
+            0,
+            0
+          ]
+        ],
+        "interpolation": "linear"
+      },
+      "exit_triggers": [
+        {
+          "type": "time",
+          "value": 0.5,
+          "relative": true,
+          "comparison": ">"
+        }
+      ]
+    },
+    {
+      "key": "extract_1",
+      "name": "Extraction",
+      "type": "power",
+      "limits": [],
+      "dynamics": {
+        "over": "time",
+        "points": [
+          [
+            0,
+            100
+          ]
+        ],
+        "interpolation": "linear"
+      },
+      "exit_triggers": []
+    }
+  ],
+  "author_id": "d9123a0a-d3d7-40fd-a548-b81376e43f23",
+  "variables": [
+    {
+      "key": "pressure_1",
+      "name": "Fill Pressure",
+      "type": "pressure",
+      "value": 1.5
+    }
+  ],
+  "temperature": 92,
+  "final_weight": 45,
+  "previous_authors": [
+    {
+      "name": "Long",
+      "author_id": "d9123a0a-d3d7-40fd-a548-b81376e43f23",
+      "profile_id": "0cdf18ca-d72e-4776-8e25-7b3279907dce"
+    }
+  ]
+}

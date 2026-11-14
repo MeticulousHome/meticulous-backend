@@ -1,2 +1,12 @@
 #!/bin/bash
 set -e
+
+# Upgrading from the Python package leaves the bytecode it compiled at run
+# time under /opt/meticulous-backend: dpkg does not own it, so it stays, and
+# keeps the old module directories alive. Drop it and the directories that
+# are empty without it (api/web_ui is shipped empty on purpose: nginx's alias).
+root=/opt/meticulous-backend
+if [ -d "$root" ]; then
+    find "$root" -depth -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+    find "$root" -depth -mindepth 1 -type d -empty ! -path "$root/api/web_ui" -delete 2>/dev/null || true
+fi
