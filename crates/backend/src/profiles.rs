@@ -924,6 +924,11 @@ impl ProfileManager {
     pub fn known_count(&self) -> usize {
         self.state.lock().known.len()
     }
+
+    /// Whether the user has a saved profile with this id.
+    pub fn has_profile(&self, id: &str) -> bool {
+        self.state.lock().known.contains_key(id)
+    }
 }
 
 /// `LEGACY_DUMMY_PROFILE` (`api/emulation.py`): what a legacy JSON load

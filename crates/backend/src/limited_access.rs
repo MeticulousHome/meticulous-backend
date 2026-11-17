@@ -152,8 +152,38 @@ impl UnlockThrottle {
     }
 }
 
-/// `unlock`: leave the factory channel for stable and have clients reload
-/// the profile list. Returns the channel now configured.
+/// Save the bundled Simple profile among the user's profiles, so the one
+/// profile the user had while locked is still there once unlocked. A profile
+/// the user already has with the same id is left as it is. A failure is
+/// logged and does not stop the unlock.
+fn keep_simple_profile(app: &App) {
+    let Some(mut profile) = app.simple_profile.get() else {
+        tracing::warn!("No simple profile to keep after unlocking");
+        return;
+    };
+    let id = profile
+        .get("id")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    if app.profiles.has_profile(&id) {
+        tracing::info!("Simple profile {id} already saved, keeping the user's copy");
+        return;
+    }
+    // The Dial's runtime fields, not part of a saved profile.
+    if let Some(map) = profile.as_object_mut() {
+        map.shift_remove("isLast");
+        map.shift_remove("temporary");
+    }
+    match app.profiles.save_profile(app, profile, true, None, false) {
+        Ok(_) => tracing::info!("Kept simple profile {id} after unlocking"),
+        Err(error) => tracing::error!("Could not keep simple profile {id}: {error}"),
+    }
+}
+
+/// `unlock`: leave the factory channel for stable, keep the Simple profile
+/// among the user's profiles and have clients reload the profile list.
+/// Returns the channel now configured.
 pub fn unlock(app: &App) -> Value {
     if !is_limited_access(&app.config) {
         return app.config.get(keys::USER, keys::UPDATE_CHANNEL);
@@ -162,6 +192,7 @@ pub fn unlock(app: &App) -> Value {
     app.config
         .set(keys::USER, keys::UPDATE_CHANNEL, json!(UNLOCKED_CHANNEL));
     app.config.save();
+    keep_simple_profile(app);
     // ProfileManager._emit_profile_event(PROFILE_EVENT.RELOAD).
     app.sio.emit(
         "profile",
@@ -297,7 +328,8 @@ mod tests {
             std::fs::read_to_string(dir.path().join("etc/hawkbit/channel")).expect("channel"),
             "stable\n"
         );
-        assert_eq!(saves.load(std::sync::atomic::Ordering::Relaxed), 1);
+        // The channel, then the kept Simple profile's place in `profile_order`.
+        assert_eq!(saves.load(std::sync::atomic::Ordering::Relaxed), 2);
         assert_eq!(
             app.config.get(keys::USER, keys::UPDATE_CHANNEL),
             json!("stable")
@@ -371,6 +403,60 @@ mod tests {
         )
         .await;
         assert_eq!(reply.status_code(), 200);
+    }
+
+    /// Without it, a customer who unlocks loses Simple, the only profile they
+    /// had while locked, and the Dial comes back with no espresso profile.
+    /// Expected values: the bundled `simple_profile.json` id, and
+    /// `keep_simple_profile` leaving a user's own copy with that id untouched.
+    #[tokio::test]
+    async fn unlock_keeps_the_simple_profile() {
+        const SIMPLE: &str = "f5db85cc-ab0d-4c81-aee8-bcac7da77141";
+        let unlock_with = |prepare: Option<&str>| {
+            let (dir, app) = app();
+            std::fs::create_dir_all(dir.path().join("etc/hawkbit")).expect("hawkbit");
+            if let Some(name) = prepare {
+                let bundled =
+                    std::fs::read_to_string(&app.env.paths.simple_profile).expect("bundled");
+                let mut mine: Value = serde_json::from_str(&bundled).expect("JSON");
+                mine["name"] = json!(name);
+                std::fs::create_dir_all(&app.env.paths.profiles).expect("profiles");
+                std::fs::write(
+                    app.env.paths.profiles.join(format!("{SIMPLE}.json")),
+                    mine.to_string(),
+                )
+                .expect("user copy");
+                app.profiles.refresh_profile_list(&app);
+            }
+            app.config
+                .set(keys::USER, keys::UPDATE_CHANNEL, json!("factory"));
+            (dir, app)
+        };
+
+        let (_dir, app) = unlock_with(None);
+        assert!(!app.profiles.has_profile(SIMPLE));
+        let reply = post_unlock(&app, r#"{"code": "met"}"#).await;
+        assert_eq!(reply.status_code(), 200);
+        let listed = body(&call(&app, http::Method::GET, "/api/v1/profile/list", "").await);
+        assert_eq!(listed.as_array().map(Vec::len), Some(1), "{listed}");
+        assert_eq!(listed[0]["id"], json!(SIMPLE));
+        assert_eq!(listed[0]["name"], json!("Simple"));
+        assert!(listed[0].get("isLast").is_none(), "{listed}");
+        assert!(listed[0].get("temporary").is_none(), "{listed}");
+        assert!(
+            app.env
+                .paths
+                .profiles
+                .join(format!("{SIMPLE}.json"))
+                .exists()
+        );
+
+        let (_dir, app) = unlock_with(Some("Mine"));
+        let reply = post_unlock(&app, r#"{"code": "met"}"#).await;
+        assert_eq!(reply.status_code(), 200);
+        let listed = body(&call(&app, http::Method::GET, "/api/v1/profile/list", "").await);
+        assert_eq!(listed.as_array().map(Vec::len), Some(1), "{listed}");
+        assert_eq!(listed[0]["name"], json!("Mine"));
     }
 
     /// An empty or non-object body, a blank code: 400 before the throttle.
