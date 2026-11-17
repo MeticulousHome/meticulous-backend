@@ -1,0 +1,75 @@
+{
+  "name": "Classical Italian",
+  "id": "83888510-ac09-44c6-af64-2bfa12550f60",
+  "author": "meticulous",
+  "author_id": "d9123a0a-d3d7-40fd-a548-b81376e43f23",
+  "previous_authors": [],
+  "display": {
+    "shortDescription": "Slow preinfusion into non-declining fixed pressure",
+    "description": "Replicates the extraction characteristics of traditional E61-style Italian espresso machines.\n\nPreinfuses at 4ml/s, followed by a the main extraction at a fixed (non-declining) pressure as defined by the 'Pressure' variable"
+  },
+  "temperature": 90.5,
+  "final_weight": 36,
+  "variables": [
+    {
+      "name": "Pressure",
+      "key": "pressure_1",
+      "type": "pressure",
+      "value": 8
+    }
+  ],
+  "stages": [
+    {
+      "name": "Preinfusion",
+      "key": "preinfusion_1",
+      "type": "flow",
+      "dynamics": {
+        "points": [[0, 4]],
+        "over": "time",
+        "interpolation": "linear"
+      },
+      "exit_triggers": [
+        {
+          "type": "time",
+          "value": 30,
+          "relative": true,
+          "comparison": ">="
+        },
+        {
+          "type": "weight",
+          "value": 0.3,
+          "relative": true,
+          "comparison": ">="
+        },
+        {
+          "type": "pressure",
+          "value": "$pressure_1",
+          "relative": false,
+          "comparison": ">="
+        }
+      ],
+      "limits": []
+    },
+    {
+      "name": "Infusion",
+      "key": "infusion_1",
+      "type": "pressure",
+      "dynamics": {
+        "points": [
+          [0, 0],
+          [10, "$pressure_1"],
+          [20, "$pressure_1"]
+        ],
+        "over": "time",
+        "interpolation": "curve"
+      },
+      "exit_triggers": [],
+      "limits": [
+        {
+          "type": "flow",
+          "value": 3
+        }
+      ]
+    }
+  ]
+}

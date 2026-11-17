@@ -1,0 +1,48 @@
+{
+  "name": "Allonge",
+  "id": "c93e57e1-ccde-4be3-a131-e0eeb49d7268",
+  "author": "John Barry",
+  "author_id": "d9123a0a-d3d7-40fd-a548-b81376e43f23",
+  "previous_authors": [
+    {
+      "name": "Rao",
+      "author_id": "d9123a0a-d3d7-40fd-a548-b81376e43f23",
+      "profile_id": "0cdf18ca-d72e-4776-8e25-7b3279907dce"
+    }
+  ],
+  "temperature": 90,
+  "final_weight": 90,
+  "variables": [
+    {
+      "name": "Pressure",
+      "key": "pressure_1",
+      "type": "pressure",
+      "value": 8.6
+    }
+  ],
+  "stages": [
+    {
+      "name": "Extraction",
+      "type": "flow",
+      "dynamics": {
+        "points": [
+          [
+            0,
+            4.5
+          ]
+        ],
+        "over": "time",
+        "interpolation": "linear"
+      },
+      "exit_triggers": [],
+      "limits": [
+        {
+          "type": "pressure",
+          "value": "$pressure_1"
+        }
+      ],
+      "key": "flow_1"
+    }
+  ],
+  "display": {}
+}

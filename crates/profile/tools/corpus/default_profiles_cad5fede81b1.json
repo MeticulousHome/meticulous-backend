@@ -1,0 +1,105 @@
+{
+  "id": "bb02c8ba-e633-49d9-bcab-08ab340e25d9",
+  "name": "Italian Style",
+  "author": "meticulous",
+  "isLast": true,
+  "stages": [
+    {
+      "key": "flow_1",
+      "name": "Fill",
+      "type": "power",
+      "limits": [],
+      "dynamics": {
+        "over": "time",
+        "points": [
+          [
+            0,
+            100
+          ],
+          [
+            30,
+            100
+          ]
+        ],
+        "interpolation": "curve"
+      },
+      "exit_triggers": [
+        {
+          "type": "time",
+          "value": 30,
+          "relative": true,
+          "comparison": ">="
+        },
+        {
+          "type": "pressure",
+          "value": 5,
+          "relative": false,
+          "comparison": ">="
+        }
+      ]
+    },
+    {
+      "key": "flow_2",
+      "name": "Constant Flow",
+      "type": "flow",
+      "limits": [
+        {
+          "type": "pressure",
+          "value": "$pressure_limit"
+        }
+      ],
+      "dynamics": {
+        "over": "time",
+        "points": [
+          [
+            0,
+            "$flow_Constant Flow"
+          ],
+          [
+            30,
+            "$flow_Constant Flow"
+          ]
+        ],
+        "interpolation": "linear"
+      },
+      "exit_triggers": [
+        {
+          "type": "time",
+          "value": 30,
+          "relative": true,
+          "comparison": ">="
+        }
+      ]
+    }
+  ],
+  "display": {
+    "description": "A fast filling profile that builds pressure and transitions to a constant flow until the target weight is reached. The benefit is that it retains puck resistance and once dialed in by grind to a peak pressure of 6-9 bar, will maintain the shot time even as the bean ages without adjusting grind size. Adjust the End Flow rate via the Dial to shorten or lengthen the shot time.",
+    "shortDescription": "Fast fill with flow profiling for best puck integrety"
+  },
+  "author_id": "d9123a0a-d3d7-40fd-a548-b81376e43f23",
+  "temporary": false,
+  "variables": [
+    {
+      "key": "pressure_limit",
+      "name": "Pressure Limit",
+      "type": "pressure",
+      "value": 9
+    },
+    {
+      "key": "flow_Constant Flow",
+      "name": "Constant Flow",
+      "type": "flow",
+      "value": 1.8
+    }
+  ],
+  "temperature": 89,
+  "final_weight": 40,
+  "last_changed": 1753885761.6184704,
+  "previous_authors": [
+    {
+      "name": "mimoja",
+      "author_id": "d9123a0a-d3d7-40fd-a548-b81376e43f23",
+      "profile_id": "0cdf18ca-d72e-4776-8e25-7b3279907dce"
+    }
+  ]
+}

@@ -7,13 +7,17 @@ fika.json
 dashboard.json
 fika.json
 modes/dashboard_1_0/parameters.json
-history
-config
-shots
-profiles
+/history
+/config
+/shots
+/profiles
 images/profile-images
-db-migrations
-out
+/db-migrations
+/out
+/pour-over-profiles
+/alarms
+/reports
+memory_profiling_*
 
 !**/__pycache__/
 
@@ -180,3 +184,9 @@ cython_debug/
 
 userdata/
 userdata.img
+
+# Rust
+/target
+
+# crates/history is the Rust history store, not machine data matched by "history" above.
+boot-reports/

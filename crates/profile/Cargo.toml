@@ -1,0 +1,19 @@
+[package]
+name = "profile"
+description = "Espresso and Pour Over profiles: variables, schema validation, the manual-mode node program (pure)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+pyfmt = { path = "../pyfmt" }
+regex = "1"
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+md-5 = "0.11"
+
+[lints]
+workspace = true

@@ -1,0 +1,42 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-only"
+repository = "https://github.com/MeticulousHome/meticulous-backend"
+rust-version = "1.97"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+thiserror = "2"
+tracing = "0.1"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+dbg_macro = "deny"
+todo = "deny"
+unwrap_used = "deny"
+
+[profile.release]
+lto = "thin"
+codegen-units = 4
+# Debug info without types or variables, so crash reports get file and line
+# numbers. "limited" rather than "line-tables-only": the latter names inlined
+# and DWARF-resolved frames `print` instead of
+# `meticulous_backend::contract::print`, for a debug file only ~25% smaller.
+# The packaging splits it into a separate debug file for Sentry and ships the
+# binary without it (objcopy in Dockerfile.deb and
+# packaging/build-deb-cross.sh), keeping the symbol table for function names.
+debug = "limited"
+strip = "none"
+panic = "unwind"
+
+# Dependencies optimized in debug builds: regex-heavy tests run ~20x faster.
+[profile.dev.package."*"]
+opt-level = 2

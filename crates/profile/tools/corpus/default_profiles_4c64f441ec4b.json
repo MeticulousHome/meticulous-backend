@@ -1,0 +1,119 @@
+{
+  "name": "ExDos",
+  "id": "56437db5-178b-4d25-9cb0-fc320e571be0",
+  "author": "John Barry",
+  "author_id": "d9123a0a-d3d7-40fd-a548-b81376e43f23",
+  "previous_authors": [
+    {
+      "name": "Joe D",
+      "author_id": "d9123a0a-d3d7-40fd-a548-b81376e43f23",
+      "profile_id": "0cdf18ca-d72e-4776-8e25-7b3279907dce"
+    }
+  ],
+  "temperature": 84,
+  "final_weight": 45,
+  "variables": [
+    {
+      "name": "Pressure",
+      "key": "pressure_1",
+      "type": "pressure",
+      "value": 6
+    }
+  ],
+  "stages": [
+    {
+      "name": "Preinfusion",
+      "key": "preinfusion_1",
+      "type": "flow",
+      "dynamics": {
+        "points": [
+          [
+            0,
+            10
+          ]
+        ],
+        "over": "time",
+        "interpolation": "linear"
+      },
+      "exit_triggers": [
+        {
+          "type": "pressure",
+          "value": 4.5,
+          "relative": false,
+          "comparison": ">="
+        },
+        {
+          "type": "time",
+          "value": 20,
+          "relative": true,
+          "comparison": ">="
+        }
+      ],
+      "limits": []
+    },
+    {
+      "name": "Dynamic Bloom",
+      "key": "blooming_1",
+      "type": "flow",
+      "dynamics": {
+        "points": [
+          [
+            0,
+            0
+          ]
+        ],
+        "over": "time",
+        "interpolation": "linear"
+      },
+      "exit_triggers": [
+        {
+          "type": "pressure",
+          "value": 2.2,
+          "relative": false,
+          "comparison": "<="
+        },
+        {
+          "type": "time",
+          "value": 40,
+          "relative": true,
+          "comparison": ">="
+        }
+      ],
+      "limits": []
+    },
+    {
+      "name": "Extractamundo",
+      "key": "extract_1",
+      "type": "pressure",
+      "dynamics": {
+        "points": [
+          [
+            0,
+            "$pressure_1"
+          ],
+          [
+            60,
+            "$pressure_1"
+          ]
+        ],
+        "over": "time",
+        "interpolation": "linear"
+      },
+      "exit_triggers": [
+        {
+          "type": "time",
+          "value": 60,
+          "relative": true,
+          "comparison": ">="
+        }
+      ],
+      "limits": [
+        {
+          "type": "flow",
+          "value": 4
+        }
+      ]
+    }
+  ],
+  "last_changed": 1739125482.8905127
+}

@@ -1,0 +1,221 @@
+{
+    "name": "Traditional Lever",
+    "id": "07c4eec6-caf1-410a-b3f5-40d437304567",
+    "author": "Damian",
+    "author_id": "48101eb2-0d54-4891-8434-d77e68f36610",
+    "previous_authors": [],
+    "display": {
+        "shortDescription": "Fast preinfusion and pressureized blooming",
+        "description": "Aims to replicate the nuanced extraction characteristics of traditional manual lever espresso machines. Opening the lever valve initiates a quick pre-infusion phase at low pressure, allowing the steam pressure in the boiler to evenly saturate the puck. After 10 seconds of pressure equilibrium, the pressure ramps up to the set 'Target Pressure' and then gradually declines. \n\nDial in a flow rate of 1.2 to 1.8 ml/s during extraction, with only a few drops in the cup during pre-infusion and blooming. Based on the original work by Damian Brakel https://www.diy.brakel.com.au",
+        "image": ""
+    },
+    "temperature": 89,
+    "final_weight": 42,
+    "variables": [
+        {
+            "name": "Peak Pressure",
+            "key": "pressure_1",
+            "type": "pressure",
+            "value": 9
+        }
+    ],
+    "stages": [
+        {
+            "name": "Fill start",
+            "key": "fill_start_1",
+            "type": "pressure",
+            "dynamics": {
+                "points": [
+                    [
+                        0,
+                        2
+                    ]
+                ],
+                "over": "time",
+                "interpolation": "linear"
+            },
+            "exit_triggers": [
+                {
+                    "type": "time",
+                    "value": 2,
+                    "relative": true,
+                    "comparison": ">="
+                }
+            ],
+            "limits": [
+                {
+                    "type": "flow",
+                    "value": 8
+                }
+            ]
+        },
+        {
+            "name": "Fill",
+            "key": "fill_2",
+            "type": "pressure",
+            "dynamics": {
+                "points": [
+                    [
+                        0,
+                        2
+                    ]
+                ],
+                "over": "time",
+                "interpolation": "linear"
+            },
+            "exit_triggers": [
+                {
+                    "type": "time",
+                    "value": 25,
+                    "relative": true,
+                    "comparison": ">="
+                },
+                {
+                    "type": "pressure",
+                    "value": 1.5,
+                    "relative": false,
+                    "comparison": ">="
+                }
+            ],
+            "limits": [
+                {
+                    "type": "flow",
+                    "value": 8
+                }
+            ]
+        },
+        {
+            "name": "Infuse",
+            "key": "infuse_3",
+            "type": "pressure",
+            "dynamics": {
+                "points": [
+                    [
+                        0,
+                        3
+                    ]
+                ],
+                "over": "time",
+                "interpolation": "linear"
+            },
+            "exit_triggers": [
+                {
+                    "type": "time",
+                    "value": 12,
+                    "relative": true,
+                    "comparison": ">="
+                }
+            ],
+            "limits": [
+                {
+                    "type": "flow",
+                    "value": 8
+                }
+            ]
+        },
+        {
+            "name": "Pressure Up",
+            "key": "pressure_up_4",
+            "type": "pressure",
+            "dynamics": {
+                "points": [
+                    [
+                        0,
+                        "$pressure_1"
+                    ]
+                ],
+                "over": "time",
+                "interpolation": "linear"
+            },
+            "exit_triggers": [
+                {
+                    "type": "time",
+                    "value": 8,
+                    "relative": true,
+                    "comparison": ">="
+                }
+            ],
+            "limits": []
+        },
+        {
+            "name": "Pressure Decline",
+            "key": "pressure_decline_5",
+            "type": "pressure",
+            "dynamics": {
+                "points": [
+                    [
+                        0,
+                        9
+                    ],
+                    [
+                        55,
+                        3
+                    ]
+                ],
+                "over": "time",
+                "interpolation": "linear"
+            },
+            "exit_triggers": [
+                {
+                    "type": "time",
+                    "value": 55,
+                    "relative": true,
+                    "comparison": ">="
+                },
+                {
+                    "type": "flow",
+                    "value": 2.8,
+                    "relative": false,
+                    "comparison": ">="
+                }
+            ],
+            "limits": []
+        },
+        {
+            "name": "Pressure Hold",
+            "key": "pressure_hold_6",
+            "type": "pressure",
+            "dynamics": {
+                "points": [
+                    [
+                        0,
+                        3
+                    ]
+                ],
+                "over": "time",
+                "interpolation": "linear"
+            },
+            "exit_triggers": [
+                {
+                    "type": "flow",
+                    "value": 2.8,
+                    "relative": false,
+                    "comparison": ">="
+                }
+            ],
+            "limits": []
+        },
+        {
+            "name": "Flow Limit",
+            "key": "flow_limit_7",
+            "type": "flow",
+            "dynamics": {
+                "points": [
+                    [
+                        0,
+                        2.5
+                    ]
+                ],
+                "over": "time",
+                "interpolation": "linear"
+            },
+            "exit_triggers": [],
+            "limits": [
+                {
+                    "type": "pressure",
+                    "value": 3
+                }
+            ]
+        }
+    ]
+}

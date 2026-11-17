@@ -1,0 +1,73 @@
+[package]
+name = "meticulous-backend"
+description = "Meticulous espresso machine backend"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "meticulous-backend"
+path = "src/main.rs"
+
+[dependencies]
+history = { path = "../history" }
+axum = { version = "0.8.9", default-features = false, features = ["tokio", "http1", "query"] }
+base64 = "0.23.1"
+bytes = "1.12.1"
+chrono = "0.4.45"
+clap = { version = "4.6.7", features = ["derive"] }
+crc32fast = "1.5.3"
+espflash = { version = "4.6.0", default-features = false, features = ["serialport"] }
+flate2 = "1.1.10"
+futures = "0.3.34"
+gpiocdev = "0.8.0"
+hex = "0.4.3"
+http = "1.5.0"
+md-5 = "0.11.0"
+mdns-sd = { version = "0.21.6", default-features = false }
+mime_guess = "2.0.5"
+multer = "3.1.0"
+nix = { version = "0.31.3", features = ["term", "fs", "process", "signal", "hostname", "time", "user"] }
+parking_lot = "0.13"
+percent-encoding = "2.3.2"
+pyfmt = { path = "../pyfmt" }
+esp = { path = "../esp" }
+tstype = { path = "../tstype" }
+profile = { path = "../profile" }
+qrcode = { version = "0.14.1", default-features = false }
+redactor = { path = "../redactor" }
+rand = "0.10.3"
+regex = "1.13.1"
+reqwest = { version = "0.12.28", default-features = false, features = ["rustls-tls-native-roots", "stream"] }
+# debug-images: events with a stack trace list the loaded binaries and their
+# build ids, which Sentry needs to symbolicate them with the uploaded debug file.
+sentry = { version = "0.49.3", default-features = false, features = ["backtrace", "contexts", "debug-images", "panic", "reqwest", "rustls", "tracing"] }
+serde.workspace = true
+serde_json.workspace = true
+serde_norway = "0.9.42"
+serialport = { version = "4.10.1", default-features = false }
+sha1 = "0.11.0"
+sha2 = "0.11.1"
+socketioxide = { version = "0.18", features = ["state", "extensions"] }
+thiserror.workspace = true
+tokio = { version = "1.54.1", features = ["full"] }
+tokio-util = "0.7.20"
+tower = "0.5.3"
+tower-http = { version = "0.7.1", features = ["cors"] }
+tracing.workspace = true
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt", "registry"] }
+url = "2.5.8"
+uuid = { version = "1.29", features = ["v4", "v7"] }
+zbus = { version = "6.1.0", default-features = false, features = ["tokio", "proxy", "service", "object-manager"] }
+zip = "9.0.5"
+zstd = "0.14.3"
+tempfile = "3.27.0"
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+sentry = { version = "0.49.3", default-features = false, features = ["test"] }
+tar = "0.4"
+tempfile = "3.27.0"

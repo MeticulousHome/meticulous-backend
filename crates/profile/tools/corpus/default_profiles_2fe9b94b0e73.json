@@ -1,0 +1,78 @@
+{
+  "name": "Traditional Lever",
+  "id": "5b4079dd-f52d-4e21-9770-e8dfeb22363c",
+  "author": "meticulous",
+  "author_id": "d9123a0a-d3d7-40fd-a548-b81376e43f23",
+  "previous_authors": [],
+  "display": {
+    "shortDescription": "Fast preinfusion and pressureized blooming",
+    "description": "Aims to replicate the nuanced extraction characteristics of traditional manual lever espresso machines. Opening the lever valve initiates a quick pre-infusion phase at low pressure, allowing the steam pressure in the boiler to evenly saturate the puck. After 10 seconds of pressure equilibrium, the pressure ramps up to the set 'Target Pressure' and then gradually declines. \n\nDial in a flow rate of 1.2 to 1.8 ml/s during extraction, with only a few drops in the cup during pre-infusion and blooming."
+  },
+  "temperature": 89,
+  "final_weight": 36,
+  "variables": [
+    {
+      "name": "Target Pressure",
+      "key": "pressure_1",
+      "type": "pressure",
+      "value": 6.7
+    }
+  ],
+  "stages": [
+    {
+      "name": "Preinfusion",
+      "key": "preinfusion_1",
+      "type": "flow",
+      "dynamics": {
+        "points": [[0, 12]],
+        "over": "time",
+        "interpolation": "linear"
+      },
+      "exit_triggers": [
+        {
+          "type": "pressure",
+          "value": "$pressure_1",
+          "relative": false,
+          "comparison": ">="
+        }
+      ],
+      "limits": []
+    },
+    {
+      "name": "Pressurized Blooming",
+      "key": "blooming_1",
+      "type": "pressure",
+      "dynamics": {
+        "points": [[0, 1]],
+        "over": "time",
+        "interpolation": "curve"
+      },
+      "exit_triggers": [
+        {
+          "type": "time",
+          "value": 10,
+          "relative": true,
+          "comparison": ">="
+        }
+      ],
+      "limits": []
+    },
+    {
+      "name": "declining Extraction",
+      "key": "extraction_1",
+      "type": "pressure",
+      "dynamics": {
+        "points": [
+          [0, 1.1],
+          [3.5, "$pressure_1"],
+          [29, 4.3]
+        ],
+        "over": "time",
+        "interpolation": "curve"
+      },
+      "exit_triggers": [],
+      "limits": []
+    }
+  ],
+  "last_changed": 1721092007.0446467
+}
