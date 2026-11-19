@@ -200,6 +200,7 @@ impl Bench {
 
     fn enable_manufacturing(&self) {
         self.app.machine.state.lock().enable_manufacturing = true;
+        self.app.auth.set_manufacturing(true);
     }
 
     /// `assert_saved`: the changes are live, the file holds the whole user

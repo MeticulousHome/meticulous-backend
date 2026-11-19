@@ -173,8 +173,8 @@ pub fn defaults() -> Value {
             PROFILE_ORDER: [],
             HOSTNAME_OVERRIDE: null,
             CLOCK_FORMAT_24_HOUR: true,
-            // A fresh install asks for a token; `ConfigStore::load` turns
-            // it off for a machine set up before this setting existed.
+            // Network clients need a token unless someone turns this off
+            // on the Dial (or the machine is in manufacturing mode).
             REQUIRE_AUTHORIZATION: true,
         },
         WIFI: {
@@ -190,25 +190,6 @@ pub fn defaults() -> Value {
             SKIP_STAGE: false,
         },
     })
-}
-
-/// A machine whose config file predates device authorization keeps its API
-/// open after the update: its phones and browsers hold no token yet, and
-/// the Dial turns the setting on. Decided here, before the merge, because
-/// every open writes the merged file back and the key would then be there.
-fn keep_existing_machines_open(tree: &mut Value, disk: &Value) {
-    let stored = disk
-        .get(keys::USER)
-        .and_then(Value::as_object)
-        .is_some_and(|user| user.contains_key(keys::REQUIRE_AUTHORIZATION));
-    if stored {
-        return;
-    }
-    if let Some(user) = tree.get_mut(keys::USER).and_then(Value::as_object_mut)
-        && user.contains_key(keys::REQUIRE_AUTHORIZATION)
-    {
-        user.insert(keys::REQUIRE_AUTHORIZATION.into(), Value::Bool(false));
-    }
 }
 
 /// `mergedeep.merge(dst, src)`: nested dictionaries merge key by key, any
@@ -296,7 +277,6 @@ impl ConfigStore {
                 {
                     tracing::warn!("Config on disk is newer than this software");
                 }
-                keep_existing_machines_open(&mut tree, &disk);
                 merge(&mut tree, &disk);
                 normalize(&mut tree);
                 tracing::info!("Successfully loaded config from disk");

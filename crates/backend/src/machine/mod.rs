@@ -333,6 +333,7 @@ impl Machine {
 
     pub fn toggle_manufacturing_mode(&self, app: &App, enabled: bool) {
         self.state.lock().enable_manufacturing = enabled;
+        app.auth.set_manufacturing(enabled);
         if enabled {
             tracing::info!("Sentry disabled: In Manufacturing mode");
         } else {

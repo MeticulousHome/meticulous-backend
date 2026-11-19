@@ -4,10 +4,11 @@
 //! The machine itself (no `X-Real-IP`, or a loopback one) is always let in,
 //! and so is a client on the machine's own hotspot, which is physically next
 //! to it. Everyone else needs a device token while the
-//! `require_authorization` setting is on. A token is an HS256 JWT signed with
-//! a secret kept in the config directory: a factory reset (which wipes that
-//! directory) or "Sign out all devices" (a new secret) logs every device
-//! out, with nothing stored per device. A device gets its token by
+//! `require_authorization` setting is on and the machine is not in
+//! manufacturing mode, where the line's tools use the API without one. A
+//! token is an HS256 JWT signed with a secret kept in the config directory:
+//! a factory reset (which wipes that directory) or "Sign out all devices"
+//! (a new secret) logs every device out, with nothing stored per device. A device gets its token by
 //! exchanging a one-time pairing code, which the machine hands out on the
 //! Dial, to an already authorized device, in the Improv Wi-Fi result, or
 //! once someone allows an access request on the Dial. Codes and requests
@@ -20,7 +21,7 @@ use std::io::Write;
 use std::net::IpAddr;
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Weak};
 use std::time::{Duration, Instant};
 
@@ -507,6 +508,12 @@ pub struct DeviceAuth {
     started: Instant,
     /// Added to the clock, so tests can let codes and tokens expire.
     skew_ms: AtomicU64,
+    /// The machine's manufacturing mode, as `Machine::toggle_manufacturing_mode`
+    /// reports it.
+    manufacturing: AtomicBool,
+    /// The runtime the backend was built in, for sweeping the sockets from
+    /// the ESP's reader thread.
+    runtime: Option<tokio::runtime::Handle>,
 }
 
 impl DeviceAuth {
@@ -533,6 +540,8 @@ impl DeviceAuth {
             direct_refresh: tokio::sync::Mutex::new(()),
             started: Instant::now(),
             skew_ms: AtomicU64::new(0),
+            manufacturing: AtomicBool::new(false),
+            runtime: tokio::runtime::Handle::try_current().ok(),
         })
     }
 
@@ -573,10 +582,27 @@ impl DeviceAuth {
         chrono::Utc::now().timestamp() + (self.skew_ms.load(Ordering::Relaxed) / 1000) as i64
     }
 
-    /// The `require_authorization` setting.
+    /// Whether network clients need a token: the `require_authorization`
+    /// setting, unless the machine is in manufacturing mode.
     pub fn required(&self) -> bool {
-        self.config
-            .get_bool(keys::USER, keys::REQUIRE_AUTHORIZATION)
+        !self.manufacturing.load(Ordering::Relaxed)
+            && self
+                .config
+                .get_bool(keys::USER, keys::REQUIRE_AUTHORIZATION)
+    }
+
+    /// The machine entered or left manufacturing mode. Leaving it, the
+    /// setting applies again: clients that connected without a token pair now.
+    pub fn set_manufacturing(&self, enabled: bool) {
+        let was = self.manufacturing.swap(enabled, Ordering::Relaxed);
+        if was && !enabled {
+            let runtime = tokio::runtime::Handle::try_current()
+                .ok()
+                .or_else(|| self.runtime.clone());
+            if let (Some(runtime), Some(auth)) = (runtime, self.me.upgrade()) {
+                runtime.spawn(async move { auth.sweep_sockets(false).await });
+            }
+        }
     }
 
     /// `system.auth_token_lifetime`, when tokens expire at all.

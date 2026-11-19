@@ -711,3 +711,46 @@ async fn approval_questions_ignore_remote_sockets() {
     crate::events::on_notification(&app, Some(answer), true);
     assert_eq!(app.notifications.is_acknowledged(&id), Some(true));
 }
+
+// ---- manufacturing mode ----
+
+/// In manufacturing mode network clients need no token whatever the setting
+/// says, so the line's tools keep working; the setting is never rewritten,
+/// and applies again once the machine leaves manufacturing mode, which also
+/// drops the sockets that connected without a token.
+#[tokio::test]
+async fn manufacturing_mode_needs_no_token() {
+    let (_dir, app) = testing::app();
+    assert!(app.auth.required());
+    assert_eq!(
+        lan(&app, Method::GET, "/api/v1/settings", "")
+            .await
+            .status_code(),
+        401
+    );
+
+    app.machine.toggle_manufacturing_mode(&app, true);
+    assert!(!app.auth.required());
+    let open = lan(&app, Method::GET, "/api/v1/settings", "").await;
+    assert_eq!(open.status_code(), 200);
+    assert_eq!(body(&open)["require_authorization"], json!(true));
+
+    let passes = app.sio.disconnect_passes();
+    app.machine.toggle_manufacturing_mode(&app, false);
+    assert!(app.auth.required());
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    while app.sio.disconnect_passes() == passes && std::time::Instant::now() < deadline {
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    assert_eq!(app.sio.disconnect_passes(), passes + 1, "sockets swept");
+    assert_eq!(
+        lan(&app, Method::GET, "/api/v1/settings", "")
+            .await
+            .status_code(),
+        401
+    );
+
+    // Turned off on the Dial, it stays off outside manufacturing mode.
+    authorization_off(&app);
+    assert!(!app.auth.required());
+}
