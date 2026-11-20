@@ -27,6 +27,22 @@ pub const MAX_DEBUG_SHOT_RETENTION_DAYS: i64 = 365;
 const FOLDER_FORMAT: &str = "%Y-%m-%d";
 const FILE_FORMAT: &str = "%H:%M:%S";
 
+/// The profile engine's status labels while it waits for the user (its
+/// `ClickToStart`, `AskForWater` and `WaitContinueAtTop` states, and the
+/// stages of the same names in the node program): nothing moves until the
+/// user acts, which can take hours.
+const WAIT_STATUSES: [&str; 4] = [
+    crate::shots::PUSH_TO_BREW_STATUS,
+    "Pour water and click to continue",
+    "click to purge",
+    "remove cup",
+];
+/// While waiting, one sample per this many milliseconds is kept.
+const WAIT_SAMPLE_INTERVAL_MS: i64 = 1000;
+/// Samples kept while waiting, over the whole shot: 30 minutes at one per
+/// second. Past it, only each wait's first and latest samples are.
+const MAX_WAIT_SAMPLES: usize = 1800;
+
 /// `DebugShot`.
 #[derive(Debug, Clone)]
 pub struct DebugShot {
@@ -39,6 +55,9 @@ pub struct DebugShot {
     pub machine: Map<String, Value>,
     pub data: Vec<Value>,
     pub logs: Vec<Value>,
+    /// Samples appended while waiting for the user, against
+    /// [`MAX_WAIT_SAMPLES`].
+    wait_samples: usize,
 }
 
 impl DebugShot {
@@ -74,30 +93,27 @@ impl DebugShot {
             machine,
             data: Vec::new(),
             logs: Vec::new(),
+            wait_samples: 0,
         }
     }
 
-    /// `DebugShot.to_json`.
-    pub fn to_json(&self) -> Map<String, Value> {
+    /// `DebugShot.to_json`, consuming the shot: the samples and the log
+    /// records move into the JSON instead of being copied, since a shot
+    /// left open for long holds hundreds of megabytes of them.
+    pub fn into_json(self) -> Map<String, Value> {
         let mut out = Map::new();
         out.insert("time".into(), json!(self.start_time));
         out.insert("type".into(), json!(self.shot_type));
         out.insert(
             "profile_name".into(),
-            self.profile_name.clone().map_or(Value::Null, Value::String),
+            self.profile_name.map_or(Value::Null, Value::String),
         );
-        out.insert("machine".into(), Value::Object(self.machine.clone()));
-        out.insert(
-            "profile".into(),
-            self.profile.clone().unwrap_or(Value::Null),
-        );
-        out.insert(
-            "nodeJSON".into(),
-            self.node_json.clone().unwrap_or(Value::Null),
-        );
-        out.insert("config".into(), self.config.clone());
-        out.insert("data".into(), Value::Array(self.data.clone()));
-        out.insert("logs".into(), Value::Array(self.logs.clone()));
+        out.insert("machine".into(), Value::Object(self.machine));
+        out.insert("profile".into(), self.profile.unwrap_or(Value::Null));
+        out.insert("nodeJSON".into(), self.node_json.unwrap_or(Value::Null));
+        out.insert("config".into(), self.config);
+        out.insert("data".into(), Value::Array(self.data));
+        out.insert("logs".into(), Value::Array(self.logs));
         out
     }
 
@@ -107,8 +123,9 @@ impl DebugShot {
         }
     }
 
-    /// `Shot.addShotData` plus `profile_ms` (`DebugShot.append_shot_data`).
-    fn add_shot_data(&mut self, app: &App, shot: &ShotData) {
+    /// `Shot.addShotData` plus `profile_ms` (`DebugShot.append_shot_data`),
+    /// for a sample received at `now`.
+    fn add_shot_data(&mut self, app: &App, shot: &ShotData, now: f64) {
         // The profile naming of Shot.addShotData, shared through a Shot.
         let mut naming = Shot::new(0);
         naming.profile_name = self.profile_name.clone();
@@ -116,12 +133,64 @@ impl DebugShot {
         naming.add_shot_data(app, shot);
         self.profile_name = naming.profile_name;
         self.profile = naming.profile;
+        let profile_ms = ((now - self.start_time) * 1000.0) as i64;
+        if self.replaces_latest_sample(shot.status.as_deref()) {
+            self.data.pop();
+        }
         let mut sample = Shot::format_sample(shot);
-        sample.insert(
-            "profile_ms".into(),
-            json!(((now_seconds() - self.start_time) * 1000.0) as i64),
-        );
+        sample.insert("profile_ms".into(), json!(profile_ms));
         self.data.push(Value::Object(sample));
+    }
+
+    /// Deliberate fix: the Python appends every sample (about 7 a second)
+    /// for as long as the debug shot is open, and a shot left on "click to
+    /// purge" for 80 minutes grew the backend past what a 1 GB machine has,
+    /// so the kernel killed it while saving the shot. While the profile
+    /// engine waits for the user, a new sample replaces the latest one while
+    /// the latest is less than a second after the one before it, so the
+    /// wait keeps one sample a second and always ends with the newest
+    /// sample (the state the user found when they acted). Past
+    /// [`MAX_WAIT_SAMPLES`] the latest sample is always replaced. Each
+    /// wait's first sample is always kept, as is every sample outside a
+    /// wait.
+    fn replaces_latest_sample(&mut self, status: Option<&str>) -> bool {
+        let Some(status) = status.filter(|s| WAIT_STATUSES.contains(s)) else {
+            return false;
+        };
+        let waiting = |back: usize| {
+            self.data
+                .len()
+                .checked_sub(back)
+                .and_then(|i| self.data.get(i))
+                .and_then(|sample| sample.get("status"))
+                .and_then(Value::as_str)
+                == Some(status)
+        };
+        if !(waiting(1) && waiting(2)) {
+            self.wait_samples += 1;
+            return false;
+        }
+        let profile_ms = |back: usize| {
+            self.data[self.data.len() - back]
+                .get("profile_ms")
+                .and_then(Value::as_i64)
+                .unwrap_or_default()
+        };
+        if profile_ms(1).saturating_sub(profile_ms(2)) < WAIT_SAMPLE_INTERVAL_MS {
+            return true;
+        }
+        if self.wait_samples >= MAX_WAIT_SAMPLES {
+            if self.wait_samples == MAX_WAIT_SAMPLES {
+                tracing::warn!(
+                    "Debug shot kept {MAX_WAIT_SAMPLES} samples waiting for the user, keeping only the latest from now on"
+                );
+                // Counted once more so the warning is logged once.
+                self.wait_samples += 1;
+            }
+            return true;
+        }
+        self.wait_samples += 1;
+        false
     }
 }
 
@@ -252,11 +321,17 @@ impl ShotDebugManager {
     }
 
     pub fn handle_shot_data(&self, app: &App, shot: &ShotData) {
+        self.handle_shot_data_at(app, shot, now_seconds());
+    }
+
+    /// [`ShotDebugManager::handle_shot_data`] for a sample received at
+    /// `now`, in seconds since the epoch.
+    pub fn handle_shot_data_at(&self, app: &App, shot: &ShotData, now: f64) {
         let mut state = self.state.lock();
         let Some(current) = state.current.as_mut() else {
             return;
         };
-        current.add_shot_data(app, shot);
+        current.add_shot_data(app, shot, now);
         let status = shot.status.as_deref().unwrap_or_default();
         if [
             MachineStatus::PURGE,
@@ -339,12 +414,12 @@ impl ShotDebugManager {
         )
     }
 
-    /// `_prepare_debug_shot_data`.
-    fn prepare(app: &App, shot: &DebugShot, start: chrono::DateTime<chrono::Local>) -> String {
-        let mut shot = shot.clone();
+    /// `_prepare_debug_shot_data` up to its `json.dumps`: the JSON of a
+    /// shot, which it consumes so the samples are never copied.
+    fn prepare(app: &App, mut shot: DebugShot, start: chrono::DateTime<chrono::Local>) -> Value {
         shot.profile.get_or_insert_with(|| json!({}));
         shot.node_json.get_or_insert_with(|| json!({}));
-        let mut data = shot.to_json();
+        let mut data = shot.into_json();
         let has_profile = data
             .get("profile")
             .is_some_and(crate::config::python_truthy);
@@ -380,7 +455,13 @@ impl ShotDebugManager {
                 }
             }
         }
-        pyfmt::dumps(&Value::Object(data), &pyfmt::DumpOpts::unicode())
+        Value::Object(data)
+    }
+
+    /// The rest of `_prepare_debug_shot_data`: `json.dumps(data,
+    /// ensure_ascii=False)`, the text the file holds.
+    fn dumps(data: &Value) -> String {
+        pyfmt::dumps(data, &pyfmt::DumpOpts::unicode())
     }
 
     /// `write_current_incomplete_debug_shot`: a snapshot of the running shot
@@ -388,7 +469,7 @@ impl ShotDebugManager {
     pub fn write_current_incomplete(&self, app: &App, root: &Path) -> Option<String> {
         let shot = self.snapshot(false)?;
         let (start, path) = Self::file_path(root, &shot, true);
-        let text = Self::prepare(app, &shot, start);
+        let text = Self::dumps(&Self::prepare(app, shot, start));
         tracing::info!("Writing incomplete debug shot snapshot");
         tracing::info!("Writing debug json to {}", path.display());
         if let Err(error) = history::files::write_compressed(&path, text.as_bytes()) {
@@ -408,7 +489,7 @@ impl ShotDebugManager {
         };
         let (start, path) = Self::file_path(&self.debug_dir, &shot, false);
         let shot_type = shot.shot_type.clone();
-        let text = Self::prepare(app, &shot, start);
+        let data = Self::prepare(app, shot, start);
         let app = app.clone();
         let _ = std::thread::Builder::new()
             .name("DebugShotCompr".into())
@@ -416,7 +497,13 @@ impl ShotDebugManager {
                 tracing::info!("Writing and compressing debug file");
                 let started = std::time::Instant::now();
                 tracing::info!("Writing debug json to {}", path.display());
-                if let Err(error) = history::files::write_compressed(&path, text.as_bytes()) {
+                // The text goes once written, and the upload anonymizes the
+                // JSON itself instead of parsing the text back: a long shot
+                // never has more than its JSON and one text in memory.
+                let text = Self::dumps(&data);
+                let written = history::files::write_compressed(&path, text.as_bytes());
+                drop(text);
+                if let Err(error) = written {
                     tracing::error!("Failed to write the debug shot: {error}");
                     return;
                 }
@@ -442,8 +529,9 @@ impl ShotDebugManager {
                 }
                 if app.shot_sharing.should_upload(&app, &shot_type) {
                     app.shot_sharing
-                        .upload_debug_shot(&app, &text, start, &path);
+                        .upload_debug_shot(&app, &data, start, &path);
                 }
+                drop(data);
                 tracing::info!("Debug shot data compressed and saved");
                 app.debug_shots.delete_old(&app);
             });
@@ -509,4 +597,126 @@ fn walk(root: &Path) -> Vec<PathBuf> {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 7 samples a second, the rate the ESP32 streams while brewing.
+    const RATE: usize = 7;
+
+    /// A phase of the brew: its status and how many samples it lasts.
+    struct Phase {
+        status: &'static str,
+        samples: usize,
+    }
+
+    /// The saved debug shot's samples after feeding `phases` through the
+    /// UART path, one ShotData then one SensorData per sample. Each sample
+    /// is tagged with its index in `external_1`, so a test can tell which
+    /// fed sample, and which sensors, each saved one is.
+    fn record(phases: &[Phase]) -> Vec<Value> {
+        let (dir, app) = crate::testing::app();
+        app.wifi.set_host(crate::wifi::fake::FakeNetwork::new());
+        app.debug_shots.start(&app);
+        let start = now_seconds();
+        let mut index = 0;
+        for phase in phases {
+            for _ in 0..phase.samples {
+                let shot = ShotData {
+                    status: Some(phase.status.into()),
+                    ..ShotData::default()
+                };
+                let now = start + index as f64 / RATE as f64;
+                app.debug_shots.handle_shot_data_at(&app, &shot, now);
+                let sensors = SensorData {
+                    external_1: esp::PyNum::Float(index as f64),
+                    ..SensorData::default()
+                };
+                app.debug_shots.handle_sensor_data(&sensors);
+                index += 1;
+            }
+        }
+        let name = app
+            .debug_shots
+            .write_current_incomplete(&app, dir.path())
+            .expect("a debug shot is running");
+        let raw =
+            zstd::decode_all(std::fs::read(dir.path().join(name)).unwrap().as_slice()).unwrap();
+        let shot: Value = serde_json::from_slice(&raw).unwrap();
+        shot["data"].as_array().cloned().unwrap()
+    }
+
+    fn tag(sample: &Value) -> usize {
+        sample["sensors"]["external_1"].as_f64().unwrap() as usize
+    }
+
+    /// A shot left open on "click to start" and then "click to purge" for
+    /// hours stays bounded while every sample of the brew itself is kept.
+    ///
+    /// Regression it prevents: on a 1 GB machine a shot that waited 82
+    /// minutes on "click to purge" grew the backend until the kernel killed
+    /// it while saving the shot; before this change the brew below saves
+    /// all of its 80,290 samples.
+    /// Expected values: `WAIT_SAMPLE_INTERVAL_MS` and `MAX_WAIT_SAMPLES` in
+    /// this module, the profile engine's status labels in `WAIT_STATUSES`.
+    /// Bug it catches: appending wait samples without limit, thinning the
+    /// brew's own samples, dropping the newest sample of a wait (what the
+    /// user found when they acted) or pairing a sample with another one's
+    /// sensors.
+    #[test]
+    fn a_long_wait_keeps_one_sample_a_second_up_to_a_cap() {
+        let phases = [
+            Phase {
+                status: "click to start",
+                samples: 10 * 60 * RATE,
+            },
+            Phase {
+                status: "brewing",
+                samples: 60 * RATE,
+            },
+            Phase {
+                status: "click to purge",
+                samples: 3 * 60 * 60 * RATE,
+            },
+            Phase {
+                status: "purge",
+                samples: 10 * RATE,
+            },
+        ];
+        let data = record(&phases);
+
+        let mut first = 0;
+        let mut wait_samples = 0;
+        for phase in &phases {
+            let kept: Vec<&Value> = data
+                .iter()
+                .filter(|s| s["status"] == phase.status)
+                .collect();
+            let last = first + phase.samples - 1;
+            if !WAIT_STATUSES.contains(&phase.status) {
+                let tags: Vec<usize> = kept.iter().map(|s| tag(s)).collect();
+                assert_eq!(tags, (first..=last).collect::<Vec<_>>(), "{}", phase.status);
+            } else {
+                assert_eq!(tag(kept[0]), first, "{} starts", phase.status);
+                assert_eq!(tag(kept[kept.len() - 1]), last, "{} ends", phase.status);
+                // Up to the cap one sample a second; the last pair is the
+                // newest sample after the last kept one.
+                for pair in kept[..kept.len() - 1].windows(2) {
+                    let gap = pair[1]["profile_ms"].as_i64().unwrap()
+                        - pair[0]["profile_ms"].as_i64().unwrap();
+                    assert!(gap >= WAIT_SAMPLE_INTERVAL_MS, "{}: {gap} ms", phase.status);
+                }
+                wait_samples += kept.len();
+            }
+            first = last + 1;
+        }
+        // Ten minutes at one a second, then the rest of the cap.
+        assert!(
+            wait_samples <= MAX_WAIT_SAMPLES + 2,
+            "{wait_samples} samples kept while waiting"
+        );
+        assert!(data.len() <= 60 * RATE + 10 * RATE + MAX_WAIT_SAMPLES + 2);
+    }
 }
