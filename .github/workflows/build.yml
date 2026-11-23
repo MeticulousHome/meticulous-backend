@@ -10,7 +10,7 @@ on:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    runs-on: [Linux, x64, office, self-hosted]
 
     steps:
     - name: Checkout code
@@ -37,7 +37,7 @@ jobs:
   # ideally main's HEAD but at list within main's branch commit history ( not an
   # unmerged branch )
   redactor-pin:
-    runs-on: ubuntu-latest
+    runs-on: [Linux, x64, office, self-hosted]
 
     steps:
     - name: Checkout code
@@ -60,7 +60,7 @@ jobs:
   # meticulous-typescript-api is how the Dial and the mobile app reach the
   # backend: every call, event and payload key it relies on must still exist.
   client-contract:
-    runs-on: ubuntu-latest
+    runs-on: [Linux, x64, office, self-hosted]
 
     steps:
     - name: Checkout code

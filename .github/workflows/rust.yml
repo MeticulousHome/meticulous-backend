@@ -14,7 +14,7 @@ env:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    runs-on: [Linux, x64, office, self-hosted]
     steps:
     - uses: actions/checkout@v4
       with:
@@ -26,7 +26,7 @@ jobs:
       run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
   typecheck:
-    runs-on: ubuntu-latest
+    runs-on: [Linux, x64, office, self-hosted]
     steps:
     - uses: actions/checkout@v4
       with:
@@ -36,7 +36,7 @@ jobs:
       run: cargo check --workspace --all-targets --locked
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: [Linux, x64, office, self-hosted]
     steps:
     - uses: actions/checkout@v4
       with:
@@ -49,7 +49,7 @@ jobs:
   # fails here. Reproduce with the seed from the log:
   # cargo +nightly test --workspace -- -Z unstable-options --shuffle --shuffle-seed <seed>
   test-random-order:
-    runs-on: ubuntu-latest
+    runs-on: [Linux, x64, office, self-hosted]
     steps:
     - uses: actions/checkout@v4
       with:
@@ -60,7 +60,7 @@ jobs:
       run: cargo +nightly test --workspace -- -Z unstable-options --shuffle --shuffle-seed ${{ github.run_id }}
 
   coverage:
-    runs-on: ubuntu-latest
+    runs-on: [Linux, x64, office, self-hosted]
     steps:
     - uses: actions/checkout@v4
       with:
@@ -87,7 +87,7 @@ jobs:
   # it. The Python reads it here, from a checkout of the beta the Rust
   # backend replaced; HISTORY_REQUIRE_PYTHON makes a missing setup a failure.
   rollback-compat:
-    runs-on: ubuntu-latest
+    runs-on: [Linux, x64, office, self-hosted]
     steps:
     - uses: actions/checkout@v4
       with:
