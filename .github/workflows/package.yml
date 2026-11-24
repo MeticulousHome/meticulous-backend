@@ -31,10 +31,11 @@ jobs:
       matrix:
         include:
           - arch: amd64
-            runner: [Linux, x64, office, self-hosted]
+            # OFFICE_RUNNERS=on: the office runner, except for pull requests from forks
+            runner: ubuntu-latest
           - arch: arm64
             runner: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ fromJSON(matrix.arch == 'amd64' && vars.OFFICE_RUNNERS == 'on' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted","Linux","x64","office"]' || format('"{0}"', matrix.runner)) }}
     timeout-minutes: 30
 
     steps:

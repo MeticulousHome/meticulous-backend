@@ -6,11 +6,13 @@ name: Build
 
 on:
   push:
+    # Branches only: image builds push a tag to every component repository.
+    branches: ['**']
   pull_request:
 
 jobs:
   lint:
-    runs-on: [Linux, x64, office, self-hosted]
+    runs-on: ${{ fromJSON(vars.OFFICE_RUNNERS == 'on' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted","Linux","x64","office"]' || '"ubuntu-latest"') }}
 
     steps:
     - name: Checkout code
@@ -37,7 +39,7 @@ jobs:
   # ideally main's HEAD but at list within main's branch commit history ( not an
   # unmerged branch )
   redactor-pin:
-    runs-on: [Linux, x64, office, self-hosted]
+    runs-on: ${{ fromJSON(vars.OFFICE_RUNNERS == 'on' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted","Linux","x64","office"]' || '"ubuntu-latest"') }}
 
     steps:
     - name: Checkout code
@@ -60,7 +62,7 @@ jobs:
   # meticulous-typescript-api is how the Dial and the mobile app reach the
   # backend: every call, event and payload key it relies on must still exist.
   client-contract:
-    runs-on: [Linux, x64, office, self-hosted]
+    runs-on: ${{ fromJSON(vars.OFFICE_RUNNERS == 'on' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted","Linux","x64","office"]' || '"ubuntu-latest"') }}
 
     steps:
     - name: Checkout code

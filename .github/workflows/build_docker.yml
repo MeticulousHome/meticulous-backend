@@ -15,7 +15,7 @@ jobs:
       matrix:
         include:
           - arch: amd64
-            runner: [Linux, x64, office, self-hosted]
+            runner: ubuntu-latest
           - arch: arm64
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
@@ -69,7 +69,7 @@ jobs:
 
   publish:
     needs: build
-    runs-on: [Linux, x64, office, self-hosted]
+    runs-on: ubuntu-latest
 
     steps:
     - name: Download the digests
