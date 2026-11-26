@@ -14,7 +14,7 @@ use std::sync::LazyLock;
 use std::time::Duration;
 
 use parking_lot::RwLock;
-use serde_json::{Map, Value, json};
+use serde_json::{Value, json};
 
 use crate::app::App;
 use crate::bug_report::watcher::{HttpError, classify};
@@ -197,6 +197,7 @@ pub fn shared_shot_schema() -> &'static Schema {
 
 /// `_select(value, schema)`: the part of `value` the schema allows, `None`
 /// for `_OMIT`. Dicts come out in the schema's key order.
+#[cfg(test)]
 fn select(value: &Value, schema: &Schema) -> Option<Value> {
     match schema {
         Schema::Keep => Some(value.clone()),
@@ -204,7 +205,7 @@ fn select(value: &Value, schema: &Schema) -> Option<Value> {
             let Value::Object(map) = value else {
                 return None;
             };
-            let mut selected = Map::new();
+            let mut selected = serde_json::Map::new();
             for (key, sub_schema) in fields {
                 if let Some(sub_value) = map.get(*key).and_then(|v| select(v, sub_schema)) {
                     selected.insert((*key).to_string(), sub_value);
@@ -219,6 +220,67 @@ fn select(value: &Value, schema: &Schema) -> Option<Value> {
             Some(Value::Array(
                 items.iter().filter_map(|v| select(v, item)).collect(),
             ))
+        }
+    }
+}
+
+/// `json.dumps(_select(value, schema), ensure_ascii=False)` without building
+/// the selected copy: the allowed part of `value` is written to `out`
+/// directly. `false`, with `out` as it was, for `_OMIT`.
+fn write_selected(out: &mut String, value: &Value, schema: &Schema) -> bool {
+    let opts = pyfmt::DumpOpts::unicode();
+    match schema {
+        Schema::Keep => {
+            out.push_str(&pyfmt::dumps(value, &opts));
+            true
+        }
+        Schema::Dict(fields) => {
+            let Value::Object(map) = value else {
+                return false;
+            };
+            out.push('{');
+            let mut written = 0;
+            for (key, sub_schema) in fields {
+                let Some(sub_value) = map.get(*key) else {
+                    continue;
+                };
+                let mark = out.len();
+                if written > 0 {
+                    out.push_str(opts.item_separator);
+                }
+                // The schema's keys are plain ASCII names: nothing to escape.
+                out.push('"');
+                out.push_str(key);
+                out.push('"');
+                out.push_str(opts.key_separator);
+                if write_selected(out, sub_value, sub_schema) {
+                    written += 1;
+                } else {
+                    out.truncate(mark);
+                }
+            }
+            out.push('}');
+            true
+        }
+        Schema::List(item) => {
+            let Value::Array(items) = value else {
+                return false;
+            };
+            out.push('[');
+            let mut written = 0;
+            for sub_value in items {
+                let mark = out.len();
+                if written > 0 {
+                    out.push_str(opts.item_separator);
+                }
+                if write_selected(out, sub_value, item) {
+                    written += 1;
+                } else {
+                    out.truncate(mark);
+                }
+            }
+            out.push(']');
+            true
         }
     }
 }
@@ -349,9 +411,23 @@ impl ShotDataSharing {
         }
     }
 
-    /// `anonymize(debug_shot)`.
+    /// `anonymize(debug_shot)`. The upload writes the same JSON with
+    /// [`ShotDataSharing::anonymized_text`] instead.
+    #[cfg(test)]
     pub fn anonymize(debug_shot: &Value) -> Value {
-        select(debug_shot, shared_shot_schema()).unwrap_or_else(|| Value::Object(Map::new()))
+        select(debug_shot, shared_shot_schema())
+            .unwrap_or_else(|| Value::Object(serde_json::Map::new()))
+    }
+
+    /// `json.dumps(anonymize(debug_shot), ensure_ascii=False)`, written
+    /// straight from the debug shot: the anonymized copy of a long shot
+    /// would be as large as the shot itself.
+    pub fn anonymized_text(debug_shot: &Value) -> String {
+        let mut out = String::new();
+        if !write_selected(&mut out, debug_shot, shared_shot_schema()) {
+            out.push_str("{}");
+        }
+        out
     }
 
     /// `build_object_path(sharing_id, start, file_path)`.
@@ -432,22 +508,15 @@ impl ShotDataSharing {
     async fn try_upload(
         &self,
         app: &App,
-        data_json: &str,
+        debug_shot: &Value,
         start: chrono::DateTime<chrono::Local>,
         file_path: &Path,
         object_path: &mut Option<String>,
     ) -> Result<(), UploadError> {
-        let debug_shot =
-            crate::bug_report::py::json_loads(data_json).map_err(|message| UploadError {
-                type_name: "JSONDecodeError".into(),
-                message,
-            })?;
-        let anonymized = Self::anonymize(&debug_shot);
-        let body = Self::compress(&pyfmt::dumps(&anonymized, &pyfmt::DumpOpts::unicode()))
-            .map_err(|e| UploadError {
-                type_name: "ZstdError".into(),
-                message: e.to_string(),
-            })?;
+        let body = Self::compress(&Self::anonymized_text(debug_shot)).map_err(|e| UploadError {
+            type_name: "ZstdError".into(),
+            message: e.to_string(),
+        })?;
         let path = Self::build_object_path(&self.get_sharing_id(app), start, file_path);
         *object_path = Some(path.clone());
         let url = self.build_upload_url(&path);
@@ -461,10 +530,14 @@ impl ShotDataSharing {
     /// `upload_debug_shot(data_json, start, file_path)`: upload an
     /// anonymized copy. Failures are logged and reported to Sentry, never
     /// raised, so the local debug file handling is unaffected.
+    ///
+    /// The Python takes the debug file's text and parses it back; this
+    /// takes the JSON the text was written from, the same value, so a long
+    /// shot is not held again, parsed and anonymized, while it uploads.
     pub async fn upload(
         &self,
         app: &App,
-        data_json: &str,
+        debug_shot: &Value,
         start: chrono::DateTime<chrono::Local>,
         file_path: &Path,
     ) -> bool {
@@ -474,7 +547,7 @@ impl ShotDataSharing {
         }
         let mut object_path = None;
         match self
-            .try_upload(app, data_json, start, file_path, &mut object_path)
+            .try_upload(app, debug_shot, start, file_path, &mut object_path)
             .await
         {
             Ok(()) => {
@@ -511,7 +584,7 @@ impl ShotDataSharing {
     pub fn upload_debug_shot(
         &self,
         app: &App,
-        data_json: &str,
+        debug_shot: &Value,
         start: chrono::DateTime<chrono::Local>,
         file_path: &Path,
     ) -> bool {
@@ -519,7 +592,7 @@ impl ShotDataSharing {
             .enable_all()
             .build()
         {
-            Ok(runtime) => runtime.block_on(self.upload(app, data_json, start, file_path)),
+            Ok(runtime) => runtime.block_on(self.upload(app, debug_shot, start, file_path)),
             Err(error) => {
                 tracing::error!("Failed to upload shared shot data None: OSError: {error}");
                 false
@@ -710,6 +783,50 @@ mod tests {
         assert_eq!(ShotDataSharing::anonymize(&json!({})), json!({}));
     }
 
+    /// The uploaded text is `json.dumps(anonymize(debug_shot),
+    /// ensure_ascii=False)` byte for byte, though it is written without
+    /// building the anonymized copy.
+    ///
+    /// Regression it prevents: shared shots in another key order, with a
+    /// field the allowlist drops or a stray separator where a value of the
+    /// wrong shape was left out, which the analysis of shared shots would
+    /// read differently or not at all.
+    /// Expected value: [`ShotDataSharing::anonymize`], the port of the
+    /// Python's `_select`, and `json.dumps` (`pyfmt::dumps`).
+    /// Bug it catches: the writer and the allowlist drifting apart, which
+    /// the upload test only compares after parsing the body.
+    #[test]
+    fn anonymized_text_is_the_dump_of_the_anonymized_shot() {
+        let mut unknown = debug_shot();
+        unknown["new_top_level"] = json!("x");
+        unknown["machine"]["new_machine_field"] = json!("x");
+        unknown["data"][0]["new_sample_field"] = json!("x");
+        unknown["data"][0]["sensors"]["new_sensor"] = json!(1.0);
+        unknown["profile"]["author"] = json!("Someone");
+        let mut misshapen = debug_shot();
+        misshapen["machine"] = json!("not a dict");
+        misshapen["data"] = json!({"not": "a list"});
+        misshapen["logs"] = json!(["not a dict", {"loglevel": "INFO"}, 3, {}]);
+        misshapen["profile"] = json!({"name": "Ünïcode \"quoted\"\n"});
+        for shot in [
+            debug_shot(),
+            unknown,
+            misshapen,
+            json!({}),
+            json!([]),
+            json!("not a dict"),
+        ] {
+            assert_eq!(
+                ShotDataSharing::anonymized_text(&shot),
+                pyfmt::dumps(
+                    &ShotDataSharing::anonymize(&shot),
+                    &pyfmt::DumpOpts::unicode()
+                ),
+                "{shot}"
+            );
+        }
+    }
+
     /// tests/test_shot_data_sharing.py::test_shared_schema_names_only_real_fields
     #[test]
     fn shared_schema_names_only_real_fields() {
@@ -835,12 +952,7 @@ mod tests {
 
         let ok = app
             .shot_sharing
-            .upload(
-                &app,
-                &pyfmt::dumps_default(&debug_shot()),
-                shot_start(),
-                &shot_file(),
-            )
+            .upload(&app, &debug_shot(), shot_start(), &shot_file())
             .await;
 
         assert!(ok);
@@ -901,12 +1013,7 @@ mod tests {
 
         let ok = app
             .shot_sharing
-            .upload(
-                &app,
-                &pyfmt::dumps_default(&debug_shot()),
-                shot_start(),
-                &shot_file(),
-            )
+            .upload(&app, &debug_shot(), shot_start(), &shot_file())
             .await;
 
         assert!(!ok);
@@ -932,12 +1039,7 @@ mod tests {
 
         let ok = app
             .shot_sharing
-            .upload(
-                &app,
-                &pyfmt::dumps_default(&debug_shot()),
-                shot_start(),
-                &shot_file(),
-            )
+            .upload(&app, &debug_shot(), shot_start(), &shot_file())
             .await;
 
         assert!(!ok);
@@ -960,12 +1062,7 @@ mod tests {
 
         let ok = app
             .shot_sharing
-            .upload(
-                &app,
-                &pyfmt::dumps_default(&debug_shot()),
-                shot_start(),
-                &shot_file(),
-            )
+            .upload(&app, &debug_shot(), shot_start(), &shot_file())
             .await;
 
         assert!(!ok);
@@ -982,7 +1079,7 @@ mod tests {
         opted_in(&app);
         assert!(app.shot_sharing.upload_debug_shot(
             &app,
-            &pyfmt::dumps_default(&debug_shot()),
+            &debug_shot(),
             shot_start(),
             &shot_file()
         ));
