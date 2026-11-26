@@ -605,6 +605,37 @@ async fn post_unknown_tare_behavior_returns_400() {
     bench.assert_rejected(&reply, 400, "unsupported tare behavior: sideways");
 }
 
+/// Protects: choosing the Dial's theme and going back to following the
+/// machine's color. `theme` starts as null (unset, `config::defaults()`), so
+/// the first choice changes the value's type, and null has to be accepted
+/// again afterwards: without the exception in `profile_settings_type_ok` the
+/// first of them is a 404 and the Dial's theme menu does nothing. Not in the
+/// Python suite: the Python backend had no such setting.
+#[tokio::test]
+async fn post_theme_is_chosen_and_unset_again() {
+    let bench = Bench::new();
+    assert_eq!(bench.app.config.get(keys::USER, keys::THEME), Value::Null);
+
+    for theme in [json!("light"), json!("dark"), Value::Null] {
+        let reply = bench.post_settings(json!({"theme": theme})).await;
+
+        assert_eq!(reply.status_code(), 200, "{theme}");
+        assert_eq!(body(&reply)["theme"], theme);
+        assert_eq!(bench.saved_config()[keys::USER]["theme"], theme);
+    }
+}
+
+/// Protects: a theme the Dial does not have (`config::THEMES`) is refused
+/// with the reason and changes nothing. Without the check any string is
+/// stored and the settings claim a theme nothing shows.
+#[tokio::test]
+async fn post_unknown_theme_returns_400() {
+    let bench = Bench::new();
+    let reply = bench.post_settings(json!({"theme": "sepia"})).await;
+
+    bench.assert_rejected(&reply, 400, "unsupported theme: sepia");
+}
+
 /// tests/test_api_settings.py::TestSettingsAPI::test_post_shot_data_sharing_opt_in_generates_a_sharing_id
 #[tokio::test]
 async fn post_shot_data_sharing_opt_in_generates_a_sharing_id() {

@@ -42,6 +42,7 @@
     "shot_data_sharing": null,
     "ssh_enabled": true,
     "tare_behavior": "after_retraction",
+    "theme": null,
     "time_zone": null,
     "timezone_sync": "automatic",
     "update_channel": "",

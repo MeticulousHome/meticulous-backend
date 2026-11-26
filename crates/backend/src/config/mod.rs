@@ -53,6 +53,7 @@ pub mod keys {
     pub const MACHINE_HEATING_TIMEOUT: &str = "heating_timeout";
     pub const UPDATE_CHANNEL: &str = "update_channel";
     pub const IDLE_SCREEN: &str = "idle_screen";
+    pub const THEME: &str = "theme";
     pub const REVERSE_SCROLLING: &str = "reverse_scrolling";
     pub const ALLOW_LEGACY_JSON: &str = "allow_legacy_json";
     pub const SHOT_DATA_SHARING: &str = "shot_data_sharing";
@@ -93,6 +94,9 @@ pub const TARE_BEHAVIORS: [&str; 2] = [
     TARE_BEHAVIOR_AFTER_RETRACTION,
     TARE_BEHAVIOR_BEFORE_RETRACTION,
 ];
+/// The Dial's themes. A `theme` of null was never chosen: the Dial follows the
+/// machine's color (light on a white machine, dark on any other).
+pub const THEMES: [&str; 2] = ["dark", "light"];
 pub const PARTIAL_RETRACTION_LEGACY_DEFAULT: f64 = 45.0;
 pub const PARTIAL_RETRACTION_DEFAULT: f64 = 45.33;
 pub const PARTIAL_RETRACTION_MIN: f64 = 36.26;
@@ -156,6 +160,7 @@ pub fn defaults() -> Value {
             MACHINE_HEATING_TIMEOUT: 10,
             UPDATE_CHANNEL: "",
             IDLE_SCREEN: "default",
+            THEME: null,
             REVERSE_SCROLLING: {"home": false, "keyboard": false, "menus": false},
             ALLOW_LEGACY_JSON: false,
             SHOT_DATA_SHARING: null,

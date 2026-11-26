@@ -94,6 +94,9 @@ fn validate(user: &Map<String, Value>, target: &str, value: &Value) -> Result<()
     if target == keys::PROFILE_TARE_BEHAVIOR {
         validate_tare_behavior(value).map_err(Refusal::Other)?;
     }
+    if target == keys::THEME {
+        validate_theme(value).map_err(Refusal::Other)?;
+    }
     if target == keys::PROFILE_PARTIAL_RETRACTION {
         validate_partial_retraction(value.as_f64().unwrap_or(f64::NAN)).map_err(Refusal::Other)?;
     }
@@ -105,6 +108,15 @@ pub fn validate_tare_behavior(value: &Value) -> Result<(), String> {
     match value.as_str() {
         Some(v) if config::TARE_BEHAVIORS.contains(&v) => Ok(()),
         _ => Err(format!("unsupported tare behavior: {}", python_str(value))),
+    }
+}
+
+/// One of the Dial's themes, or null to follow the machine's color again.
+pub fn validate_theme(value: &Value) -> Result<(), String> {
+    match value {
+        Value::Null => Ok(()),
+        Value::String(v) if config::THEMES.contains(&v.as_str()) => Ok(()),
+        _ => Err(format!("unsupported theme: {}", python_str(value))),
     }
 }
 
@@ -128,7 +140,7 @@ pub fn profile_settings_type_ok(name: &str, value: &Value, current: &Value) -> b
         // Tri-state until the user answers, then a bool.
         keys::SHOT_DATA_SHARING => value.is_boolean(),
         // A string the user may clear again.
-        keys::REPORT_CONTACT_MAIL => value.is_null() || value.is_string(),
+        keys::REPORT_CONTACT_MAIL | keys::THEME => value.is_null() || value.is_string(),
         _ => python_type(value) == python_type(current),
     }
 }
